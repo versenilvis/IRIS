@@ -242,6 +242,10 @@ func runWrapper() {
 
 // mergeResults returns suggestions based on the active mode
 func mergeResults(query string, mode string) []core.Suggestion {
+	if query == "" {
+		return nil
+	}
+
 	if mode == "history" {
 		histResults, _ := intergration.SearchHistory(query)
 		cmdResults := []core.Suggestion{}
