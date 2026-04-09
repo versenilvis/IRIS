@@ -1,4 +1,4 @@
-package commands
+package runner
 
 import (
 	"bufio"
@@ -13,7 +13,7 @@ func init() {
 	core.Register(&core.Spec{
 		Name:        "just",
 		Description: "command runner",
-		Generator: func(tokens []string, prefix string) []core.Suggestion {
+		Generator: func(tokens []string, prefix string, partial string) []core.Suggestion {
 			file, err := os.Open("justfile")
 			if err != nil {
 				// try uppercase

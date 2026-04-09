@@ -1,4 +1,4 @@
-package commands
+package runner
 
 import (
 	"bufio"
@@ -12,7 +12,7 @@ func init() {
 	core.Register(&core.Spec{
 		Name:        "make",
 		Description: "build automation",
-		Generator: func(tokens []string, prefix string) []core.Suggestion {
+		Generator: func(tokens []string, prefix string, partial string) []core.Suggestion {
 			// Read the Makefile
 			file, err := os.Open("Makefile")
 			if err != nil {

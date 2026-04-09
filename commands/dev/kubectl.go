@@ -1,4 +1,4 @@
-package commands
+package dev
 
 import (
 	"github.com/versenilvis/iris/commands/core"

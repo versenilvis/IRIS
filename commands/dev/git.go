@@ -1,4 +1,4 @@
-package commands
+package dev
 
 import (
 	"github.com/versenilvis/iris/commands/core"
@@ -41,6 +41,7 @@ func init() {
 			{
 				Name: "add",
 				Description: "stage changes",
+				Generator: core.FileGenerator(),
 				Options: []core.Option{
 					{Name: "-A", Description: "add all files"},
 					{Name: "-p", Description: "interactive patch"},

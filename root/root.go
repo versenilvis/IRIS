@@ -14,7 +14,12 @@ import (
 
 	"github.com/creack/pty"
 	"github.com/spf13/cobra"
-	_ "github.com/versenilvis/iris/commands"
+	_ "github.com/versenilvis/iris/commands/dev"
+	_ "github.com/versenilvis/iris/commands/fs"
+	_ "github.com/versenilvis/iris/commands/info"
+	_ "github.com/versenilvis/iris/commands/runner"
+	_ "github.com/versenilvis/iris/commands/search"
+	_ "github.com/versenilvis/iris/commands/view"
 	"github.com/versenilvis/iris/commands/core"
 	"github.com/versenilvis/iris/integration"
 	"golang.org/x/term"
