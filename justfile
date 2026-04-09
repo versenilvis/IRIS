@@ -6,4 +6,4 @@ build:
 # run iris
 [group('dev')]
 run:
-    @./iris start
+    @./iris
