@@ -51,6 +51,8 @@ func Register(s *Spec) {
 // And tokenizer helps us to detect white space like we can't know if you are typing "git-lfs"
 // or "git" to show the suggestions, without it, if you type "git " (with white space), it still shows
 // suggestion for "git-lfs"
+//
+// priority: file/dir -> subcommands -> options
 func Lookup(input string) []Suggestion {
 	tokens := tokenize(input)
 	if len(tokens) == 0 {
@@ -109,31 +111,7 @@ func Lookup(input string) []Suggestion {
 
 	results := []Suggestion{}
 
-	// suggest subcommands
-	for _, sub := range currentSubs {
-		if partial == "" || hasPrefix(sub.Name, partial) {
-			results = append(results, Suggestion{
-				Cmd:  prefix + " " + sub.Name,
-				Desc: sub.Description,
-				Icon: root,
-			})
-		}
-	}
-
-	// suggest options if typing with '-'
-	if partial == "" || partial[0] == '-' {
-		for _, opt := range currentOpts {
-			if partial == "" || hasPrefix(opt.Name, partial) {
-				results = append(results, Suggestion{
-					Cmd:  prefix + " " + opt.Name,
-					Desc: opt.Description,
-					Icon: root,
-				})
-			}
-		}
-	}
-
-	// use generator if available
+	// file/dir
 	if currentGen != nil {
 		genResults := currentGen(tokens[:depth], prefix, partial)
 		for _, g := range genResults {
@@ -144,6 +122,30 @@ func Lookup(input string) []Suggestion {
 				results = append(results, Suggestion{
 					Cmd:  g.Cmd,
 					Desc: g.Desc,
+					Icon: root,
+				})
+			}
+		}
+	}
+
+	// subcommands
+	for _, sub := range currentSubs {
+		if partial == "" || hasPrefix(sub.Name, partial) {
+			results = append(results, Suggestion{
+				Cmd:  prefix + " " + sub.Name,
+				Desc: sub.Description,
+				Icon: root,
+			})
+		}
+	}
+
+	// options
+	if partial == "" || (len(partial) > 0 && partial[0] == '-') {
+		for _, opt := range currentOpts {
+			if partial == "" || hasPrefix(opt.Name, partial) {
+				results = append(results, Suggestion{
+					Cmd:  prefix + " " + opt.Name,
+					Desc: opt.Description,
 					Icon: root,
 				})
 			}
