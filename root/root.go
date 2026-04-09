@@ -63,6 +63,8 @@ func runWrapper() {
 	}
 	defer ptmx.Close()
 
+	core.ShellPID = c.Process.Pid
+
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGWINCH)
 	go func() {
