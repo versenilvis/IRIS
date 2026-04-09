@@ -2,7 +2,7 @@ package core
 
 import "strings"
 
-type GeneratorFunc func(tokens []string, prefix string) []Suggestion
+type GeneratorFunc func(tokens []string, prefix string, partial string) []Suggestion
 
 // Spec defines a top-level CLI command
 type Spec struct {
@@ -135,7 +135,7 @@ func Lookup(input string) []Suggestion {
 
 	// use generator if available
 	if currentGen != nil {
-		genResults := currentGen(tokens[:depth], prefix)
+		genResults := currentGen(tokens[:depth], prefix, partial)
 		for _, g := range genResults {
 			// extract simple name for prefix matching
 			parts := strings.Split(g.Cmd, " ")
