@@ -130,6 +130,21 @@ func runWrapper() {
 	var naiveBuffer string // fallback naive tracker for bash
 	mode := "spec"         // can be "spec" or "history"
 
+	renderOverlay := func() {
+		results := mergeResults(naiveBuffer, mode)
+		if len(results) == 0 {
+			TermWrite([]byte(overlay.ClearAndDisable()))
+		} else {
+			var buf strings.Builder
+			if overlay.Visible {
+				buf.WriteString(overlay.Clear())
+			}
+			overlay.UpdateItems(results)
+			buf.WriteString(overlay.Render())
+			TermWrite([]byte(buf.String()))
+		}
+	}
+
 	for {
 		n, err := os.Stdin.Read(buf)
 		if err != nil {
@@ -180,15 +195,26 @@ func runWrapper() {
 				selected := overlay.Items[overlay.Cursor].Cmd
 
 				TermWrite([]byte(overlay.ClearAndDisable()))
-				naiveBuffer = ""
+				
+				// auto add space after tab for next suggestion in spec mode
+				if mode == "spec" || b == 0x09 {
+					selected += " "
+				}
+				
+				// sync our naive buffer with the selected result
+				naiveBuffer = selected
 				mode = "spec" // reset to spec mode after selection
 
 				// delete line (ctrl+u)
 				ptmx.Write([]byte{0x15})
 				ptmx.Write([]byte(selected))
-
+				
 				if b == '\r' {
 					ptmx.Write([]byte{'\r'})
+					naiveBuffer = ""
+				} else {
+					// if it was tab, we want to immediately show next suggestions
+					renderOverlay()
 				}
 				continue
 			}
@@ -221,20 +247,7 @@ func runWrapper() {
 			}
 
 			if shouldOverlayDraw {
-				results := mergeResults(naiveBuffer, mode)
-				if len(results) == 0 {
-					TermWrite([]byte(overlay.ClearAndDisable()))
-				} else {
-					var buf strings.Builder
-
-					if overlay.Visible {
-						buf.WriteString(overlay.Clear())
-					}
-
-					overlay.UpdateItems(results)
-					buf.WriteString(overlay.Render())
-					TermWrite([]byte(buf.String()))
-				}
+				renderOverlay()
 			}
 		}
 	}
