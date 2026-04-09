@@ -1,10 +1,28 @@
 package core
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 )
+
+// for tracking current working dir
+var ShellPID int
+
+// GetCWD returns the current working directory of the underlying shell
+// on Linux, it reads it from /proc/[pid]/cwd
+func GetCWD() string {
+	if ShellPID > 0 {
+		path := fmt.Sprintf("/proc/%d/cwd", ShellPID)
+		cwd, err := os.Readlink(path)
+		if err == nil {
+			return cwd
+		}
+	}
+	cwd, _ := os.Getwd()
+	return cwd
+}
 
 // FileGenerator provides directory and file suggestions.
 // It handles nested paths (e.g., 'src/main') by resolving the directory
@@ -28,12 +46,13 @@ func FileGenerator(filters ...string) GeneratorFunc {
 	}
 
 	return func(tokens []string, prefix string, partial string) []Suggestion {
-		dir := "."
+		base := GetCWD()
+		dir := base
 		filePrefix := partial
 
 		// check if the partial string contains path separators
 		if i := strings.LastIndexAny(partial, "/\\"); i != -1 {
-			dir = partial[:i+1]
+			dir = filepath.Join(base, partial[:i+1])
 			filePrefix = partial[i+1:]
 		}
 
@@ -82,7 +101,7 @@ func FileGenerator(filters ...string) GeneratorFunc {
 				}
 				results = append(results, Suggestion{
 					Cmd:  prefix + " " + fullPath,
-					Desc: fileDesc(name),
+					Desc: fileDesc(),
 				})
 			}
 		}
@@ -91,119 +110,6 @@ func FileGenerator(filters ...string) GeneratorFunc {
 	}
 }
 
-func fileDesc(name string) string {
-	ext := strings.ToLower(filepath.Ext(name))
-
-	// special cases without extensions
-	if ext == "" {
-		switch name {
-		case "Dockerfile", "dockerfile":
-			return "dockerfile"
-		case "Makefile", "makefile":
-			return "makefile"
-		case "LICENSE", "license":
-			return "license"
-		}
-	}
-
-	switch ext {
-	case ".go":
-		return "go"
-	case ".js":
-		return "javascript"
-	case ".ts":
-		return "typescript"
-	case ".py":
-		return "python"
-	case ".rs":
-		return "rust"
-	case ".c", ".h":
-		return "c source"
-	case ".cpp", ".hpp", ".cc":
-		return "c++ source"
-	case ".java":
-		return "java"
-	case ".rb":
-		return "ruby"
-	case ".php":
-		return "php"
-	case ".kt":
-		return "kotlin"
-	case ".swift":
-		return "swift"
-	case ".sh":
-		return "shell script"
-	case ".lua":
-		return "lua"
-	case ".zig":
-		return "zig"
-	case ".ex", ".exs":
-		return "elixir"
-
-	case ".html", ".htm":
-		return "html"
-	case ".css":
-		return "stylesheet"
-	case ".scss", ".sass":
-		return "sass"
-	case ".jsx":
-		return "react (js)"
-	case ".tsx":
-		return "react (ts)"
-	case ".vue":
-		return "vue"
-	case ".svelte":
-		return "svelte"
-
-	case ".json":
-		return "json"
-	case ".yaml", ".yml":
-		return "yaml"
-	case ".toml":
-		return "toml"
-	case ".sql":
-		return "sql"
-	case ".xml":
-		return "xml"
-	case ".csv":
-		return "csv"
-	case ".env":
-		return "env file"
-	case ".lock":
-		return "lock file"
-
-	case ".md", ".markdown":
-		return "markdown"
-	case ".txt":
-		return "text file"
-	case ".pdf":
-		return "pdf"
-	case ".log":
-		return "log file"
-
-	case ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico":
-		return "image"
-	case ".mp4", ".mkv", ".avi", ".mov", ".webm":
-		return "video"
-	case ".mp3", ".wav", ".flac", ".ogg":
-		return "audio"
-
-	case ".dockerfile":
-		return "dockerfile"
-	case ".tf":
-		return "terraform"
-	case ".proto":
-		return "protobuf"
-
-	case ".zip", ".tar", ".gz", ".bz2", ".xz", ".7z", ".rar":
-		return "archive"
-
-	case ".mod":
-		return "go module"
-	case ".sum":
-		return "go checksum"
-
-	default:
-		return "file"
-	}
+func fileDesc() string {
+	return "file"
 }
