@@ -1,4 +1,4 @@
-package intergration
+package integration
 
 import (
 	"fmt"

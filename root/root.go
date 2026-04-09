@@ -16,7 +16,7 @@ import (
 	"github.com/spf13/cobra"
 	_ "github.com/versenilvis/iris/commands"
 	"github.com/versenilvis/iris/commands/core"
-	"github.com/versenilvis/iris/intergration"
+	"github.com/versenilvis/iris/integration"
 	"golang.org/x/term"
 )
 
@@ -74,7 +74,7 @@ func runWrapper() {
 	}
 	defer func() { _ = term.Restore(int(os.Stdin.Fd()), oldState) }()
 
-	overlay := intergration.NewOverlay()
+	overlay := integration.NewOverlay()
 
 	// PTY -> Stdout
 	go func() {
@@ -260,7 +260,7 @@ func mergeResults(query string, mode string) []core.Suggestion {
 	}
 
 	if mode == "history" {
-		histResults, _ := intergration.SearchHistory(query)
+		histResults, _ := integration.SearchHistory(query)
 		cmdResults := []core.Suggestion{}
 		for _, h := range histResults {
 			cmdResults = append(cmdResults, core.Suggestion{
