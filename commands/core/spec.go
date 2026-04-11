@@ -12,6 +12,7 @@ type GeneratorFunc func(tokens []string, prefix string, partial string) []Sugges
 // Spec defines a top-level CLI command
 type Spec struct {
 	Name        string
+	Aliases     []string
 	Description string
 	Subcommands []Subcommand
 	Options     []Option
@@ -21,6 +22,7 @@ type Spec struct {
 // Subcommand contains nested subcommands
 type Subcommand struct {
 	Name        string
+	Aliases     []string
 	Description string
 	Subcommands []Subcommand
 	Options     []Option
@@ -121,10 +123,20 @@ func Lookup(input string) []Suggestion {
 			continue
 		}
 
-		// try to match subcommands
+		// try to match subcommands (including aliases)
 		found := false
 		for _, sub := range currentSubs {
-			if sub.Name == tok {
+			match := sub.Name == tok
+			if !match {
+				for _, a := range sub.Aliases {
+					if a == tok {
+						match = true
+						break
+					}
+				}
+			}
+
+			if match {
 				currentSubs = sub.Subcommands
 				currentOpts = sub.Options
 				currentGen = sub.Generator
@@ -229,7 +241,19 @@ func topLevelSuggestions(query string) []Suggestion {
 	seen := make(map[string]bool)
 
 	for name, spec := range registry {
+		match := false
 		if query == "" || hasPrefix(name, query) {
+			match = true
+		} else {
+			for _, a := range spec.Aliases {
+				if hasPrefix(a, query) {
+					match = true
+					break
+				}
+			}
+		}
+
+		if match {
 			results = append(results, Suggestion{
 				Cmd:  name,
 				Desc: spec.Description,
