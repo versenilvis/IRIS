@@ -115,8 +115,8 @@ func Lookup(input string) []Suggestion {
 			break
 		}
 
-		// skip options
-		if strings.HasPrefix(tok, "-") {
+		// skip options 
+		if strings.HasPrefix(tok, "-") || strings.Contains(tok, "=") {
 			depth++
 			continue
 		}
