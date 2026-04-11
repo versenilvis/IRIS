@@ -48,7 +48,7 @@ func init() {
 func Execute() {
 	if os.Getenv("IRIS_RELOADED") == "true" {
 		isReload = true
-		// Clear it but keep the knowledge for the current execution
+		fmt.Printf("\r\033[K\033[35m[IRIS] reloading...\033[0m\n")
 		os.Unsetenv("IRIS_RELOADED")
 	}
 
