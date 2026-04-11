@@ -29,3 +29,12 @@ Provides `TermWrite`, a thread-safe wrapper around `os.Stdout`. It uses a `sync.
 5. `overlay` renders the result `git`.
 6. User presses `Tab`.
 7. `root` sends `Ctrl+U` to Bash, then sends `git ` (the completion).
+
+## Hot-Reload
+
+IRIS features an **Atomic Hot-Reload** mechanism designed for rapid development:
+
+- **Signal Listener**: The root process listens for `SIGUSR1`.
+- **Identity Exposure**: It exports `IRIS_PID` to the environment so child processes knows where to send the signal.
+- **In-place Replacement**: Upon receiving the signal, Iris uses `syscall.Exec` to replace its current process image with the newly built binary.
+- **Handoff Notification**: It uses `IRIS_RELOADED` to notify the new instance to announce its successful load.

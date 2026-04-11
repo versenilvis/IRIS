@@ -28,3 +28,12 @@ Input: `git com`
 4. Stop walking. `partial` = `com`.
 5. Suggestions: Look for subcommands of `git` starting with `com`.
 6. Return: `git commit`.
+
+## Shell Aliases & Priority
+
+IRIS deeply integrates with your shell environment to provide a personalized experience:
+
+- **Dynamic Alias Parsing**: Scans `.bashrc`, `.zshrc`, and other configuration files for aliases. 
+- **Highest Priority**: Shell Aliases are given top priority in the suggestion engine, appearing above manual specs and system commands.
+- **Token Injection**: If a root command is recognized as an alias (e.g., `gr` for `go run`), IRIS injects the expanded tokens into the lookup engine to provide accurate subcommand suggestions.
+- **Display**: Suggestions for aliases show the expanded command (e.g., `tmux a -t`) while noting the alias name in the description (e.g., `alias: ta`).
