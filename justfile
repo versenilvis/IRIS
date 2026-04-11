@@ -15,6 +15,7 @@ run:
 [linux, macos]
 reload:
     @go build -o iris main.go
+    @if [ -n "${IRIS_PID:-}" ]; then kill -USR1 $IRIS_PID; fi
     @if [ -z "${IRIS_FD:-}" ]; then ./iris; fi
 
 # update pkg

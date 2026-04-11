@@ -14,13 +14,13 @@ import (
 
 	"github.com/creack/pty"
 	"github.com/spf13/cobra"
+	"github.com/versenilvis/iris/commands/core"
 	_ "github.com/versenilvis/iris/commands/dev"
 	_ "github.com/versenilvis/iris/commands/fs"
 	_ "github.com/versenilvis/iris/commands/info"
 	_ "github.com/versenilvis/iris/commands/runner"
 	_ "github.com/versenilvis/iris/commands/search"
 	_ "github.com/versenilvis/iris/commands/view"
-	"github.com/versenilvis/iris/commands/core"
 	"github.com/versenilvis/iris/integration"
 	"golang.org/x/term"
 )
@@ -36,41 +36,14 @@ It works exactly like coding editor suggestion menu drop down.`,
 }
 
 func Execute() {
-	go watchSelf()
+	if os.Getenv("IRIS_RELOADED") == "true" {
+		fmt.Printf("\r\n\033[35m[IRIS] reloading...\033[0m\r\n")
+		os.Unsetenv("IRIS_RELOADED")
+	}
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
-	}
-}
-
-func watchSelf() {
-	exe, err := os.Executable()
-	if err != nil {
-		return
-	}
-	
-	startTime := time.Now()
-
-	for {
-		time.Sleep(500 * time.Millisecond)
-		info, err := os.Stat(exe)
-		if err != nil {
-			continue
-		}
-		
-		if info.ModTime().After(startTime) {
-			// clean up terminal before exec
-			fmt.Printf("\r\n\033[35m[IRIS] binary updated, reloading...\033[0m\r\n")
-			// we need to be careful about raw mode but syscall.Exec will replace the process
-			// which is fine as the new iris will setup its own raw mode
-			// however, to be safe for the terminal state, we'd ideally restore then exec
-			// but since we're inside a PTY wrapper, it's more complex
-			// the simplest way: just exec, the new iris will handle the terminal
-			err := syscall.Exec(exe, os.Args, os.Environ())
-			if err != nil {
-				fmt.Printf("Reload failed: %v\n", err)
-			}
-		}
 	}
 }
 
@@ -86,7 +59,7 @@ func runWrapper() {
 	// fd 0, 1, 2 are stdin, stdout, stderr (handled by pty)
 	// fd 3 is our write pipe
 	c.ExtraFiles = []*os.File{w}
-	c.Env = append(os.Environ(), "IRIS_FD=3")
+	c.Env = append(os.Environ(), "IRIS_FD=3", fmt.Sprintf("IRIS_PID=%d", os.Getpid()))
 
 	ptmx, err := pty.Start(c)
 	if err != nil {
@@ -97,15 +70,22 @@ func runWrapper() {
 
 	core.ShellPID = c.Process.Pid
 
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, syscall.SIGWINCH)
+	// signal handling for resize and reload
+	sigCh := make(chan os.Signal, 2)
+	signal.Notify(sigCh, syscall.SIGWINCH, syscall.SIGUSR1)
 	go func() {
-		for range ch {
-			if err := pty.InheritSize(os.Stdin, ptmx); err != nil {
+		for s := range sigCh {
+			switch s {
+			case syscall.SIGWINCH:
+				_ = pty.InheritSize(os.Stdin, ptmx)
+			case syscall.SIGUSR1:
+				exe, _ := os.Executable()
+				os.Setenv("IRIS_RELOADED", "true")
+				_ = syscall.Exec(exe, os.Args, os.Environ())
 			}
 		}
 	}()
-	ch <- syscall.SIGWINCH
+	sigCh <- syscall.SIGWINCH
 
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
@@ -234,12 +214,12 @@ func runWrapper() {
 				selected := overlay.Items[overlay.Cursor].Cmd
 
 				TermWrite([]byte(overlay.ClearAndDisable()))
-				
+
 				// auto add space after tab for next suggestion in spec mode
 				if mode == "spec" || b == 0x09 {
 					selected += " "
 				}
-				
+
 				// sync our naive buffer with the selected result
 				naiveBuffer = selected
 				mode = "spec" // reset to spec mode after selection
@@ -247,7 +227,7 @@ func runWrapper() {
 				// delete line (ctrl+u)
 				ptmx.Write([]byte{0x15})
 				ptmx.Write([]byte(selected))
-				
+
 				if b == '\r' {
 					ptmx.Write([]byte{'\r'})
 					naiveBuffer = ""
