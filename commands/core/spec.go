@@ -161,13 +161,14 @@ func Lookup(input string) []Suggestion {
 	}
 
 	// build prefix from tokens consumed so far
-	prefix := ""
+	var prefixBuilder strings.Builder
 	for i := 0; i < depth; i++ {
 		if i > 0 {
-			prefix += " "
+			prefixBuilder.WriteByte(' ')
 		}
-		prefix += tokens[i]
+		prefixBuilder.WriteString(tokens[i])
 	}
+	prefix := prefixBuilder.String()
 
 	// partial is what user is currently typing (might be incomplete)
 	partial := ""
@@ -281,7 +282,7 @@ func topLevelSuggestions(query string) []Suggestion {
 
 func tokenize(s string) []string {
 	tokens := []string{}
-	current := ""
+	var current strings.Builder
 	inQuote := false
 	var quoteChar rune
 
@@ -293,20 +294,18 @@ func tokenize(s string) []string {
 		case inQuote && c == quoteChar:
 			inQuote = false
 		case c == ' ' && !inQuote:
-			if current != "" {
-				tokens = append(tokens, current)
-				current = ""
+			if current.Len() > 0 {
+				tokens = append(tokens, current.String())
+				current.Reset()
 			} else if len(tokens) > 0 && tokens[len(tokens)-1] != "" {
-				// preserve trailing space as an empty token for suggestions
-				// but only if it's the very last thing and not multiple spaces
+				// preserve trailing space
 			}
 		default:
-			current += string(c)
+			current.WriteRune(c)
 		}
 	}
 
-	// always append the last token (even if empty, representing the cursor position)
-	tokens = append(tokens, current)
+	tokens = append(tokens, current.String())
 	return tokens
 }
 
