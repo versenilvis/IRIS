@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -26,19 +27,28 @@ import (
 	"golang.org/x/term"
 )
 
-var rootCmd = &cobra.Command{
-	Use:   "iris",
-	Short: "IRIS is an awesome cli auto-completion tool",
-	Long: `IRIS (a.k.a Intelligent Real-time Input Suggestion) is a shell auto-autocompletion tool.
+var (
+	rootCmd = &cobra.Command{
+		Use:   "iris",
+		Short: "IRIS is an awesome cli auto-completion tool",
+		Long: `IRIS (a.k.a Intelligent Real-time Input Suggestion) is a shell auto-autocompletion tool.
 It works exactly like coding editor suggestion menu drop down.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		runWrapper()
-	},
+		Run: func(cmd *cobra.Command, args []string) {
+			runWrapper()
+		},
+	}
+	shellFlag string
+	isReload  bool
+)
+
+func init() {
+	rootCmd.PersistentFlags().StringVarP(&shellFlag, "shell", "s", "", "Shell to use (bash, zsh, fish)")
 }
 
 func Execute() {
 	if os.Getenv("IRIS_RELOADED") == "true" {
-		fmt.Printf("\r\n\033[35m[IRIS] reloading...\033[0m\r\n")
+		isReload = true
+		// Clear it but keep the knowledge for the current execution
 		os.Unsetenv("IRIS_RELOADED")
 	}
 
@@ -48,6 +58,88 @@ func Execute() {
 	}
 }
 
+func detectShell() string {
+	// Look up to 5 levels to find the nearest shell
+	pid := os.Getppid()
+	for i := 0; i < 5 && pid > 1; i++ {
+		data, err := os.ReadFile(fmt.Sprintf("/proc/%d/comm", pid))
+		if err == nil {
+			comm := strings.ToLower(strings.TrimSpace(string(data)))
+			if strings.Contains(comm, "zsh") { return "zsh" }
+			if strings.Contains(comm, "bash") { return "bash" }
+			if strings.Contains(comm, "fish") { return "fish" }
+		}
+
+		// Move up to parent
+		data, err = os.ReadFile(fmt.Sprintf("/proc/%d/stat", pid))
+		if err != nil { break }
+		fields := strings.Fields(string(data))
+		if len(fields) > 3 {
+			ppid, _ := strconv.Atoi(fields[3])
+			if ppid == pid || ppid <= 1 { break }
+			pid = ppid
+		} else { break }
+	}
+
+	// Final fallback to system default
+	s := os.Getenv("SHELL")
+	if strings.Contains(s, "zsh") { return "zsh" }
+	return "bash"
+}
+
+type procInfo struct {
+	pid  int
+	ppid int
+	comm string
+}
+
+// getActiveInnerShell scans the process tree to find the deepest shell running inside the PTY
+func getActiveInnerShell(rootPid int, defaultShell string) string {
+	cmd := exec.Command("ps", "-e", "-o", "pid,ppid,comm")
+	out, err := cmd.Output()
+	if err != nil {
+		return defaultShell
+	}
+
+	lines := strings.Split(string(out), "\n")
+	childrenMap := make(map[int][]procInfo)
+
+	for _, line := range lines {
+		fields := strings.Fields(line)
+		if len(fields) >= 3 && fields[0] != "PID" {
+			pid, err1 := strconv.Atoi(fields[0])
+			ppid, err2 := strconv.Atoi(fields[1])
+			if err1 == nil && err2 == nil {
+				comm := strings.ToLower(strings.Join(fields[2:], " "))
+				childrenMap[ppid] = append(childrenMap[ppid], procInfo{pid, ppid, comm})
+			}
+		}
+	}
+
+	var findDeepest func(pid int, current string) string
+	findDeepest = func(pid int, current string) string {
+		shell := current
+		for _, child := range childrenMap[pid] {
+			childShell := shell
+			if strings.Contains(child.comm, "zsh") {
+				childShell = "zsh"
+			} else if strings.Contains(child.comm, "bash") {
+				childShell = "bash"
+			} else if strings.Contains(child.comm, "fish") {
+				childShell = "fish"
+			}
+
+			// recursively find even deeper shells
+			if deepest := findDeepest(child.pid, childShell); deepest != "" {
+				shell = deepest
+			}
+		}
+		return shell
+	}
+
+	return findDeepest(rootPid, defaultShell)
+}
+
 func runWrapper() {
 	r, w, err := os.Pipe()
 	if err != nil {
@@ -55,20 +147,27 @@ func runWrapper() {
 		return
 	}
 
-	// default to bash
-	shellName := "bash"
-	if strings.Contains(os.Getenv("SHELL"), "zsh") {
-		shellName = "zsh"
+	var shellName string
+	// 1. Priority: Shell from previous reload (inner deepest)
+	if active := os.Getenv("IRIS_ACTIVE_SHELL"); active != "" {
+		shellName = active
+		os.Unsetenv("IRIS_ACTIVE_SHELL")
+	// 2. Explicit flag
+	} else if shellFlag != "" {
+		shellName = shellFlag
+	// 3. Dynamic detection (outer parent)
+	} else {
+		shellName = detectShell()
 	}
+
 	shell.Init(shellName)
 	adapter := shell.Current
 
 	c := exec.Command(adapter.GetShellPath())
 
-	// fd 0, 1, 2 are stdin, stdout, stderr (handled by pty)
-	// fd 3 is our write pipe
-	c.ExtraFiles = []*os.File{w}
-	c.Env = adapter.GetEnv(3, os.Getpid())
+	c.ExtraFiles = make([]*os.File, 11)
+	c.ExtraFiles[10] = w
+	c.Env = adapter.GetEnv(10, os.Getpid())
 
 	ptmx, err := pty.Start(c)
 	if err != nil {
@@ -78,6 +177,12 @@ func runWrapper() {
 	defer ptmx.Close()
 
 	core.ShellPID = c.Process.Pid
+
+	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	if err != nil {
+		panic(err)
+	}
+	defer func() { _ = term.Restore(int(os.Stdin.Fd()), oldState) }()
 
 	// signal handling for resize and reload
 	sigCh := make(chan os.Signal, 2)
@@ -90,17 +195,21 @@ func runWrapper() {
 			case syscall.SIGUSR1:
 				exe, _ := os.Executable()
 				os.Setenv("IRIS_RELOADED", "true")
+				
+				// capture the actual shell running deep inside the PTY
+				innerShell := getActiveInnerShell(c.Process.Pid, shellName)
+				if innerShell != "" {
+					os.Setenv("IRIS_ACTIVE_SHELL", innerShell)
+				}
+
+				if oldState != nil {
+					_ = term.Restore(int(os.Stdin.Fd()), oldState)
+				}
 				_ = syscall.Exec(exe, os.Args, os.Environ())
 			}
 		}
 	}()
 	sigCh <- syscall.SIGWINCH
-
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
-	if err != nil {
-		panic(err)
-	}
-	defer func() { _ = term.Restore(int(os.Stdin.Fd()), oldState) }()
 
 	overlay := integration.NewOverlay()
 
