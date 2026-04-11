@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 )
 
 type GeneratorFunc func(tokens []string, prefix string, partial string) []Suggestion
@@ -46,7 +45,6 @@ var (
 	registry     = map[string]*Spec{}
 	pathCmds     = make(map[string]bool)
 	shellAliases = make(map[string]string) // alias name -> target command
-	pathOnce     sync.Once
 )
 
 // scanShellAliases parses shell config files for aliases
@@ -152,7 +150,10 @@ func Register(s *Spec) {
 //
 // priority: file/dir -> subcommands -> options
 func Lookup(input string) []Suggestion {
-	pathOnce.Do(scanExternalCommands)
+	shellAliases = make(map[string]string)
+	pathCmds = make(map[string]bool)
+	scanExternalCommands()
+
 	tokens := tokenize(input)
 
 	// Token Injection: resolve shell alias (e.g. gca -> git commit -a)
@@ -272,7 +273,6 @@ func Lookup(input string) []Suggestion {
 }
 
 func topLevelSuggestions(query string) []Suggestion {
-	pathOnce.Do(scanExternalCommands)
 	results, seen := []Suggestion{}, make(map[string]bool)
 
 	// 1. Manual specs (High Priority)
