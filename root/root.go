@@ -169,6 +169,7 @@ func runWrapper() {
 	c.ExtraFiles = make([]*os.File, 11)
 	c.ExtraFiles[10] = w
 	c.Env = adapter.GetEnv(10, os.Getpid())
+	c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 	ptmx, err := pty.Start(c)
 	if err != nil {
@@ -202,10 +203,10 @@ func runWrapper() {
 					os.Setenv("IRIS_ACTIVE_SHELL", innerShell)
 				}
 
-				// kill the child shell before reloading
-				// this prevents multiple shells from fighting over the terminal
+				// kill the child process group before reloading
+				// using negative PID to kill all descendants
 				if c.Process != nil {
-					_ = syscall.Kill(c.Process.Pid, syscall.SIGKILL)
+					_ = syscall.Kill(-c.Process.Pid, syscall.SIGKILL)
 					ptmx.Close()
 				}
 
