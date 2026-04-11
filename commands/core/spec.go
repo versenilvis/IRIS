@@ -73,10 +73,7 @@ func scanShellAliases() {
 			if len(matches) == 3 {
 				name := matches[1]
 				target := matches[2]
-				fields := strings.Fields(target)
-				if len(fields) > 0 {
-					shellAliases[name] = fields[0]
-				}
+				shellAliases[name] = target
 			}
 		}
 	}
@@ -132,6 +129,20 @@ func Lookup(input string) []Suggestion {
 	pathOnce.Do(scanExternalCommands)
 
 	tokens := tokenize(input)
+
+	// resolve shell alias (e.g. gca -> git commit -a)
+	if len(tokens) > 0 {
+		if target, ok := shellAliases[tokens[0]]; ok {
+			aliasTokens := tokenize(target)
+			// if the alias expansion ends with a space, tokenize might have an empty last token
+			// we should merge it carefully with tokens[1:]
+			if len(aliasTokens) > 0 && aliasTokens[len(aliasTokens)-1] == "" {
+				aliasTokens = aliasTokens[:len(aliasTokens)-1]
+			}
+			tokens = append(aliasTokens, tokens[1:]...)
+		}
+	}
+
 	if len(tokens) == 0 {
 		return topLevelSuggestions(input)
 	}
@@ -142,16 +153,12 @@ func Lookup(input string) []Suggestion {
 	}
 
 	rootCmdName := tokens[0]
-	// resolve shell alias (e.g. g -> git)
-	if target, ok := shellAliases[rootCmdName]; ok {
-		rootCmdName = target
-	}
-
 	spec, exists := registry[rootCmdName]
 	if !exists {
 		// no spec found for this command, return nothing to avoid clutter
 		return nil
 	}
+
 
 	currentSubs := spec.Subcommands
 	currentOpts := spec.Options
