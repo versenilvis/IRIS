@@ -22,6 +22,7 @@ import (
 	_ "github.com/versenilvis/iris/commands/search"
 	_ "github.com/versenilvis/iris/commands/view"
 	"github.com/versenilvis/iris/integration"
+	"github.com/versenilvis/iris/integration/shell"
 	"golang.org/x/term"
 )
 
@@ -54,12 +55,20 @@ func runWrapper() {
 		return
 	}
 
-	c := exec.Command("bash")
+	// default to bash
+	shellName := "bash"
+	if strings.Contains(os.Getenv("SHELL"), "zsh") {
+		shellName = "zsh"
+	}
+	shell.Init(shellName)
+	adapter := shell.Current
+
+	c := exec.Command(adapter.GetShellPath())
 
 	// fd 0, 1, 2 are stdin, stdout, stderr (handled by pty)
 	// fd 3 is our write pipe
 	c.ExtraFiles = []*os.File{w}
-	c.Env = append(os.Environ(), "IRIS_FD=3", fmt.Sprintf("IRIS_PID=%d", os.Getpid()))
+	c.Env = adapter.GetEnv(3, os.Getpid())
 
 	ptmx, err := pty.Start(c)
 	if err != nil {
@@ -224,9 +233,7 @@ func runWrapper() {
 				naiveBuffer = selected
 				mode = "spec" // reset to spec mode after selection
 
-				// delete line (ctrl+u)
-				ptmx.Write([]byte{0x15})
-				ptmx.Write([]byte(selected))
+				ptmx.Write(adapter.PrepareSelectSequence(selected))
 
 				if b == '\r' {
 					ptmx.Write([]byte{'\r'})

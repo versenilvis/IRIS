@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/versenilvis/iris/integration/shell"
 )
 
 type GeneratorFunc func(tokens []string, prefix string, partial string) []Suggestion
@@ -47,71 +49,9 @@ var (
 	shellAliases = make(map[string]string) // alias name -> target command
 )
 
-// scanShellAliases parses shell config files for aliases
-func scanShellAliases() {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return
-	}
-
-	for _, f := range []string{".zshrc", ".bashrc", ".bash_profile", ".bash_aliases"} {
-		content, err := os.ReadFile(filepath.Join(home, f))
-		if err != nil {
-			continue
-		}
-
-		for _, line := range strings.Split(string(content), "\n") {
-			line = strings.TrimSpace(line)
-			if !strings.HasPrefix(line, "alias") {
-				continue
-			}
-
-			body := strings.TrimSpace(strings.TrimPrefix(line, "alias"))
-			for _, pair := range splitAliasTokens(body) {
-				if eqIdx := strings.IndexByte(pair, '='); eqIdx > 0 {
-					k := strings.TrimSpace(pair[:eqIdx])
-					v := strings.Trim(strings.TrimSpace(pair[eqIdx+1:]), "\"'")
-					if k != "" && v != "" {
-						shellAliases[k] = v
-					}
-				}
-			}
-		}
-	}
-}
-
-func splitAliasTokens(s string) []string {
-	var pairs []string
-	var cur strings.Builder
-	inQuote := false
-	var quote rune
-	for _, c := range s {
-		switch {
-		case !inQuote && (c == '"' || c == '\''):
-			inQuote, quote = true, c
-			cur.WriteRune(c)
-		case inQuote && c == quote:
-			inQuote = false
-			cur.WriteRune(c)
-		case c == ' ' && !inQuote:
-			if cur.Len() > 0 {
-				pairs = append(pairs, cur.String())
-				cur.Reset()
-			}
-		default:
-			cur.WriteRune(c)
-		}
-	}
-	if cur.Len() > 0 {
-		pairs = append(pairs, cur.String())
-	}
-	return pairs
-}
-
-// scanExternalCommands populates pathCmds and shellAliases
+// scanExternalCommands populates pathCmds
 func scanExternalCommands() {
 	scanPath()
-	scanShellAliases()
 }
 
 // scanPath populates pathCmds with all executable files found in $PATH
@@ -150,7 +90,11 @@ func Register(s *Spec) {
 //
 // priority: file/dir -> subcommands -> options
 func Lookup(input string) []Suggestion {
-	shellAliases = make(map[string]string)
+	if shell.Current != nil {
+		shellAliases = shell.Current.ScanAliases()
+	} else {
+		shellAliases = make(map[string]string)
+	}
 	pathCmds = make(map[string]bool)
 	scanExternalCommands()
 
