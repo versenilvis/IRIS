@@ -10,10 +10,12 @@ optimized-build:
 run:
     @./iris
 
-# re-build and run
+# re-build and reload iris
 [group('dev')]
-update:
-    @go build -o iris main.go && ./iris
+[linux, macos]
+reload:
+    @go build -o iris main.go
+    @if [ -z "${IRIS_FD:-}" ]; then ./iris; fi
 
 # update pkg
 [group('dev')]

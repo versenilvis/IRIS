@@ -36,9 +36,41 @@ It works exactly like coding editor suggestion menu drop down.`,
 }
 
 func Execute() {
+	go watchSelf()
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
+	}
+}
+
+func watchSelf() {
+	exe, err := os.Executable()
+	if err != nil {
+		return
+	}
+	
+	startTime := time.Now()
+
+	for {
+		time.Sleep(500 * time.Millisecond)
+		info, err := os.Stat(exe)
+		if err != nil {
+			continue
+		}
+		
+		if info.ModTime().After(startTime) {
+			// clean up terminal before exec
+			fmt.Printf("\r\n\033[35m[IRIS] binary updated, reloading...\033[0m\r\n")
+			// we need to be careful about raw mode but syscall.Exec will replace the process
+			// which is fine as the new iris will setup its own raw mode
+			// however, to be safe for the terminal state, we'd ideally restore then exec
+			// but since we're inside a PTY wrapper, it's more complex
+			// the simplest way: just exec, the new iris will handle the terminal
+			err := syscall.Exec(exe, os.Args, os.Environ())
+			if err != nil {
+				fmt.Printf("Reload failed: %v\n", err)
+			}
+		}
 	}
 }
 

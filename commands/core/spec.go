@@ -280,6 +280,7 @@ func topLevelSuggestions(query string) []Suggestion {
 		if !seen[name] && (query == "" || hasPrefix(name, query)) {
 			results = append(results, Suggestion{
 				Cmd: target, Desc: "alias: " + name, Icon: "root",
+				// Cmd: target, Desc: "alias: " + name, Icon: "DEBUG", //--> this is just for debug on reloading, dont mind it
 			})
 			seen[name] = true
 		}
