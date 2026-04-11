@@ -9,3 +9,13 @@ optimized-build:
 [group('dev')]
 run:
     @./iris
+
+# re-build and run
+[group('dev')]
+update:
+    @go build -o iris main.go && ./iris
+
+# update pkg
+[group('dev')]
+pkg:
+    @go mod tidy
