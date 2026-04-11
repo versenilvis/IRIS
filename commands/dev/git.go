@@ -1,8 +1,79 @@
 package dev
 
 import (
+	"os/exec"
+	"strings"
+
 	"github.com/versenilvis/iris/commands/core"
 )
+
+// GitRemoteGenerator suggests git remotes
+func GitRemoteGenerator(tokens []string, prefix string, partial string) []core.Suggestion {
+	return getGitResults(prefix, "remote")
+}
+
+// GitBranchGenerator suggests git branches
+func GitBranchGenerator(tokens []string, prefix string, partial string) []core.Suggestion {
+	// check if we are in "create" mode (-b or -B)
+	isCreateMode := false
+	argCount := 0
+	for _, t := range tokens {
+		if t == "-b" || t == "-B" {
+			isCreateMode = true
+		}
+		// count non-flag, non-command tokens to see where we are
+		if t != "git" && t != "checkout" && t != "switch" && !strings.HasPrefix(t, "-") {
+			argCount++
+		}
+	}
+
+	// if in create mode and this is the first argument after flags, 
+	// we shouldn't suggest existing branches as the new branch name
+	if isCreateMode && argCount == 0 {
+		return nil
+	}
+
+	return getGitResults(prefix, "branch", "--format=%(refname:short)")
+}
+
+// GitPushPullGenerator suggests remotes for the first arg, and branches for the second
+func GitPushPullGenerator(tokens []string, prefix string, partial string) []core.Suggestion {
+	// tokens are like ["git", "push"] or ["git", "push", "origin"]
+	if len(tokens) == 2 {
+		return GitRemoteGenerator(tokens, prefix, partial)
+	}
+	if len(tokens) == 3 {
+		return GitBranchGenerator(tokens, prefix, partial)
+	}
+	return nil
+}
+
+func getGitResults(prefix string, args ...string) []core.Suggestion {
+	cwd := core.GetCWD()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = cwd
+	out, err := cmd.Output()
+	if err != nil {
+		return nil
+	}
+
+	lines := strings.Split(string(out), "\n")
+	var results []core.Suggestion
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "*") { // skip active branch marker if any
+			line = strings.TrimSpace(strings.TrimPrefix(line, "*"))
+		}
+		if line == "" {
+			continue
+		}
+		results = append(results, core.Suggestion{
+			Cmd:  prefix + " " + line,
+			Desc: args[0], // "remote" or "branch"
+		})
+	}
+	return results
+}
 
 func init() {
 	core.Register(&core.Spec{
@@ -59,48 +130,52 @@ func init() {
 				},
 			},
 			{
-				Name: "push",
+				Name:        "push",
 				Description: "update remote refs",
+				Generator:   GitPushPullGenerator,
 				Options: []core.Option{
 					{Name: "-u", Description: "set upstream"},
 					{Name: "--force", Description: "force push"},
 					{Name: "--tags", Description: "push tags"},
-					{Name: "origin", Description: "default remote"},
 				},
 			},
 			{
-				Name: "pull",
+				Name:        "pull",
 				Description: "fetch and merge",
+				Generator:   GitPushPullGenerator,
 				Options: []core.Option{
 					{Name: "--rebase", Description: "rebase on pull"},
-					{Name: "origin", Description: "default remote"},
 				},
 			},
 			{
-				Name: "fetch",
+				Name:        "fetch",
 				Description: "download objects",
+				Generator:   GitRemoteGenerator,
 				Options: []core.Option{
 					{Name: "--all", Description: "fetch all remotes"},
 					{Name: "--prune", Description: "remove stale refs"},
 				},
 			},
 			{
-				Name: "checkout",
+				Name:        "checkout",
 				Description: "switch branches",
+				Generator:   GitBranchGenerator,
 				Options: []core.Option{
 					{Name: "-b", Description: "create new branch"},
 				},
 			},
 			{
-				Name: "switch",
+				Name:        "switch",
 				Description: "switch branches",
+				Generator:   GitBranchGenerator,
 				Options: []core.Option{
 					{Name: "-c", Description: "create and switch"},
 				},
 			},
 			{
-				Name: "branch",
+				Name:        "branch",
 				Description: "manage branches",
+				Generator:   GitBranchGenerator,
 				Options: []core.Option{
 					{Name: "-d", Description: "delete branch"},
 					{Name: "-D", Description: "force delete"},
@@ -109,8 +184,9 @@ func init() {
 				},
 			},
 			{
-				Name: "merge",
+				Name:        "merge",
 				Description: "join branches",
+				Generator:   GitBranchGenerator,
 				Options: []core.Option{
 					{Name: "--no-ff", Description: "no fast forward"},
 					{Name: "--squash", Description: "squash commits"},
