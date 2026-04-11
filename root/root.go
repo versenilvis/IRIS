@@ -300,7 +300,15 @@ func runWrapper() {
 				b := inputSlice[i]
 
 				intercepted := false
-				if overlay.Visible && (b == '\r' || b == 0x09) {
+				if b == 0x12 { // ctrl+r
+					intercepted = true
+					if mode == "spec" {
+						mode = "history"
+					} else {
+						mode = "spec"
+					}
+					shouldOverlayDraw = true
+				} else if overlay.Visible && (b == '\r' || b == 0x09) {
 					intercepted = true
 					selected := overlay.Items[overlay.Cursor].Cmd
 					os.Stdout.Write([]byte(overlay.ClearAndDisable()))
@@ -343,13 +351,7 @@ func runWrapper() {
 					}
 
 					switch b {
-					case 0x12: // ctrl+r
-						if mode == "spec" {
-							mode = "history"
-						} else {
-							mode = "spec"
-						}
-						shouldOverlayDraw = true
+
 					case 0x09: // tab
 						if !overlay.Visible {
 							shouldOverlayDraw = true
