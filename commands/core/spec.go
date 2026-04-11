@@ -3,7 +3,6 @@ package core
 import (
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 )
@@ -50,8 +49,6 @@ var (
 	pathOnce     sync.Once
 )
 
-var aliasRegex = regexp.MustCompile(`^alias\s+([a-zA-Z0-9_\-]+)=['"]?([^'"]+)['"]?`)
-
 // scanShellAliases parses shell config files for aliases
 func scanShellAliases() {
 	home, err := os.UserHomeDir()
@@ -59,24 +56,58 @@ func scanShellAliases() {
 		return
 	}
 
-	files := []string{".zshrc", ".bashrc", ".bash_profile", ".bash_aliases"}
-	for _, f := range files {
+	for _, f := range []string{".zshrc", ".bashrc", ".bash_profile", ".bash_aliases"} {
 		content, err := os.ReadFile(filepath.Join(home, f))
 		if err != nil {
 			continue
 		}
 
-		lines := strings.Split(string(content), "\n")
-		for _, line := range lines {
+		for _, line := range strings.Split(string(content), "\n") {
 			line = strings.TrimSpace(line)
-			matches := aliasRegex.FindStringSubmatch(line)
-			if len(matches) == 3 {
-				name := matches[1]
-				target := matches[2]
-				shellAliases[name] = target
+			if !strings.HasPrefix(line, "alias") {
+				continue
+			}
+
+			body := strings.TrimSpace(strings.TrimPrefix(line, "alias"))
+			for _, pair := range splitAliasTokens(body) {
+				if eqIdx := strings.IndexByte(pair, '='); eqIdx > 0 {
+					k := strings.TrimSpace(pair[:eqIdx])
+					v := strings.Trim(strings.TrimSpace(pair[eqIdx+1:]), "\"'")
+					if k != "" && v != "" {
+						shellAliases[k] = v
+					}
+				}
 			}
 		}
 	}
+}
+
+func splitAliasTokens(s string) []string {
+	var pairs []string
+	var cur strings.Builder
+	inQuote := false
+	var quote rune
+	for _, c := range s {
+		switch {
+		case !inQuote && (c == '"' || c == '\''):
+			inQuote, quote = true, c
+			cur.WriteRune(c)
+		case inQuote && c == quote:
+			inQuote = false
+			cur.WriteRune(c)
+		case c == ' ' && !inQuote:
+			if cur.Len() > 0 {
+				pairs = append(pairs, cur.String())
+				cur.Reset()
+			}
+		default:
+			cur.WriteRune(c)
+		}
+	}
+	if cur.Len() > 0 {
+		pairs = append(pairs, cur.String())
+	}
+	return pairs
 }
 
 // scanExternalCommands populates pathCmds and shellAliases
@@ -87,23 +118,18 @@ func scanExternalCommands() {
 
 // scanPath populates pathCmds with all executable files found in $PATH
 func scanPath() {
-	pathVar := os.Getenv("PATH")
-	dirs := filepath.SplitList(pathVar)
-
+	dirs := filepath.SplitList(os.Getenv("PATH"))
 	for _, dir := range dirs {
 		files, err := os.ReadDir(dir)
 		if err != nil {
 			continue
 		}
-
 		for _, f := range files {
-			if f.IsDir() {
-				continue
-			}
-			// check if it's executable
-			info, err := f.Info()
-			if err == nil && info.Mode()&0111 != 0 {
-				pathCmds[f.Name()] = true
+			if !f.IsDir() {
+				info, err := f.Info()
+				if err == nil && info.Mode()&0111 != 0 {
+					pathCmds[f.Name()] = true
+				}
 			}
 		}
 	}
@@ -127,15 +153,12 @@ func Register(s *Spec) {
 // priority: file/dir -> subcommands -> options
 func Lookup(input string) []Suggestion {
 	pathOnce.Do(scanExternalCommands)
-
 	tokens := tokenize(input)
 
-	// resolve shell alias (e.g. gca -> git commit -a)
-	if len(tokens) > 0 {
+	// Token Injection: resolve shell alias (e.g. gca -> git commit -a)
+	if len(tokens) > 1 {
 		if target, ok := shellAliases[tokens[0]]; ok {
 			aliasTokens := tokenize(target)
-			// if the alias expansion ends with a space, tokenize might have an empty last token
-			// we should merge it carefully with tokens[1:]
 			if len(aliasTokens) > 0 && aliasTokens[len(aliasTokens)-1] == "" {
 				aliasTokens = aliasTokens[:len(aliasTokens)-1]
 			}
@@ -147,7 +170,6 @@ func Lookup(input string) []Suggestion {
 		return topLevelSuggestions(input)
 	}
 
-	// if only 1 token and no trailing space, user is still typing the root command
 	if len(tokens) == 1 {
 		return topLevelSuggestions(tokens[0])
 	}
@@ -155,29 +177,19 @@ func Lookup(input string) []Suggestion {
 	rootCmdName := tokens[0]
 	spec, exists := registry[rootCmdName]
 	if !exists {
-		// no spec found for this command, return nothing to avoid clutter
 		return nil
 	}
 
-
-	currentSubs := spec.Subcommands
-	currentOpts := spec.Options
-	currentGen := spec.Generator
+	currentSubs, currentOpts, currentGen := spec.Subcommands, spec.Options, spec.Generator
 	depth := 1
 
 	for depth < len(tokens) {
 		tok := tokens[depth]
-		if tok == "" {
-			break
-		}
-
-		// skip options 
-		if strings.HasPrefix(tok, "-") || strings.Contains(tok, "=") {
+		if tok == "" || strings.HasPrefix(tok, "-") || strings.Contains(tok, "=") {
 			depth++
 			continue
 		}
 
-		// try to match subcommands (including aliases)
 		found := false
 		for _, sub := range currentSubs {
 			match := sub.Name == tok
@@ -191,9 +203,7 @@ func Lookup(input string) []Suggestion {
 			}
 
 			if match {
-				currentSubs = sub.Subcommands
-				currentOpts = sub.Options
-				currentGen = sub.Generator
+				currentSubs, currentOpts, currentGen = sub.Subcommands, sub.Options, sub.Generator
 				found = true
 				break
 			}
@@ -203,19 +213,15 @@ func Lookup(input string) []Suggestion {
 			continue
 		}
 
-		// if no subcommand matches but we have a generator,
-		// and this is NOT the last token (meaning it's a finished argument),
-		// we consume it and move depth forward.
 		if currentGen != nil && depth < len(tokens)-1 {
 			depth++
 			continue
 		}
-
 		break
 	}
 
-	// build prefix from tokens consumed so far
-	var prefixBuilder strings.Builder
+	results := []Suggestion{}
+	prefixBuilder := strings.Builder{}
 	for i := 0; i < depth; i++ {
 		if i > 0 {
 			prefixBuilder.WriteByte(' ')
@@ -223,64 +229,40 @@ func Lookup(input string) []Suggestion {
 		prefixBuilder.WriteString(tokens[i])
 	}
 	prefix := prefixBuilder.String()
+	partial := tokens[len(tokens)-1]
 
-	// partial is what user is currently typing (might be incomplete)
-	partial := ""
-	if depth < len(tokens) {
-		partial = tokens[depth]
-	}
-
-	results := []Suggestion{}
-
-	// file/dir
 	if currentGen != nil {
 		genResults := currentGen(tokens[:depth], prefix, partial)
 		for _, g := range genResults {
-			// extract simple name for prefix matching
 			parts := strings.Split(g.Cmd, " ")
 			name := parts[len(parts)-1]
 			if partial == "" || hasPrefix(name, partial) {
 				results = append(results, Suggestion{
-					Cmd:  g.Cmd,
-					Desc: g.Desc,
-					Icon: rootCmdName,
+					Cmd: g.Cmd, Desc: g.Desc, Icon: rootCmdName,
 				})
 			}
 		}
 	}
 
-	// subcommands
 	for _, sub := range currentSubs {
 		if partial == "" || hasPrefix(sub.Name, partial) {
 			results = append(results, Suggestion{
-				Cmd:  prefix + " " + sub.Name,
-				Desc: sub.Description,
-				Icon: rootCmdName,
+				Cmd: prefix + " " + sub.Name, Desc: sub.Description, Icon: rootCmdName,
 			})
 		}
 	}
 
-	// 3. Options (Flags)
 	if partial == "" || (len(partial) > 0 && partial[0] == '-') {
-		// Identify already used options to filter them out
 		usedOpts := make(map[string]bool)
 		for _, t := range tokens {
 			if strings.HasPrefix(t, "-") {
 				usedOpts[t] = true
 			}
 		}
-
 		for _, opt := range currentOpts {
-			// Skip if already used
-			if usedOpts[opt.Name] {
-				continue
-			}
-
-			if partial == "" || hasPrefix(opt.Name, partial) {
+			if !usedOpts[opt.Name] && (partial == "" || hasPrefix(opt.Name, partial)) {
 				results = append(results, Suggestion{
-					Cmd:  prefix + " " + opt.Name,
-					Desc: opt.Description,
-					Icon: rootCmdName,
+					Cmd: prefix + " " + opt.Name, Desc: opt.Description, Icon: rootCmdName,
 				})
 			}
 		}
@@ -291,10 +273,9 @@ func Lookup(input string) []Suggestion {
 
 func topLevelSuggestions(query string) []Suggestion {
 	pathOnce.Do(scanExternalCommands)
+	results, seen := []Suggestion{}, make(map[string]bool)
 
-	results := []Suggestion{}
-	seen := make(map[string]bool)
-
+	// 1. Manual specs (High Priority)
 	for name, spec := range registry {
 		match := false
 		if query == "" || hasPrefix(name, query) {
@@ -307,26 +288,27 @@ func topLevelSuggestions(query string) []Suggestion {
 				}
 			}
 		}
-
 		if match {
+			results = append(results, Suggestion{Cmd: name, Desc: spec.Description, Icon: name})
+			seen[name] = true
+		}
+	}
+
+	// 2. shell aliases (User's choice precedence)
+	for name, target := range shellAliases {
+		if !seen[name] && (query == "" || hasPrefix(name, query)) {
 			results = append(results, Suggestion{
-				Cmd:  name,
-				Desc: spec.Description,
-				Icon: name,
+				Cmd: target, Desc: "alias: " + name, Icon: "root",
 			})
 			seen[name] = true
 		}
 	}
 
+	// 3. system commands from $PATH
 	for name := range pathCmds {
-		if seen[name] {
-			continue
-		}
-		if query == "" || hasPrefix(name, query) {
+		if !seen[name] && (query == "" || hasPrefix(name, query)) {
 			results = append(results, Suggestion{
-				Cmd:  name,
-				Desc: "system command",
-				Icon: "root",
+				Cmd: name, Desc: "system command", Icon: "root",
 			})
 		}
 	}
