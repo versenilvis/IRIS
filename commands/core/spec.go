@@ -78,6 +78,17 @@ func Lookup(input string) []Suggestion {
 
 	for depth < len(tokens) {
 		tok := tokens[depth]
+		if tok == "" {
+			break
+		}
+
+		// skip options
+		if strings.HasPrefix(tok, "-") {
+			depth++
+			continue
+		}
+
+		// try to match subcommands
 		found := false
 		for _, sub := range currentSubs {
 			if sub.Name == tok {
@@ -88,10 +99,20 @@ func Lookup(input string) []Suggestion {
 				break
 			}
 		}
-		if !found {
-			break
+		if found {
+			depth++
+			continue
 		}
-		depth++
+
+		// if no subcommand matches but we have a generator, 
+		// and this is NOT the last token (meaning it's a finished argument),
+		// we consume it and move depth forward.
+		if currentGen != nil && depth < len(tokens)-1 {
+			depth++
+			continue
+		}
+
+		break
 	}
 
 	// build prefix from tokens consumed so far
@@ -139,9 +160,22 @@ func Lookup(input string) []Suggestion {
 		}
 	}
 
-	// options
+	// 3. Options (Flags)
 	if partial == "" || (len(partial) > 0 && partial[0] == '-') {
+		// Identify already used options to filter them out
+		usedOpts := make(map[string]bool)
+		for _, t := range tokens {
+			if strings.HasPrefix(t, "-") {
+				usedOpts[t] = true
+			}
+		}
+
 		for _, opt := range currentOpts {
+			// Skip if already used
+			if usedOpts[opt.Name] {
+				continue
+			}
+
 			if partial == "" || hasPrefix(opt.Name, partial) {
 				results = append(results, Suggestion{
 					Cmd:  prefix + " " + opt.Name,
