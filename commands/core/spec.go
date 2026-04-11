@@ -275,8 +275,21 @@ func Lookup(input string) []Suggestion {
 func topLevelSuggestions(query string) []Suggestion {
 	results, seen := []Suggestion{}, make(map[string]bool)
 
-	// 1. Manual specs (High Priority)
+	// 1. shell aliases (User's choice precedence)
+	for name, target := range shellAliases {
+		if !seen[name] && (query == "" || hasPrefix(name, query)) {
+			results = append(results, Suggestion{
+				Cmd: target, Desc: "alias: " + name, Icon: "root",
+			})
+			seen[name] = true
+		}
+	}
+
+	// 2. Manual specs (High Priority)
 	for name, spec := range registry {
+		if seen[name] {
+			continue
+		}
 		match := false
 		if query == "" || hasPrefix(name, query) {
 			match = true
@@ -290,16 +303,6 @@ func topLevelSuggestions(query string) []Suggestion {
 		}
 		if match {
 			results = append(results, Suggestion{Cmd: name, Desc: spec.Description, Icon: name})
-			seen[name] = true
-		}
-	}
-
-	// 2. shell aliases (User's choice precedence)
-	for name, target := range shellAliases {
-		if !seen[name] && (query == "" || hasPrefix(name, query)) {
-			results = append(results, Suggestion{
-				Cmd: target, Desc: "alias: " + name, Icon: "root",
-			})
 			seen[name] = true
 		}
 	}
