@@ -1,6 +1,11 @@
 package core
 
-import "strings"
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+)
 
 type GeneratorFunc func(tokens []string, prefix string, partial string) []Suggestion
 
@@ -35,7 +40,35 @@ type Suggestion struct {
 	Icon string
 }
 
-var registry = map[string]*Spec{}
+var (
+	registry = map[string]*Spec{}
+	pathCmds = make(map[string]bool)
+	pathOnce sync.Once
+)
+
+// scanPath populates pathCmds with all executable files found in $PATH
+func scanPath() {
+	pathVar := os.Getenv("PATH")
+	dirs := filepath.SplitList(pathVar)
+
+	for _, dir := range dirs {
+		files, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
+
+		for _, f := range files {
+			if f.IsDir() {
+				continue
+			}
+			// check if it's executable
+			info, err := f.Info()
+			if err == nil && info.Mode()&0111 != 0 {
+				pathCmds[f.Name()] = true
+			}
+		}
+	}
+}
 
 // Register adds a spec to the global registry
 func Register(s *Spec) {
@@ -58,7 +91,7 @@ func Lookup(input string) []Suggestion {
 	if len(tokens) == 0 {
 		return topLevelSuggestions(input)
 	}
-	
+
 	// if only 1 token and no trailing space, user is still typing the root command
 	if len(tokens) == 1 {
 		return topLevelSuggestions(tokens[0])
@@ -104,7 +137,7 @@ func Lookup(input string) []Suggestion {
 			continue
 		}
 
-		// if no subcommand matches but we have a generator, 
+		// if no subcommand matches but we have a generator,
 		// and this is NOT the last token (meaning it's a finished argument),
 		// we consume it and move depth forward.
 		if currentGen != nil && depth < len(tokens)-1 {
@@ -190,7 +223,11 @@ func Lookup(input string) []Suggestion {
 }
 
 func topLevelSuggestions(query string) []Suggestion {
+	pathOnce.Do(scanPath)
+
 	results := []Suggestion{}
+	seen := make(map[string]bool)
+
 	for name, spec := range registry {
 		if query == "" || hasPrefix(name, query) {
 			results = append(results, Suggestion{
@@ -198,8 +235,23 @@ func topLevelSuggestions(query string) []Suggestion {
 				Desc: spec.Description,
 				Icon: name,
 			})
+			seen[name] = true
 		}
 	}
+
+	for name := range pathCmds {
+		if seen[name] {
+			continue
+		}
+		if query == "" || hasPrefix(name, query) {
+			results = append(results, Suggestion{
+				Cmd:  name,
+				Desc: "system command",
+				Icon: "root",
+			})
+		}
+	}
+
 	return results
 }
 
@@ -224,8 +276,12 @@ func hasPrefix(s, prefix string) bool {
 	}
 	for i := 0; i < len(prefix); i++ {
 		a, b := s[i], prefix[i]
-		if a >= 'A' && a <= 'Z' { a += 32 }
-		if b >= 'A' && b <= 'Z' { b += 32 }
+		if a >= 'A' && a <= 'Z' {
+			a += 32
+		}
+		if b >= 'A' && b <= 'Z' {
+			b += 32
+		}
 		if a != b {
 			return false
 		}
