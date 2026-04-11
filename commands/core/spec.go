@@ -3,6 +3,7 @@ package core
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 )
@@ -43,10 +44,49 @@ type Suggestion struct {
 }
 
 var (
-	registry = map[string]*Spec{}
-	pathCmds = make(map[string]bool)
-	pathOnce sync.Once
+	registry     = map[string]*Spec{}
+	pathCmds     = make(map[string]bool)
+	shellAliases = make(map[string]string) // alias name -> target command
+	pathOnce     sync.Once
 )
+
+var aliasRegex = regexp.MustCompile(`^alias\s+([a-zA-Z0-9_\-]+)=['"]?([^'"]+)['"]?`)
+
+// scanShellAliases parses shell config files for aliases
+func scanShellAliases() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+
+	files := []string{".zshrc", ".bashrc", ".bash_profile", ".bash_aliases"}
+	for _, f := range files {
+		content, err := os.ReadFile(filepath.Join(home, f))
+		if err != nil {
+			continue
+		}
+
+		lines := strings.Split(string(content), "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			matches := aliasRegex.FindStringSubmatch(line)
+			if len(matches) == 3 {
+				name := matches[1]
+				target := matches[2]
+				fields := strings.Fields(target)
+				if len(fields) > 0 {
+					shellAliases[name] = fields[0]
+				}
+			}
+		}
+	}
+}
+
+// scanExternalCommands populates pathCmds and shellAliases
+func scanExternalCommands() {
+	scanPath()
+	scanShellAliases()
+}
 
 // scanPath populates pathCmds with all executable files found in $PATH
 func scanPath() {
@@ -89,6 +129,8 @@ func Register(s *Spec) {
 //
 // priority: file/dir -> subcommands -> options
 func Lookup(input string) []Suggestion {
+	pathOnce.Do(scanExternalCommands)
+
 	tokens := tokenize(input)
 	if len(tokens) == 0 {
 		return topLevelSuggestions(input)
@@ -99,8 +141,13 @@ func Lookup(input string) []Suggestion {
 		return topLevelSuggestions(tokens[0])
 	}
 
-	root := tokens[0]
-	spec, exists := registry[root]
+	rootCmdName := tokens[0]
+	// resolve shell alias (e.g. g -> git)
+	if target, ok := shellAliases[rootCmdName]; ok {
+		rootCmdName = target
+	}
+
+	spec, exists := registry[rootCmdName]
 	if !exists {
 		// no spec found for this command, return nothing to avoid clutter
 		return nil
@@ -189,7 +236,7 @@ func Lookup(input string) []Suggestion {
 				results = append(results, Suggestion{
 					Cmd:  g.Cmd,
 					Desc: g.Desc,
-					Icon: root,
+					Icon: rootCmdName,
 				})
 			}
 		}
@@ -201,7 +248,7 @@ func Lookup(input string) []Suggestion {
 			results = append(results, Suggestion{
 				Cmd:  prefix + " " + sub.Name,
 				Desc: sub.Description,
-				Icon: root,
+				Icon: rootCmdName,
 			})
 		}
 	}
@@ -226,7 +273,7 @@ func Lookup(input string) []Suggestion {
 				results = append(results, Suggestion{
 					Cmd:  prefix + " " + opt.Name,
 					Desc: opt.Description,
-					Icon: root,
+					Icon: rootCmdName,
 				})
 			}
 		}
@@ -236,7 +283,7 @@ func Lookup(input string) []Suggestion {
 }
 
 func topLevelSuggestions(query string) []Suggestion {
-	pathOnce.Do(scanPath)
+	pathOnce.Do(scanExternalCommands)
 
 	results := []Suggestion{}
 	seen := make(map[string]bool)
