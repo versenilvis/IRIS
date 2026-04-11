@@ -258,15 +258,31 @@ func topLevelSuggestions(query string) []Suggestion {
 func tokenize(s string) []string {
 	tokens := []string{}
 	current := ""
+	inQuote := false
+	var quoteChar rune
+
 	for _, c := range s {
-		if c == ' ' {
-			tokens = append(tokens, current)
-			current = ""
-		} else {
+		switch {
+		case !inQuote && (c == '"' || c == '\''):
+			inQuote = true
+			quoteChar = c
+		case inQuote && c == quoteChar:
+			inQuote = false
+		case c == ' ' && !inQuote:
+			if current != "" {
+				tokens = append(tokens, current)
+				current = ""
+			} else if len(tokens) > 0 && tokens[len(tokens)-1] != "" {
+				// preserve trailing space as an empty token for suggestions
+				// but only if it's the very last thing and not multiple spaces
+			}
+		default:
 			current += string(c)
 		}
 	}
-	tokens = append(tokens, current) // always append the last token (could be empty if space was last character)
+
+	// always append the last token (even if empty, representing the cursor position)
+	tokens = append(tokens, current)
 	return tokens
 }
 
