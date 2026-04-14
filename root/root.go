@@ -287,8 +287,10 @@ func runWrapper() {
 		if !suggestionsEnabled {
 			return
 		}
-		// don't render if shell is starting up
-		if isReload && naiveBuffer == "" {
+		
+		// If buffer is empty (e.g. backspace to 0 or after reload), clear overlay immediately
+		if naiveBuffer == "" {
+			os.Stdout.Write([]byte(overlay.ClearAndDisable()))
 			return
 		}
 
@@ -308,6 +310,9 @@ func runWrapper() {
 			os.Stdout.Write([]byte(buf.String()))
 		}
 	}
+
+	// Trigger initial render to clear any potential artifacts from previous session
+	renderOverlay()
 
 	for {
 		inputSlice := make([]byte, 128)
