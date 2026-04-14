@@ -33,15 +33,30 @@ var (
 		Long: `IRIS (a.k.a Intelligent Real-time Input Suggestion) is a shell auto-autocompletion tool.
 It works exactly like coding editor suggestion menu drop down.`,
 		Run: func(cmd *cobra.Command, args []string) {
+			if debugMode {
+				f, _ := os.OpenFile("iris.log", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+				debugLogger = f
+				core.DebugWriter = f // Link core logger
+				fmt.Fprintf(debugLogger, "--- IRIS Debug Started ---\n")
+			}
 			runWrapper()
 		},
 	}
-	shellFlag string
-	isReload  bool
+	shellFlag   string
+	debugMode   bool
+	debugLogger *os.File
+	isReload    bool
 )
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&shellFlag, "shell", "s", "", "shell to use (bash, zsh, fish)")
+	rootCmd.PersistentFlags().BoolVarP(&debugMode, "debug", "d", false, "enable debug logging to iris.log")
+}
+
+func debugLog(format string, a ...interface{}) {
+	if debugLogger != nil {
+		fmt.Fprintf(debugLogger, format+"\n", a...)
+	}
 }
 
 func Execute() {
@@ -169,13 +184,15 @@ func runWrapper() {
 	c.ExtraFiles = make([]*os.File, 11)
 	c.ExtraFiles[10] = w
 	c.Env = adapter.GetEnv(10, os.Getpid())
-	c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 	ptmx, err := pty.Start(c)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "[IRIS] failed to start PTY: %v\n", err)
 		return
 	}
 	defer ptmx.Close()
+
+	fmt.Printf("\033[36m[IRIS] Active - typing suggestions enabled\033[0m\r\n")
 
 	_ = pty.InheritSize(os.Stdin, ptmx)
 	core.ShellPID = c.Process.Pid
@@ -203,10 +220,9 @@ func runWrapper() {
 					os.Setenv("IRIS_ACTIVE_SHELL", innerShell)
 				}
 
-				// kill the child process group before reloading
-				// using negative PID to kill all descendants
+				// kill the child process before reloading
 				if c.Process != nil {
-					_ = syscall.Kill(-c.Process.Pid, syscall.SIGKILL)
+					_ = syscall.Kill(c.Process.Pid, syscall.SIGKILL)
 					ptmx.Close()
 				}
 
@@ -266,15 +282,22 @@ func runWrapper() {
 	}()
 
 	var naiveBuffer string
+	suggestionsEnabled := true
 	mode := "spec"
 
 	renderOverlay := func() {
+		if !suggestionsEnabled {
+			return
+		}
 		// don't render if shell is starting up
 		if isReload && naiveBuffer == "" {
 			return
 		}
 
+		debugLog("[Render] query: '%s', mode: %s", naiveBuffer, mode)
 		results := mergeResults(naiveBuffer, mode)
+		debugLog("[Render] results found: %d", len(results))
+
 		if len(results) == 0 {
 			os.Stdout.Write([]byte(overlay.ClearAndDisable()))
 		} else {
@@ -299,40 +322,13 @@ func runWrapper() {
 			shouldOverlayDraw := false
 			for i := 0; i < n; i++ {
 				b := inputSlice[i]
-
 				intercepted := false
-				if b == 0x12 { // ctrl+r
-					intercepted = true
-					if mode == "spec" {
-						mode = "history"
-					} else {
-						mode = "spec"
-					}
-					shouldOverlayDraw = true
-				} else if overlay.Visible && (b == '\r' || b == 0x09) {
-					intercepted = true
-					selected := overlay.Items[overlay.Cursor].Cmd
-					os.Stdout.Write([]byte(overlay.ClearAndDisable()))
-					if mode == "spec" || b == 0x09 {
-						selected += " "
-					}
-					naiveBuffer = selected
-					mode = "spec"
-					ptmx.Write(adapter.PrepareSelectSequence(selected))
-					if b == '\r' {
-						ptmx.Write([]byte{'\r'})
-						naiveBuffer = ""
-					} else {
-						renderOverlay()
-					}
-					continue
-				}
 
-				if !intercepted {
+				// Detect Escape sequence (e.g. arrows) early
+				if b == '\033' {
 					ptmx.Write([]byte{b})
-
-					// arrow key monitoring with tagged switch
-					if b == '\033' && i+2 < n && inputSlice[i+1] == '[' {
+					// arrow key monitoring inside escape
+					if i+2 < n && inputSlice[i+1] == '[' {
 						if overlay.Visible {
 							switch inputSlice[i+2] {
 							case 'A': // up
@@ -350,19 +346,95 @@ func runWrapper() {
 							}
 						}
 					}
-
-					switch b {
-
-					case 0x09: // tab
-						if !overlay.Visible {
-							shouldOverlayDraw = true
+					// skip sequence
+					for j := i + 1; j < n; j++ {
+						char := inputSlice[j]
+						ptmx.Write([]byte{char})
+						i = j
+						if (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || char == '~' {
+							break
 						}
-					case 127: // backspace
+					}
+					continue
+				}
+
+				// Iris shortcuts
+				if b == 0x12 { // ctrl+r
+					intercepted = true
+					if mode == "spec" {
+						mode = "history"
+					} else {
+						mode = "spec"
+					}
+					shouldOverlayDraw = true
+				} else if b == 0x1b && n == 1 { // Standalone ESC (Toggle suggestions)
+					intercepted = true
+					suggestionsEnabled = !suggestionsEnabled
+					if !suggestionsEnabled {
+						debugLog("[Input] ESC pressed: hiding menu")
+						os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+						shouldOverlayDraw = false
+					} else {
+						debugLog("[Input] ESC pressed: showing menu")
+						shouldOverlayDraw = true
+					}
+					continue
+				} else if overlay.Visible && (b == 0x0d || b == 0x0a) { // Enter while menu open
+					intercepted = true
+					debugLog("[Input] Enter pressed: closing menu and executing raw buffer")
+					os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+					// Send Enter to PTY to execute current buffer as-is
+					ptmx.Write([]byte{0x0d})
+					naiveBuffer = ""
+					shouldOverlayDraw = false
+					continue
+				} else if b == 0x09 { // Tab (Universal Intercept - Select/Commit)
+					intercepted = true
+					if !overlay.Visible {
+						debugLog("[Input] Tab pressed: opening menu")
+						shouldOverlayDraw = true
+					} else {
+						// SELECT and COMMIT
+						selected := overlay.Items[overlay.Cursor].Cmd
+						debugLog("[Input] Tab pressed: committing '%s'", selected)
+
+						os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+
+						// Auto-add space for spec mode
+						if mode == "spec" {
+							selected = strings.TrimSpace(selected) + " "
+						}
+
+						naiveBuffer = selected
+						mode = "spec"
+						// Sync PTY with the new buffer (Ctrl+A then Ctrl+K to clear rest)
+						ptmx.Write([]byte{0x01, 0x0b}) // bash/zsh style home and clear
+						ptmx.Write([]byte(selected))
+
+						shouldOverlayDraw = false
+					}
+					continue
+				}
+
+				// normal typing
+				if !intercepted {
+					ptmx.Write([]byte{b})
+					switch b {
+					case 127, 0x08: // backspace
 						if len(naiveBuffer) > 0 {
 							naiveBuffer = naiveBuffer[:len(naiveBuffer)-1]
 							shouldOverlayDraw = true
 						}
-					case '\r', 0x03: // enter, ctrl+c
+					case 0x17: // Ctrl+W: delete one word
+						trimBuf := strings.TrimRight(naiveBuffer, " ")
+						lastSpace := strings.LastIndex(trimBuf, " ")
+						if lastSpace >= 0 {
+							naiveBuffer = trimBuf[:lastSpace+1]
+						} else {
+							naiveBuffer = ""
+						}
+						shouldOverlayDraw = true
+					case '\r', 0x03, 0x15, 0x0C: // Enter, Ctrl+C, Ctrl+U, Ctrl+L
 						naiveBuffer = ""
 						mode = "spec"
 						os.Stdout.Write([]byte(overlay.ClearAndDisable()))
@@ -383,27 +455,47 @@ func runWrapper() {
 
 func mergeResults(query string, mode string) []core.Suggestion {
 	if query == "" {
+		debugLog("[Merge] Query empty, returning nil")
 		return nil
 	}
+
+	normalizedQuery := strings.TrimSpace(query)
+	seen := make(map[string]bool)
+	deduped := []core.Suggestion{}
+
 	if mode == "history" {
 		histResults, _ := integration.SearchHistory(query)
-		cmdResults := []core.Suggestion{}
 		for _, h := range histResults {
-			cmdResults = append(cmdResults, core.Suggestion{
+			normalizedCmd := strings.TrimSpace(h.Cmd)
+			if seen[normalizedCmd] {
+				continue
+			}
+			seen[normalizedCmd] = true
+			deduped = append(deduped, core.Suggestion{
 				Cmd:  h.Cmd,
 				Desc: " history",
 				Icon: fmt.Sprintf("%d", h.ID),
 			})
+			if len(deduped) >= 10 {
+				break
+			}
 		}
-		if len(cmdResults) > 100 {
-			cmdResults = cmdResults[:100]
-		}
-		return cmdResults
+		debugLog("[Merge] History mode found %d items", len(deduped))
+		return deduped
 	}
+
+	debugLog("[Merge] Calling Lookup for '%s'", query)
 	cmdResults := core.Lookup(query)
-	seen := make(map[string]bool)
-	deduped := []core.Suggestion{}
+	debugLog("[Merge] Lookup returned %d raw items", len(cmdResults))
+
 	for _, s := range cmdResults {
+		normalizedCmd := strings.TrimSpace(s.Cmd)
+		// CRITICAL: Filter out exact matches to prevent infinite tab loops
+		if normalizedCmd == normalizedQuery {
+			debugLog("[Merge] Filtered EXACT MATCH: '%s'", normalizedCmd)
+			continue
+		}
+
 		if !seen[s.Cmd] {
 			seen[s.Cmd] = true
 			deduped = append(deduped, s)

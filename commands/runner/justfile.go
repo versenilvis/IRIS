@@ -13,6 +13,7 @@ func init() {
 	core.Register(&core.Spec{
 		Name:        "just",
 		Description: "command runner",
+		MaxArgs:     1,
 		Generator: func(tokens []string, prefix string, partial string) []core.Suggestion {
 			file, err := os.Open("justfile")
 			if err != nil {
@@ -54,9 +55,6 @@ func init() {
 					seen[recipe] = true
 
 					cmd := recipe
-					if prefix != "" {
-						cmd = prefix + " " + recipe
-					}
 					
 					desc := "just recipe"
 					if lastComment != "" {

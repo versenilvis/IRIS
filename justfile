@@ -22,3 +22,9 @@ reload:
 [group('dev')]
 pkg:
     @go mod tidy
+
+# debugger
+[group('dev')]
+debug:
+    @./iris --debug
+

@@ -1,12 +1,22 @@
 package core
 
 import (
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/versenilvis/iris/integration/shell"
 )
+
+var DebugWriter io.Writer
+
+func debugLog(format string, a ...interface{}) {
+	if DebugWriter != nil {
+		fmt.Fprintf(DebugWriter, format+"\n", a...)
+	}
+}
 
 type GeneratorFunc func(tokens []string, prefix string, partial string) []Suggestion
 
@@ -18,6 +28,7 @@ type Spec struct {
 	Subcommands []Subcommand
 	Options     []Option
 	Generator   GeneratorFunc
+	MaxArgs     int // 0 means unlimited
 }
 
 // Subcommand contains nested subcommands
@@ -28,6 +39,7 @@ type Subcommand struct {
 	Subcommands []Subcommand
 	Options     []Option
 	Generator   GeneratorFunc
+	MaxArgs     int // 0 means unlimited
 }
 
 // Option represents a flag or option
@@ -116,7 +128,37 @@ func Lookup(input string) []Suggestion {
 	}
 
 	if len(tokens) == 1 {
-		return topLevelSuggestions(tokens[0])
+		query := tokens[0]
+		results := topLevelSuggestions(query)
+
+		// If query is a full match for a root command, also include its sub-items
+		if spec, exists := registry[query]; exists {
+			// ONLY suggest parameters if there's a trailing space in the query
+			// or if we are filtering. But for 'just' (len=1), if no space, wait.
+			hasTrailingSpace := query != "" && query[len(query)-1] == ' '
+
+			if hasTrailingSpace {
+				partial := ""
+				prefix := query
+
+				// Subcommands
+				for _, sub := range spec.Subcommands {
+					results = append(results, Suggestion{
+						Cmd: strings.TrimSpace(query) + " " + sub.Name, Desc: sub.Description, Icon: query,
+					})
+				}
+				// Generator (recipes, branches, etc.)
+				if spec.Generator != nil {
+					genResults := spec.Generator(tokens, prefix, partial)
+					for _, g := range genResults {
+						results = append(results, Suggestion{
+							Cmd: strings.TrimSpace(query) + " " + g.Cmd, Desc: g.Desc, Icon: query,
+						})
+					}
+				}
+			}
+		}
+		return results
 	}
 
 	rootCmdName := tokens[0]
@@ -128,7 +170,7 @@ func Lookup(input string) []Suggestion {
 	currentSubs, currentOpts, currentGen := spec.Subcommands, spec.Options, spec.Generator
 	depth := 1
 
-	for depth < len(tokens) {
+	for depth < len(tokens)-1 {
 		tok := tokens[depth]
 		if tok == "" || strings.HasPrefix(tok, "-") || strings.Contains(tok, "=") {
 			depth++
@@ -153,19 +195,53 @@ func Lookup(input string) []Suggestion {
 				break
 			}
 		}
+
 		if found {
 			depth++
 			continue
 		}
-
-		if currentGen != nil && depth < len(tokens)-1 {
-			depth++
-			continue
-		}
+		// If not a subcommand, it's an argument. Stop traversal here.
 		break
 	}
 
 	results := []Suggestion{}
+
+	// Track current max args
+	// Re-track the limit from the actual deepest subcommand reached
+	currentLimit := spec.MaxArgs
+	tempSubs := spec.Subcommands
+	for i := 1; i < depth; i++ {
+		tok := tokens[i]
+		for _, sub := range tempSubs {
+			if sub.Name == tok {
+				currentLimit = sub.MaxArgs
+				tempSubs = sub.Subcommands
+				break
+			}
+		}
+	}
+
+	// Count arguments ALREADY TYPED for this subcommand/spec
+	argCount := 0
+	for i := depth; i < len(tokens)-1; i++ {
+		t := tokens[i]
+		// Skip empty tokens or flags
+		if t != "" && !strings.HasPrefix(t, "-") && !strings.Contains(t, "=") {
+			argCount++
+		}
+	}
+
+	partial := tokens[len(tokens)-1]
+	// If we hit the limit, don't allow ANY more argument suggestions
+	// (only flags/options which start with '-' are allowed later)
+	allowMoreArgs := currentLimit <= 0 || argCount < currentLimit
+
+	debugLog("[Core] query tokens: %v (partial: '%s')", tokens, partial)
+	debugLog("[Core] depth: %d, argCount: %d, limit: %d, allowMore: %v", depth, argCount, currentLimit, allowMoreArgs)
+
+	rootCmdName = tokens[0]
+
+	// 'prefix' is the breadcrumb for the command (e.g. "git checkout")
 	prefixBuilder := strings.Builder{}
 	for i := 0; i < depth; i++ {
 		if i > 0 {
@@ -174,30 +250,74 @@ func Lookup(input string) []Suggestion {
 		prefixBuilder.WriteString(tokens[i])
 	}
 	prefix := prefixBuilder.String()
-	partial := tokens[len(tokens)-1]
 
-	if currentGen != nil {
-		genResults := currentGen(tokens[:depth], prefix, partial)
+	// 'linePrefix' is the full context except the last partial word (e.g. "just run build")
+	linePrefixBuilder := strings.Builder{}
+	for i := 0; i < len(tokens)-1; i++ {
+		if i > 0 {
+			linePrefixBuilder.WriteByte(' ')
+		}
+		linePrefixBuilder.WriteString(tokens[i])
+	}
+	linePrefix := linePrefixBuilder.String()
+
+	// already have partial from above
+	rootCmdName = tokens[0]
+
+	if currentGen != nil && allowMoreArgs {
+		genResults := currentGen(tokens, prefix, partial)
+
 		for _, g := range genResults {
-			parts := strings.Split(g.Cmd, " ")
-			name := parts[len(parts)-1]
-			if partial == "" || hasPrefix(name, partial) {
+			// Basic filtering based on partial input
+			if partial != "" && !hasPrefix(g.Cmd, partial) && !strings.Contains(g.Cmd, partial) {
+				continue
+			}
+
+			finalCmd := g.Cmd
+			// Smart Absolute Building: join fragments to the line context if needed.
+			// Only add linePrefix if the command doesn't already seem to have it.
+			cleanLinePrefix := strings.TrimSpace(linePrefix)
+			if cleanLinePrefix != "" && !strings.HasPrefix(finalCmd, cleanLinePrefix) && !strings.HasPrefix(finalCmd, rootCmdName) {
+				finalCmd = cleanLinePrefix + " " + g.Cmd
+			}
+
+			// UNIVERSAL DEDUPLICATION:
+			// Check if the NEW word being suggested is already present in the typed tokens.
+			newTokens := tokenize(finalCmd)
+			if len(newTokens) > 0 {
+				lastToken := newTokens[len(newTokens)-1]
+				isDuplicate := false
+				for i := 0; i < len(tokens)-1; i++ {
+					if tokens[i] == lastToken {
+						isDuplicate = true
+						break
+					}
+				}
+				if isDuplicate {
+					continue
+				}
+			}
+
+			results = append(results, Suggestion{
+				Cmd:  finalCmd,
+				Desc: g.Desc,
+				Icon: rootCmdName,
+			})
+		}
+	}
+
+	if allowMoreArgs {
+		for _, sub := range currentSubs {
+			if partial == "" || hasPrefix(sub.Name, partial) {
 				results = append(results, Suggestion{
-					Cmd: g.Cmd, Desc: g.Desc, Icon: rootCmdName,
+					Cmd: prefix + " " + sub.Name, Desc: sub.Description, Icon: rootCmdName,
 				})
 			}
 		}
 	}
 
-	for _, sub := range currentSubs {
-		if partial == "" || hasPrefix(sub.Name, partial) {
-			results = append(results, Suggestion{
-				Cmd: prefix + " " + sub.Name, Desc: sub.Description, Icon: rootCmdName,
-			})
-		}
-	}
-
-	if partial == "" || (len(partial) > 0 && partial[0] == '-') {
+	// Only suggest options if partial starts with '-'
+	if len(partial) > 0 && partial[0] == '-' {
 		usedOpts := make(map[string]bool)
 		for _, t := range tokens {
 			if strings.HasPrefix(t, "-") {

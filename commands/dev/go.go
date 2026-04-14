@@ -39,6 +39,7 @@ func init() {
 			{
 				Name:        "build",
 				Description: "compile packages and dependencies",
+				MaxArgs:     1,
 				Generator:   core.FileGenerator(".go"),
 				Options: append(globalBuildOptions, 
 					core.Option{Name: ".", Description: "current package"},
@@ -52,6 +53,7 @@ func init() {
 			{
 				Name:        "run",
 				Description: "compile and run Go program",
+				MaxArgs:     1,
 				Generator:   core.FileGenerator(".go"),
 				Options: append(globalBuildOptions,
 					core.Option{Name: ".", Description: "current package"},
@@ -61,6 +63,7 @@ func init() {
 			{
 				Name:        "test",
 				Description: "test packages",
+				MaxArgs:     1,
 				Generator:   core.FileGenerator(".go"),
 				Options: append(globalBuildOptions,
 					core.Option{Name: ".", Description: "current package"},
