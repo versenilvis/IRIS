@@ -192,8 +192,6 @@ func runWrapper() {
 	}
 	defer ptmx.Close()
 
-	fmt.Printf("\033[36m[IRIS] Active - typing suggestions enabled\033[0m\r\n")
-
 	_ = pty.InheritSize(os.Stdin, ptmx)
 	core.ShellPID = c.Process.Pid
 
@@ -324,8 +322,21 @@ func runWrapper() {
 				b := inputSlice[i]
 				intercepted := false
 
-				// Detect Escape sequence (e.g. arrows) early
+				// Detect Escape sequence (e.g. arrows, Shift+Tab) early
 				if b == '\033' {
+					// Shift+Tab: \033[Z
+					if i+2 < n && inputSlice[i+1] == '[' && inputSlice[i+2] == 'Z' {
+						intercepted = true
+						suggestionsEnabled = !suggestionsEnabled
+						if !suggestionsEnabled {
+							os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+						} else {
+							shouldOverlayDraw = true
+						}
+						i += 2
+						continue
+					}
+
 					ptmx.Write([]byte{b})
 					// arrow key monitoring inside escape
 					if i+2 < n && inputSlice[i+1] == '[' {
@@ -367,21 +378,13 @@ func runWrapper() {
 						mode = "spec"
 					}
 					shouldOverlayDraw = true
-				} else if b == 0x1b && n == 1 { // Standalone ESC (Toggle suggestions)
+				} else if b == 0x1b && n == 1 { // Standalone ESC (Dismiss CURRENT menu only)
 					intercepted = true
-					suggestionsEnabled = !suggestionsEnabled
-					if !suggestionsEnabled {
-						debugLog("[Input] ESC pressed: hiding menu")
-						os.Stdout.Write([]byte(overlay.ClearAndDisable()))
-						shouldOverlayDraw = false
-					} else {
-						debugLog("[Input] ESC pressed: showing menu")
-						shouldOverlayDraw = true
-					}
+					os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+					shouldOverlayDraw = false // Just hide it for this render
 					continue
 				} else if overlay.Visible && (b == 0x0d || b == 0x0a) { // Enter while menu open
 					intercepted = true
-					debugLog("[Input] Enter pressed: closing menu and executing raw buffer")
 					os.Stdout.Write([]byte(overlay.ClearAndDisable()))
 					// Send Enter to PTY to execute current buffer as-is
 					ptmx.Write([]byte{0x0d})
