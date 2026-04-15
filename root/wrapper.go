@@ -1,0 +1,323 @@
+package root
+
+import (
+	"bufio"
+	"bytes"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"os/signal"
+	"strings"
+	"syscall"
+
+	"github.com/creack/pty"
+	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/integration"
+	"github.com/versenilvis/iris/integration/shell"
+	"golang.org/x/term"
+)
+
+// runWrapper sets up the pty environment, launches the shell,
+// and manages the main input loop to provide real-time suggestions
+// it handles raw terminal mode to intercept keystrokes and
+// coordinates between the shell process and the suggestion overlay
+func runWrapper() {
+	r, w, err := os.Pipe() // pipe for ipc communication from shell to iris
+	if err != nil {
+		return
+	}
+
+	var shellName string
+	if active := os.Getenv("IRIS_ACTIVE_SHELL"); active != "" {
+		shellName = active
+		os.Unsetenv("IRIS_ACTIVE_SHELL")
+	} else if shellFlag != "" {
+		shellName = shellFlag
+	} else {
+		shellName = detectShell()
+	}
+
+	shell.Init(shellName)
+	adapter := shell.Current
+
+	c := exec.Command(adapter.GetShellPath())
+	c.ExtraFiles = make([]*os.File, 11)
+	// pass write end of pipe to shell as fd 10 (I chose 10 just because it won't conflict with other file descriptors)
+	c.ExtraFiles[10] = w
+	c.Env = adapter.GetEnv(10, os.Getpid())
+
+	ptmx, err := pty.Start(c) // start shell in a pseudo-terminal
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[IRIS] failed to start PTY: %v\n", err)
+		return
+	}
+	defer ptmx.Close()
+
+	_ = pty.InheritSize(os.Stdin, ptmx)
+	core.ShellPID = c.Process.Pid
+
+	// put terminal in raw mode to intercept every keystroke
+	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	if err != nil {
+		panic(err)
+	}
+	defer func() { _ = term.Restore(int(os.Stdin.Fd()), oldState) }()
+
+	sigCh := make(chan os.Signal, 2)
+	signal.Notify(sigCh, syscall.SIGWINCH, syscall.SIGUSR1)
+	go func() {
+		for s := range sigCh {
+			switch s {
+			case syscall.SIGWINCH:
+				_ = pty.InheritSize(os.Stdin, ptmx) // handle terminal window resize
+			// this is the core feature of reloading
+			// it helps IRIS reload itself that you dont need to restart the shell mannually
+			// SIGUSR1 is the signal to active reload when you type "just reload"
+			case syscall.SIGUSR1:
+				// trigger iris reload by executing itself again
+				exe, _ := os.Executable()
+				// this marks for the next iris process that it've just reloaded
+				os.Setenv("IRIS_RELOADED", "true")
+
+				innerShell := getActiveInnerShell(c.Process.Pid, shellName)
+				if innerShell != "" {
+					// to detect which is last shell (bash, zsh, fish)
+					os.Setenv("IRIS_ACTIVE_SHELL", innerShell)
+				}
+
+				if c.Process != nil {
+					_ = syscall.Kill(c.Process.Pid, syscall.SIGKILL)
+					ptmx.Close()
+				}
+
+				if oldState != nil {
+					_ = term.Restore(int(os.Stdin.Fd()), oldState)
+				}
+				_ = syscall.Exec(exe, os.Args, os.Environ())
+			}
+		}
+	}()
+
+	overlay := integration.NewOverlay()
+
+	// bridge pty output to actual stdout
+	go func() {
+		buf := make([]byte, 4096)
+		for {
+			n, err := ptmx.Read(buf)
+			if err != nil {
+				if err == io.EOF {
+					_ = term.Restore(int(os.Stdin.Fd()), oldState)
+					os.Exit(0)
+				}
+				continue
+			}
+			os.Stdout.Write(buf[:n])
+		}
+	}()
+
+	// listen for suggestion requests from shell scripts via the ipc pipe
+	go func() {
+		scanner := bufio.NewScanner(r)
+		scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+			if atEOF && len(data) == 0 {
+				return 0, nil, nil
+			}
+			if i := bytes.IndexByte(data, '\x00'); i >= 0 {
+				return i + 1, data[0:i], nil
+			}
+			if atEOF {
+				return len(data), data, nil
+			}
+			return 0, nil, nil
+		})
+
+		for scanner.Scan() {
+			query := scanner.Text()
+			results := mergeResults(query, "spec")
+			if len(results) == 0 {
+				os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+				continue
+			}
+			os.Stdout.Write([]byte(overlay.Clear()))
+			overlay.UpdateItems(results)
+			os.Stdout.Write([]byte(overlay.Render()))
+		}
+	}()
+
+	var naiveBuffer string
+	suggestionsEnabled := true
+	mode := "spec"
+
+	// renderOverlay decides whether to draw the suggestion menu based on current state
+	renderOverlay := func() {
+		if !suggestionsEnabled {
+			return
+		}
+
+		if naiveBuffer == "" {
+			os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+			return
+		}
+
+		debugLog("[Render] query: '%s', mode: %s", naiveBuffer, mode)
+		results := mergeResults(naiveBuffer, mode)
+		debugLog("[Render] results found: %d", len(results))
+
+		if len(results) == 0 {
+			os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+		} else {
+			var buf strings.Builder
+			if overlay.Visible {
+				buf.WriteString(overlay.Clear())
+			}
+			overlay.UpdateItems(results)
+			buf.WriteString(overlay.Render())
+			os.Stdout.Write([]byte(buf.String()))
+		}
+	}
+
+	renderOverlay()
+
+	// reads from stdin and decides what to forward or intercept
+	// for most cases, I just handle the already have terminal shortcuts
+	// for some shortcuts like tab, enter, shift tab, ctrl r,
+	// they have a little bit different behavior to match our tool
+	for {
+		inputSlice := make([]byte, 128)
+		n, err := os.Stdin.Read(inputSlice)
+		if err != nil {
+			break
+		}
+
+		if n > 0 {
+			shouldOverlayDraw := false
+			for i := 0; i < n; i++ {
+				b := inputSlice[i]
+				intercepted := false
+
+				if b == '\033' {
+					// handle escape sequences like arrow keys and functional shortcuts
+					if i+2 < n && inputSlice[i+1] == '[' && inputSlice[i+2] == 'Z' {
+						// shift tab: hide/unhide menu dropdown
+						intercepted = true
+						suggestionsEnabled = !suggestionsEnabled
+						if !suggestionsEnabled {
+							os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+						} else {
+							shouldOverlayDraw = true
+						}
+						i += 2
+						continue
+					}
+
+					ptmx.Write([]byte{b})
+					if i+2 < n && inputSlice[i+1] == '[' {
+						if overlay.Visible {
+							switch inputSlice[i+2] {
+							case 'A': // up arrow
+								overlay.Cursor--
+								if overlay.Cursor < 0 {
+									overlay.Cursor = 0
+								}
+								os.Stdout.Write([]byte(overlay.Render()))
+							case 'B': // down arrow
+								overlay.Cursor++
+								if overlay.Cursor >= len(overlay.Items) {
+									overlay.Cursor = len(overlay.Items) - 1
+								}
+								os.Stdout.Write([]byte(overlay.Render()))
+							}
+						}
+					}
+					// skip remaining bytes of the escape sequence to avoid misinterpretation
+					for j := i + 1; j < n; j++ {
+						char := inputSlice[j]
+						ptmx.Write([]byte{char})
+						i = j
+						if (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || char == '~' {
+							break
+						}
+					}
+					continue
+				}
+
+				if b == 0x12 { // ctrl+r: toggle between command specs and command history
+					intercepted = true
+					if mode == "spec" {
+						mode = "history"
+					} else {
+						mode = "spec"
+					}
+					shouldOverlayDraw = true
+					// enter: enter behavior is a bit different from tab suggestions in code editor
+					// I want it to execute the command anyway and ignore the suggestions
+					// it means only tab to select suggestions, and enter to execute
+					// enter is not used to select suggestions
+				} else if overlay.Visible && (b == 0x0d || b == 0x0a) {
+					intercepted = true
+					os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+					ptmx.Write([]byte{0x0d})
+					naiveBuffer = ""
+					shouldOverlayDraw = false
+					continue
+				} else if b == 0x09 { // tab: select suggestions
+					intercepted = true
+					if !overlay.Visible {
+						shouldOverlayDraw = true
+					} else {
+						selected := overlay.Items[overlay.Cursor].Cmd
+						os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+
+						if mode == "spec" {
+							selected = strings.TrimSpace(selected) + " "
+						}
+
+						naiveBuffer = selected
+						mode = "spec"
+
+						ptmx.Write([]byte{0x15}) // ctrl+u to clear line
+						ptmx.Write([]byte(selected))
+
+						shouldOverlayDraw = false
+					}
+					continue
+				}
+
+				if !intercepted {
+					ptmx.Write([]byte{b})
+					switch b {
+					case 127, 0x08: // backspace: remove last character from buffer
+						if len(naiveBuffer) > 0 {
+							naiveBuffer = naiveBuffer[:len(naiveBuffer)-1]
+							shouldOverlayDraw = true
+						}
+					case 0x17: // ctrl+w: delete the last word in the buffer
+						trimBuf := strings.TrimRight(naiveBuffer, " ")
+						lastSpace := strings.LastIndex(trimBuf, " ")
+						if lastSpace >= 0 {
+							naiveBuffer = trimBuf[:lastSpace+1]
+						} else {
+							naiveBuffer = ""
+						}
+						shouldOverlayDraw = true
+					case '\r', 0x03, 0x15, 0x0C: // enter, ctrl+c, ctrl+u, ctrl+l: clear buffer on line reset
+						naiveBuffer = ""
+						mode = "spec"
+						os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+					default:
+						// track normal printable characters in the buffer for matching
+						if b >= 32 && b <= 126 {
+							naiveBuffer += string(b)
+							shouldOverlayDraw = true
+						}
+					}
+				}
+			}
+			if shouldOverlayDraw {
+				renderOverlay()
+			}
+		}
+	}
+}
