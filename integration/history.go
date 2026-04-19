@@ -21,8 +21,9 @@ var (
 )
 
 type HistResult struct {
-	ID  int
-	Cmd string
+	ID         int
+	Cmd        string
+	FuzzyScore int
 }
 
 func init() {
@@ -139,13 +140,14 @@ func SearchHistory(query string) ([]HistResult, error) {
 		return results, nil
 	}
 
-	matches := searcherCache.Search(query, &fuzzyvn.SearchOptions{Limit: 100})
+	matches := searcherCache.SearchWithScores(query, &fuzzyvn.SearchOptions{Limit: 100})
 
 	var results []HistResult
 	for _, m := range matches {
 		results = append(results, HistResult{
-			ID:  idMapCache[m],
-			Cmd: m,
+			ID:         idMapCache[m.Str],
+			Cmd:        m.Str,
+			FuzzyScore: m.Score,
 		})
 	}
 
@@ -175,7 +177,13 @@ func SearchHistory(query string) ([]HistResult, error) {
 		if tI != tJ {
 			return tI < tJ // lower tier is better
 		}
-		// if same tier, sort by ID descending (most recent first)
+		
+		// If both are fuzzy matches (Tier 4), prioritize fuzzyvn score first!
+		if tI == 4 && results[i].FuzzyScore != results[j].FuzzyScore {
+			return results[i].FuzzyScore > results[j].FuzzyScore
+		}
+		
+		// if same tier (and same fuzzy score), sort by ID descending (most recent first)
 		return results[i].ID > results[j].ID
 	})
 
