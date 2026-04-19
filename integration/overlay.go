@@ -103,7 +103,7 @@ func (o *Overlay) Render() string {
 	// top border with scroll indicator
 	s.WriteString("\0338")
 	fmt.Fprintf(&s, "\033[%dB", 1)
-	s.WriteString("\033[K")
+	s.WriteString("\033[2K")
 
 	scrollInfo := ""
 	if len(o.Items) > windowSize {
@@ -121,7 +121,7 @@ func (o *Overlay) Render() string {
 	for i := start; i < end; i++ {
 		s.WriteString("\0338")
 		fmt.Fprintf(&s, "\033[%dB", (i-start)+2)
-		s.WriteString("\033[K")
+		s.WriteString("\033[2K")
 
 		it := o.Items[i]
 		rawIcon := fixedWidth(it.Icon, iconW)
@@ -148,7 +148,7 @@ func (o *Overlay) Render() string {
 	// Bottom border
 	s.WriteString("\0338")
 	fmt.Fprintf(&s, "\033[%dB", windowSize+2)
-	s.WriteString("\033[K")
+	s.WriteString("\033[2K")
 	bottomBorder := "╰" + strings.Repeat("─", boxWidth) + "╯"
 	s.WriteString(borderStyle.Render(bottomBorder))
 
