@@ -8,6 +8,11 @@ import (
 
 var shellAliases = make(map[string]string)
 
+func GetAlias(name string) (string, bool) {
+	target, ok := shellAliases[name]
+	return target, ok
+}
+
 // Lookup finds matching suggestions for your input by looking at how many words you typed
 // it changes aliases to real commands, finds subcommands inside others, and runs generators for more suggestions
 // e.g. Lookup("git che") -> suggests "git checkout"
@@ -18,15 +23,13 @@ func Lookup(input string) []Suggestion {
 	} else {
 		shellAliases = make(map[string]string)
 	}
-	// if input is empty, we show nothing
+
 	if input == "" {
 		return nil
 	}
 
-	// convert raw input into tokens to find out how many words you typed
 	tokens := tokenize(input)
 
-	// if the only word is empty, we show nothing
 	if len(tokens) == 1 && tokens[0] == "" {
 		return nil
 	}
@@ -49,7 +52,6 @@ func Lookup(input string) []Suggestion {
 		}
 	}
 
-	// if you only typed one word, we show root commands and their first subcommands if there is a space
 	if len(tokens) == 1 {
 		query := tokens[0]
 		results := topLevelSuggestions(query)
@@ -79,14 +81,12 @@ func Lookup(input string) []Suggestion {
 		return results
 	}
 
-	// find the first command name and check if it is in our registry
 	rootCmdName := tokens[0]
 	spec, exists := registry[rootCmdName]
 	if !exists {
 		return nil
 	}
 
-	// look deep into subcommands to find exactly where you are typing right now
 	currentSubs, currentOpts, currentGen := spec.Subcommands, spec.Options, spec.Generator
 	depth := 1
 
@@ -125,7 +125,6 @@ func Lookup(input string) []Suggestion {
 
 	results := []Suggestion{}
 
-	// find out how many words this command is allowed to have
 	currentLimit := spec.MaxArgs
 	tempSubs := spec.Subcommands
 	for i := 1; i < depth; i++ {
@@ -139,7 +138,6 @@ func Lookup(input string) []Suggestion {
 		}
 	}
 
-	// count how many words you already typed so we can follow the command rules
 	argCount := 0
 	for i := depth; i < len(tokens)-1; i++ {
 		t := tokens[i]
@@ -154,7 +152,6 @@ func Lookup(input string) []Suggestion {
 	debugLog("[core] query tokens: %v (partial: '%s')", tokens, partial)
 	debugLog("[core] depth: %d, argCount: %d, limit: %d, allowMore: %v", depth, argCount, currentLimit, allowMoreArgs)
 
-	// make the start of the command line to show it in the suggestion menu
 	prefixBuilder := strings.Builder{}
 	for i := 0; i < depth; i++ {
 		if i > 0 {
@@ -173,7 +170,6 @@ func Lookup(input string) []Suggestion {
 	}
 	linePrefix := linePrefixBuilder.String()
 
-	// run special code to find things like git branch names or file names
 	if currentGen != nil && allowMoreArgs {
 		genResults := currentGen(tokens, prefix, partial)
 
@@ -188,7 +184,6 @@ func Lookup(input string) []Suggestion {
 				finalCmd = cleanLinePrefix + " " + g.Cmd
 			}
 
-			// do not suggest words that you already typed to avoid repeating the same word
 			newTokens := tokenize(finalCmd)
 			if len(newTokens) > 0 {
 				lastToken := newTokens[len(newTokens)-1]
@@ -212,7 +207,6 @@ func Lookup(input string) []Suggestion {
 		}
 	}
 
-	// add normal subcommands that match the letters you are typing
 	if allowMoreArgs {
 		for _, sub := range currentSubs {
 			if partial == "" || hasPrefix(sub.Name, partial) {
@@ -223,7 +217,6 @@ func Lookup(input string) []Suggestion {
 		}
 	}
 
-	// show flags or options only if you start typing with a dash character
 	if len(partial) > 0 && partial[0] == '-' {
 		usedOpts := make(map[string]bool)
 		for _, t := range tokens {
@@ -243,11 +236,9 @@ func Lookup(input string) []Suggestion {
 	return results
 }
 
-// topLevelSuggestions looks for matches in your aliases, iris specs, and system commands
 func topLevelSuggestions(query string) []Suggestion {
 	results, seen := []Suggestion{}, make(map[string]bool)
 
-	// check the shell aliases first because they are the most important
 	for name, target := range shellAliases {
 		if !seen[name] && (query == "" || hasPrefix(name, query)) {
 			results = append(results, Suggestion{
@@ -257,7 +248,6 @@ func topLevelSuggestions(query string) []Suggestion {
 		}
 	}
 
-	// we search for iris commands that were registered in the code
 	for name, spec := range registry {
 		if seen[name] {
 			continue
@@ -279,7 +269,6 @@ func topLevelSuggestions(query string) []Suggestion {
 		}
 	}
 
-	// if we still find nothing, we look for system commands in your path folders
 	for name := range pathCmds {
 		if !seen[name] && (query == "" || hasPrefix(name, query)) {
 			results = append(results, Suggestion{

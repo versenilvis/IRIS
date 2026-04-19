@@ -14,7 +14,6 @@ type procInfo struct {
 	comm string
 }
 
-// detectShell identifies the shell type by scanning parent processes
 func detectShell() string {
 	pid := os.Getppid()
 	for i := 0; i < 5 && pid > 1; i++ {
@@ -55,8 +54,6 @@ func detectShell() string {
 	return "bash"
 }
 
-// getActiveInnerShell retrieves the most recently started shell in the process tree
-// example: getActiveInnerShell(1234, "bash")
 func getActiveInnerShell(rootPid int, defaultShell string) string {
 	cmd := exec.Command("ps", "-e", "-o", "pid,ppid,comm")
 	out, err := cmd.Output()

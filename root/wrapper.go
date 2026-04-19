@@ -47,7 +47,7 @@ func runWrapper() {
 	c.ExtraFiles[10] = w
 	c.Env = adapter.GetEnv(10, os.Getpid())
 
-	ptmx, err := pty.Start(c) // start shell in a pseudo-terminal
+	ptmx, err := pty.Start(c) 
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[IRIS] failed to start PTY: %v\n", err)
 		return
@@ -287,6 +287,8 @@ func runWrapper() {
 
 				if !intercepted {
 					ptmx.Write([]byte{b})
+					// we handle line editing keys manually to keep naiveBuffer in sync
+					// since terminal is in raw mode, we must update our state for every change
 					switch b {
 					case 127, 0x08: // backspace: remove last character from buffer
 						if len(naiveBuffer) > 0 {
@@ -309,6 +311,17 @@ func runWrapper() {
 					default:
 						// track normal printable characters in the buffer for matching
 						if b >= 32 && b <= 126 {
+							// if user presses space, check if the current word is an alias
+							if b == ' ' && naiveBuffer != "" && !strings.Contains(naiveBuffer, " ") {
+								if target, ok := core.GetAlias(naiveBuffer); ok {
+									// clear the current alias and replace it with the full command
+									ptmx.Write([]byte{0x15}) // ctrl+u to clear the current input line
+									ptmx.Write([]byte(target + " "))
+									naiveBuffer = target + " "
+									shouldOverlayDraw = true
+									continue
+								}
+							}
 							naiveBuffer += string(b)
 							shouldOverlayDraw = true
 						}
