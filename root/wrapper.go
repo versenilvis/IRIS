@@ -47,7 +47,7 @@ func runWrapper() {
 	c.ExtraFiles[10] = w
 	c.Env = adapter.GetEnv(10, os.Getpid())
 
-	ptmx, err := pty.Start(c) 
+	ptmx, err := pty.Start(c)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[IRIS] failed to start PTY: %v\n", err)
 		return
@@ -199,38 +199,41 @@ func runWrapper() {
 
 				if b == '\033' {
 					// handle escape sequences like arrow keys and functional shortcuts
-					if i+2 < n && inputSlice[i+1] == '[' && inputSlice[i+2] == 'Z' {
+					if i+2 < n && (inputSlice[i+1] == '[' || inputSlice[i+1] == 'O') {
 						// shift tab: hide/unhide menu dropdown
-						intercepted = true
-						suggestionsEnabled = !suggestionsEnabled
-						if !suggestionsEnabled {
-							os.Stdout.Write([]byte(overlay.ClearAndDisable()))
-						} else {
-							shouldOverlayDraw = true
+						if inputSlice[i+1] == '[' && inputSlice[i+2] == 'Z' {
+							intercepted = true
+							suggestionsEnabled = !suggestionsEnabled
+							if !suggestionsEnabled {
+								os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+							} else {
+								shouldOverlayDraw = true
+							}
+							i += 2
+							continue
 						}
-						i += 2
-						continue
-					}
 
-					ptmx.Write([]byte{b})
-					if i+2 < n && inputSlice[i+1] == '[' {
-						if overlay.Visible {
-							switch inputSlice[i+2] {
-							case 'A': // up arrow
+						if overlay.Visible && (inputSlice[i+2] == 'A' || inputSlice[i+2] == 'B') {
+							intercepted = true
+							if inputSlice[i+2] == 'A' { // up arrow
 								overlay.Cursor--
 								if overlay.Cursor < 0 {
 									overlay.Cursor = 0
 								}
-								os.Stdout.Write([]byte(overlay.Render()))
-							case 'B': // down arrow
+							} else { // down arrow
 								overlay.Cursor++
 								if overlay.Cursor >= len(overlay.Items) {
 									overlay.Cursor = len(overlay.Items) - 1
 								}
-								os.Stdout.Write([]byte(overlay.Render()))
 							}
+							os.Stdout.Write([]byte(overlay.Render()))
+							i += 2
+							continue
 						}
 					}
+
+					// forward escape sequence to pty if not intercepted
+					ptmx.Write([]byte{b})
 					// skip remaining bytes of the escape sequence to avoid misinterpretation
 					for j := i + 1; j < n; j++ {
 						char := inputSlice[j]
