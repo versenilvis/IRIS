@@ -3,11 +3,13 @@ package root
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -17,6 +19,47 @@ import (
 	"github.com/versenilvis/iris/integration/shell"
 	"golang.org/x/term"
 )
+
+type State struct {
+	Mode string `json:"mode"`
+}
+
+func getStateFile() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	dir := filepath.Join(home, ".iris")
+	os.MkdirAll(dir, 0755)
+	return filepath.Join(dir, "state.json")
+}
+
+func loadMode() string {
+	file := getStateFile()
+	if file != "" {
+		data, err := os.ReadFile(file)
+		if err == nil {
+			var state State
+			if err := json.Unmarshal(data, &state); err == nil {
+				if state.Mode == "history" || state.Mode == "spec" {
+					return state.Mode
+				}
+			}
+		}
+	}
+	return "spec"
+}
+
+func saveMode(mode string) {
+	file := getStateFile()
+	if file != "" {
+		state := State{Mode: mode}
+		data, err := json.MarshalIndent(state, "", "  ")
+		if err == nil {
+			os.WriteFile(file, data, 0644)
+		}
+	}
+}
 
 // runWrapper sets up the pty environment, launches the shell,
 // and manages the main input loop to provide real-time suggestions
@@ -148,7 +191,7 @@ func runWrapper() {
 
 	var naiveBuffer string
 	suggestionsEnabled := true
-	mode := "spec"
+	mode := loadMode()
 
 	// renderOverlay decides whether to draw the suggestion menu based on current state
 	renderOverlay := func() {
@@ -253,6 +296,7 @@ func runWrapper() {
 					} else {
 						mode = "spec"
 					}
+					saveMode(mode)
 					shouldOverlayDraw = true
 					// enter: enter behavior is a bit different from tab suggestions in code editor
 					// I want it to execute the command anyway and ignore the suggestions
@@ -278,7 +322,6 @@ func runWrapper() {
 						}
 
 						naiveBuffer = selected
-						mode = "spec"
 
 						ptmx.Write([]byte{0x15}) // ctrl+u to clear line
 						ptmx.Write([]byte(selected))
@@ -309,7 +352,6 @@ func runWrapper() {
 						shouldOverlayDraw = true
 					case '\r', 0x03, 0x15, 0x0C: // enter, ctrl+c, ctrl+u, ctrl+l: clear buffer on line reset
 						naiveBuffer = ""
-						mode = "spec"
 						os.Stdout.Write([]byte(overlay.ClearAndDisable()))
 					default:
 						// track normal printable characters in the buffer for matching
