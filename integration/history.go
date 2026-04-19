@@ -149,8 +149,33 @@ func SearchHistory(query string) ([]HistResult, error) {
 		})
 	}
 
-	// Sort results by ID descending (most recent first) to act as a tie-breaker
+	// within the same tier, we sort by ID
+	// tier 1: exact match
+	// tier 2: prefix match
+	// tier 3: substring match
+	// tier 4: fuzzy match
+	getTier := func(cmd, q string) int {
+		cmdLow := strings.ToLower(cmd)
+		qLow := strings.ToLower(q)
+		if cmdLow == qLow {
+			return 1
+		}
+		if strings.HasPrefix(cmdLow, qLow) {
+			return 2
+		}
+		if strings.Contains(cmdLow, qLow) {
+			return 3
+		}
+		return 4
+	}
+
 	sort.SliceStable(results, func(i, j int) bool {
+		tI := getTier(results[i].Cmd, query)
+		tJ := getTier(results[j].Cmd, query)
+		if tI != tJ {
+			return tI < tJ // lower tier is better
+		}
+		// if same tier, sort by ID descending (most recent first)
 		return results[i].ID > results[j].ID
 	})
 
