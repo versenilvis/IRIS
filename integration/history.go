@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 
@@ -68,23 +69,19 @@ func SearchHistory(query string) ([]HistResult, error) {
 		}
 		defer file.Close()
 
-		seen := make(map[string]bool)
-		counter := 1
+		var allCmds []string
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
 			line := scanner.Text()
 			cmd := line
 
 			if shellName == "zsh" {
-				// zsh history format: : <timestamp>;<command>
 				parts := strings.SplitN(line, ";", 2)
 				if len(parts) == 2 {
 					cmd = parts[1]
 				}
 			} else if shellName == "bash" {
-				// bash history format can include timestamps starting with #
 				if strings.HasPrefix(line, "#") && len(line) > 1 {
-
 					isTimestamp := true
 					for _, c := range line[1:] {
 						if c < '0' || c > '9' {
@@ -97,7 +94,6 @@ func SearchHistory(query string) ([]HistResult, error) {
 					}
 				}
 			} else if shellName == "fish" {
-				// simple parse for fish history (YAML-like)
 				if strings.HasPrefix(line, "- cmd: ") {
 					cmd = strings.TrimPrefix(line, "- cmd: ")
 				} else {
@@ -107,14 +103,22 @@ func SearchHistory(query string) ([]HistResult, error) {
 
 			cmd = strings.TrimSpace(cmd)
 			if cmd != "" {
-				if !seen[cmd] {
-					historyCache = append(historyCache, cmd)
-					seen[cmd] = true
-				}
-				idMapCache[cmd] = counter
+				allCmds = append(allCmds, cmd)
 			}
-			counter++
 		}
+
+		// build historyCache backwards so newest commands come first
+		seen := make(map[string]bool)
+		for i := len(allCmds) - 1; i >= 0; i-- {
+			cmd := allCmds[i]
+			if !seen[cmd] {
+				historyCache = append(historyCache, cmd)
+				seen[cmd] = true
+				// we assign the ID as the original line number (1-indexed based on allCmds length)
+				idMapCache[cmd] = i + 1
+			}
+		}
+
 		searcherCache = fuzzyvn.NewPlainSearcher(historyCache)
 	}
 
@@ -126,7 +130,7 @@ func SearchHistory(query string) ([]HistResult, error) {
 		}
 
 		for i := 0; i < limit; i++ {
-			cmd := historyCache[len(historyCache)-1-i]
+			cmd := historyCache[i]
 			results = append(results, HistResult{
 				ID:  idMapCache[cmd],
 				Cmd: cmd,
@@ -144,6 +148,11 @@ func SearchHistory(query string) ([]HistResult, error) {
 			Cmd: m,
 		})
 	}
+
+	// Sort results by ID descending (most recent first) to act as a tie-breaker
+	sort.SliceStable(results, func(i, j int) bool {
+		return results[i].ID > results[j].ID
+	})
 
 	return results, nil
 }
