@@ -15,10 +15,11 @@ const (
 )
 
 type Overlay struct {
-	mu      sync.Mutex
-	Visible bool
-	Items   []core.Suggestion
-	Cursor  int
+	mu           sync.Mutex
+	Visible      bool
+	Items        []core.Suggestion
+	Cursor       int
+	LastGhostLen int
 }
 
 var (
@@ -65,6 +66,48 @@ func fixedWidth(s string, width int) string {
 	return s
 }
 
+func (o *Overlay) RenderGhostText(buffer string) string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+
+	if !o.Visible || len(o.Items) == 0 {
+		return ""
+	}
+
+	var s strings.Builder
+
+	ghostText := ""
+	if buffer != "" {
+		topCmd := o.Items[0].Cmd
+		if strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(buffer)) {
+			ghostText = topCmd[len(buffer):]
+		}
+	}
+
+	padLen := o.LastGhostLen - len(ghostText)
+	if padLen < 0 {
+		padLen = 0
+	}
+	
+	// add extra padding to erase any stray characters left by fast backspaces 
+	// before the debounce timer fired. 10 spaces is safe and won't hit right prompts
+	padLen += 10
+
+	if ghostText != "" || padLen > 0 {
+		s.WriteString("\0337") // SAVE CURSOR at prompt
+		if ghostText != "" {
+			s.WriteString("\033[90m" + ghostText + "\033[0m")
+		}
+		if padLen > 0 {
+			s.WriteString(strings.Repeat(" ", padLen))
+		}
+		s.WriteString("\0338") // RESTORE CURSOR back to prompt
+		o.LastGhostLen = len(ghostText)
+	}
+
+	return s.String()
+}
+
 func (o *Overlay) Render() string {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -75,7 +118,7 @@ func (o *Overlay) Render() string {
 
 	var s strings.Builder
 	s.WriteString("\033[?7l")
-	s.WriteString("\0337") // DEC save cursor
+	s.WriteString("\0337") // DEC save cursor for menu drawing
 
 	windowSize := maxItems
 	if len(o.Items) < windowSize {
@@ -189,6 +232,14 @@ func (o *Overlay) ClearAndDisable() string {
 
 	var s strings.Builder
 	s.WriteString("\033[?7l")
+
+	if o.LastGhostLen > 0 {
+		s.WriteString("\0337") // save
+		s.WriteString(strings.Repeat(" ", o.LastGhostLen+10))
+		s.WriteString("\0338") // restore
+		o.LastGhostLen = 0
+	}
+
 	s.WriteString("\0337")
 
 	for i := 0; i < maxItems+2; i++ {

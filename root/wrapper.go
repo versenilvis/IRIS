@@ -11,7 +11,9 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
+	"time"
 
 	"github.com/creack/pty"
 	"github.com/versenilvis/iris/commands/core"
@@ -185,7 +187,10 @@ func runWrapper() {
 			}
 			os.Stdout.Write([]byte(overlay.Clear()))
 			overlay.UpdateItems(results)
-			os.Stdout.Write([]byte(overlay.Render()))
+			var rBuf strings.Builder
+			rBuf.WriteString(overlay.RenderGhostText(query))
+			rBuf.WriteString(overlay.Render())
+			os.Stdout.Write([]byte(rBuf.String()))
 		}
 	}()
 
@@ -193,32 +198,51 @@ func runWrapper() {
 	suggestionsEnabled := true
 	mode := loadMode()
 
+	var renderTimer *time.Timer
+	var renderMu sync.Mutex
+
 	// renderOverlay decides whether to draw the suggestion menu based on current state
 	renderOverlay := func() {
+		renderMu.Lock()
+		defer renderMu.Unlock()
+
+		if renderTimer != nil {
+			renderTimer.Stop()
+		}
+
 		if !suggestionsEnabled {
 			return
 		}
 
-		if naiveBuffer == "" {
+		bufCopy := naiveBuffer
+		modeCopy := mode
+
+		if bufCopy == "" {
 			os.Stdout.Write([]byte(overlay.ClearAndDisable()))
 			return
 		}
 
-		debugLog("[Render] query: '%s', mode: %s", naiveBuffer, mode)
-		results := mergeResults(naiveBuffer, mode)
-		debugLog("[Render] results found: %d", len(results))
+		// Debounce for 15ms to allow PTY to process the keystroke and update the terminal cursor.
+		// This completely prevents the asynchronous ghost text race condition where the PTY echo
+		// overwrites the first letter of our ghost text!
+		renderTimer = time.AfterFunc(15*time.Millisecond, func() {
+			debugLog("[Render] query: '%s', mode: %s", bufCopy, modeCopy)
+			results := mergeResults(bufCopy, modeCopy)
+			debugLog("[Render] results found: %d", len(results))
 
-		if len(results) == 0 {
-			os.Stdout.Write([]byte(overlay.ClearAndDisable()))
-		} else {
-			var buf strings.Builder
-			if overlay.Visible {
-				buf.WriteString(overlay.Clear())
+			var b strings.Builder
+			if len(results) == 0 {
+				b.WriteString(overlay.ClearAndDisable())
+			} else {
+				if overlay.Visible {
+					b.WriteString(overlay.Clear())
+				}
+				overlay.UpdateItems(results)
+				b.WriteString(overlay.RenderGhostText(bufCopy))
+				b.WriteString(overlay.Render())
 			}
-			overlay.UpdateItems(results)
-			buf.WriteString(overlay.Render())
-			os.Stdout.Write([]byte(buf.String()))
-		}
+			os.Stdout.Write([]byte(b.String()))
+		})
 	}
 
 	renderOverlay()
@@ -269,9 +293,25 @@ func runWrapper() {
 									overlay.Cursor = len(overlay.Items) - 1
 								}
 							}
-							os.Stdout.Write([]byte(overlay.Render()))
+							var rBuf strings.Builder
+							rBuf.WriteString(overlay.RenderGhostText(naiveBuffer))
+							rBuf.WriteString(overlay.Render())
+							os.Stdout.Write([]byte(rBuf.String()))
 							i += 2
 							continue
+						} else if overlay.Visible && inputSlice[i+2] == 'C' { // right arrow
+							topCmd := overlay.Items[0].Cmd
+							if strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(naiveBuffer)) {
+								ghostText := topCmd[len(naiveBuffer):]
+								if len(ghostText) > 0 {
+									intercepted = true
+									naiveBuffer += ghostText
+									ptmx.Write([]byte(ghostText))
+									shouldOverlayDraw = true
+									i += 2
+									continue
+								}
+							}
 						}
 					}
 
