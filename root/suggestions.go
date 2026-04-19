@@ -33,7 +33,7 @@ func mergeResults(query string, mode string) []core.Suggestion {
 				Desc: " history",
 				Icon: fmt.Sprintf("%d", h.ID),
 			})
-			if len(deduped) >= 10 {
+			if len(deduped) >= 100 {
 				break
 			}
 		}
@@ -57,8 +57,8 @@ func mergeResults(query string, mode string) []core.Suggestion {
 			deduped = append(deduped, s)
 		}
 	}
-	if len(deduped) > 10 {
-		deduped = deduped[:10]
+	if len(deduped) > 100 {
+		deduped = deduped[:100]
 	}
 	return deduped
 }
