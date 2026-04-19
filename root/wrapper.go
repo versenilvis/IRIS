@@ -201,8 +201,10 @@ func runWrapper() {
 	var renderTimer *time.Timer
 	var renderMu sync.Mutex
 
+	disableGhostText := false
+
 	// renderOverlay decides whether to draw the suggestion menu based on current state
-	renderOverlay := func() {
+	renderOverlay := func(disableGhost bool) {
 		renderMu.Lock()
 		defer renderMu.Unlock()
 
@@ -238,14 +240,16 @@ func runWrapper() {
 					b.WriteString(overlay.Clear())
 				}
 				overlay.UpdateItems(results)
-				b.WriteString(overlay.RenderGhostText(bufCopy))
+				if !disableGhost {
+					b.WriteString(overlay.RenderGhostText(bufCopy))
+				}
 				b.WriteString(overlay.Render())
 			}
 			os.Stdout.Write([]byte(b.String()))
 		})
 	}
 
-	renderOverlay()
+	renderOverlay(disableGhostText)
 
 	// reads from stdin and decides what to forward or intercept
 	// for most cases, I just handle the already have terminal shortcuts
@@ -294,7 +298,9 @@ func runWrapper() {
 								}
 							}
 							var rBuf strings.Builder
-							rBuf.WriteString(overlay.RenderGhostText(naiveBuffer))
+							if !disableGhostText {
+								rBuf.WriteString(overlay.RenderGhostText(naiveBuffer))
+							}
 							rBuf.WriteString(overlay.Render())
 							os.Stdout.Write([]byte(rBuf.String()))
 							i += 2
@@ -316,6 +322,10 @@ func runWrapper() {
 					}
 
 					// forward escape sequence to pty if not intercepted
+					os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+					disableGhostText = true
+					naiveBuffer = ""
+
 					ptmx.Write([]byte{b})
 					// skip remaining bytes of the escape sequence to avoid misinterpretation
 					for j := i + 1; j < n; j++ {
@@ -347,6 +357,7 @@ func runWrapper() {
 					os.Stdout.Write([]byte(overlay.ClearAndDisable()))
 					ptmx.Write([]byte{0x0d})
 					naiveBuffer = ""
+					disableGhostText = false
 					shouldOverlayDraw = false
 					continue
 				} else if b == 0x09 { // tab: select suggestions
@@ -392,6 +403,7 @@ func runWrapper() {
 						shouldOverlayDraw = true
 					case '\r', 0x03, 0x15, 0x0C: // enter, ctrl+c, ctrl+u, ctrl+l: clear buffer on line reset
 						naiveBuffer = ""
+						disableGhostText = false
 						os.Stdout.Write([]byte(overlay.ClearAndDisable()))
 					default:
 						// track normal printable characters in the buffer for matching
@@ -414,7 +426,7 @@ func runWrapper() {
 				}
 			}
 			if shouldOverlayDraw {
-				renderOverlay()
+				renderOverlay(disableGhostText)
 			}
 		}
 	}
