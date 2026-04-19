@@ -3,6 +3,8 @@ package root
 import (
 	"fmt"
 	"os"
+	"strconv"
+	"syscall"
 
 	"github.com/spf13/cobra"
 	"github.com/versenilvis/iris/commands/core"
@@ -21,6 +23,13 @@ var (
 		Long: `IRIS (a.k.a Intelligent Real-time Input Suggestion) is a shell auto-autocompletion tool.
 It works exactly like coding editor suggestion menu drop down.`,
 		Run: func(cmd *cobra.Command, args []string) {
+			if pidStr := os.Getenv("IRIS_PID"); pidStr != "" {
+				if pid, err := strconv.Atoi(pidStr); err == nil && pid > 0 {
+					_ = syscall.Kill(pid, syscall.SIGUSR1)
+					fmt.Println("\r\033[K\033[36m[IRIS] Sent reload signal to parent session.\033[0m")
+					return
+				}
+			}
 			if debugMode {
 				f, _ := os.OpenFile("iris.log", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 				debugLogger = f
