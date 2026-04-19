@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -162,6 +163,8 @@ func runWrapper() {
 		}
 	}()
 
+	var disableGhostText atomic.Bool
+
 	// listen for suggestion requests from shell scripts via the ipc pipe
 	go func() {
 		scanner := bufio.NewScanner(r)
@@ -188,7 +191,9 @@ func runWrapper() {
 			os.Stdout.Write([]byte(overlay.Clear()))
 			overlay.UpdateItems(results)
 			var rBuf strings.Builder
-			rBuf.WriteString(overlay.RenderGhostText(query))
+			if !disableGhostText.Load() {
+				rBuf.WriteString(overlay.RenderGhostText(query))
+			}
 			rBuf.WriteString(overlay.Render())
 			os.Stdout.Write([]byte(rBuf.String()))
 		}
@@ -201,10 +206,8 @@ func runWrapper() {
 	var renderTimer *time.Timer
 	var renderMu sync.Mutex
 
-	disableGhostText := false
-
 	// renderOverlay decides whether to draw the suggestion menu based on current state
-	renderOverlay := func(disableGhost bool) {
+	renderOverlay := func() {
 		renderMu.Lock()
 		defer renderMu.Unlock()
 
@@ -240,7 +243,7 @@ func runWrapper() {
 					b.WriteString(overlay.Clear())
 				}
 				overlay.UpdateItems(results)
-				if !disableGhost {
+				if !disableGhostText.Load() {
 					b.WriteString(overlay.RenderGhostText(bufCopy))
 				}
 				b.WriteString(overlay.Render())
@@ -249,7 +252,7 @@ func runWrapper() {
 		})
 	}
 
-	renderOverlay(disableGhostText)
+	renderOverlay()
 
 	// reads from stdin and decides what to forward or intercept
 	// for most cases, I just handle the already have terminal shortcuts
@@ -298,14 +301,14 @@ func runWrapper() {
 								}
 							}
 							var rBuf strings.Builder
-							if !disableGhostText {
+							if !disableGhostText.Load() {
 								rBuf.WriteString(overlay.RenderGhostText(naiveBuffer))
 							}
 							rBuf.WriteString(overlay.Render())
 							os.Stdout.Write([]byte(rBuf.String()))
 							i += 2
 							continue
-						} else if overlay.Visible && inputSlice[i+2] == 'C' { // right arrow
+						} else if overlay.Visible && !disableGhostText.Load() && inputSlice[i+2] == 'C' { // right arrow
 							topCmd := overlay.Items[0].Cmd
 							if strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(naiveBuffer)) {
 								ghostText := topCmd[len(naiveBuffer):]
@@ -323,7 +326,7 @@ func runWrapper() {
 
 					// forward escape sequence to pty if not intercepted
 					os.Stdout.Write([]byte(overlay.ClearAndDisable()))
-					disableGhostText = true
+					disableGhostText.Store(true)
 					naiveBuffer = ""
 
 					ptmx.Write([]byte{b})
@@ -357,7 +360,7 @@ func runWrapper() {
 					os.Stdout.Write([]byte(overlay.ClearAndDisable()))
 					ptmx.Write([]byte{0x0d})
 					naiveBuffer = ""
-					disableGhostText = false
+					disableGhostText.Store(false)
 					shouldOverlayDraw = false
 					continue
 				} else if b == 0x09 { // tab: select suggestions
@@ -403,7 +406,7 @@ func runWrapper() {
 						shouldOverlayDraw = true
 					case '\r', 0x03, 0x15, 0x0C: // enter, ctrl+c, ctrl+u, ctrl+l: clear buffer on line reset
 						naiveBuffer = ""
-						disableGhostText = false
+						disableGhostText.Store(false)
 						os.Stdout.Write([]byte(overlay.ClearAndDisable()))
 					default:
 						// track normal printable characters in the buffer for matching
@@ -426,7 +429,7 @@ func runWrapper() {
 				}
 			}
 			if shouldOverlayDraw {
-				renderOverlay(disableGhostText)
+				renderOverlay()
 			}
 		}
 	}
