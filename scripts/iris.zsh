@@ -8,7 +8,13 @@ if [[ -n "$IRIS_FD" ]]; then
     print -u $IRIS_FD -N -r -- "$LBUFFER" 2>/dev/null
   }
 
+  _iris_precmd() {
+    print -u $IRIS_FD -N -r -- "IRIS_CMD_STOP" 2>/dev/null
+  }
+
   autoload -Uz add-zle-hook-widget
-  # Hook into ZLE so this runs absolutely every time the line buffer changes
+  autoload -Uz add-zsh-hook
+  
   add-zle-hook-widget line-pre-redraw _iris_send_lbuffer
+  add-zsh-hook precmd _iris_precmd
 fi

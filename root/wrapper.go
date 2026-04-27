@@ -20,6 +20,7 @@ import (
 	"github.com/versenilvis/iris/commands/core"
 	"github.com/versenilvis/iris/integration"
 	"github.com/versenilvis/iris/integration/shell"
+	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 )
 
@@ -165,6 +166,15 @@ func runWrapper() {
 
 	var disableGhostText atomic.Bool
 
+	isExecuting := func() bool {
+		pgrp, err := unix.IoctlGetInt(int(ptmx.Fd()), unix.TIOCGPGRP)
+		if err != nil {
+			return false
+		}
+		// when another command starts, it puts it in a new process group and gives it the PTY
+		return pgrp != core.ShellPID
+	}
+
 	// listen for suggestion requests from shell scripts via the ipc pipe
 	go func() {
 		scanner := bufio.NewScanner(r)
@@ -183,6 +193,15 @@ func runWrapper() {
 
 		for scanner.Scan() {
 			query := scanner.Text()
+
+			if query == "IRIS_CMD_STOP" {
+				continue
+			}
+
+			if isExecuting() {
+				continue
+			}
+
 			results := mergeResults(query, "spec")
 			if len(results) == 0 {
 				os.Stdout.Write([]byte(overlay.ClearAndDisable()))
@@ -215,7 +234,7 @@ func runWrapper() {
 			renderTimer.Stop()
 		}
 
-		if !suggestionsEnabled {
+		if !suggestionsEnabled || isExecuting() {
 			return
 		}
 
@@ -231,6 +250,10 @@ func runWrapper() {
 		// This completely prevents the asynchronous ghost text race condition where the PTY echo
 		// overwrites the first letter of our ghost text!
 		renderTimer = time.AfterFunc(15*time.Millisecond, func() {
+			if isExecuting() {
+				return
+			}
+			
 			debugLog("[Render] query: '%s', mode: %s", bufCopy, modeCopy)
 			results := mergeResults(bufCopy, modeCopy)
 			debugLog("[Render] results found: %d", len(results))
@@ -266,6 +289,11 @@ func runWrapper() {
 		}
 
 		if n > 0 {
+			if isExecuting() {
+				ptmx.Write(inputSlice[:n])
+				continue
+			}
+
 			shouldOverlayDraw := false
 			for i := 0; i < n; i++ {
 				b := inputSlice[i]
@@ -325,18 +353,20 @@ func runWrapper() {
 					}
 
 					// forward escape sequence to pty if not intercepted
-					os.Stdout.Write([]byte(overlay.ClearAndDisable()))
-					disableGhostText.Store(true)
-					naiveBuffer = ""
+					if !intercepted {
+						os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+						disableGhostText.Store(true)
+						naiveBuffer = ""
 
-					ptmx.Write([]byte{b})
-					// skip remaining bytes of the escape sequence to avoid misinterpretation
-					for j := i + 1; j < n; j++ {
-						char := inputSlice[j]
-						ptmx.Write([]byte{char})
-						i = j
-						if (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || char == '~' {
-							break
+						ptmx.Write([]byte{b})
+						// skip remaining bytes of the escape sequence to avoid misinterpretation
+						for j := i + 1; j < n; j++ {
+							char := inputSlice[j]
+							ptmx.Write([]byte{char})
+							i = j
+							if (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || char == '~' {
+								break
+							}
 						}
 					}
 					continue
@@ -408,7 +438,7 @@ func runWrapper() {
 							naiveBuffer = ""
 						}
 						shouldOverlayDraw = true
-					case '\r', 0x03, 0x15, 0x0C: // enter, ctrl+c, ctrl+u, ctrl+l: clear buffer on line reset
+					case '\r', '\n', 0x03, 0x15, 0x0C: // enter, ctrl+c, ctrl+u, ctrl+l: clear buffer on line reset
 						naiveBuffer = ""
 						disableGhostText.Store(false)
 						os.Stdout.Write([]byte(overlay.ClearAndDisable()))
