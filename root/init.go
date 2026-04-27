@@ -58,8 +58,18 @@ var setupCmd = &cobra.Command{
 		targetExe := filepath.Join(localBin, "iris")
 
 		fmt.Printf("Installing iris to %s...\n", targetExe)
-		input, _ := os.ReadFile(exe)
-		_ = os.WriteFile(targetExe, input, 0755)
+		input, err := os.ReadFile(exe)
+		if err != nil {
+			fmt.Printf("Failed to read current executable: %v\n", err)
+			return
+		}
+
+		_ = os.Remove(targetExe)
+		err = os.WriteFile(targetExe, input, 0755)
+		if err != nil {
+			fmt.Printf("Failed to write to %s: %v\n", targetExe, err)
+			return
+		}
 
 		shellPath := os.Getenv("SHELL")
 		shellName := filepath.Base(shellPath)
