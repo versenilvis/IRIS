@@ -77,7 +77,6 @@ func FileGenerator(filters ...string) GeneratorFunc {
 				continue
 			}
 
-			// filter by filePrefix
 			if filePrefix != "" && !hasPrefix(name, filePrefix) {
 				continue
 			}
@@ -89,6 +88,27 @@ func FileGenerator(filters ...string) GeneratorFunc {
 						Cmd:  fullPath + "/",
 						Desc: "directory",
 					})
+				} else {
+					// scan only 1 level deeper if there is a filter
+					subEntries, err := os.ReadDir(filepath.Join(dir, name))
+					if err == nil {
+						for _, subEntry := range subEntries {
+							if subEntry.IsDir() {
+								continue
+							}
+							subName := subEntry.Name()
+							if strings.HasPrefix(subName, ".") {
+								continue
+							}
+							ext := strings.ToLower(filepath.Ext(subName))
+							if filterSet[ext] {
+								results = append(results, Suggestion{
+									Cmd:  fullPath + "/" + subName,
+									Desc: "file",
+								})
+							}
+						}
+					}
 				}
 				continue
 			}
