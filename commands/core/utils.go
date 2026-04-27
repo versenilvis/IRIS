@@ -62,3 +62,7 @@ func hasPrefix(s, prefix string) bool {
 	}
 	return true
 }
+// CI = case insensitive
+func HasPrefixCI(s, prefix string) bool {
+	return hasPrefix(s, prefix)
+}
