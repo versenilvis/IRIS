@@ -165,6 +165,7 @@ func runWrapper() {
 	}()
 
 	var disableGhostText atomic.Bool
+	var userNavigated bool
 
 	isExecuting := func() bool {
 		pgrp, err := unix.IoctlGetInt(int(ptmx.Fd()), unix.TIOCGPGRP)
@@ -211,7 +212,7 @@ func runWrapper() {
 			overlay.UpdateItems(results)
 			var rBuf strings.Builder
 			if !disableGhostText.Load() {
-				rBuf.WriteString(overlay.RenderGhostText(query))
+				rBuf.WriteString(overlay.RenderGhostText(query, false))
 			}
 			rBuf.WriteString(overlay.Render())
 			os.Stdout.Write([]byte(rBuf.String()))
@@ -240,6 +241,7 @@ func runWrapper() {
 
 		bufCopy := naiveBuffer
 		modeCopy := mode
+		navCopy := userNavigated
 
 		if bufCopy == "" {
 			os.Stdout.Write([]byte(overlay.ClearAndDisable()))
@@ -254,23 +256,32 @@ func runWrapper() {
 				return
 			}
 			
-			debugLog("[Render] query: '%s', mode: %s", bufCopy, modeCopy)
-			results := mergeResults(bufCopy, modeCopy)
-			debugLog("[Render] results found: %d", len(results))
-
 			var b strings.Builder
-			if len(results) == 0 {
-				b.WriteString(overlay.ClearAndDisable())
-			} else {
+			if !navCopy {
+				debugLog("[Render] query: '%s', mode: %s", bufCopy, modeCopy)
+				results := mergeResults(bufCopy, modeCopy)
+				debugLog("[Render] results found: %d", len(results))
+
+				if len(results) == 0 {
+					b.WriteString(overlay.ClearAndDisable())
+					os.Stdout.Write([]byte(b.String()))
+					return
+				}
+
 				if overlay.Visible {
 					b.WriteString(overlay.Clear())
 				}
 				overlay.UpdateItems(results)
-				if !disableGhostText.Load() {
-					b.WriteString(overlay.RenderGhostText(bufCopy))
+			} else {
+				if overlay.Visible {
+					b.WriteString(overlay.Clear())
 				}
-				b.WriteString(overlay.Render())
 			}
+
+			if !disableGhostText.Load() {
+				b.WriteString(overlay.RenderGhostText(bufCopy, navCopy))
+			}
+			b.WriteString(overlay.Render())
 			os.Stdout.Write([]byte(b.String()))
 		})
 	}
@@ -317,6 +328,7 @@ func runWrapper() {
 
 						if overlay.Visible && (inputSlice[i+2] == 'A' || inputSlice[i+2] == 'B') {
 							intercepted = true
+							userNavigated = true
 							if inputSlice[i+2] == 'A' { // up arrow
 								overlay.Cursor--
 								if overlay.Cursor < 0 {
@@ -328,12 +340,13 @@ func runWrapper() {
 									overlay.Cursor = len(overlay.Items) - 1
 								}
 							}
-							var rBuf strings.Builder
-							if !disableGhostText.Load() {
-								rBuf.WriteString(overlay.RenderGhostText(naiveBuffer))
-							}
-							rBuf.WriteString(overlay.Render())
-							os.Stdout.Write([]byte(rBuf.String()))
+							
+							selected := overlay.Items[overlay.Cursor].Cmd
+							ptmx.Write([]byte{0x15}) // ctrl+u to clear line
+							ptmx.Write([]byte(selected))
+							naiveBuffer = selected
+
+							shouldOverlayDraw = true
 							i += 2
 							continue
 						} else if overlay.Visible && !disableGhostText.Load() && inputSlice[i+2] == 'C' { // right arrow
@@ -388,10 +401,12 @@ func runWrapper() {
 				} else if overlay.Visible && (b == 0x0d || b == 0x0a) {
 					intercepted = true
 					os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+
 					ptmx.Write([]byte{0x0d})
 					naiveBuffer = ""
 					disableGhostText.Store(false)
 					shouldOverlayDraw = false
+					userNavigated = false
 					continue
 				} else if b == 0x09 { // tab: select suggestions
 					intercepted = true
@@ -415,6 +430,7 @@ func runWrapper() {
 						shouldOverlayDraw = true // <- rerender after tab to choose, if you set to false,
 						// when you press tab continuely, it will print all folder from menu suggestions
 						// and make the cursor jump to next line
+						userNavigated = false
 					}
 					continue
 				}
@@ -428,6 +444,7 @@ func runWrapper() {
 						if len(naiveBuffer) > 0 {
 							naiveBuffer = naiveBuffer[:len(naiveBuffer)-1]
 							shouldOverlayDraw = true
+							userNavigated = false
 						}
 					case 0x17: // ctrl+w: delete the last word in the buffer
 						trimBuf := strings.TrimRight(naiveBuffer, " ")
@@ -438,10 +455,12 @@ func runWrapper() {
 							naiveBuffer = ""
 						}
 						shouldOverlayDraw = true
+						userNavigated = false
 					case '\r', '\n', 0x03, 0x15, 0x0C: // enter, ctrl+c, ctrl+u, ctrl+l: clear buffer on line reset
 						naiveBuffer = ""
 						disableGhostText.Store(false)
 						os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+						userNavigated = false
 					default:
 						// track normal printable characters in the buffer for matching
 						if b >= 32 && b <= 126 {

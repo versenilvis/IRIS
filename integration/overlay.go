@@ -66,7 +66,7 @@ func fixedWidth(s string, width int) string {
 	return s
 }
 
-func (o *Overlay) RenderGhostText(buffer string) string {
+func (o *Overlay) RenderGhostText(buffer string, userNavigated bool) string {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
@@ -77,7 +77,7 @@ func (o *Overlay) RenderGhostText(buffer string) string {
 	var s strings.Builder
 
 	ghostText := ""
-	if buffer != "" {
+	if !userNavigated && buffer != "" {
 		topCmd := o.Items[0].Cmd
 		if strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(buffer)) {
 			ghostText = topCmd[len(buffer):]
