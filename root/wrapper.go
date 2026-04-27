@@ -380,7 +380,11 @@ func runWrapper() {
 						ptmx.Write([]byte{0x15}) // ctrl+u to clear line
 						ptmx.Write([]byte(selected))
 
-						shouldOverlayDraw = false
+						overlay.Cursor = 0 // this prevents when you tab, it switchs between suggestions non-stop
+
+						shouldOverlayDraw = true // <- rerender after tab to choose, if you set to false,
+						// when you press tab continuely, it will print all folder from menu suggestions
+						// and make the cursor jump to next line
 					}
 					continue
 				}

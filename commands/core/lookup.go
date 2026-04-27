@@ -179,10 +179,7 @@ func Lookup(input string) []Suggestion {
 			}
 
 			finalCmd := g.Cmd
-			cleanLinePrefix := strings.TrimSpace(linePrefix)
-			if cleanLinePrefix != "" && !strings.HasPrefix(finalCmd, cleanLinePrefix) && !strings.HasPrefix(finalCmd, rootCmdName) {
-				finalCmd = cleanLinePrefix + " " + g.Cmd
-			}
+			finalCmd = strings.TrimSpace(linePrefix) + " " + g.Cmd
 
 			newTokens := tokenize(finalCmd)
 			if len(newTokens) > 0 {

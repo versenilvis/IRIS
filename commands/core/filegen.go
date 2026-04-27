@@ -84,32 +84,27 @@ func FileGenerator(filters ...string) GeneratorFunc {
 
 			fullPath := pathPrefix + name
 			if entry.IsDir() {
-				results = append(results, Suggestion{
-					Cmd:  prefix + " " + fullPath + "/",
-					Desc: "directory",
-				})
-			} else {
-				if dirOnly {
+				if dirOnly || len(filterSet) == 0 {
+					results = append(results, Suggestion{
+						Cmd:  fullPath + "/",
+						Desc: "directory",
+					})
+				}
+				continue
+			}
+			// if filters are set, only show matching extensions
+			if len(filterSet) > 0 {
+				ext := strings.ToLower(filepath.Ext(name))
+				if !filterSet[ext] {
 					continue
 				}
-				// if filters are set, only show matching extensions
-				if len(filterSet) > 0 {
-					ext := strings.ToLower(filepath.Ext(name))
-					if !filterSet[ext] {
-						continue
-					}
-				}
-				results = append(results, Suggestion{
-					Cmd:  prefix + " " + fullPath,
-					Desc: fileDesc(),
-				})
 			}
+			results = append(results, Suggestion{
+				Cmd:  fullPath,
+				Desc: "file",
+			})
 		}
 
 		return results
 	}
-}
-
-func fileDesc() string {
-	return "file"
 }
