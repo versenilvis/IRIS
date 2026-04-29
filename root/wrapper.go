@@ -380,28 +380,28 @@ func runWrapper() {
 
 							results := mergeResults("", "history")
 							if len(results) > 0 {
-								limit := 10
+								limit := 100
 								if len(results) < limit {
 									limit = len(results)
 								}
-								var top10 []core.Suggestion
+								var historyList []core.Suggestion
 
 								if inputSlice[i+2] == 'A' {
 									// Up arrow: Reverse the list so newest is at the bottom
 									for j := limit - 1; j >= 0; j-- {
-										top10 = append(top10, results[j])
+										historyList = append(historyList, results[j])
 									}
 								} else {
 									// Down arrow: Normal order, newest is at the top
 									for j := 0; j < limit; j++ {
-										top10 = append(top10, results[j])
+										historyList = append(historyList, results[j])
 									}
 								}
 
-								overlay.UpdateItems(top10)
+								overlay.UpdateItems(historyList)
 
 								if inputSlice[i+2] == 'A' {
-									overlay.Cursor = len(top10) - 1 // Up arrow: Start at the bottom
+									overlay.Cursor = len(historyList) - 1 // Up arrow: Start at the bottom
 								} else {
 									overlay.Cursor = 0 // Down arrow: Start at the top
 								}

@@ -19,6 +19,7 @@ type Overlay struct {
 	Visible      bool
 	Items        []core.Suggestion
 	Cursor       int
+	StartIdx     int
 	LastGhostLen int
 }
 
@@ -40,8 +41,9 @@ var (
 
 func NewOverlay() *Overlay {
 	return &Overlay{
-		Visible: false,
-		Cursor:  0,
+		Visible:  false,
+		Cursor:   0,
+		StartIdx: 0,
 	}
 }
 
@@ -52,6 +54,7 @@ func (o *Overlay) UpdateItems(items []core.Suggestion) {
 	o.Items = items
 	o.Visible = len(o.Items) > 0
 	o.Cursor = 0 // reset to top result on update
+	o.StartIdx = 0
 }
 
 // fixedWidth pads or truncates a string to exact rune width
@@ -88,8 +91,8 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool) string {
 	if padLen < 0 {
 		padLen = 0
 	}
-	
-	// add extra padding to erase any stray characters left by fast backspaces 
+
+	// add extra padding to erase any stray characters left by fast backspaces
 	// before the debounce timer fired. 10 spaces is safe and won't hit right prompts
 	padLen += 10
 
@@ -125,10 +128,33 @@ func (o *Overlay) Render() string {
 		windowSize = len(o.Items)
 	}
 
-	start := 0
-	if o.Cursor >= windowSize {
-		start = o.Cursor - windowSize + 1
+	// when you use up arrow key, the selection bar will stick with the second item
+	// it stays still at second position until you reach the limit of the list
+	// but not apply the same with down arrow key
+	scrolloffUp := 1
+	scrolloffDown := 0
+	if windowSize <= 3 {
+		scrolloffUp = 0
 	}
+
+	if o.Cursor < o.StartIdx+scrolloffUp {
+		o.StartIdx = o.Cursor - scrolloffUp
+	}
+	if o.Cursor >= o.StartIdx+windowSize-scrolloffDown {
+		o.StartIdx = o.Cursor - windowSize + scrolloffDown + 1
+	}
+
+	if o.StartIdx < 0 {
+		o.StartIdx = 0
+	}
+	if o.StartIdx > len(o.Items)-windowSize {
+		o.StartIdx = len(o.Items) - windowSize
+	}
+	if o.StartIdx < 0 {
+		o.StartIdx = 0
+	}
+
+	start := o.StartIdx
 	end := start + windowSize
 
 	totalLines := windowSize + 2 // top border + items + bottom border
