@@ -166,14 +166,18 @@ func runWrapper() {
 
 	var disableGhostText atomic.Bool
 	var userNavigated bool
+	var renderOverlay func()
 
 	isExecuting := func() bool {
 		pgrp, err := unix.IoctlGetInt(int(ptmx.Fd()), unix.TIOCGPGRP)
 		if err != nil {
 			return false
 		}
-		// when another command starts, it puts it in a new process group and gives it the PTY
-		return pgrp != core.ShellPID
+		shellPGID, err := unix.Getpgid(core.ShellPID)
+		if err != nil {
+			return pgrp != core.ShellPID
+		}
+		return pgrp != shellPGID
 	}
 
 	// listen for suggestion requests from shell scripts via the ipc pipe
@@ -227,7 +231,7 @@ func runWrapper() {
 	var renderMu sync.Mutex
 
 	// renderOverlay decides whether to draw the suggestion menu based on current state
-	renderOverlay := func() {
+	renderOverlay = func() {
 		renderMu.Lock()
 		defer renderMu.Unlock()
 
@@ -243,7 +247,7 @@ func runWrapper() {
 		modeCopy := mode
 		navCopy := userNavigated
 
-		if bufCopy == "" {
+		if bufCopy == "" && !navCopy {
 			os.Stdout.Write([]byte(overlay.ClearAndDisable()))
 			return
 		}
@@ -255,7 +259,7 @@ func runWrapper() {
 			if isExecuting() {
 				return
 			}
-			
+
 			var b strings.Builder
 			if !navCopy {
 				debugLog("[Render] query: '%s', mode: %s", bufCopy, modeCopy)
@@ -287,6 +291,23 @@ func runWrapper() {
 	}
 
 	renderOverlay()
+
+	renderNow := func() {
+		renderMu.Lock()
+		if renderTimer != nil {
+			renderTimer.Stop()
+		}
+		renderMu.Unlock()
+
+		var b strings.Builder
+		if overlay.Visible {
+			if !disableGhostText.Load() {
+				b.WriteString(overlay.RenderGhostText(naiveBuffer, userNavigated))
+			}
+			b.WriteString(overlay.Render())
+		}
+		os.Stdout.Write([]byte(b.String()))
+	}
 
 	// reads from stdin and decides what to forward or intercept
 	// for most cases, I just handle the already have terminal shortcuts
@@ -329,6 +350,9 @@ func runWrapper() {
 						if overlay.Visible && (inputSlice[i+2] == 'A' || inputSlice[i+2] == 'B') {
 							intercepted = true
 							userNavigated = true
+
+							os.Stdout.Write([]byte(overlay.Clear())) // clear old menu
+
 							if inputSlice[i+2] == 'A' { // up arrow
 								overlay.Cursor--
 								if overlay.Cursor < 0 {
@@ -340,13 +364,56 @@ func runWrapper() {
 									overlay.Cursor = len(overlay.Items) - 1
 								}
 							}
-							
+
 							selected := overlay.Items[overlay.Cursor].Cmd
 							ptmx.Write([]byte{0x15}) // ctrl+u to clear line
 							ptmx.Write([]byte(selected))
 							naiveBuffer = selected
 
-							shouldOverlayDraw = true
+							renderNow()
+							i += 2
+							continue
+						} else if !overlay.Visible && naiveBuffer == "" && (inputSlice[i+2] == 'A' || inputSlice[i+2] == 'B') { // up/down arrow on empty prompt
+							intercepted = true
+							mode = "history"
+							saveMode(mode)
+
+							results := mergeResults("", "history")
+							if len(results) > 0 {
+								limit := 10
+								if len(results) < limit {
+									limit = len(results)
+								}
+								var top10 []core.Suggestion
+
+								if inputSlice[i+2] == 'A' {
+									// Up arrow: Reverse the list so newest is at the bottom
+									for j := limit - 1; j >= 0; j-- {
+										top10 = append(top10, results[j])
+									}
+								} else {
+									// Down arrow: Normal order, newest is at the top
+									for j := 0; j < limit; j++ {
+										top10 = append(top10, results[j])
+									}
+								}
+
+								overlay.UpdateItems(top10)
+
+								if inputSlice[i+2] == 'A' {
+									overlay.Cursor = len(top10) - 1 // Up arrow: Start at the bottom
+								} else {
+									overlay.Cursor = 0 // Down arrow: Start at the top
+								}
+
+								selected := overlay.Items[overlay.Cursor].Cmd
+								ptmx.Write([]byte{0x15}) // ctrl+u to clear line
+								ptmx.Write([]byte(selected))
+								naiveBuffer = selected
+
+								userNavigated = true
+								renderNow()
+							}
 							i += 2
 							continue
 						} else if overlay.Visible && !disableGhostText.Load() && inputSlice[i+2] == 'C' { // right arrow
