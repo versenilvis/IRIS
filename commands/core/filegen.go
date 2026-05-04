@@ -52,7 +52,16 @@ func FileGenerator(filters ...string) GeneratorFunc {
 
 		// check if the partial string contains path separators
 		if i := strings.LastIndexAny(partial, "/\\"); i != -1 {
-			dir = filepath.Join(base, partial[:i+1])
+			pathDir := partial[:i+1]
+			if filepath.IsAbs(pathDir) || strings.HasPrefix(pathDir, "~") {
+				if strings.HasPrefix(pathDir, "~") {
+					home, _ := os.UserHomeDir()
+					pathDir = filepath.Join(home, pathDir[1:])
+				}
+				dir = pathDir
+			} else {
+				dir = filepath.Join(base, pathDir)
+			}
 			filePrefix = partial[i+1:]
 		}
 
@@ -112,6 +121,11 @@ func FileGenerator(filters ...string) GeneratorFunc {
 				}
 				continue
 			}
+			
+			if dirOnly {
+				continue
+			}
+
 			// if filters are set, only show matching extensions
 			if len(filterSet) > 0 {
 				ext := strings.ToLower(filepath.Ext(name))
