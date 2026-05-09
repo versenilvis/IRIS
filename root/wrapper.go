@@ -149,6 +149,10 @@ func runWrapper() {
 
 	overlay := integration.NewOverlay()
 
+	// start background update check (async)
+	pendingUpdate = startBackgroundUpdateCheck()
+	updatePrinted := false
+
 	// bridge pty output to actual stdout
 	go func() {
 		buf := make([]byte, 4096)
@@ -201,6 +205,17 @@ func runWrapper() {
 			query := scanner.Text()
 
 			if query == "IRIS_CMD_STOP" {
+				// hook: after user executes a command, print the update notice exactly once per session
+				if !updatePrinted {
+					select {
+					case result, ok := <-pendingUpdate:
+						if ok && result.hasUpdate {
+							printUpdateNotice(result.latestVersion)
+							updatePrinted = true
+						}
+					default:
+					}
+				}
 				continue
 			}
 
