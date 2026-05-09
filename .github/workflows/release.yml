@@ -28,13 +28,11 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.25'
           cache: true
 
       - name: Run Linter
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
+        run: go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run ./...
 
       - name: Run Tests
         run: go test -v ./...
