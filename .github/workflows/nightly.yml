@@ -62,12 +62,14 @@ jobs:
       - name: Create Nightly Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: nightly
+          tag_name: ${{ steps.version.outputs.version }}
           name: ${{ steps.version.outputs.version }}
           body: |
-            🌙 **Nightly build** - `${{ steps.version.outputs.version }}`
+            # 🌙 **Nightly build** - `${{ steps.version.outputs.version }}`
+            Nightly release from commit: ${{ github.sha }}
 
-            auto-built from commit `${{ github.sha }}`
+            # Update: 
+            `iris update`
 
             > install manually, this build will **not** trigger an update notification
           files: dist/*.tar.gz
