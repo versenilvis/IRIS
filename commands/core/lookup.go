@@ -6,11 +6,11 @@ import (
 	"github.com/versenilvis/iris/integration/shell"
 )
 
-var shellAliases = make(map[string]string)
+var ShellAliases = map[string]string{}
 
 func GetAlias(name string) (string, bool) {
-	target, ok := shellAliases[name]
-	return target, ok
+	val, ok := ShellAliases[name]
+	return val, ok
 }
 
 // Lookup finds matching suggestions for your input by looking at how many words you typed
@@ -19,16 +19,16 @@ func GetAlias(name string) (string, bool) {
 // e.g. Lookup("git checkout ") -> suggests branch names via generator
 func Lookup(input string) []Suggestion {
 	if shell.Current != nil {
-		shellAliases = shell.Current.ScanAliases()
+		ShellAliases = shell.Current.ScanAliases()
 	} else {
-		shellAliases = make(map[string]string)
+		ShellAliases = make(map[string]string)
 	}
 
 	if input == "" {
 		return nil
 	}
 
-	tokens := tokenize(input)
+	tokens := Tokenize(input)
 
 	if len(tokens) == 1 && tokens[0] == "" {
 		return nil
@@ -43,8 +43,8 @@ func Lookup(input string) []Suggestion {
 	// if you have an alias in your shell config like: alias gca="git commit -a"
 	// if the first word match it, IRIS will suggest "git commit -a"
 	if len(tokens) > 1 {
-		if target, ok := shellAliases[tokens[0]]; ok {
-			aliasTokens := tokenize(target)
+		if target, ok := ShellAliases[tokens[0]]; ok {
+			aliasTokens := Tokenize(target)
 			if len(aliasTokens) > 0 && aliasTokens[len(aliasTokens)-1] == "" {
 				aliasTokens = aliasTokens[:len(aliasTokens)-1]
 			}
@@ -56,7 +56,7 @@ func Lookup(input string) []Suggestion {
 		query := tokens[0]
 		results := topLevelSuggestions(query)
 
-		if spec, exists := registry[query]; exists {
+		if spec, exists := Registry[query]; exists {
 			hasTrailingSpace := query != "" && query[len(query)-1] == ' '
 
 			if hasTrailingSpace {
@@ -82,7 +82,7 @@ func Lookup(input string) []Suggestion {
 	}
 
 	rootCmdName := tokens[0]
-	spec, exists := registry[rootCmdName]
+	spec, exists := Registry[rootCmdName]
 	if !exists {
 		return nil
 	}
@@ -174,7 +174,7 @@ func Lookup(input string) []Suggestion {
 		genResults := currentGen(tokens, prefix, partial)
 
 		for _, g := range genResults {
-			if partial != "" && !hasPrefix(g.Cmd, partial) && !strings.Contains(g.Cmd, partial) {
+			if partial != "" && !HasPrefix(g.Cmd, partial) && !strings.Contains(g.Cmd, partial) {
 				continue
 			}
 
@@ -193,7 +193,7 @@ func Lookup(input string) []Suggestion {
 				finalCmd = strings.TrimSpace(linePrefix) + " " + suggested
 			}
 
-			newTokens := tokenize(finalCmd)
+			newTokens := Tokenize(finalCmd)
 			if len(newTokens) > 0 {
 				lastToken := newTokens[len(newTokens)-1]
 				isDuplicate := false
@@ -218,7 +218,7 @@ func Lookup(input string) []Suggestion {
 
 	if allowMoreArgs {
 		for _, sub := range currentSubs {
-			if partial == "" || hasPrefix(sub.Name, partial) {
+			if partial == "" || HasPrefix(sub.Name, partial) {
 				results = append(results, Suggestion{
 					Cmd: prefix + " " + sub.Name, Desc: sub.Description, Icon: rootCmdName,
 				})
@@ -234,7 +234,7 @@ func Lookup(input string) []Suggestion {
 			}
 		}
 		for _, opt := range currentOpts {
-			if !usedOpts[opt.Name] && (partial == "" || hasPrefix(opt.Name, partial)) {
+			if !usedOpts[opt.Name] && (partial == "" || HasPrefix(opt.Name, partial)) {
 				results = append(results, Suggestion{
 					Cmd: prefix + " " + opt.Name, Desc: opt.Description, Icon: rootCmdName,
 				})
@@ -248,8 +248,8 @@ func Lookup(input string) []Suggestion {
 func topLevelSuggestions(query string) []Suggestion {
 	results, seen := []Suggestion{}, make(map[string]bool)
 
-	for name, target := range shellAliases {
-		if !seen[name] && (query == "" || hasPrefix(name, query)) {
+	for name, target := range ShellAliases {
+		if !seen[name] && (query == "" || HasPrefix(name, query)) {
 			results = append(results, Suggestion{
 				Cmd: target, Desc: "alias: " + name, Icon: "root",
 			})
@@ -257,16 +257,16 @@ func topLevelSuggestions(query string) []Suggestion {
 		}
 	}
 
-	for name, spec := range registry {
+	for name, spec := range Registry {
 		if seen[name] {
 			continue
 		}
 		match := false
-		if query == "" || hasPrefix(name, query) {
+		if query == "" || HasPrefix(name, query) {
 			match = true
 		} else {
 			for _, a := range spec.Aliases {
-				if hasPrefix(a, query) {
+				if HasPrefix(a, query) {
 					match = true
 					break
 				}
@@ -279,7 +279,7 @@ func topLevelSuggestions(query string) []Suggestion {
 	}
 
 	for name := range pathCmds {
-		if !seen[name] && (query == "" || hasPrefix(name, query)) {
+		if !seen[name] && (query == "" || HasPrefix(name, query)) {
 			results = append(results, Suggestion{
 				Cmd: name, Desc: "system command", Icon: "root",
 			})

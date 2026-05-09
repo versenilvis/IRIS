@@ -14,9 +14,9 @@ func debugLog(format string, a ...interface{}) {
 	}
 }
 
-// tokenize parses the input string into shell-like tokens handling quotes
-// example: tokenize("git commit -m \"hello world\"")
-func tokenize(s string) []string {
+// SplitAliasTokens parses the input string into shell-like tokens handling quotes
+// example: SplitAliasTokens("git commit -m \"hello world\"")
+func Tokenize(s string) []string {
 	tokens := []string{}
 	var current strings.Builder
 	inQuote := false
@@ -43,8 +43,8 @@ func tokenize(s string) []string {
 	return tokens
 }
 
-// hasPrefix checks if s starts with prefix using case-insensitive matching
-func hasPrefix(s, prefix string) bool {
+// HasPrefix checks if s starts with prefix using case-insensitive matching
+func HasPrefix(s, prefix string) bool {
 	if len(prefix) > len(s) {
 		return false
 	}
@@ -65,5 +65,5 @@ func hasPrefix(s, prefix string) bool {
 
 // CI = case insensitive
 func HasPrefixCI(s, prefix string) bool {
-	return hasPrefix(s, prefix)
+	return HasPrefix(s, prefix)
 }

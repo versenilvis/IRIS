@@ -37,10 +37,10 @@ type Suggestion struct {
 	Icon string
 }
 
-var registry = map[string]*Spec{}
+var Registry = map[string]*Spec{}
 
-// Register adds a new spec to the global registry
+// Register adds a new spec to the global Registry
 // example: Register(&Spec{Name: "git"})
 func Register(s *Spec) {
-	registry[s.Name] = s
+	Registry[s.Name] = s
 }

@@ -10,7 +10,7 @@ import (
 
 // mergeResults collects and dedupes suggestions for a query and mode
 // example: mergeResults("git ", "spec")
-func mergeResults(query string, mode string) []core.Suggestion {
+func MergeResults(query string, mode string) []core.Suggestion {
 	if query == "" && mode != "history" {
 		debugLog("[Merge] Query empty, returning nil")
 		return nil

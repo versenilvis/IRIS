@@ -19,17 +19,17 @@ func init() {
 		Name:        "z",
 		Description: "jump to directory",
 		MaxArgs:     0,
-		Generator:   zoxideGenerator(),
+		Generator:   ZoxideGenerator(),
 	})
 	core.Register(&core.Spec{
 		Name:        "zi",
 		Description: "jump to directory interactively",
 		MaxArgs:     0,
-		Generator:   zoxideGenerator(),
+		Generator:   ZoxideGenerator(),
 	})
 }
 
-func zoxideGenerator() core.GeneratorFunc {
+func ZoxideGenerator() core.GeneratorFunc {
 	return func(tokens []string, prefix string, partial string) []core.Suggestion {
 		fullQuery := strings.Join(tokens[1:], " ")
 		localSuggestions := core.FileGenerator("/")(tokens, prefix, fullQuery)

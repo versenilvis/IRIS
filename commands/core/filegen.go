@@ -87,7 +87,7 @@ func FileGenerator(filters ...string) GeneratorFunc {
 				continue
 			}
 
-			if filePrefix != "" && !hasPrefix(name, filePrefix) {
+			if filePrefix != "" && !HasPrefix(name, filePrefix) {
 				continue
 			}
 

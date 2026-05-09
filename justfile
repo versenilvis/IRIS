@@ -33,3 +33,7 @@ debug:
 copy:
     @rm ~/.local/bin/iris
     @cp ./iris ~/.local/bin/iris
+# run all tests
+[group('dev')]
+test:
+    @go test ./... -v

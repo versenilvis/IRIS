@@ -207,7 +207,7 @@ func runWrapper() {
 				continue
 			}
 
-			results := mergeResults(query, "spec")
+			results := MergeResults(query, "spec")
 			if len(results) == 0 {
 				os.Stdout.Write([]byte(overlay.ClearAndDisable()))
 				continue
@@ -263,7 +263,7 @@ func runWrapper() {
 			var b strings.Builder
 			if !navCopy {
 				debugLog("[Render] query: '%s', mode: %s", bufCopy, modeCopy)
-				results := mergeResults(bufCopy, modeCopy)
+				results := MergeResults(bufCopy, modeCopy)
 				debugLog("[Render] results found: %d", len(results))
 
 				if len(results) == 0 {
@@ -378,7 +378,7 @@ func runWrapper() {
 							mode = "history"
 							saveMode(mode)
 
-							results := mergeResults("", "history")
+							results := MergeResults("", "history")
 							if len(results) > 0 {
 								limit := 100
 								if len(results) < limit {

@@ -43,7 +43,7 @@ func (b *BashAdapter) PrepareSelectSequence(selected string) []byte {
 	return append([]byte{0x15}, []byte(selected)...)
 }
 func (b *BashAdapter) ScanAliases() map[string]string {
-	return scanPosixAliases([]string{".bashrc", ".bash_profile", ".bash_aliases"})
+	return ScanPosixAliases([]string{".bashrc", ".bash_profile", ".bash_aliases"})
 }
 
 // ZshAdapter implementation
@@ -58,7 +58,7 @@ func (z *ZshAdapter) PrepareSelectSequence(selected string) []byte {
 	return append([]byte{0x15}, []byte(selected)...)
 }
 func (z *ZshAdapter) ScanAliases() map[string]string {
-	return scanPosixAliases([]string{".zshrc", ".zshenv", ".zprofile"})
+	return ScanPosixAliases([]string{".zshrc", ".zshenv", ".zprofile"})
 }
 
 // FishAdapter implementation
@@ -74,10 +74,10 @@ func (f *FishAdapter) PrepareSelectSequence(selected string) []byte {
 }
 func (f *FishAdapter) ScanAliases() map[string]string {
 	// fish uses 'alias' command in config.fish or separate function files
-	return scanPosixAliases([]string{filepath.Join(".config", "fish", "config.fish")})
+	return ScanPosixAliases([]string{filepath.Join(".config", "fish", "config.fish")})
 }
 
-func scanPosixAliases(files []string) map[string]string {
+func ScanPosixAliases(files []string) map[string]string {
 	aliases := make(map[string]string)
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -105,7 +105,7 @@ func scanPosixAliases(files []string) map[string]string {
 				continue
 			}
 
-			pairs := splitAliasTokens(body)
+			pairs := SplitAliasTokens(body)
 			for _, pair := range pairs {
 				eqIdx := strings.IndexByte(pair, '=')
 				if eqIdx < 0 {
@@ -122,7 +122,7 @@ func scanPosixAliases(files []string) map[string]string {
 	return aliases
 }
 
-func splitAliasTokens(s string) []string {
+func SplitAliasTokens(s string) []string {
 	var tokens []string
 	var cur strings.Builder
 	inQuote := false
