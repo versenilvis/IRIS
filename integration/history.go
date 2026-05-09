@@ -8,14 +8,14 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/versenilvis/fuzzyvn"
+	"github.com/versenilvis/fuzzy"
 	"github.com/versenilvis/iris/integration/shell"
 )
 
 var (
 	historyCache  []string
 	idMapCache    map[string]int
-	searcherCache *fuzzyvn.Searcher
+	searcherCache *fuzzy.Searcher
 	mu            sync.Mutex
 	lastModTime   int64
 )
@@ -120,7 +120,7 @@ func SearchHistory(query string) ([]HistResult, error) {
 			}
 		}
 
-		searcherCache = fuzzyvn.NewPlainSearcher(historyCache)
+		searcherCache = fuzzy.NewPlainSearcher(historyCache)
 	}
 
 	if query == "" {
@@ -140,7 +140,7 @@ func SearchHistory(query string) ([]HistResult, error) {
 		return results, nil
 	}
 
-	matches := searcherCache.SearchWithScores(query, &fuzzyvn.SearchOptions{Limit: 100})
+	matches := searcherCache.SearchWithScores(query, &fuzzy.SearchOptions{Limit: 100})
 
 	var results []HistResult
 	for _, m := range matches {
@@ -178,7 +178,7 @@ func SearchHistory(query string) ([]HistResult, error) {
 			return tI < tJ // lower tier is better
 		}
 		
-		// If both are fuzzy matches (Tier 4), prioritize fuzzyvn score first!
+		// If both are fuzzy matches (Tier 4), prioritize fuzzy score first!
 		if tI == 4 && results[i].FuzzyScore != results[j].FuzzyScore {
 			return results[i].FuzzyScore > results[j].FuzzyScore
 		}

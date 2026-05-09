@@ -11,7 +11,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/versenilvis/fuzzyvn"
+	"github.com/versenilvis/fuzzy"
 	"github.com/versenilvis/iris/commands/core"
 )
 
@@ -64,8 +64,8 @@ func ZoxideGenerator() core.GeneratorFunc {
 					})
 				}
 			} else if !strings.Contains(fullQuery, "/") {
-				searcher := fuzzyvn.NewPlainSearcher(dirs)
-				matches := searcher.SearchWithScores(fullQuery, &fuzzyvn.SearchOptions{Limit: 10})
+				searcher := fuzzy.NewPlainSearcher(dirs)
+				matches := searcher.SearchWithScores(fullQuery, &fuzzy.SearchOptions{Limit: 10})
 				for _, m := range matches {
 					path := m.Str
 					display := strings.Replace(path, home, "~", 1)

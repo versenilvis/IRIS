@@ -6,7 +6,7 @@ The `history` module provides the Ctrl+R fuzzy search functionality by reading t
 
 - **Zsh Extended Support**: Specifically parses the `: <timestamp>;<command>` format common in Zsh.
 - **Lazy Loading**: Doesn't read the disk until the user actually requests history. This keeps startup time instantaneous.
-- **Fuzzy Search**: Integrated with the `fuzzyvn` search engine.
+- **Fuzzy Search**: Integrated with the `fuzzy` search engine.
 - **Deduplication**: Automatically hides duplicate entries, showing only the most unique command variants.
 
 ## Data Flow
@@ -18,7 +18,7 @@ The `history` module provides the Ctrl+R fuzzy search functionality by reading t
    - Reads `~/.zsh_history`.
    - Strips metadata using `;` delimiter.
    - Populates a slice of commands.
-5. Search matches are sorted by the `fuzzyvn` engine.
+5. Search matches are sorted by the `fuzzy` engine.
 6. Suggestions are returned to the `overlay` for rendering.
 
 ## Configuration
