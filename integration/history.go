@@ -140,10 +140,24 @@ func SearchHistory(query string) ([]HistResult, error) {
 		return results, nil
 	}
 
-	matches := searcherCache.SearchWithScores(query, &fuzzy.SearchOptions{Limit: 100})
+	matches := searcherCache.SearchWithScores(query, &fuzzy.SearchOptions{Limit: 200})
+
+	// when query has a clear first word, only keep history entries that share the same first word
+	// this prevents e.g. curl commands from showing up when typing "git ..."
+	queryFirstWord := ""
+	if fields := strings.Fields(query); len(fields) > 0 {
+		queryFirstWord = strings.ToLower(fields[0])
+	}
 
 	var results []HistResult
 	for _, m := range matches {
+		if queryFirstWord != "" {
+			if fields := strings.Fields(m.Str); len(fields) > 0 {
+				if strings.ToLower(fields[0]) != queryFirstWord {
+					continue
+				}
+			}
+		}
 		results = append(results, HistResult{
 			ID:         idMapCache[m.Str],
 			Cmd:        m.Str,
