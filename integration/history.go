@@ -152,10 +152,12 @@ func SearchHistory(query string) ([]HistResult, error) {
 	var results []HistResult
 	for _, m := range matches {
 		if queryFirstWord != "" {
-			if fields := strings.Fields(m.Str); len(fields) > 0 {
-				if strings.ToLower(fields[0]) != queryFirstWord {
-					continue
-				}
+			firstWord := m.Str
+			if idx := strings.IndexByte(m.Str, ' '); idx != -1 {
+				firstWord = m.Str[:idx]
+			}
+			if !strings.EqualFold(firstWord, queryFirstWord) {
+				continue
 			}
 		}
 		results = append(results, HistResult{
