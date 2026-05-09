@@ -1,14 +1,14 @@
 module github.com/versenilvis/iris
 
-go 1.24.0
+go 1.24.2
 
 require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/creack/pty v1.1.24
 	github.com/spf13/cobra v1.10.2
 	github.com/versenilvis/fuzzy v0.1.0-rc
-	golang.org/x/sys v0.42.0
-	golang.org/x/term v0.41.0
+	golang.org/x/sys v0.38.0
+	golang.org/x/term v0.30.0
 )
 
 require (
