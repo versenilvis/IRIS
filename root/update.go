@@ -63,6 +63,7 @@ func SaveUpdateState(s updateState) {
 		return
 	}
 	data, _ := json.MarshalIndent(s, "", "  ")
+	_ = os.MkdirAll(filepath.Dir(file), 0755)
 	_ = os.WriteFile(file, data, 0644)
 }
 
