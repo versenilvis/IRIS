@@ -121,7 +121,7 @@ func runWrapper() {
 			case syscall.SIGWINCH:
 				_ = pty.InheritSize(os.Stdin, ptmx) // handle terminal window resize
 			// this is the core feature of reloading
-			// it helps IRIS reload itself that you dont need to restart the shell mannually
+			// it helps IRIS reload itself that you dont need to restart the shell manually
 			// SIGUSR1 is the signal to active reload when you type "just reload"
 			case syscall.SIGUSR1:
 				// trigger iris reload by executing itself again
@@ -508,10 +508,10 @@ func runWrapper() {
 						_, _ = ptmx.Write([]byte{0x15}) // ctrl+u to clear line
 						_, _ = ptmx.Write([]byte(selected))
 
-						overlay.Cursor = 0 // this prevents when you tab, it switchs between suggestions non-stop
+						overlay.Cursor = 0 // this prevents when you tab, it switches between suggestions non-stop
 
 						shouldOverlayDraw = true // <- rerender after tab to choose, if you set to false,
-						// when you press tab continuely, it will print all folder from menu suggestions
+						// when you press tab continually, it will print all folder from menu suggestions
 						// and make the cursor jump to next line
 						userNavigated = false
 					}
