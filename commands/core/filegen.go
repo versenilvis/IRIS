@@ -87,7 +87,16 @@ func FileGenerator(filters ...string) GeneratorFunc {
 				continue
 			}
 
-			if filePrefix != "" && !HasPrefix(name, filePrefix) {
+			match := false
+			if filePrefix == "" {
+				match = true
+			} else if dirOnly {
+				match = strings.Contains(strings.ToLower(name), strings.ToLower(filePrefix))
+			} else {
+				match = HasPrefix(name, filePrefix)
+			}
+
+			if !match {
 				continue
 			}
 
