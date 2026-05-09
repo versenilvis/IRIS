@@ -37,3 +37,9 @@ copy:
 [group('dev')]
 test:
     @go test ./... -v
+
+# run project health and scoring analyzer
+alias ana := analyze
+[group('dev')]
+analyze:
+    @go run scripts/test_analyzer.go

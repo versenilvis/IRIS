@@ -1,4 +1,4 @@
-package fs_test
+package tests
 
 import (
 	"os"
@@ -10,7 +10,7 @@ import (
 )
 
 func TestZoxideGenerator(t *testing.T) {
-	// Create a mock zoxide binary
+	// Setup: Create a mock zoxide binary
 	tmp := t.TempDir()
 	mockZoxide := filepath.Join(tmp, "zoxide")
 	
@@ -25,6 +25,7 @@ func TestZoxideGenerator(t *testing.T) {
 
 	gen := fs.ZoxideGenerator()
 	
+	// REQUIREMENT: Query returns the correct result when partial = ""
 	t.Run("Query returns correct result when partial is empty", func(t *testing.T) {
 		results := gen([]string{"z", ""}, "z ", "")
 		if len(results) == 0 {
@@ -32,6 +33,7 @@ func TestZoxideGenerator(t *testing.T) {
 		}
 	})
 
+	// REQUIREMENT: Path replaces home dir with ~
 	t.Run("Path replaces home dir with ~", func(t *testing.T) {
 		home, _ := os.UserHomeDir()
 		results := gen([]string{"z", ""}, "z ", "")
@@ -47,6 +49,7 @@ func TestZoxideGenerator(t *testing.T) {
 		}
 	})
 
+	// REQUIREMENT: Sort by descending score
 	t.Run("Sort by descending score", func(t *testing.T) {
 		results := gen([]string{"z", "i"}, "z ", "i")
 		if len(results) >= 1 {

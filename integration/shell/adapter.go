@@ -94,28 +94,36 @@ func ScanPosixAliases(files []string) map[string]string {
 			continue
 		}
 
-		lines := strings.Split(string(data), "\n")
-		for _, line := range lines {
-			line = strings.TrimSpace(line)
-			if !strings.HasPrefix(line, "alias ") {
-				continue
-			}
-			body := strings.TrimSpace(strings.TrimPrefix(line, "alias"))
-			if body == "" {
-				continue
-			}
+		for k, v := range ParseAliases(string(data)) {
+			aliases[k] = v
+		}
+	}
+	return aliases
+}
 
-			pairs := SplitAliasTokens(body)
-			for _, pair := range pairs {
-				eqIdx := strings.IndexByte(pair, '=')
-				if eqIdx < 0 {
-					continue
-				}
-				key := strings.TrimSpace(pair[:eqIdx])
-				val := strings.Trim(strings.TrimSpace(pair[eqIdx+1:]), `"'`)
-				if key != "" && val != "" {
-					aliases[key] = val
-				}
+func ParseAliases(data string) map[string]string {
+	aliases := make(map[string]string)
+	lines := strings.Split(data, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "alias ") {
+			continue
+		}
+		body := strings.TrimSpace(strings.TrimPrefix(line, "alias"))
+		if body == "" {
+			continue
+		}
+
+		pairs := SplitAliasTokens(body)
+		for _, pair := range pairs {
+			eqIdx := strings.IndexByte(pair, '=')
+			if eqIdx < 0 {
+				continue
+			}
+			key := strings.TrimSpace(pair[:eqIdx])
+			val := strings.Trim(strings.TrimSpace(pair[eqIdx+1:]), `"'`)
+			if key != "" && val != "" {
+				aliases[key] = val
 			}
 		}
 	}

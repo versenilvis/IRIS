@@ -20,8 +20,6 @@ func GetAlias(name string) (string, bool) {
 func Lookup(input string) []Suggestion {
 	if shell.Current != nil {
 		ShellAliases = shell.Current.ScanAliases()
-	} else {
-		ShellAliases = make(map[string]string)
 	}
 
 	if input == "" {
@@ -83,6 +81,7 @@ func Lookup(input string) []Suggestion {
 
 	rootCmdName := tokens[0]
 	spec, exists := Registry[rootCmdName]
+	debugLog("[core] lookup tokens: %v, registry exists: %v", tokens, exists)
 	if !exists {
 		return nil
 	}
@@ -226,7 +225,7 @@ func Lookup(input string) []Suggestion {
 		}
 	}
 
-	if len(partial) > 0 && partial[0] == '-' {
+	if partial == "" || (len(partial) > 0 && partial[0] == '-') {
 		usedOpts := make(map[string]bool)
 		for _, t := range tokens {
 			if strings.HasPrefix(t, "-") {

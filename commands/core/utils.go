@@ -22,8 +22,17 @@ func Tokenize(s string) []string {
 	inQuote := false
 	var quoteChar rune
 
+	escaped := false
 	for _, c := range s {
+		if escaped {
+			current.WriteRune(c)
+			escaped = false
+			continue
+		}
+
 		switch {
+		case c == '\\':
+			escaped = true
 		case !inQuote && (c == '"' || c == '\''):
 			inQuote = true
 			quoteChar = c

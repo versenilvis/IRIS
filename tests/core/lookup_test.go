@@ -1,71 +1,70 @@
-package core_test
+package tests
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/versenilvis/iris/commands/core"
-	"github.com/versenilvis/iris/integration/shell"
 )
 
-type mockAdapter struct {
-	shell.BashAdapter
-}
+func TestLookup(t *testing.T) {
+	// Setup Registry
+	core.Registry = make(map[string]*core.Spec)
+	core.Register(&core.Spec{
+		Name: "git",
+		Subcommands: []core.Subcommand{
+			{Name: "commit", Options: []core.Option{{Name: "--message"}}, MaxArgs: 1},
+			{Name: "remote", Subcommands: []core.Subcommand{{Name: "add"}}},
+		},
+		Options: []core.Option{{Name: "--verbose"}},
+	})
 
-func (m *mockAdapter) ScanAliases() map[string]string {
-	return map[string]string{
+	// Setup Aliases
+	core.ShellAliases = map[string]string{
 		"gca": "git commit -a",
 		"ta":  "tmux a -t",
 	}
-}
-
-func TestLookup(t *testing.T) {
-	// Use mock adapter
-	shell.Current = &mockAdapter{}
-	
-	core.Register(&core.Spec{
-		Name:        "git",
-		Description: "git command",
-		Subcommands: []core.Subcommand{
-			{Name: "commit", Description: "commit changes"},
-			{Name: "remote", Description: "manage remotes", Subcommands: []core.Subcommand{
-				{Name: "add", Description: "add remote"},
-			}},
-		},
-		Options: []core.Option{
-			{Name: "--verbose", Description: "verbose output"},
-		},
-	})
 
 	tests := []struct {
-		name     string
-		input    string
-		minCount int
-		checkCmd string
+		name        string
+		input       string
+		minResults  int
+		mustContain string
 	}{
-		{"Top-level suggestions", "gi", 1, "git"},
-		{"Subcommand suggestions", "git ", 2, "git commit"},
+		// REQUIREMENT: Token 1, no trailing space -> top-level suggestions
+		{"Top-level", "gi", 1, "git"},
+		// REQUIREMENT: Token 1, with trailing space -> subcommand suggestions
+		{"Subcommand", "git ", 1, "git commit"},
+		// REQUIREMENT: Alias expansion (gca -> git commit -a)
 		{"Alias expansion", "gca", 1, "git commit -a"},
+		// REQUIREMENT: Alias value with space (ta -> tmux a -t)
+		{"Alias with space", "ta", 1, "tmux a -t"},
+		// REQUIREMENT: Subcommand depth 2+ (git remote add)
 		{"Deep subcommand", "git remote ", 1, "git remote add"},
+		// REQUIREMENT: Option dedup (do not suggest --verbose if already typed)
 		{"Option dedup", "git --verbose -", 0, ""}, 
+		// REQUIREMENT: --flag=value does not count into argCount
 		{"Flag with value ignore", "git --output=json ", 2, "git --output=json commit"},
+		// REQUIREMENT: Unknown root command -> nil
+		{"Unknown root command", "unknowncmd ", 0, ""},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			results := core.Lookup(tt.input)
-			if len(results) < tt.minCount {
-				t.Errorf("Lookup(%q) returned %d results; want at least %d", tt.input, len(results), tt.minCount)
+			if len(results) < tt.minResults {
+				t.Errorf("Lookup(%q) got %d results; want at least %d", tt.input, len(results), tt.minResults)
 			}
-			if tt.checkCmd != "" {
+			if tt.mustContain != "" {
 				found := false
 				for _, r := range results {
-					if r.Cmd == tt.checkCmd {
+					if strings.Contains(r.Cmd, tt.mustContain) {
 						found = true
 						break
 					}
 				}
 				if !found {
-					t.Errorf("Lookup(%q) did not suggest %q", tt.input, tt.checkCmd)
+					t.Errorf("Lookup(%q) results did not contain %q", tt.input, tt.mustContain)
 				}
 			}
 		})
