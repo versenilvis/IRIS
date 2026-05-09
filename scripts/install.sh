@@ -2,7 +2,7 @@
 set -e
 
 # Iris installer
-# Usage: curl -sS https://raw.githubusercontent.com/versenilvis/iris/main/install.sh | sudo sh
+# Usage: curl -sS https://raw.githubusercontent.com/versenilvis/iris/main/scripts/install.sh | sudo sh
 
 REPO="versenilvis/iris"
 BIN_DIR="${BIN_DIR:-/usr/local/bin}"
