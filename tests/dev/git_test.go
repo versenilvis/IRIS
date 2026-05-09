@@ -22,10 +22,14 @@ func TestGitSuggestions(t *testing.T) {
 	ctx := context.Background()
 	// Initialize git repo
 	_ = exec.CommandContext(ctx, "git", "init").Run()
+
+	_ = exec.CommandContext(ctx, "git", "config", "user.email", "iris-test@example.com").Run() // this is for ci/cd
+	_ = exec.CommandContext(ctx, "git", "config", "user.name", "Iris Test").Run()              // this is for ci/cd
+
 	_ = os.WriteFile(filepath.Join(tmp, "file.go"), []byte("package main"), 0644)
 	_ = exec.CommandContext(ctx, "git", "add", ".").Run()
 	_ = exec.CommandContext(ctx, "git", "commit", "-m", "initial").Run()
-	
+
 	// Create branches
 	_ = exec.CommandContext(ctx, "git", "branch", "feature/login").Run()
 	_ = exec.CommandContext(ctx, "git", "branch", "dev").Run()
@@ -87,7 +91,7 @@ func TestGitSuggestions(t *testing.T) {
 	t.Run("git reset options", func(t *testing.T) {
 		// git reset --soft origin/main -> should be accepted (just testing lookup doesn't crash)
 		_ = core.Lookup("git reset --soft origin/main ")
-		
+
 		// git reset HEAD -> show files
 		res := core.Lookup("git reset HEAD ")
 		found := false
@@ -145,7 +149,7 @@ func TestGitSuggestions(t *testing.T) {
 		// find current branch
 		out, _ := exec.CommandContext(ctx, "git", "rev-parse", "--abbrev-ref", "HEAD").Output()
 		current := strings.TrimSpace(string(out))
-		
+
 		res := core.Lookup("git checkout ")
 		for _, r := range res {
 			if strings.Contains(r.Cmd, current) && !strings.Contains(r.Cmd, "remotes/") {

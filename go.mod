@@ -1,6 +1,6 @@
 module github.com/versenilvis/iris
 
-go 1.26.1
+go 1.24.0
 
 require (
 	github.com/charmbracelet/lipgloss v1.1.0
@@ -29,7 +29,3 @@ require (
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 )
-
-// this is my personal project, I want to point to my local folder to debug and develop
-// the github version is the stable one
-replace github.com/versenilvis/fuzzy => ../fuzzy

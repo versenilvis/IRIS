@@ -24,7 +24,10 @@ func NewServer() (*Server, error) {
 		return nil, err
 	}
 
-	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	localAddr, ok := conn.LocalAddr().(*net.UDPAddr)
+	if !ok {
+		return nil, net.InvalidAddrError("not a UDP address")
+	}
 
 	s := &Server{
 		conn:       conn,

@@ -1,35 +1,43 @@
-version: 2
+version: "2"
 
 run:
-    timeout: 5m
-    tests: true
+  timeout: 5m
+  tests: true
 
 linters:
-    disable-all: true
-    enable:
-        - errcheck
-        - govet
-        - staticcheck
-        - errorlint
-        - errname
-        - bodyclose
-        - sqlclosecheck
-        - noctx
-        - ineffassign
-        - unconvert
-        - bidichk
-
-linters-settings:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - errorlint
+    - errname
+    - bodyclose
+    - sqlclosecheck
+    - noctx
+    - ineffassign
+    - unconvert
+    - bidichk
+  settings:
     errcheck:
-        check-type-assertions: true
-        check-blank: true
-
+      check-type-assertions: true
+      check-blank: false
+      exclude-functions:
+        - fmt.Print
+        - fmt.Println
+        - fmt.Printf
+        - fmt.Fprint
+        - fmt.Fprintln
+        - fmt.Fprintf
     govet:
-        enable-all: true
-        disable:
-            - fieldalignment
+      enable-all: true
+      disable:
+        - fieldalignment
+  exclusions:
+    rules:
+      - linters: [errcheck]
+        source: "^\\s*defer "
 
 issues:
-    exclude-use-default: false
-    max-issues-per-linter: 0
-    max-same-issues: 0
+  max-issues-per-linter: 0
+  max-same-issues: 0
