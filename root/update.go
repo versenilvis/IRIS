@@ -122,6 +122,11 @@ func IsNewer(current, latest string) bool {
 		return false
 	}
 
+	// nightly builds are never shown as stable update targets
+	if strings.Contains(l, "-nightly.") {
+		return false
+	}
+
 	if c == l {
 		return false
 	}

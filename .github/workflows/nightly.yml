@@ -1,0 +1,76 @@
+name: Nightly
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  nightly:
+    name: Nightly Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # needed for git describe
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: true
+
+      - name: Get version info
+        id: version
+        run: |
+          BASE=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          SHORT=$(git rev-parse --short HEAD)
+          echo "version=${BASE}-nightly.${SHORT}" >> $GITHUB_OUTPUT
+
+      - name: Build Binaries
+        run: |
+          mkdir -p dist
+          platforms=("linux/amd64" "linux/arm64" "darwin/amd64" "darwin/arm64")
+          for platform in "${platforms[@]}"; do
+            os_arch=(${platform//\// })
+            GOOS=${os_arch[0]}
+            GOARCH=${os_arch[1]}
+
+            GOOS=$GOOS GOARCH=$GOARCH go build \
+              -ldflags="-s -w -X github.com/versenilvis/iris/root.Version=${{ steps.version.outputs.version }}" \
+              -trimpath -o "dist/iris" main.go
+
+            cd dist
+            tar -czf "iris_${GOOS}_${GOARCH}.tar.gz" "iris"
+            rm "iris"
+            cd ..
+          done
+
+      - name: Delete existing nightly release
+        run: |
+          gh release delete nightly --yes 2>/dev/null || true
+          git tag -d nightly 2>/dev/null || true
+          git push origin --delete nightly 2>/dev/null || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Nightly Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: nightly
+          name: ${{ steps.version.outputs.version }}
+          body: |
+            🌙 **Nightly build** — `${{ steps.version.outputs.version }}`
+
+            auto-built from commit `${{ github.sha }}`
+
+            > install manually, this build will **not** trigger an update notification
+          files: dist/*.tar.gz
+          prerelease: true
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
