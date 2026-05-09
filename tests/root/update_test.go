@@ -22,6 +22,8 @@ func TestIsNewer(t *testing.T) {
 		{"dev", "v1.0.0", false}, // dev never updates
 		{"v1.0.0", "dev", false},
 		{"", "v1.0.0", false},
+		{"v1.0.0", "v1.1.0-nightly.8cb1f47", false}, // nightly never triggers update
+		{"v1.1.0-nightly.abc", "v1.2.0", true},      // but if you are on nightly, you can update to stable
 	}
 
 	for _, tt := range tests {
