@@ -13,40 +13,9 @@ func GitRemoteGenerator(tokens []string, prefix string, partial string) []core.S
 	return getGitResults(prefix, "remote")
 }
 
-// GitBranchGenerator suggests git branches
-func GitBranchGenerator(tokens []string, prefix string, partial string) []core.Suggestion {
-	// check if we are in "create" mode (-b or -B)
-	isCreateMode := false
-	argCount := 0
-	for _, t := range tokens {
-		if t == "-b" || t == "-B" {
-			isCreateMode = true
-		}
-		// count non-flag, non-command tokens to see where we are
-		if t != "git" && t != "checkout" && t != "switch" && !strings.HasPrefix(t, "-") {
-			argCount++
-		}
-	}
-
-	// if in create mode and this is the first argument after flags, 
-	// we shouldn't suggest existing branches as the new branch name
-	if isCreateMode && argCount == 0 {
-		return nil
-	}
-
-	return getGitResults(prefix, "branch", "--format=%(refname:short)")
-}
-
-// GitPushPullGenerator suggests remotes for the first arg, and branches for the second
-func GitPushPullGenerator(tokens []string, prefix string, partial string) []core.Suggestion {
-	// tokens are like ["git", "push"] or ["git", "push", "origin"]
-	if len(tokens) == 2 {
-		return GitRemoteGenerator(tokens, prefix, partial)
-	}
-	if len(tokens) == 3 {
-		return GitBranchGenerator(tokens, prefix, partial)
-	}
-	return nil
+// GitStashGenerator suggests git stashes
+func GitStashGenerator(tokens []string, prefix string, partial string) []core.Suggestion {
+	return getGitResults(prefix, "stash", "list", "--format=%gd: %gs")
 }
 
 func getGitResults(prefix string, args ...string) []core.Suggestion {
@@ -58,6 +27,17 @@ func getGitResults(prefix string, args ...string) []core.Suggestion {
 		return nil
 	}
 
+	activeBranch := ""
+	switch args[0] {
+	case "branch":
+		// Try to find the current active branch to filter it out later
+		activeCmd := exec.CommandContext(context.Background(), "git", "rev-parse", "--abbrev-ref", "HEAD")
+		activeCmd.Dir = cwd
+		if activeOut, err := activeCmd.Output(); err == nil {
+			activeBranch = strings.TrimSpace(string(activeOut))
+		}
+	}
+
 	lines := strings.Split(string(out), "\n")
 	var results []core.Suggestion
 	for _, line := range lines {
@@ -65,15 +45,77 @@ func getGitResults(prefix string, args ...string) []core.Suggestion {
 		if line == "" || strings.HasPrefix(line, "*") { // skip active branch marker if any
 			line = strings.TrimSpace(strings.TrimPrefix(line, "*"))
 		}
-		if line == "" {
+		if line == "" || line == activeBranch {
 			continue
 		}
+		
+		// handle remote branches that look like "remotes/origin/main"
+		line = strings.TrimPrefix(line, "remotes/")
+
+		suggestionCmd := line
+		suggestionDesc := args[0]
+
+		// for stash list, the format is "stash@{0}: message"
+		if args[0] == "stash" {
+			parts := strings.SplitN(line, ": ", 2)
+			if len(parts) == 2 {
+				suggestionCmd = parts[0]
+				suggestionDesc = parts[1]
+			}
+		}
+
 		results = append(results, core.Suggestion{
-			Cmd:  prefix + " " + line,
-			Desc: args[0], // "remote" or "branch"
+			Cmd:  prefix + " " + suggestionCmd,
+			Desc: suggestionDesc,
 		})
 	}
 	return results
+}
+
+// GitBranchGenerator suggests git branches
+func GitBranchGenerator(tokens []string, prefix string, partial string) []core.Suggestion {
+	// check if we are in "create" mode (-b or -B or -c)
+	isCreateMode := false
+	for _, t := range tokens {
+		if t == "-b" || t == "-B" || t == "-c" || t == "-C" {
+			isCreateMode = true
+			break
+		}
+	}
+
+	if isCreateMode {
+		return nil
+	}
+
+	return getGitResults(prefix, "branch", "-a", "--format=%(refname:short)")
+}
+
+// GitPushPullGenerator suggests remotes for the first arg, and branches for the second
+func GitPushPullGenerator(tokens []string, prefix string, partial string) []core.Suggestion {
+	// Filter out flags to find positional arguments
+	args := []string{}
+	for i := 1; i < len(tokens); i++ {
+		t := tokens[i]
+		if t != "" && !strings.HasPrefix(t, "-") {
+			args = append(args, t)
+		}
+	}
+
+	// args[0] is subcommand (push/pull)
+	// args[1] should be remote
+	// args[2] should be branch
+	
+	// If we only have subcommand, suggest remotes
+	if len(args) == 1 {
+		return GitRemoteGenerator(tokens, prefix, partial)
+	}
+	
+	// If we have subcommand + remote, suggest branches
+	if len(args) == 2 {
+		return GitBranchGenerator(tokens, prefix, partial)
+	}
+	
+	return nil
 }
 
 func init() {
@@ -160,7 +202,16 @@ func init() {
 			{
 				Name:        "checkout",
 				Description: "switch branches",
-				Generator:   GitBranchGenerator,
+				Generator: func(tokens []string, prefix string, partial string) []core.Suggestion {
+					for _, t := range tokens {
+						if t == "-b" || t == "-B" {
+							return nil
+						}
+					}
+					branches := GitBranchGenerator(tokens, prefix, partial)
+					files := core.FileGenerator()(tokens, prefix, partial)
+					return append(branches, files...)
+				},
 				Options: []core.Option{
 					{Name: "-b", Description: "create new branch"},
 				},
@@ -195,8 +246,9 @@ func init() {
 				},
 			},
 			{
-				Name: "rebase",
+				Name:        "rebase",
 				Description: "reapply commits",
+				Generator:   GitBranchGenerator,
 				Options: []core.Option{
 					{Name: "-i", Description: "interactive"},
 					{Name: "--onto", Description: "rebase onto"},
@@ -205,8 +257,9 @@ func init() {
 				},
 			},
 			{
-				Name: "log",
+				Name:        "log",
 				Description: "show commit log",
+				Generator:   core.FileGenerator(),
 				Options: []core.Option{
 					{Name: "--oneline", Description: "compact format"},
 					{Name: "--graph", Description: "show graph"},
@@ -214,27 +267,35 @@ func init() {
 				},
 			},
 			{
-				Name: "diff",
+				Name:        "diff",
 				Description: "show changes",
+				Generator:   core.FileGenerator(),
 				Options: []core.Option{
 					{Name: "--staged", Description: "staged changes"},
 					{Name: "--stat", Description: "diffstat only"},
+					{Name: "--", Description: "separate paths"},
 				},
 			},
 			{
-				Name: "stash",
-				Description: "stash changes",
-				Subcommands: []core.Subcommand{
-					{Name: "pop", Description: "apply and drop"},
-					{Name: "apply", Description: "apply stash"},
-					{Name: "drop", Description: "remove stash"},
-					{Name: "list", Description: "list stashes"},
-					{Name: "show", Description: "show stash diff"},
+				Name:        "tag",
+				Description: "manage tags",
+				Generator:   func(tokens []string, prefix string, partial string) []core.Suggestion { return getGitResults(prefix, "tag", "-l") },
+				Options: []core.Option{
+					{Name: "-a", Description: "annotated tag"},
+					{Name: "-d", Description: "delete tag"},
+					{Name: "-l", Description: "list tags"},
+					{Name: "--delete", Description: "delete tag"},
+					{Name: "-m", Description: "tag message"},
 				},
 			},
 			{
-				Name: "reset",
+				Name:        "reset",
 				Description: "reset HEAD",
+				Generator: func(tokens []string, prefix string, partial string) []core.Suggestion {
+					branches := GitBranchGenerator(tokens, prefix, partial)
+					files := core.FileGenerator()(tokens, prefix, partial)
+					return append(branches, files...)
+				},
 				Options: []core.Option{
 					{Name: "--hard", Description: "discard changes"},
 					{Name: "--soft", Description: "keep staged"},
@@ -242,21 +303,45 @@ func init() {
 				},
 			},
 			{
-				Name: "tag",
-				Description: "manage tags",
+				Name:        "restore",
+				Description: "restore working tree files",
+				Generator:   core.FileGenerator(),
 				Options: []core.Option{
-					{Name: "-a", Description: "annotated tag"},
-					{Name: "-d", Description: "delete tag"},
-					{Name: "-l", Description: "list tags"},
+					{Name: "-s", Description: "source tree"},
+					{Name: "-W", Description: "working tree"},
 				},
 			},
 			{
-				Name: "remote",
+				Name:        "rm",
+				Description: "remove files",
+				Generator:   core.FileGenerator(),
+				Options: []core.Option{
+					{Name: "-f", Description: "force"},
+					{Name: "-r", Description: "recursive"},
+					{Name: "--cached", Description: "unstage only"},
+				},
+			},
+			{
+				Name:        "stash",
+				Description: "stash changes",
+				Subcommands: []core.Subcommand{
+					{Name: "pop", Description: "apply and drop", Generator: GitStashGenerator, Options: []core.Option{{Name: "--index", Description: "try to reinstate index"}}},
+					{Name: "apply", Description: "apply stash", Generator: GitStashGenerator},
+					{Name: "drop", Description: "remove stash", Generator: GitStashGenerator},
+					{Name: "list", Description: "list stashes"},
+					{Name: "show", Description: "show stash diff", Generator: GitStashGenerator},
+					{Name: "push", Description: "push to stash"},
+					{Name: "branch", Description: "create branch from stash", Generator: GitBranchGenerator},
+				},
+			},
+			{
+				Name:        "remote",
 				Description: "manage remotes",
 				Subcommands: []core.Subcommand{
-					{Name: "add", Description: "add remote"},
-					{Name: "remove", Description: "remove remote"},
-					{Name: "rename", Description: "rename remote"},
+					{Name: "add", Description: "add remote", Options: []core.Option{{Name: "-f", Description: "fetch immediately"}}},
+					{Name: "remove", Description: "remove remote", Generator: GitRemoteGenerator},
+					{Name: "rename", Description: "rename remote", Generator: GitRemoteGenerator},
+					{Name: "set-url", Description: "change remote url", Generator: GitRemoteGenerator},
 					{Name: "-v", Description: "verbose list"},
 				},
 			},

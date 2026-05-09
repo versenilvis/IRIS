@@ -44,3 +44,8 @@ var Registry = map[string]*Spec{}
 func Register(s *Spec) {
 	Registry[s.Name] = s
 }
+
+// ResetRegistry clears all registered specs — use in tests only
+func ResetRegistry() {
+	Registry = make(map[string]*Spec)
+}
