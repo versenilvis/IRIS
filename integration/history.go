@@ -68,7 +68,7 @@ func SearchHistory(query string) ([]HistResult, error) {
 		if err != nil {
 			return nil, err
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 
 		var allCmds []string
 		scanner := bufio.NewScanner(file)

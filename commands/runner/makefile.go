@@ -19,7 +19,7 @@ func init() {
 				// No Makefile, don't pretend we have one
 				return nil
 			}
-			defer file.Close()
+			defer func() { _ = file.Close() }()
 
 			var suggestions []core.Suggestion
 			seen := make(map[string]bool)

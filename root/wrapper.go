@@ -3,6 +3,7 @@ package root
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -34,7 +35,7 @@ func getStateFile() string {
 		return ""
 	}
 	dir := filepath.Join(home, ".iris")
-	os.MkdirAll(dir, 0755)
+	_ = os.MkdirAll(dir, 0755)
 	return filepath.Join(dir, "state.json")
 }
 
@@ -60,7 +61,7 @@ func saveMode(mode string) {
 		state := State{Mode: mode}
 		data, err := json.MarshalIndent(state, "", "  ")
 		if err == nil {
-			os.WriteFile(file, data, 0644)
+			_ = os.WriteFile(file, data, 0644)
 		}
 	}
 }
@@ -78,7 +79,7 @@ func runWrapper() {
 	var shellName string
 	if active := os.Getenv("IRIS_ACTIVE_SHELL"); active != "" {
 		shellName = active
-		os.Unsetenv("IRIS_ACTIVE_SHELL")
+		_ = os.Unsetenv("IRIS_ACTIVE_SHELL")
 	} else if shellFlag != "" {
 		shellName = shellFlag
 	} else {
@@ -88,7 +89,8 @@ func runWrapper() {
 	shell.Init(shellName)
 	adapter := shell.Current
 
-	c := exec.Command(adapter.GetShellPath())
+	ctx := context.Background()
+	c := exec.CommandContext(ctx, adapter.GetShellPath())
 	c.ExtraFiles = make([]*os.File, 11)
 	// pass write end of pipe to shell as fd 10 (I chose 10 just because it won't conflict with other file descriptors)
 	c.ExtraFiles[10] = w
@@ -96,10 +98,10 @@ func runWrapper() {
 
 	ptmx, err := pty.Start(c)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "[IRIS] failed to start PTY: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "[IRIS] failed to start PTY: %v\n", err)
 		return
 	}
-	defer ptmx.Close()
+	defer func() { _ = ptmx.Close() }()
 
 	_ = pty.InheritSize(os.Stdin, ptmx)
 	core.ShellPID = c.Process.Pid
@@ -124,18 +126,17 @@ func runWrapper() {
 			case syscall.SIGUSR1:
 				// trigger iris reload by executing itself again
 				exe, _ := os.Executable()
-				// this marks for the next iris process that it've just reloaded
-				os.Setenv("IRIS_RELOADED", "true")
+				_ = os.Setenv("IRIS_RELOADED", "true")
 
 				innerShell := getActiveInnerShell(c.Process.Pid, shellName)
 				if innerShell != "" {
 					// to detect which is last shell (bash, zsh, fish)
-					os.Setenv("IRIS_ACTIVE_SHELL", innerShell)
+					_ = os.Setenv("IRIS_ACTIVE_SHELL", innerShell)
 				}
 
 				if c.Process != nil {
 					_ = syscall.Kill(c.Process.Pid, syscall.SIGKILL)
-					ptmx.Close()
+					_ = ptmx.Close()
 				}
 
 				if oldState != nil {
@@ -160,7 +161,7 @@ func runWrapper() {
 				}
 				continue
 			}
-			os.Stdout.Write(buf[:n])
+			_, _ = os.Stdout.Write(buf[:n])
 		}
 	}()
 
@@ -209,17 +210,17 @@ func runWrapper() {
 
 			results := MergeResults(query, "spec")
 			if len(results) == 0 {
-				os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+				_, _ = os.Stdout.Write([]byte(overlay.ClearAndDisable()))
 				continue
 			}
-			os.Stdout.Write([]byte(overlay.Clear()))
+			_, _ = os.Stdout.Write([]byte(overlay.Clear()))
 			overlay.UpdateItems(results)
 			var rBuf strings.Builder
 			if !disableGhostText.Load() {
 				rBuf.WriteString(overlay.RenderGhostText(query, false))
 			}
 			rBuf.WriteString(overlay.Render())
-			os.Stdout.Write([]byte(rBuf.String()))
+			_, _ = os.Stdout.Write([]byte(rBuf.String()))
 		}
 	}()
 
@@ -248,7 +249,7 @@ func runWrapper() {
 		navCopy := userNavigated
 
 		if bufCopy == "" && !navCopy {
-			os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+			_, _ = os.Stdout.Write([]byte(overlay.ClearAndDisable()))
 			return
 		}
 
@@ -268,7 +269,7 @@ func runWrapper() {
 
 				if len(results) == 0 {
 					b.WriteString(overlay.ClearAndDisable())
-					os.Stdout.Write([]byte(b.String()))
+					_, _ = os.Stdout.Write([]byte(b.String()))
 					return
 				}
 
@@ -286,7 +287,7 @@ func runWrapper() {
 				b.WriteString(overlay.RenderGhostText(bufCopy, navCopy))
 			}
 			b.WriteString(overlay.Render())
-			os.Stdout.Write([]byte(b.String()))
+			_, _ = os.Stdout.Write([]byte(b.String()))
 		})
 	}
 
@@ -306,7 +307,7 @@ func runWrapper() {
 			}
 			b.WriteString(overlay.Render())
 		}
-		os.Stdout.Write([]byte(b.String()))
+		_, _ = os.Stdout.Write([]byte(b.String()))
 	}
 
 	// reads from stdin and decides what to forward or intercept
@@ -322,7 +323,7 @@ func runWrapper() {
 
 		if n > 0 {
 			if isExecuting() {
-				ptmx.Write(inputSlice[:n])
+				_, _ = ptmx.Write(inputSlice[:n])
 				continue
 			}
 
@@ -339,7 +340,7 @@ func runWrapper() {
 							intercepted = true
 							suggestionsEnabled = !suggestionsEnabled
 							if !suggestionsEnabled {
-								os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+								_, _ = os.Stdout.Write([]byte(overlay.ClearAndDisable()))
 							} else {
 								shouldOverlayDraw = true
 							}
@@ -351,7 +352,7 @@ func runWrapper() {
 							intercepted = true
 							userNavigated = true
 
-							os.Stdout.Write([]byte(overlay.Clear())) // clear old menu
+							_, _ = os.Stdout.Write([]byte(overlay.Clear())) // clear old menu
 
 							if inputSlice[i+2] == 'A' { // up arrow
 								overlay.Cursor--
@@ -366,8 +367,8 @@ func runWrapper() {
 							}
 
 							selected := overlay.Items[overlay.Cursor].Cmd
-							ptmx.Write([]byte{0x15}) // ctrl+u to clear line
-							ptmx.Write([]byte(selected))
+							_, _ = ptmx.Write([]byte{0x15}) // ctrl+u to clear line
+							_, _ = ptmx.Write([]byte(selected))
 							naiveBuffer = selected
 
 							renderNow()
@@ -407,8 +408,8 @@ func runWrapper() {
 								}
 
 								selected := overlay.Items[overlay.Cursor].Cmd
-								ptmx.Write([]byte{0x15}) // ctrl+u to clear line
-								ptmx.Write([]byte(selected))
+								_, _ = ptmx.Write([]byte{0x15}) // ctrl+u to clear line
+								_, _ = ptmx.Write([]byte(selected))
 								naiveBuffer = selected
 
 								userNavigated = true
@@ -423,7 +424,7 @@ func runWrapper() {
 								if len(ghostText) > 0 {
 									intercepted = true
 									naiveBuffer += ghostText
-									ptmx.Write([]byte(ghostText))
+									_, _ = ptmx.Write([]byte(ghostText))
 									shouldOverlayDraw = true
 									i += 2
 									continue
@@ -434,15 +435,15 @@ func runWrapper() {
 
 					// forward escape sequence to pty if not intercepted
 					if !intercepted {
-						os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+						_, _ = os.Stdout.Write([]byte(overlay.ClearAndDisable()))
 						disableGhostText.Store(true)
 						naiveBuffer = ""
 
-						ptmx.Write([]byte{b})
+						_, _ = ptmx.Write([]byte{b})
 						// skip remaining bytes of the escape sequence to avoid misinterpretation
 						for j := i + 1; j < n; j++ {
 							char := inputSlice[j]
-							ptmx.Write([]byte{char})
+							_, _ = ptmx.Write([]byte{char})
 							i = j
 							if (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || char == '~' {
 								break
@@ -467,9 +468,9 @@ func runWrapper() {
 					// enter is not used to select suggestions
 				} else if overlay.Visible && (b == 0x0d || b == 0x0a) {
 					intercepted = true
-					os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+					_, _ = os.Stdout.Write([]byte(overlay.ClearAndDisable()))
 
-					ptmx.Write([]byte{0x0d})
+					_, _ = ptmx.Write([]byte{0x0d})
 					naiveBuffer = ""
 					disableGhostText.Store(false)
 					shouldOverlayDraw = false
@@ -481,7 +482,7 @@ func runWrapper() {
 						shouldOverlayDraw = true
 					} else {
 						selected := overlay.Items[overlay.Cursor].Cmd
-						os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+						_, _ = os.Stdout.Write([]byte(overlay.ClearAndDisable()))
 
 						if mode == "spec" {
 							selected = strings.TrimSpace(selected) + " "
@@ -489,8 +490,8 @@ func runWrapper() {
 
 						naiveBuffer = selected
 
-						ptmx.Write([]byte{0x15}) // ctrl+u to clear line
-						ptmx.Write([]byte(selected))
+						_, _ = ptmx.Write([]byte{0x15}) // ctrl+u to clear line
+						_, _ = ptmx.Write([]byte(selected))
 
 						overlay.Cursor = 0 // this prevents when you tab, it switchs between suggestions non-stop
 
@@ -503,7 +504,7 @@ func runWrapper() {
 				}
 
 				if !intercepted {
-					ptmx.Write([]byte{b})
+					_, _ = ptmx.Write([]byte{b})
 					// we handle line editing keys manually to keep naiveBuffer in sync
 					// since terminal is in raw mode, we must update our state for every change
 					switch b {
@@ -526,7 +527,7 @@ func runWrapper() {
 					case '\r', '\n', 0x03, 0x15, 0x0C: // enter, ctrl+c, ctrl+u, ctrl+l: clear buffer on line reset
 						naiveBuffer = ""
 						disableGhostText.Store(false)
-						os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+						_, _ = os.Stdout.Write([]byte(overlay.ClearAndDisable()))
 						userNavigated = false
 					default:
 						// track normal printable characters in the buffer for matching
@@ -535,8 +536,8 @@ func runWrapper() {
 							if b == ' ' && naiveBuffer != "" && !strings.Contains(naiveBuffer, " ") {
 								if target, ok := core.GetAlias(naiveBuffer); ok {
 									// clear the current alias and replace it with the full command
-									ptmx.Write([]byte{0x15}) // ctrl+u to clear the current input line
-									ptmx.Write([]byte(target + " "))
+									_, _ = ptmx.Write([]byte{0x15}) // ctrl+u to clear the current input line
+									_, _ = ptmx.Write([]byte(target + " "))
 									naiveBuffer = target + " "
 									shouldOverlayDraw = true
 									continue

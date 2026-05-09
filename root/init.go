@@ -100,9 +100,9 @@ var setupCmd = &cobra.Command{
 				fmt.Printf("Failed to update %s: %v\n", configFile, err)
 				return
 			}
-			defer f.Close()
+			defer func() { _ = f.Close() }()
 
-			f.WriteString("\n# Iris Autocomplete\n" + evalCmd + "\n")
+			_, _ = f.WriteString("\n# Iris Autocomplete\n" + evalCmd + "\n")
 			fmt.Printf("✓ Added iris integration to %s\n", configFile)
 		}
 

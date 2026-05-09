@@ -12,15 +12,15 @@ import (
 func TestFileGenerator(t *testing.T) {
 	// Setup mock files
 	tmp := t.TempDir()
-	os.MkdirAll(filepath.Join(tmp, "src"), 0755)
-	os.WriteFile(filepath.Join(tmp, "main.go"), []byte(""), 0644)
-	os.WriteFile(filepath.Join(tmp, "README.md"), []byte(""), 0644)
-	os.WriteFile(filepath.Join(tmp, ".hidden"), []byte(""), 0644)
-	os.WriteFile(filepath.Join(tmp, "src/utils.go"), []byte(""), 0644)
+	_ = os.MkdirAll(filepath.Join(tmp, "src"), 0755)
+	_ = os.WriteFile(filepath.Join(tmp, "main.go"), []byte(""), 0644)
+	_ = os.WriteFile(filepath.Join(tmp, "README.md"), []byte(""), 0644)
+	_ = os.WriteFile(filepath.Join(tmp, ".hidden"), []byte(""), 0644)
+	_ = os.WriteFile(filepath.Join(tmp, "src/utils.go"), []byte(""), 0644)
 
 	oldWd, _ := os.Getwd()
-	os.Chdir(tmp)
-	defer os.Chdir(oldWd)
+	_ = os.Chdir(tmp)
+	defer func() { _ = os.Chdir(oldWd) }()
 
 	// REQUIREMENT: dirOnly shows only dirs
 	t.Run("dirOnly shows only dirs", func(t *testing.T) {

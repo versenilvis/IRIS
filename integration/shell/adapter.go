@@ -2,6 +2,7 @@ package shell
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -94,9 +95,7 @@ func ScanPosixAliases(files []string) map[string]string {
 			continue
 		}
 
-		for k, v := range ParseAliases(string(data)) {
-			aliases[k] = v
-		}
+		maps.Copy(aliases, ParseAliases(string(data)))
 	}
 	return aliases
 }

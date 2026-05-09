@@ -1,6 +1,7 @@
 package root
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -55,7 +56,7 @@ func detectShell() string {
 }
 
 func getActiveInnerShell(rootPid int, defaultShell string) string {
-	cmd := exec.Command("ps", "-e", "-o", "pid,ppid,comm")
+	cmd := exec.CommandContext(context.Background(), "ps", "-e", "-o", "pid,ppid,comm")
 	out, err := cmd.Output()
 	if err != nil {
 		return defaultShell

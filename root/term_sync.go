@@ -10,5 +10,5 @@ var termMutex sync.Mutex
 func TermWrite(data []byte) {
 	termMutex.Lock()
 	defer termMutex.Unlock()
-	os.Stdout.Write(data)
+	_, _ = os.Stdout.Write(data)
 }

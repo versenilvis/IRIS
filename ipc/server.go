@@ -53,6 +53,6 @@ func (s *Server) Start() {
 }
 
 func (s *Server) Close() {
-	s.conn.Close()
+	_ = s.conn.Close()
 	close(s.StateChan)
 }

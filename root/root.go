@@ -34,7 +34,7 @@ It works exactly like coding editor suggestion menu drop down.`,
 				f, _ := os.OpenFile("iris.log", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 				debugLogger = f
 				core.DebugWriter = f
-				fmt.Fprintf(debugLogger, "--- IRIS DEBUG LOG ---\n")
+				_, _ = fmt.Fprintf(debugLogger, "--- IRIS DEBUG LOG ---\n")
 			}
 			runWrapper()
 		},
@@ -42,7 +42,6 @@ It works exactly like coding editor suggestion menu drop down.`,
 	shellFlag   string
 	debugMode   bool
 	debugLogger *os.File
-	isReload    bool
 )
 
 func init() {
@@ -52,15 +51,14 @@ func init() {
 
 func debugLog(format string, a ...interface{}) {
 	if debugLogger != nil {
-		fmt.Fprintf(debugLogger, format+"\n", a...)
+		_, _ = fmt.Fprintf(debugLogger, format+"\n", a...)
 	}
 }
 
 func Execute() {
 	if os.Getenv("IRIS_RELOADED") == "true" {
-		isReload = true
 		fmt.Printf("\r\033[K\033[35m[IRIS] reloading...\033[0m\n")
-		os.Unsetenv("IRIS_RELOADED")
+		_ = os.Unsetenv("IRIS_RELOADED")
 	}
 
 	if err := rootCmd.Execute(); err != nil {

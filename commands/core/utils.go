@@ -10,7 +10,7 @@ var DebugWriter io.Writer
 
 func debugLog(format string, a ...interface{}) {
 	if DebugWriter != nil {
-		fmt.Fprintf(DebugWriter, format+"\n", a...)
+		_, _ = fmt.Fprintf(DebugWriter, format+"\n", a...)
 	}
 }
 

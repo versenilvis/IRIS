@@ -1,6 +1,7 @@
 package dev
 
 import (
+	"context"
 	"os/exec"
 	"strings"
 
@@ -50,7 +51,7 @@ func GitPushPullGenerator(tokens []string, prefix string, partial string) []core
 
 func getGitResults(prefix string, args ...string) []core.Suggestion {
 	cwd := core.GetCWD()
-	cmd := exec.Command("git", args...)
+	cmd := exec.CommandContext(context.Background(), "git", args...)
 	cmd.Dir = cwd
 	out, err := cmd.Output()
 	if err != nil {

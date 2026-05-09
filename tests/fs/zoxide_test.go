@@ -16,12 +16,12 @@ func TestZoxideGenerator(t *testing.T) {
 	
 	// Script that prints mock directories
 	script := "#!/bin/sh\necho \"/home/verse/project1\n/home/verse/docs\n/home/verse/dev/iris\""
-	os.WriteFile(mockZoxide, []byte(script), 0755)
+	_ = os.WriteFile(mockZoxide, []byte(script), 0755)
 
 	// Add tmp to PATH
 	oldPath := os.Getenv("PATH")
-	os.Setenv("PATH", tmp+string(os.PathListSeparator)+oldPath)
-	defer os.Setenv("PATH", oldPath)
+	_ = os.Setenv("PATH", tmp+string(os.PathListSeparator)+oldPath)
+	defer func() { _ = os.Setenv("PATH", oldPath) }()
 
 	gen := fs.ZoxideGenerator()
 	

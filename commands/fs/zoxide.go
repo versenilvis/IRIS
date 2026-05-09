@@ -6,6 +6,7 @@ package fs
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"os/exec"
 	"strings"
@@ -35,7 +36,7 @@ func ZoxideGenerator() core.GeneratorFunc {
 		localSuggestions := core.FileGenerator("/")(tokens, prefix, fullQuery)
 
 		var zoxideSuggestions []core.Suggestion
-		cmd := exec.Command("zoxide", "query", "-l")
+		cmd := exec.CommandContext(context.Background(), "zoxide", "query", "-l")
 		out, err := cmd.Output()
 		if err == nil {
 			lines := strings.Split(string(bytes.TrimSpace(out)), "\n")
@@ -79,10 +80,7 @@ func ZoxideGenerator() core.GeneratorFunc {
 		var finalResults []core.Suggestion
 		seen := make(map[string]bool)
 
-		for _, s := range localSuggestions {
-			finalResults = append(finalResults, s)
-
-		}
+		finalResults = append(finalResults, localSuggestions...)
 
 		for _, s := range zoxideSuggestions {
 			if !seen[s.Cmd] {

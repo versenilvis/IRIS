@@ -43,3 +43,8 @@ alias ana := analyze
 [group('dev')]
 analyze:
     @go run scripts/test_analyzer.go
+
+# run linter 
+[group('dev')]
+lint:
+    @golangci-lint run ./...
