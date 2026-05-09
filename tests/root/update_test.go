@@ -37,12 +37,14 @@ func TestUpdateState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Override home dir for testing
 	homeBackup := os.Getenv("HOME")
-	os.Setenv("HOME", tmpDir)
-	defer os.Setenv("HOME", homeBackup)
+	if err := os.Setenv("HOME", tmpDir); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Setenv("HOME", homeBackup) }()
 
 	// Ensure .iris directory exists
 	_ = os.MkdirAll(filepath.Join(tmpDir, ".iris"), 0755)

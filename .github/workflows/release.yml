@@ -32,7 +32,9 @@ jobs:
           cache: true
 
       - name: Run Linter
-        run: go run github.com/golangci/golangci-lint/cmd/golangci-lint@latest run ./...
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.1.6
 
       - name: Run Tests
         run: go test -v ./...
