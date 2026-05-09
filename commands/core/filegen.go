@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -121,7 +122,7 @@ func FileGenerator(filters ...string) GeneratorFunc {
 				}
 				continue
 			}
-			
+
 			if dirOnly {
 				continue
 			}
@@ -138,6 +139,10 @@ func FileGenerator(filters ...string) GeneratorFunc {
 				Desc: "file",
 			})
 		}
+
+		sort.Slice(results, func(i, j int) bool {
+			return strings.ToLower(results[i].Cmd) < strings.ToLower(results[j].Cmd)
+		})
 
 		return results
 	}

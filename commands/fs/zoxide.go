@@ -18,21 +18,21 @@ func init() {
 	core.Register(&core.Spec{
 		Name:        "z",
 		Description: "jump to directory",
-		MaxArgs:     1,
+		MaxArgs:     0,
 		Generator:   zoxideGenerator(),
 	})
 	core.Register(&core.Spec{
 		Name:        "zi",
 		Description: "jump to directory interactively",
-		MaxArgs:     1,
+		MaxArgs:     0,
 		Generator:   zoxideGenerator(),
 	})
 }
 
 func zoxideGenerator() core.GeneratorFunc {
 	return func(tokens []string, prefix string, partial string) []core.Suggestion {
-
-		localSuggestions := core.FileGenerator("/")(tokens, prefix, partial)
+		fullQuery := strings.Join(tokens[1:], " ")
+		localSuggestions := core.FileGenerator("/")(tokens, prefix, fullQuery)
 
 		var zoxideSuggestions []core.Suggestion
 		cmd := exec.Command("zoxide", "query", "-l")
@@ -49,7 +49,7 @@ func zoxideGenerator() core.GeneratorFunc {
 
 			home, _ := os.UserHomeDir()
 
-			if partial == "" {
+			if fullQuery == "" {
 				limit := 20
 				if len(dirs) < limit {
 					limit = len(dirs)
@@ -62,10 +62,9 @@ func zoxideGenerator() core.GeneratorFunc {
 						Desc: display,
 					})
 				}
-			} else if !strings.Contains(partial, "/") {
-
+			} else if !strings.Contains(fullQuery, "/") {
 				searcher := fuzzyvn.NewPlainSearcher(dirs)
-				matches := searcher.SearchWithScores(partial, &fuzzyvn.SearchOptions{Limit: 10})
+				matches := searcher.SearchWithScores(fullQuery, &fuzzyvn.SearchOptions{Limit: 10})
 				for _, m := range matches {
 					path := m.Str
 					display := strings.Replace(path, home, "~", 1)

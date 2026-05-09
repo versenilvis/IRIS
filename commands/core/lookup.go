@@ -178,8 +178,20 @@ func Lookup(input string) []Suggestion {
 				continue
 			}
 
-			finalCmd := g.Cmd
-			finalCmd = strings.TrimSpace(linePrefix) + " " + g.Cmd
+			suggested := g.Cmd
+			if strings.Contains(suggested, " ") && !strings.HasPrefix(suggested, "\"") {
+				suggested = "\"" + suggested + "\""
+			}
+
+			// if the suggestion is a full path that includes 
+			// words already in the command line (multi-word support), we replace 
+			// the entire argument part by using prefix only
+			finalCmd := ""
+			if len(tokens) > depth+1 && strings.HasPrefix(g.Cmd, tokens[depth]) {
+				finalCmd = prefix + " " + suggested
+			} else {
+				finalCmd = strings.TrimSpace(linePrefix) + " " + suggested
+			}
 
 			newTokens := tokenize(finalCmd)
 			if len(newTokens) > 0 {
