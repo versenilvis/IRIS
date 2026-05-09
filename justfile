@@ -28,3 +28,8 @@ pkg:
 debug:
     @./iris --debug
 
+# copy to local bin
+[group('dev')]
+copy:
+    @rm ~/.local/bin/iris
+    @cp ./iris ~/.local/bin/iris
