@@ -9,16 +9,20 @@ import (
 )
 
 // GitRemoteGenerator suggests git remotes
-func GitRemoteGenerator(tokens []string, prefix string, partial string) []core.Suggestion {
-	return getGitResults(prefix, "remote")
+func GitRemoteGenerator(tokens []string, prefix string, _ string) []core.Suggestion {
+	return getGitResults(tokens, prefix, "remote")
 }
 
 // GitStashGenerator suggests git stashes
-func GitStashGenerator(tokens []string, prefix string, partial string) []core.Suggestion {
-	return getGitResults(prefix, "stash", "list", "--format=%gd: %gs")
+func GitStashGenerator(tokens []string, prefix string, _ string) []core.Suggestion {
+	return getGitResults(tokens, prefix, "stash", "list", "--format=%gd: %gs")
 }
 
-func getGitResults(prefix string, args ...string) []core.Suggestion {
+func getGitResults(tokens []string, _ string, args ...string) []core.Suggestion {
+	return getGitResultsFiltered(tokens, "_", false, args...)
+}
+
+func getGitResultsFiltered(tokens []string, _ string, localOnly bool, args ...string) []core.Suggestion {
 	cwd := core.GetCWD()
 	cmd := exec.CommandContext(context.Background(), "git", args...)
 	cmd.Dir = cwd
@@ -28,9 +32,7 @@ func getGitResults(prefix string, args ...string) []core.Suggestion {
 	}
 
 	activeBranch := ""
-	switch args[0] {
-	case "branch":
-		// Try to find the current active branch to filter it out later
+	if args[0] == "branch" {
 		activeCmd := exec.CommandContext(context.Background(), "git", "rev-parse", "--abbrev-ref", "HEAD")
 		activeCmd.Dir = cwd
 		if activeOut, err := activeCmd.Output(); err == nil {
@@ -38,24 +40,52 @@ func getGitResults(prefix string, args ...string) []core.Suggestion {
 		}
 	}
 
+	seen := make(map[string]bool)
 	lines := strings.Split(string(out), "\n")
 	var results []core.Suggestion
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "*") { // skip active branch marker if any
-			line = strings.TrimSpace(strings.TrimPrefix(line, "*"))
-		}
-		if line == "" || line == activeBranch {
+		if line == "" {
 			continue
 		}
-		
-		// handle remote branches that look like "remotes/origin/main"
-		line = strings.TrimPrefix(line, "remotes/")
+
+		isRemote := strings.HasPrefix(line, "remotes/")
+
+		// skip remote tracking branches if localOnly mode
+		if localOnly && isRemote {
+			continue
+		}
+
+		// strip remotes/ prefix to get the usable form: origin/main
+		if isRemote {
+			line = strings.TrimPrefix(line, "remotes/")
+		}
+
+		// only skip active branch for checkout/switch commands
+		isCheckoutOrSwitch := false
+		if len(tokens) > 1 && (tokens[1] == "checkout" || tokens[1] == "switch") {
+			isCheckoutOrSwitch = true
+		}
+
+		if isCheckoutOrSwitch {
+			if line == activeBranch || line == "origin/"+activeBranch {
+				continue
+			}
+		}
+
+		// dedup: origin/dev and dev would both appear with -a; skip if already seen the short name
+		shortName := line
+		if idx := strings.Index(line, "/"); isRemote && idx != -1 {
+			shortName = line[idx+1:] // "origin/dev" → "dev"
+		}
+		if seen[shortName] {
+			continue
+		}
+		seen[shortName] = true
 
 		suggestionCmd := line
 		suggestionDesc := args[0]
 
-		// for stash list, the format is "stash@{0}: message"
 		if args[0] == "stash" {
 			parts := strings.SplitN(line, ": ", 2)
 			if len(parts) == 2 {
@@ -65,15 +95,16 @@ func getGitResults(prefix string, args ...string) []core.Suggestion {
 		}
 
 		results = append(results, core.Suggestion{
-			Cmd:  prefix + " " + suggestionCmd,
+			Cmd:  suggestionCmd,
 			Desc: suggestionDesc,
 		})
 	}
 	return results
 }
 
-// GitBranchGenerator suggests git branches
-func GitBranchGenerator(tokens []string, prefix string, partial string) []core.Suggestion {
+
+// GitBranchGenerator suggests git branches (local + remote, deduped)
+func GitBranchGenerator(tokens []string, prefix string, _ string) []core.Suggestion {
 	// check if we are in "create" mode (-b or -B or -c)
 	isCreateMode := false
 	for _, t := range tokens {
@@ -87,35 +118,46 @@ func GitBranchGenerator(tokens []string, prefix string, partial string) []core.S
 		return nil
 	}
 
-	return getGitResults(prefix, "branch", "-a", "--format=%(refname:short)")
+	return getGitResults(tokens, prefix, "branch", "-a", "--format=%(refname:short)")
 }
 
-// GitPushPullGenerator suggests remotes for the first arg, and branches for the second
-func GitPushPullGenerator(tokens []string, prefix string, partial string) []core.Suggestion {
-	// Filter out flags to find positional arguments
-	args := []string{}
-	for i := 1; i < len(tokens); i++ {
-		t := tokens[i]
-		if t != "" && !strings.HasPrefix(t, "-") {
-			args = append(args, t)
+// gitLocalBranchGenerator is like GitBranchGenerator but only local branches
+// used for push/pull where remote tracking branches cause duplicates
+func gitLocalBranchGenerator(tokens []string, prefix string, _ string) []core.Suggestion {
+	isCreateMode := false
+	for _, t := range tokens {
+		if t == "-b" || t == "-B" || t == "-c" || t == "-C" {
+			isCreateMode = true
+			break
 		}
 	}
+	if isCreateMode {
+		return nil
+	}
+	return getGitResultsFiltered(tokens, prefix, true, "branch", "-a", "--format=%(refname:short)")
+}
 
-	// args[0] is subcommand (push/pull)
-	// args[1] should be remote
-	// args[2] should be branch
-	
-	// If we only have subcommand, suggest remotes
-	if len(args) == 1 {
+
+func GitPushPullGenerator(tokens []string, prefix string, partial string) []core.Suggestion {
+	// count completed positional args (not flags, not the partial being typed)
+	// tokens[0] = "git", tokens[1] = "push"/"pull", so start at 2
+	// exclude tokens[len-1] because that's the partial being typed
+	pArgs := []string{}
+	for i := 2; i < len(tokens)-1; i++ {
+		t := tokens[i]
+		if t == "" || strings.HasPrefix(t, "-") {
+			continue
+		}
+		pArgs = append(pArgs, t)
+	}
+
+	// no remote confirmed yet, suggest remotes
+	if len(pArgs) == 0 {
 		return GitRemoteGenerator(tokens, prefix, partial)
 	}
-	
-	// If we have subcommand + remote, suggest branches
-	if len(args) == 2 {
-		return GitBranchGenerator(tokens, prefix, partial)
-	}
-	
-	return nil
+
+	// remote is set, suggest local branches only (no duplicates with origin/xxx)
+	return gitLocalBranchGenerator(tokens, prefix, partial)
 }
 
 func init() {
@@ -279,7 +321,7 @@ func init() {
 			{
 				Name:        "tag",
 				Description: "manage tags",
-				Generator:   func(tokens []string, prefix string, partial string) []core.Suggestion { return getGitResults(prefix, "tag", "-l") },
+				Generator:   func(tokens []string, prefix string, partial string) []core.Suggestion { return getGitResults(tokens, prefix, "tag", "-l") },
 				Options: []core.Option{
 					{Name: "-a", Description: "annotated tag"},
 					{Name: "-d", Description: "delete tag"},

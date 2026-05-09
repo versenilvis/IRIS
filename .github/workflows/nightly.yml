@@ -64,7 +64,7 @@ jobs:
           tag_name: nightly
           name: ${{ steps.version.outputs.version }}
           body: |
-            🌙 **Nightly build** — `${{ steps.version.outputs.version }}`
+            🌙 **Nightly build** - `${{ steps.version.outputs.version }}`
 
             auto-built from commit `${{ github.sha }}`
 
