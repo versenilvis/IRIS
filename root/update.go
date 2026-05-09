@@ -131,8 +131,12 @@ func IsNewer(current, latest string) bool {
 
 	// compare major.minor.patch
 	for i := 0; i < len(cParts) && i < len(lParts); i++ {
-		cv, _ := strconv.Atoi(cParts[i])
-		lv, _ := strconv.Atoi(lParts[i])
+		// strip pre-release tags like -beta or -rc for numeric comparison
+		cClean := strings.Split(cParts[i], "-")[0]
+		lClean := strings.Split(lParts[i], "-")[0]
+
+		cv, _ := strconv.Atoi(cClean)
+		lv, _ := strconv.Atoi(lClean)
 		if lv > cv {
 			return true
 		}
