@@ -51,8 +51,15 @@ func WriteCrashLog(err any) {
 	_, _ = fmt.Fprintf(f, "version: %s\nos: %s/%s\n\n", Version, runtime.GOOS, runtime.GOARCH)
 	_, _ = fmt.Fprintf(f, "panic: %v\n\n", err)
 
-	buf := make([]byte, 64*1024)
-	n := runtime.Stack(buf, true)
+	var n int
+	buf := make([]byte, 1024)
+	for {
+		n = runtime.Stack(buf, true)
+		if n < len(buf) {
+			break
+		}
+		buf = make([]byte, 2*len(buf))
+	}
 	_, _ = f.Write(buf[:n])
 	_, _ = fmt.Fprintln(f)
 }
