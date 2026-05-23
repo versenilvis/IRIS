@@ -13,19 +13,12 @@ func TestTokenize(t *testing.T) {
 		input    string
 		expected []string
 	}{
-		// REQUIREMENT: Empty input
 		{"Empty input", "", []string{""}},
-		// REQUIREMENT: Trailing space("git " -> 2 tokens, the last token is "")
 		{"Trailing space", "git ", []string{"git", ""}},
-		// REQUIREMENT: Multi-space("git add")
 		{"Multi-space", "git  add", []string{"git", "add"}},
-		// REQUIREMENT: Quoted string("git commit -m \"hello world\"")
 		{"Quoted string", "git commit -m \"hello world\"", []string{"git", "commit", "-m", "hello world"}},
-		// REQUIREMENT: Quote not closed
 		{"Quote not closed", "git commit -m \"hello", []string{"git", "commit", "-m", "hello"}},
-		// REQUIREMENT: Single quote vs double quote
 		{"Single quote", "git commit -m 'hello world'", []string{"git", "commit", "-m", "hello world"}},
-		// REQUIREMENT: Backslash escape
 		{"Backslash escape", "git commit -m \"hello\\ world\"", []string{"git", "commit", "-m", "hello world"}},
 	}
 
@@ -46,13 +39,9 @@ func TestHasPrefix(t *testing.T) {
 		prefix string
 		want   bool
 	}{
-		// REQUIREMENT: Case insensitive match
 		{"Case insensitive", "Hello", "hel", true},
-		// REQUIREMENT: Unicode support (Vietnamese)
 		{"Unicode support", "Thử nghiệm", "thử", true},
-		// REQUIREMENT: Prefix longer than string -> false
 		{"Prefix longer", "Iris", "Iris-Longer", false},
-		// REQUIREMENT: Empty prefix -> true
 		{"Empty prefix", "Iris", "", true},
 	}
 

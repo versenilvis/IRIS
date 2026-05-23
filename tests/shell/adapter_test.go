@@ -8,7 +8,7 @@ import (
 )
 
 func TestScanPosixAliases(t *testing.T) {
-	// REQUIREMENT: Parse single alias, multi alias, comments, value with space
+
 	input := `
 alias gca='git commit -a'
 alias ta="tmux a -t" # this is a comment
@@ -34,10 +34,10 @@ func TestSplitAliasTokens(t *testing.T) {
 		input    string
 		expected []string
 	}{
-		// REQUIREMENT: Parse multi alias on one line
+
 		{"Single", "a='b'", []string{"a='b'"}},
 		{"Multi", "a='b' c=\"d\"", []string{"a='b'", "c=\"d\""}},
-		// REQUIREMENT: Value with space in quote
+
 		{"With Space", "ta='tmux a -t' l='ls -l'", []string{"ta='tmux a -t'", "l='ls -l'"}},
 	}
 
