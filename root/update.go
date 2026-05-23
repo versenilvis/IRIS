@@ -162,6 +162,15 @@ func startBackgroundUpdateCheck() chan updateResult {
 	ch := make(chan updateResult, 1)
 
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				WriteCrashLog(r)
+				restoreTerminal()
+				printCrashNotice()
+				startRescueShell()
+				os.Exit(2)
+			}
+		}()
 		defer close(ch)
 
 		// debug override: skip network entirely, resolve immediately
