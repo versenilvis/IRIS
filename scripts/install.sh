@@ -95,12 +95,15 @@ get_download_url() {
             ${GITHUB_TOKEN:+-H "Authorization: Bearer ${GITHUB_TOKEN}"} \
             "${IRIS_API_URL}/repos/${REPO}/releases/latest")
         http_code=$(echo "${http_response}" | tail -1)
-        releases=$(echo "${http_response}" | head -n -1)
+        releases=$(echo "${http_response}" | sed '$d')
     elif command -v wget >/dev/null 2>&1; then
-        releases=$(wget -qO- \
+        tmp_headers=$(mktemp)
+        releases=$(wget -S -qO- \
             ${GITHUB_TOKEN:+--header "Authorization: Bearer ${GITHUB_TOKEN}"} \
-            "${IRIS_API_URL}/repos/${REPO}/releases/latest")
-        http_code="200"
+            "${IRIS_API_URL}/repos/${REPO}/releases/latest" 2>"$tmp_headers" || true)
+        http_code=$(grep "HTTP/" "$tmp_headers" | tail -1 | sed -e 's/^[[:space:]]*//' | cut -d' ' -f2)
+        [ -z "${http_code}" ] && http_code="000"
+        rm -f "$tmp_headers"
     else
         err "curl or wget is required"
     fi
