@@ -112,15 +112,25 @@ func runWatchdog() {
 		n, errRead := r.Read(tempBuf)
 		if n > 0 {
 			_, _ = stderrBuf.Write(tempBuf[:n])
+			if stderrBuf.Len() > 64*1024 {
+				// discard oldest bytes to avoid memory leak
+				over := stderrBuf.Len() - 64*1024
+				_ = stderrBuf.Next(over)
+			}
 			if !suppress {
 				currentContent := stderrBuf.Bytes()
-				idxPanic := bytes.Index(currentContent, []byte("panic:"))
-				idxFatal := bytes.Index(currentContent, []byte("fatal error:"))
+				searchStart := 0
+				if len(currentContent) > n+12 {
+					searchStart = len(currentContent) - (n + 12)
+				}
+				searchSlice := currentContent[searchStart:]
+				idxPanic := bytes.Index(searchSlice, []byte("panic:"))
+				idxFatal := bytes.Index(searchSlice, []byte("fatal error:"))
 				triggerIdx := -1
 				if idxPanic != -1 {
-					triggerIdx = idxPanic
+					triggerIdx = searchStart + idxPanic
 				} else if idxFatal != -1 {
-					triggerIdx = idxFatal
+					triggerIdx = searchStart + idxFatal
 				}
 
 				if triggerIdx != -1 {
