@@ -66,6 +66,21 @@ func saveMode(mode string) {
 	}
 }
 
+var (
+	oldState   *term.State
+	oldStateMu sync.Mutex
+)
+
+// restoreTerminal restores the terminal state if needed
+func restoreTerminal() {
+	oldStateMu.Lock()
+	defer oldStateMu.Unlock()
+	if oldState != nil {
+		_ = term.Restore(int(os.Stdin.Fd()), oldState)
+		oldState = nil
+	}
+}
+
 // runWrapper sets up the pty environment, launches the shell,
 // and manages the main input loop to provide real-time suggestions
 // it handles raw terminal mode to intercept keystrokes and
@@ -107,15 +122,25 @@ func runWrapper() {
 	core.ShellPID = c.Process.Pid
 
 	// put terminal in raw mode to intercept every keystroke
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
-	if err != nil {
-		panic(err)
+	var errMakeRaw error
+	oldState, errMakeRaw = term.MakeRaw(int(os.Stdin.Fd()))
+	if errMakeRaw != nil {
+		panic(errMakeRaw)
 	}
-	defer func() { _ = term.Restore(int(os.Stdin.Fd()), oldState) }()
+	defer restoreTerminal()
 
 	sigCh := make(chan os.Signal, 2)
 	signal.Notify(sigCh, syscall.SIGWINCH, syscall.SIGUSR1)
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				WriteCrashLog(r)
+				restoreTerminal()
+				printCrashNotice()
+				startRescueShell()
+				os.Exit(2)
+			}
+		}()
 		for s := range sigCh {
 			switch s {
 			case syscall.SIGWINCH:
@@ -139,9 +164,7 @@ func runWrapper() {
 					_ = ptmx.Close()
 				}
 
-				if oldState != nil {
-					_ = term.Restore(int(os.Stdin.Fd()), oldState)
-				}
+				restoreTerminal()
 				_ = syscall.Exec(exe, os.Args, os.Environ())
 			}
 		}
@@ -155,12 +178,21 @@ func runWrapper() {
 
 	// bridge pty output to actual stdout
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				WriteCrashLog(r)
+				restoreTerminal()
+				printCrashNotice()
+				startRescueShell()
+				os.Exit(2)
+			}
+		}()
 		buf := make([]byte, 4096)
 		for {
 			n, err := ptmx.Read(buf)
 			if err != nil {
 				if err == io.EOF {
-					_ = term.Restore(int(os.Stdin.Fd()), oldState)
+					restoreTerminal()
 					os.Exit(0)
 				}
 				continue
@@ -187,6 +219,15 @@ func runWrapper() {
 
 	// listen for suggestion requests from shell scripts via the ipc pipe
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				WriteCrashLog(r)
+				restoreTerminal()
+				printCrashNotice()
+				startRescueShell()
+				os.Exit(2)
+			}
+		}()
 		scanner := bufio.NewScanner(r)
 		scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 			if atEOF && len(data) == 0 {
