@@ -19,9 +19,8 @@ run:
 [group('dev')]
 [linux, macos]
 reload:
-    # @GOAMD64=v3 go build -pgo=auto -ldflags="-s -w" -trimpath -o iris main.go
     @go build -o iris main.go
-    @if [ -n "${IRIS_PID:-}" ]; then kill -USR1 $IRIS_PID; fi
+    @if [ -n "${IRIS_PID:-}" ]; then kill -USR1 $IRIS_PID 2>/dev/null || true; fi
     @if [ -z "${IRIS_FD:-}" ]; then ./iris; fi
 
 # update pkg
