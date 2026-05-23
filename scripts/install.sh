@@ -95,7 +95,7 @@ get_download_url() {
             ${GITHUB_TOKEN:+-H "Authorization: Bearer ${GITHUB_TOKEN}"} \
             "${IRIS_API_URL}/repos/${REPO}/releases/latest")
         http_code=$(echo "${http_response}" | tail -1)
-        releases=$(echo "${http_response}" | head -n -1)
+        releases=$(echo "${http_response}" | sed '$d')
     elif command -v wget >/dev/null 2>&1; then
         releases=$(wget -qO- \
             ${GITHUB_TOKEN:+--header "Authorization: Bearer ${GITHUB_TOKEN}"} \
