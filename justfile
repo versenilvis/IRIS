@@ -1,9 +1,9 @@
 # build binary file
 [group('dev')]
 build:
-    @go build -o iris main.go    
+    @go build -o iris main.go
 optimized-build:
-    @GOAMD64=v3 go build -pgo=auto -ldflags="-s -w" -trimpath -o iris main.go
+    @GOAMD64=v4 go build -ldflags="-s -w" -trimpath -o iris main.go
 
 # run iris
 [group('dev')]
@@ -14,6 +14,7 @@ run:
 [group('dev')]
 [linux, macos]
 reload:
+    # @GOAMD64=v3 go build -pgo=auto -ldflags="-s -w" -trimpath -o iris main.go
     @go build -o iris main.go
     @if [ -n "${IRIS_PID:-}" ]; then kill -USR1 $IRIS_PID; fi
     @if [ -z "${IRIS_FD:-}" ]; then ./iris; fi
@@ -44,7 +45,7 @@ alias ana := analyze
 analyze:
     @go run scripts/test_analyzer.go
 
-# run linter 
+# run linter
 [group('dev')]
 lint:
     @golangci-lint run ./...
