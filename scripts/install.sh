@@ -6,6 +6,8 @@ set -e
 
 REPO="versenilvis/iris"
 BIN_DIR="${BIN_DIR:-/usr/local/bin}"
+# allow overriding the GitHub API base URL for local testing
+IRIS_API_URL="${IRIS_API_URL:-https://api.github.com}"
 
 main() {
     echo "Installing iris..."
@@ -55,7 +57,7 @@ main() {
     echo "Installed iris to ${BIN_DIR}/iris"
     echo ""
 
-    if "${BIN_DIR}/iris" --version >/dev/null 2>&1; then
+    if "${BIN_DIR}/iris" version >/dev/null 2>&1; then
         echo "Installation verified."
     else
         echo "Warning: could not verify binary"
@@ -89,24 +91,31 @@ get_download_url() {
     arch="$1"
 
     if command -v curl >/dev/null 2>&1; then
-        releases=$(curl -sL \
+        http_response=$(curl -sL -w "\n%{http_code}" \
             ${GITHUB_TOKEN:+-H "Authorization: Bearer ${GITHUB_TOKEN}"} \
-            "https://api.github.com/repos/${REPO}/releases/latest")
+            "${IRIS_API_URL}/repos/${REPO}/releases/latest")
+        http_code=$(echo "${http_response}" | tail -1)
+        releases=$(echo "${http_response}" | head -n -1)
     elif command -v wget >/dev/null 2>&1; then
         releases=$(wget -qO- \
             ${GITHUB_TOKEN:+--header "Authorization: Bearer ${GITHUB_TOKEN}"} \
-            "https://api.github.com/repos/${REPO}/releases/latest")
+            "${IRIS_API_URL}/repos/${REPO}/releases/latest")
+        http_code="200"
     else
         err "curl or wget is required"
     fi
 
-    if echo "${releases}" | grep -q "rate limit"; then
-        err "GitHub API rate limited. Try again later or set GITHUB_TOKEN env variable"
+    if [ "${http_code}" = "404" ]; then
+        err "no releases found for ${REPO}. the project may not have published a release yet"
     fi
 
-    if echo "${releases}" | grep -q '"message"'; then
+    if [ "${http_code}" = "403" ] || echo "${releases}" | grep -q "rate limit"; then
+        err "GitHub API rate limited. try again later or set GITHUB_TOKEN env variable"
+    fi
+
+    if [ "${http_code}" != "200" ]; then
         msg=$(echo "${releases}" | grep '"message"' | head -1 | cut -d '"' -f 4)
-        err "GitHub API error: ${msg}"
+        err "GitHub API error (HTTP ${http_code}): ${msg}"
     fi
 
     url=$(echo "${releases}" | grep "browser_download_url" | grep "${arch}" | head -1 | cut -d '"' -f 4)
