@@ -15,6 +15,11 @@ optimized-build:
 run:
     @./iris
 
+# initialize default config file
+[group('dev')]
+config-init:
+    @./iris config init
+
 # re-build and reload iris
 [group('dev')]
 [linux, macos]
