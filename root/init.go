@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/versenilvis/iris/config"
 )
 
 var initCmd = &cobra.Command{
@@ -118,6 +119,61 @@ var setupCmd = &cobra.Command{
 
 			_, _ = f.WriteString("\n# Iris Autocomplete\n" + evalCmd + "\n")
 			fmt.Printf("✓ Added iris integration to %s\n", configFile)
+		}
+
+		// initialize default config file if it does not exist
+		if path, err := config.ConfigPath(); err == nil {
+			if _, statErr := os.Stat(path); os.IsNotExist(statErr) {
+				_ = os.MkdirAll(filepath.Dir(path), 0755)
+				defaultContent := `# ~/.config/iris/config.toml
+# iris configuration file
+
+[core]
+# schema version
+# do not edit this field manually
+version = 1
+
+# override shell: "bash", "zsh", "fish", keep empty for auto detection
+shell = ""
+
+# startup mode: "last", "spec", "history"
+# "last" = remember last mode used
+mode = "last"
+
+# enable debug logging
+debug = false
+
+[ui]
+# enable inline ghost text
+ghost-text = true
+
+# maximum suggestions to display
+max-suggestions = 100
+
+# maximum height of the overlay
+max-height = 15
+
+[git]
+# hide current branch in checkout/switch list
+filter-active-branch = true
+
+# merge remote and local branches with same name
+deduplicate-branches = true
+
+[updater]
+# check for updates on startup
+check-on-startup = true
+
+# update channel: "stable", "nightly"
+channel = "stable"
+
+# interval between update checks, e.g. "24h", "6h", "30m"
+check-interval = "24h"
+`
+				if errWrite := os.WriteFile(path, []byte(defaultContent), 0644); errWrite == nil {
+					fmt.Printf("✓ Initialized default config file at %s\n", path)
+				}
+			}
 		}
 
 		fmt.Println("\nSetup complete! Please restart your terminal or run:")
