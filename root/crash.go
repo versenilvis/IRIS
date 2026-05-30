@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/versenilvis/iris/config"
 )
 
 // startRescueShell starts a fallback shell if the application crashes to keep the terminal open
@@ -29,11 +30,10 @@ var (
 
 // writeCrashLog writes the crash info and stack trace to a new log file
 func WriteCrashLog(err any) {
-	home, errDir := os.UserHomeDir()
+	dir, errDir := config.CrashDir()
 	if errDir != nil {
 		return
 	}
-	dir := filepath.Join(home, ".iris", "crashes")
 	_ = os.MkdirAll(dir, 0755)
 	logFile := filepath.Join(dir, fmt.Sprintf("crash_%s.log", time.Now().Format("20060102_150405")))
 
@@ -66,16 +66,36 @@ func WriteCrashLog(err any) {
 
 // getLatestCrashLog returns the path to the newest crash log file
 func getLatestCrashLog() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
+	dir, errDir := config.CrashDir()
+	if errDir != nil {
 		return ""
 	}
-	dir := filepath.Join(home, ".iris", "crashes")
 	files, err := os.ReadDir(dir)
 	if err != nil || len(files) == 0 {
-		oldLog := filepath.Join(home, ".iris", "crash.log")
-		if _, err := os.Stat(oldLog); err == nil {
-			return oldLog
+		home, errHome := os.UserHomeDir()
+		if errHome == nil {
+			oldLog := filepath.Join(home, ".iris", "crash.log")
+			if _, err := os.Stat(oldLog); err == nil {
+				return oldLog
+			}
+			oldCrashes := filepath.Join(home, ".iris", "crashes")
+			if oldFiles, errOld := os.ReadDir(oldCrashes); errOld == nil && len(oldFiles) > 0 {
+				var latestOld string
+				for _, f := range oldFiles {
+					if f.IsDir() {
+						continue
+					}
+					name := f.Name()
+					if strings.HasPrefix(name, "crash_") && strings.HasSuffix(name, ".log") {
+						if name > latestOld {
+							latestOld = name
+						}
+					}
+				}
+				if latestOld != "" {
+					return filepath.Join(oldCrashes, latestOld)
+				}
+			}
 		}
 		return ""
 	}
@@ -93,9 +113,12 @@ func getLatestCrashLog() string {
 		}
 	}
 	if latest == "" {
-		oldLog := filepath.Join(home, ".iris", "crash.log")
-		if _, err := os.Stat(oldLog); err == nil {
-			return oldLog
+		home, errHome := os.UserHomeDir()
+		if errHome == nil {
+			oldLog := filepath.Join(home, ".iris", "crash.log")
+			if _, err := os.Stat(oldLog); err == nil {
+				return oldLog
+			}
 		}
 		return ""
 	}
@@ -119,15 +142,16 @@ var (
 		Use:   "crash-log",
 		Short: "manage iris crash logs",
 		Run: func(cmd *cobra.Command, args []string) {
-			home, err := os.UserHomeDir()
-			if err != nil {
-				cmd.Printf("failed to get home directory: %v\n", err)
-				return
-			}
-
 			if ClearLog {
-				_ = os.RemoveAll(filepath.Join(home, ".iris", "crashes"))
-				_ = os.Remove(filepath.Join(home, ".iris", "crash.log"))
+				dir, errDir := config.CrashDir()
+				if errDir == nil {
+					_ = os.RemoveAll(dir)
+				}
+				home, errHome := os.UserHomeDir()
+				if errHome == nil {
+					_ = os.RemoveAll(filepath.Join(home, ".iris", "crashes"))
+					_ = os.Remove(filepath.Join(home, ".iris", "crash.log"))
+				}
 				cmd.Println("crash log cleared")
 				return
 			}
