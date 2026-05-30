@@ -26,7 +26,7 @@ func LoadState() *State {
 		return s
 	}
 
-	if _, err := os.Stat(path); os.IsNotExist(err) {
+	if _, statErr := os.Stat(path); os.IsNotExist(statErr) {
 		return s
 	}
 
@@ -48,7 +48,8 @@ func SaveState(s *State) error {
 		return err
 	}
 
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+	err = os.MkdirAll(filepath.Dir(path), 0755)
+	if err != nil {
 		return err
 	}
 
