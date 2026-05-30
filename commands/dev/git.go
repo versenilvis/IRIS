@@ -9,12 +9,10 @@ import (
 	"github.com/versenilvis/iris/commands/core"
 )
 
-// GitRemoteGenerator suggests git remotes
 func GitRemoteGenerator(tokens []string, _ string, _ string) []core.Suggestion {
 	return getGitResults(tokens, "remote")
 }
 
-// GitStashGenerator suggests git stashes
 func GitStashGenerator(tokens []string, _ string, _ string) []core.Suggestion {
 	return getGitResults(tokens, "stash", "list", "--format=%gd: %gs")
 }
@@ -25,7 +23,7 @@ func getGitResults(tokens []string, args ...string) []core.Suggestion {
 
 func getGitResultsFiltered(tokens []string, localOnly bool, args ...string) []core.Suggestion {
 	cwd := core.GetCWD()
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -115,9 +113,23 @@ func getGitResultsFiltered(tokens []string, localOnly bool, args ...string) []co
 			Desc: suggestionDesc,
 		})
 	}
+
+	if activeBranch != "" {
+		for i, r := range results {
+			if r.Cmd == activeBranch {
+				// move active branch to front if found
+				newResults := make([]core.Suggestion, 0, len(results))
+				newResults = append(newResults, r)
+				newResults = append(newResults, results[:i]...)
+				newResults = append(newResults, results[i+1:]...)
+				results = newResults
+				break
+			}
+		}
+	}
+
 	return results
 }
-
 
 // GitBranchGenerator suggests git branches (local + remote, deduped)
 func GitBranchGenerator(tokens []string, _ string, _ string) []core.Suggestion {
@@ -153,7 +165,6 @@ func gitLocalBranchGenerator(tokens []string, _ string, _ string) []core.Suggest
 	return getGitResultsFiltered(tokens, true, "branch", "-a", "--format=%(refname:short)")
 }
 
-
 func GitPushPullGenerator(tokens []string, prefix string, partial string) []core.Suggestion {
 	// count completed positional args (not flags, not the partial being typed)
 	// tokens[0] = "git", tokens[1] = "push"/"pull", so start at 2
@@ -186,7 +197,7 @@ func init() {
 		},
 		Subcommands: []core.Subcommand{
 			{
-				Name: "init",
+				Name:        "init",
 				Description: "create empty repo",
 				Options: []core.Option{
 					{Name: "--bare", Description: "create bare repo"},
@@ -194,7 +205,7 @@ func init() {
 				},
 			},
 			{
-				Name: "clone",
+				Name:        "clone",
 				Description: "clone a repository",
 				Options: []core.Option{
 					{Name: "--depth", Description: "shallow clone depth"},
@@ -203,7 +214,7 @@ func init() {
 				},
 			},
 			{
-				Name: "status",
+				Name:        "status",
 				Description: "show working tree",
 				Options: []core.Option{
 					{Name: "-s", Description: "short format"},
@@ -211,9 +222,9 @@ func init() {
 				},
 			},
 			{
-				Name: "add",
+				Name:        "add",
 				Description: "stage changes",
-				Generator: core.FileGenerator(),
+				Generator:   core.FileGenerator(),
 				Options: []core.Option{
 					{Name: "-A", Description: "add all files"},
 					{Name: "-p", Description: "interactive patch"},
@@ -221,7 +232,7 @@ func init() {
 				},
 			},
 			{
-				Name: "commit",
+				Name:        "commit",
 				Description: "record changes",
 				Options: []core.Option{
 					{Name: "-m", Description: "commit message"},
@@ -337,7 +348,9 @@ func init() {
 			{
 				Name:        "tag",
 				Description: "manage tags",
-				Generator:   func(tokens []string, prefix string, partial string) []core.Suggestion { return getGitResults(tokens, "tag", "-l") },
+				Generator: func(tokens []string, prefix string, partial string) []core.Suggestion {
+					return getGitResults(tokens, "tag", "-l")
+				},
 				Options: []core.Option{
 					{Name: "-a", Description: "annotated tag"},
 					{Name: "-d", Description: "delete tag"},
@@ -404,7 +417,7 @@ func init() {
 				},
 			},
 			{
-				Name: "cherry-pick",
+				Name:        "cherry-pick",
 				Description: "apply commit",
 				Options: []core.Option{
 					{Name: "--no-commit", Description: "no auto commit"},
@@ -412,7 +425,7 @@ func init() {
 				},
 			},
 			{
-				Name: "bisect",
+				Name:        "bisect",
 				Description: "binary search bug",
 				Subcommands: []core.Subcommand{
 					{Name: "start", Description: "start bisect"},
