@@ -164,6 +164,12 @@ func TestGitSuggestions(t *testing.T) {
 		if !found {
 			t.Errorf("git push origin should suggest active branch '%s'", activeBranch)
 		}
+		if len(res) > 0 {
+			parts := strings.Fields(res[0].Cmd)
+			if len(parts) == 0 || parts[len(parts)-1] != activeBranch {
+				t.Errorf("expected active branch '%s' to be first suggestion, got: %s", activeBranch, res[0].Cmd)
+			}
+		}
 	})
 
 	t.Run("push origin no duplicate branches", func(t *testing.T) {
