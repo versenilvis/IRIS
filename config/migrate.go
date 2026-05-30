@@ -22,13 +22,13 @@ func MigrateFromLegacyJSON() error {
 		return err
 	}
 
-	if _, err := os.Stat(statePath); err == nil {
+	if _, statErr := os.Stat(statePath); statErr == nil {
 		return nil
 	}
 
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return err
+	home, homeErr := os.UserHomeDir()
+	if homeErr != nil {
+		return homeErr
 	}
 
 	legacyDir := filepath.Join(home, ".iris")
