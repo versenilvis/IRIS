@@ -30,7 +30,7 @@ func TestCustomDuration(t *testing.T) {
 	var dur config.Duration
 	err := dur.UnmarshalText([]byte("6h"))
 	if err != nil {
-		t.Fatalf("unexpected error unmarshaling duration: %v", err)
+		t.Fatalf("unexpected error unmarshalling duration: %v", err)
 	}
 	if time.Duration(dur) != 6*time.Hour {
 		t.Errorf("expected 6 hours, got %v", time.Duration(dur))
