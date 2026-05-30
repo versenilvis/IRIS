@@ -29,6 +29,7 @@ jobs:
         id: version
         run: |
           BASE=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          BASE=${BASE%%-nightly*}
           SHORT=$(git rev-parse --short HEAD)
           echo "version=${BASE}-nightly.${SHORT}" >> $GITHUB_OUTPUT
 
