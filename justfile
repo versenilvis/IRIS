@@ -25,6 +25,7 @@ config-init:
 [linux, macos]
 reload:
     @go build -o iris main.go
+    @if [ -f ~/.local/bin/iris ]; then rm -f ~/.local/bin/iris && cp ./iris ~/.local/bin/iris; fi
     @if [ -n "${IRIS_PID:-}" ]; then kill -USR1 $IRIS_PID 2>/dev/null || true; fi
     @if [ -z "${IRIS_FD:-}" ]; then ./iris; fi
 
