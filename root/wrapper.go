@@ -160,7 +160,19 @@ func runWrapper() {
 				}
 
 				if c.Process != nil {
-					if cwd, err := os.Readlink(fmt.Sprintf("/proc/%d/cwd", c.Process.Pid)); err == nil {
+					cwd, err := os.Readlink(fmt.Sprintf("/proc/%d/cwd", c.Process.Pid))
+					if err != nil {
+						if out, errCmd := exec.Command("lsof", "-p", fmt.Sprintf("%d", c.Process.Pid), "-a", "-d", "cwd", "-F", "n").Output(); errCmd == nil {
+							for _, line := range strings.Split(string(out), "\n") {
+								if strings.HasPrefix(line, "n") {
+									cwd = strings.TrimSpace(line[1:])
+									err = nil
+									break
+								}
+							}
+						}
+					}
+					if err == nil {
 						_ = os.Chdir(cwd)
 					}
 					_ = syscall.Kill(c.Process.Pid, syscall.SIGKILL)
