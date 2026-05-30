@@ -23,6 +23,12 @@ For example, add this to your ~/.zshrc:
 		case "bash", "zsh":
 			fmt.Printf(`
 # Iris Autostart Hook
+if [ -n "$TMUX" ] && [ -n "$IRIS_PID" ]; then
+    if ps -o comm= -p $PPID 2>/dev/null | grep -q "tmux"; then
+        unset IRIS_PID IRIS_IS_CHILD IRIS_FD
+    fi
+fi
+
 if [ -z "$IRIS_PID" ]; then
     export IRIS_ACTIVE_SHELL="%s"
     exec iris
@@ -31,6 +37,14 @@ fi
 		case "fish":
 			fmt.Printf(`
 # Iris Autostart Hook
+if set -q TMUX; and set -q IRIS_PID
+    if ps -o comm= -p $PPID 2>/dev/null | grep -q "tmux"
+        set -e IRIS_PID
+        set -e IRIS_IS_CHILD
+        set -e IRIS_FD
+    end
+end
+
 if not set -q IRIS_PID
     set -gx IRIS_ACTIVE_SHELL "fish"
     exec iris
