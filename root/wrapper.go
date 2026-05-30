@@ -160,6 +160,9 @@ func runWrapper() {
 				}
 
 				if c.Process != nil {
+					if cwd, err := os.Readlink(fmt.Sprintf("/proc/%d/cwd", c.Process.Pid)); err == nil {
+						_ = os.Chdir(cwd)
+					}
 					_ = syscall.Kill(c.Process.Pid, syscall.SIGKILL)
 					_ = ptmx.Close()
 				}
