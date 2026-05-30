@@ -11,7 +11,6 @@ import (
 )
 
 func TestWriteCrashLog(t *testing.T) {
-
 	tmpDir, err := os.MkdirTemp("", "iris-test-*")
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
@@ -19,15 +18,18 @@ func TestWriteCrashLog(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	origHome := os.Getenv("HOME")
+	origCache := os.Getenv("XDG_CACHE_HOME")
 	defer func() {
 		_ = os.Setenv("HOME", origHome)
+		_ = os.Setenv("XDG_CACHE_HOME", origCache)
 	}()
 	_ = os.Setenv("HOME", tmpDir)
+	_ = os.Setenv("XDG_CACHE_HOME", filepath.Join(tmpDir, ".cache"))
 
 	testErr := "test panic message"
 	root.WriteCrashLog(testErr)
 
-	dir := filepath.Join(tmpDir, ".iris", "crashes")
+	dir := filepath.Join(tmpDir, ".cache", "iris", "crashes")
 	files, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatalf("failed to read crashes dir: %v", err)
@@ -55,7 +57,6 @@ func TestWriteCrashLog(t *testing.T) {
 }
 
 func TestCrashLogCommand(t *testing.T) {
-
 	tmpDir, err := os.MkdirTemp("", "iris-test-*")
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
@@ -63,10 +64,13 @@ func TestCrashLogCommand(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	origHome := os.Getenv("HOME")
+	origCache := os.Getenv("XDG_CACHE_HOME")
 	defer func() {
 		_ = os.Setenv("HOME", origHome)
+		_ = os.Setenv("XDG_CACHE_HOME", origCache)
 	}()
 	_ = os.Setenv("HOME", tmpDir)
+	_ = os.Setenv("XDG_CACHE_HOME", filepath.Join(tmpDir, ".cache"))
 
 	var buf bytes.Buffer
 	root.CrashCmd.SetOut(&buf)
@@ -81,7 +85,6 @@ func TestCrashLogCommand(t *testing.T) {
 	root.WriteCrashLog("mock error")
 	buf.Reset()
 	root.CrashCmd.Run(root.CrashCmd, []string{})
-	// expect the output to contain crash_ and .log, which is the path of the new crash log file
 	if !strings.Contains(buf.String(), "crash_") || !strings.Contains(buf.String(), ".log") {
 		t.Errorf("expected crash log path, got: %q", buf.String())
 	}
@@ -93,7 +96,7 @@ func TestCrashLogCommand(t *testing.T) {
 		t.Errorf("expected 'crash log cleared', got: %q", buf.String())
 	}
 
-	dir := filepath.Join(tmpDir, ".iris", "crashes")
+	dir := filepath.Join(tmpDir, ".cache", "iris", "crashes")
 	if _, err := os.Stat(dir); !os.IsNotExist(err) {
 		t.Errorf("expected crashes directory to be deleted, but it exists")
 	}

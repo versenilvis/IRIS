@@ -4,13 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"os/signal"
-	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -19,51 +17,32 @@ import (
 
 	"github.com/creack/pty"
 	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/config"
 	"github.com/versenilvis/iris/integration"
 	"github.com/versenilvis/iris/integration/shell"
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 )
 
-type State struct {
-	Mode string `json:"mode"`
-}
-
-func getStateFile() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	dir := filepath.Join(home, ".iris")
-	_ = os.MkdirAll(dir, 0755)
-	return filepath.Join(dir, "state.json")
-}
-
 func loadMode() string {
-	file := getStateFile()
-	if file != "" {
-		data, err := os.ReadFile(file)
-		if err == nil {
-			var state State
-			if err := json.Unmarshal(data, &state); err == nil {
-				if state.Mode == "history" || state.Mode == "spec" {
-					return state.Mode
-				}
-			}
+	mode := config.Get().Core.Mode
+	if mode == "last" {
+		state := config.LoadState()
+		if state.LastMode == "history" || state.LastMode == "spec" {
+			return state.LastMode
 		}
+		return "spec"
+	}
+	if mode == "history" || mode == "spec" {
+		return mode
 	}
 	return "spec"
 }
 
 func saveMode(mode string) {
-	file := getStateFile()
-	if file != "" {
-		state := State{Mode: mode}
-		data, err := json.MarshalIndent(state, "", "  ")
-		if err == nil {
-			_ = os.WriteFile(file, data, 0644)
-		}
-	}
+	state := config.LoadState()
+	state.LastMode = mode
+	_ = config.SaveState(state)
 }
 
 var (
@@ -160,7 +139,22 @@ func runWrapper() {
 				}
 
 				if c.Process != nil {
-					if cwd, err := os.Readlink(fmt.Sprintf("/proc/%d/cwd", c.Process.Pid)); err == nil {
+					cwd, err := os.Readlink(fmt.Sprintf("/proc/%d/cwd", c.Process.Pid))
+					if err != nil {
+						ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+						out, errCmd := exec.CommandContext(ctx, "lsof", "-p", fmt.Sprintf("%d", c.Process.Pid), "-a", "-d", "cwd", "-F", "n").Output()
+						cancel()
+						if errCmd == nil {
+							for _, line := range strings.Split(string(out), "\n") {
+								if strings.HasPrefix(line, "n") {
+									cwd = strings.TrimSpace(line[1:])
+									err = nil
+									break
+								}
+							}
+						}
+					}
+					if err == nil {
 						_ = os.Chdir(cwd)
 					}
 					_ = syscall.Kill(c.Process.Pid, syscall.SIGKILL)
@@ -205,6 +199,7 @@ func runWrapper() {
 	}()
 
 	var disableGhostText atomic.Bool
+	disableGhostText.Store(!config.Get().UI.GhostText)
 	var userNavigated bool
 	var renderOverlay func()
 
