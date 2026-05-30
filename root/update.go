@@ -7,22 +7,13 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/versenilvis/iris/config"
 )
-
-// updateState holds the persistent update notification state on disk
-type updateState struct {
-	// seenVersion is the last version the user was notified about.
-	// when a newer release than this is found, we show the message again
-	SeenVersion string `json:"seen_version"`
-	// lastCheck is unix timestamp of the last network check
-	LastCheck int64 `json:"last_check"`
-}
 
 // updateResult is passed from the async checker to the main loop
 type updateResult struct {
@@ -33,49 +24,18 @@ type updateResult struct {
 // pendingUpdate is set by the background goroutine and consumed once after the first IRIS_CMD_STOP
 var pendingUpdate chan updateResult
 
-func getUpdateStateFile() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, ".iris", "update_state.json")
-}
-
-func LoadUpdateState() updateState {
-	file := getUpdateStateFile()
-	if file == "" {
-		return updateState{}
-	}
-	data, err := os.ReadFile(file)
-	if err != nil {
-		return updateState{}
-	}
-	var s updateState
-	if err := json.Unmarshal(data, &s); err != nil {
-		return updateState{}
-	}
-	return s
-}
-
-func SaveUpdateState(s updateState) {
-	file := getUpdateStateFile()
-	if file == "" {
-		return
-	}
-	data, _ := json.MarshalIndent(s, "", "  ")
-	_ = os.MkdirAll(filepath.Dir(file), 0755)
-	_ = os.WriteFile(file, data, 0644)
-}
-
 // FetchLatestVersion hits the GitHub Releases API and returns the latest tag name
 func FetchLatestVersion() (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// allow overriding the version endpoint for testing without a real release
 	endpoint := os.Getenv("IRIS_UPDATE_URL")
 	if endpoint == "" {
-		endpoint = "https://api.github.com/repos/versenilvis/iris/releases/latest"
+		if config.Get().Updater.Channel == "nightly" {
+			endpoint = "https://api.github.com/repos/versenilvis/iris/releases"
+		} else {
+			endpoint = "https://api.github.com/repos/versenilvis/iris/releases/latest"
+		}
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
@@ -97,6 +57,19 @@ func FetchLatestVersion() (string, error) {
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
+	}
+
+	if config.Get().Updater.Channel == "nightly" && os.Getenv("IRIS_UPDATE_URL") == "" {
+		var releases []struct {
+			TagName string `json:"tag_name"`
+		}
+		if err := json.Unmarshal(body, &releases); err != nil {
+			return "", err
+		}
+		if len(releases) == 0 {
+			return "", fmt.Errorf("no releases found")
+		}
+		return releases[0].TagName, nil
 	}
 
 	var result struct {
@@ -123,7 +96,7 @@ func IsNewer(current, latest string) bool {
 	}
 
 	// nightly builds are never shown as stable update targets
-	if strings.Contains(l, "-nightly.") {
+	if config.Get().Updater.Channel != "nightly" && strings.Contains(l, "-nightly.") {
 		return false
 	}
 
@@ -161,6 +134,11 @@ func IsNewer(current, latest string) bool {
 func startBackgroundUpdateCheck() chan updateResult {
 	ch := make(chan updateResult, 1)
 
+	if !config.Get().Updater.CheckOnStartup {
+		close(ch)
+		return ch
+	}
+
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
@@ -181,13 +159,13 @@ func startBackgroundUpdateCheck() chan updateResult {
 			return
 		}
 
-		state := LoadUpdateState()
+		state := config.LoadState()
 
-		// only check once every 6 hours to avoid hammering the API
-		if time.Since(time.Unix(state.LastCheck, 0)) < 6*time.Hour {
+		// only check once every configured check-interval to avoid hammering the API
+		if time.Since(state.Updater.LastCheckTime) < time.Duration(config.Get().Updater.CheckInterval) {
 			// already checked recently; still notify if we have a cached pending update
-			if state.SeenVersion != "" && IsNewer(Version, state.SeenVersion) {
-				ch <- updateResult{latestVersion: state.SeenVersion, hasUpdate: true}
+			if state.Updater.SeenVersion != "" && IsNewer(Version, state.Updater.SeenVersion) {
+				ch <- updateResult{latestVersion: state.Updater.SeenVersion, hasUpdate: true}
 			}
 			return
 		}
@@ -199,22 +177,22 @@ func startBackgroundUpdateCheck() chan updateResult {
 		}
 
 		// update the last check time regardless of result
-		state.LastCheck = time.Now().Unix()
+		state.Updater.LastCheckTime = time.Now()
 
 		if IsNewer(Version, latest) {
 			// only notify if user hasn't already seen this specific version notification
-			if state.SeenVersion != latest {
+			if state.Updater.SeenVersion != latest {
 				ch <- updateResult{latestVersion: latest, hasUpdate: true}
 			}
 			// save the latest as seen_version so future sessions don't re-notify
 			// unless a NEWER version comes out (different tag)
-			state.SeenVersion = latest
+			state.Updater.SeenVersion = latest
 		} else {
 			// up to date: clear the seen_version flag so the next update triggers a fresh notification
-			state.SeenVersion = ""
+			state.Updater.SeenVersion = ""
 		}
 
-		SaveUpdateState(state)
+		_ = config.SaveState(state)
 	}()
 
 	return ch
@@ -256,9 +234,9 @@ var updateCmd = &cobra.Command{
 		if !IsNewer(Version, latest) {
 			fmt.Printf("\033[32m[IRIS] already up to date (%s)\033[0m\n", Version)
 			// clear seen_version so the notification doesn't show again
-			state := LoadUpdateState()
-			state.SeenVersion = ""
-			SaveUpdateState(state)
+			state := config.LoadState()
+			state.Updater.SeenVersion = ""
+			_ = config.SaveState(state)
 			return
 		}
 
@@ -269,9 +247,9 @@ var updateCmd = &cobra.Command{
 		fmt.Printf("running: curl -sS %s | sh\n\n", installScript)
 
 		// after a successful update, mark as seen so no more notifications
-		state := LoadUpdateState()
-		state.SeenVersion = ""
-		SaveUpdateState(state)
+		state := config.LoadState()
+		state.Updater.SeenVersion = ""
+		_ = config.SaveState(state)
 
 		fmt.Printf("\n\033[32m[IRIS] restart your terminal to use the new version\033[0m\n")
 	},

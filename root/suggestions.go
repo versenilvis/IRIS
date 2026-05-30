@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/config"
 	"github.com/versenilvis/iris/integration"
 )
 
@@ -16,6 +17,7 @@ func MergeResults(query string, mode string) []core.Suggestion {
 		return nil
 	}
 
+	maxSugg := config.Get().UI.MaxSuggestions
 	normalizedQuery := strings.TrimSpace(query)
 	seen := make(map[string]bool)
 	deduped := []core.Suggestion{}
@@ -33,7 +35,7 @@ func MergeResults(query string, mode string) []core.Suggestion {
 				Desc: " history",
 				Icon: fmt.Sprintf("%d", h.ID),
 			})
-			if len(deduped) >= 100 {
+			if len(deduped) >= maxSugg {
 				break
 			}
 		}
@@ -57,8 +59,8 @@ func MergeResults(query string, mode string) []core.Suggestion {
 			deduped = append(deduped, s)
 		}
 	}
-	if len(deduped) > 100 {
-		deduped = deduped[:100]
+	if len(deduped) > maxSugg {
+		deduped = deduped[:maxSugg]
 	}
 	return deduped
 }

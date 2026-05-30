@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"syscall"
 
@@ -18,6 +19,7 @@ import (
 	_ "github.com/versenilvis/iris/commands/runner"
 	_ "github.com/versenilvis/iris/commands/search"
 	_ "github.com/versenilvis/iris/commands/view"
+	"github.com/versenilvis/iris/config"
 	"golang.org/x/term"
 )
 
@@ -44,12 +46,6 @@ It works exactly like coding editor suggestion menu drop down.`,
 					return
 				}
 			}
-			if debugMode {
-				f, _ := os.OpenFile("iris.log", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
-				debugLogger = f
-				core.DebugWriter = f
-				_, _ = fmt.Fprintf(debugLogger, "--- IRIS DEBUG LOG ---\n")
-			}
 			runWrapper()
 		},
 	}
@@ -61,6 +57,25 @@ It works exactly like coding editor suggestion menu drop down.`,
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&shellFlag, "shell", "s", "", "shell to use (bash, zsh, fish)")
 	rootCmd.PersistentFlags().BoolVarP(&debugMode, "debug", "d", false, "enable debug logging to iris.log")
+
+	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		if shellFlag != "" {
+			config.Get().Core.Shell = shellFlag
+		}
+		if debugMode {
+			config.Get().Core.Debug = true
+		}
+		if config.Get().Core.Debug {
+			logDir, err := config.CachePath()
+			if err == nil {
+				_ = os.MkdirAll(logDir, 0755)
+				f, _ := os.OpenFile(filepath.Join(logDir, "iris.log"), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+				debugLogger = f
+				core.DebugWriter = f
+				_, _ = fmt.Fprintf(debugLogger, "--- IRIS DEBUG LOG ---\n")
+			}
+		}
+	}
 }
 
 func debugLog(format string, a ...any) {
@@ -186,6 +201,13 @@ func runOriginal() {
 }
 
 func Execute() {
+	_ = config.MigrateFromLegacyJSON()
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[IRIS] config error: %v\n", err)
+	}
+	config.Init(cfg)
+
 	if os.Getenv("IRIS_IS_CHILD") != "true" {
 		runWatchdog()
 		return
