@@ -141,7 +141,10 @@ func runWrapper() {
 				if c.Process != nil {
 					cwd, err := os.Readlink(fmt.Sprintf("/proc/%d/cwd", c.Process.Pid))
 					if err != nil {
-						if out, errCmd := exec.CommandContext(context.Background(), "lsof", "-p", fmt.Sprintf("%d", c.Process.Pid), "-a", "-d", "cwd", "-F", "n").Output(); errCmd == nil {
+						ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+						out, errCmd := exec.CommandContext(ctx, "lsof", "-p", fmt.Sprintf("%d", c.Process.Pid), "-a", "-d", "cwd", "-F", "n").Output()
+						cancel()
+						if errCmd == nil {
 							for _, line := range strings.Split(string(out), "\n") {
 								if strings.HasPrefix(line, "n") {
 									cwd = strings.TrimSpace(line[1:])
