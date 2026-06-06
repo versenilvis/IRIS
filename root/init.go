@@ -177,6 +177,6 @@ check-interval = "24h"
 		}
 
 		fmt.Println("\nSetup complete! Please restart your terminal or run:")
-		fmt.Printf("  source %s\n", configFile)
+		fmt.Printf("  \033[32msource %s\033[0m\n", configFile)
 	},
 }
