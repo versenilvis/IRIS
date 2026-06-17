@@ -1,4 +1,4 @@
-package info
+package fs
 
 import (
 	"github.com/versenilvis/iris/commands/core"
@@ -6,8 +6,8 @@ import (
 
 func init() {
 	core.Register(&core.Spec{
-		Name:        "file",
-		Description: "determine file type",
+		Name:        "stat",
+		Description: "display file status",
 		Generator:   core.FileGenerator(),
 	})
 }

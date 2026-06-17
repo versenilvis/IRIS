@@ -1,4 +1,4 @@
-package view
+package fs
 
 import (
 	"github.com/versenilvis/iris/commands/core"

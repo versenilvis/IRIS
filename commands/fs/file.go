@@ -1,4 +1,4 @@
-package view
+package fs
 
 import (
 	"github.com/versenilvis/iris/commands/core"
@@ -6,8 +6,8 @@ import (
 
 func init() {
 	core.Register(&core.Spec{
-		Name:        "less",
-		Description: "view file contents (scrollable)",
+		Name:        "file",
+		Description: "determine file type",
 		Generator:   core.FileGenerator(),
 	})
 }
