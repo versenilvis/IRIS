@@ -354,4 +354,23 @@ func TestGitSuggestions(t *testing.T) {
 			t.Error("git revert should suggest commits")
 		}
 	})
+
+	t.Run("global flags don't break subcommand detection", func(t *testing.T) {
+		ctx := context.Background()
+		out, err := exec.CommandContext(ctx, "git", "rev-parse", "--abbrev-ref", "HEAD").Output()
+		if err != nil {
+			t.Skip("can't determine HEAD branch")
+		}
+		activeBranch := strings.TrimSpace(string(out))
+
+		res := core.Lookup("git -c core.pager=cat checkout ")
+		for _, r := range res {
+			parts := strings.Fields(r.Cmd)
+			for _, p := range parts {
+				if p == activeBranch {
+					t.Errorf("git -c core.pager=cat checkout should not suggest active branch '%s', got: %s", activeBranch, r.Cmd)
+				}
+			}
+		}
+	})
 }

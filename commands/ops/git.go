@@ -26,7 +26,7 @@ func GitCommitGenerator(tokens []string, _ string, _ string) []core.Suggestion {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "git", "log", "--oneline", "-30")
+	cmd := exec.CommandContext(ctx, "git", "log", "--format=%h [%cr] %s", "-30")
 	cmd.Dir = cwd
 	out, err := cmd.Output()
 	if err != nil {
@@ -80,13 +80,18 @@ func getGitResultsFiltered(tokens []string, localOnly bool, args ...string) []co
 	lines := strings.Split(string(out), "\n")
 	var results []core.Suggestion
 
-	// more robust subcommand detection: find the first non-flag after "git"
+	// find the subcommand by skipping global flags that take arguments
 	subcommand := ""
 	for i := 1; i < len(tokens); i++ {
-		if !strings.HasPrefix(tokens[i], "-") {
-			subcommand = tokens[i]
-			break
+		t := tokens[i]
+		if strings.HasPrefix(t, "-") {
+			if t == "-c" || t == "-C" || t == "--git-dir" || t == "--work-tree" || t == "--namespace" || t == "--super-prefix" || t == "--config-env" || t == "--exec-path" {
+				i++
+			}
+			continue
 		}
+		subcommand = t
+		break
 	}
 
 	for _, line := range lines {
@@ -150,12 +155,8 @@ func getGitResultsFiltered(tokens []string, localOnly bool, args ...string) []co
 	if activeBranch != "" {
 		for i, r := range results {
 			if r.Cmd == activeBranch {
-				// move active branch to front if found
-				newResults := make([]core.Suggestion, 0, len(results))
-				newResults = append(newResults, r)
-				newResults = append(newResults, results[:i]...)
-				newResults = append(newResults, results[i+1:]...)
-				results = newResults
+				copy(results[1:i+1], results[0:i])
+				results[0] = r
 				break
 			}
 		}
