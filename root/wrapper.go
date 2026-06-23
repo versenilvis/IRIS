@@ -282,8 +282,64 @@ func runWrapper() {
 	}()
 
 	var naiveBuffer string
+	cursorOffset := 0
 	suggestionsEnabled := true
 	mode := loadMode()
+
+	var lastPtyWrite time.Time
+	var ptyWriteTimer *time.Timer
+	var ptyWriteMu sync.Mutex
+	var pendingSelected string
+
+	flushPtyWrite := func() {
+		ptyWriteMu.Lock()
+		defer ptyWriteMu.Unlock()
+		if ptyWriteTimer != nil {
+			ptyWriteTimer.Stop()
+			ptyWriteTimer = nil
+		}
+		if pendingSelected != "" {
+			_, _ = ptmx.Write([]byte{0x15})
+			_, _ = ptmx.Write([]byte(pendingSelected))
+			lastPtyWrite = time.Now()
+			pendingSelected = ""
+		}
+	}
+
+	writeSelectedToPty := func(selected string) {
+		ptyWriteMu.Lock()
+		defer ptyWriteMu.Unlock()
+
+		now := time.Now()
+		if now.Sub(lastPtyWrite) >= 25*time.Millisecond {
+			if ptyWriteTimer != nil {
+				ptyWriteTimer.Stop()
+				ptyWriteTimer = nil
+			}
+			_, _ = ptmx.Write([]byte{0x15})
+			_, _ = ptmx.Write([]byte(selected))
+			lastPtyWrite = now
+			pendingSelected = ""
+		} else {
+			pendingSelected = selected
+			if ptyWriteTimer == nil {
+				remaining := 25*time.Millisecond - now.Sub(lastPtyWrite)
+				ptyWriteTimer = time.AfterFunc(remaining, func() {
+					ptyWriteMu.Lock()
+					defer ptyWriteMu.Unlock()
+					if pendingSelected != "" {
+						_, _ = ptmx.Write([]byte{0x15})
+						_, _ = ptmx.Write([]byte(pendingSelected))
+						lastPtyWrite = time.Now()
+						pendingSelected = ""
+					}
+					ptyWriteTimer = nil
+				})
+			}
+		}
+	}
+
+	_, _ = os.Stdout.Write([]byte(overlay.Clear()))
 
 	var renderTimer *time.Timer
 	var renderMu sync.Mutex
@@ -302,6 +358,9 @@ func runWrapper() {
 		}
 
 		bufCopy := naiveBuffer
+		if cursorOffset > 0 && cursorOffset <= len(naiveBuffer) {
+			bufCopy = naiveBuffer[:len(naiveBuffer)-cursorOffset]
+		}
 		modeCopy := mode
 		navCopy := userNavigated
 
@@ -310,9 +369,9 @@ func runWrapper() {
 			return
 		}
 
-		// Debounce for 15ms to allow PTY to process the keystroke and update the terminal cursor.
-		// This completely prevents the asynchronous ghost text race condition where the PTY echo
-		// overwrites the first letter of our ghost text!
+		// debounce for 15ms to allow PTY to process the keystroke and update the terminal cursor
+		// this completely prevents the asynchronous ghost text race condition where the PTY echo
+		// overwrites the first letter of our ghost text
 		renderTimer = time.AfterFunc(15*time.Millisecond, func() {
 			if isExecuting() {
 				return
@@ -324,7 +383,7 @@ func runWrapper() {
 				results := MergeResults(bufCopy, modeCopy)
 				debugLog("[Render] results found: %d", len(results))
 
-				if len(results) == 0 {
+				if len(results) == 0 || (len(results) == 1 && strings.TrimSpace(results[0].Cmd) == strings.TrimSpace(bufCopy) && !strings.HasSuffix(bufCopy, " ")) {
 					b.WriteString(overlay.ClearAndDisable())
 					_, _ = os.Stdout.Write([]byte(b.String()))
 					return
@@ -333,6 +392,7 @@ func runWrapper() {
 				if overlay.Visible {
 					b.WriteString(overlay.Clear())
 				}
+				overlay.TypedQuery = bufCopy
 				overlay.UpdateItems(results)
 			} else {
 				if overlay.Visible {
@@ -340,6 +400,7 @@ func runWrapper() {
 				}
 			}
 
+			overlay.UserNavigated = navCopy
 			if !disableGhostText.Load() {
 				b.WriteString(overlay.RenderGhostText(bufCopy, navCopy))
 			}
@@ -349,23 +410,6 @@ func runWrapper() {
 	}
 
 	renderOverlay()
-
-	renderNow := func() {
-		renderMu.Lock()
-		if renderTimer != nil {
-			renderTimer.Stop()
-		}
-		renderMu.Unlock()
-
-		var b strings.Builder
-		if overlay.Visible {
-			if !disableGhostText.Load() {
-				b.WriteString(overlay.RenderGhostText(naiveBuffer, userNavigated))
-			}
-			b.WriteString(overlay.Render())
-		}
-		_, _ = os.Stdout.Write([]byte(b.String()))
-	}
 
 	// reads from stdin and decides what to forward or intercept
 	// for most cases, I just handle the already have terminal shortcuts
@@ -389,6 +433,17 @@ func runWrapper() {
 				b := inputSlice[i]
 				intercepted := false
 
+				isUpDown := false
+				if b == '\033' && i+2 < n && (inputSlice[i+1] == '[' || inputSlice[i+1] == 'O') {
+					if inputSlice[i+2] == 'A' || inputSlice[i+2] == 'B' {
+						isUpDown = true
+					}
+				}
+
+				if !isUpDown {
+					flushPtyWrite()
+				}
+
 				if b == '\033' {
 					// handle escape sequences like arrow keys and functional shortcuts
 					if i+2 < n && (inputSlice[i+1] == '[' || inputSlice[i+1] == 'O') {
@@ -409,8 +464,6 @@ func runWrapper() {
 							intercepted = true
 							userNavigated = true
 
-							_, _ = os.Stdout.Write([]byte(overlay.Clear())) // clear old menu
-
 							if inputSlice[i+2] == 'A' { // up arrow
 								overlay.Cursor--
 								if overlay.Cursor < 0 {
@@ -424,11 +477,12 @@ func runWrapper() {
 							}
 
 							selected := overlay.Items[overlay.Cursor].Cmd
-							_, _ = ptmx.Write([]byte{0x15}) // ctrl+u to clear line
-							_, _ = ptmx.Write([]byte(selected))
 							naiveBuffer = selected
+							cursorOffset = 0
 
-							renderNow()
+							writeSelectedToPty(selected)
+
+							renderOverlay()
 							i += 2
 							continue
 						} else if !overlay.Visible && naiveBuffer == "" && (inputSlice[i+2] == 'A' || inputSlice[i+2] == 'B') { // up/down arrow on empty prompt
@@ -445,12 +499,12 @@ func runWrapper() {
 								var historyList []core.Suggestion
 
 								if inputSlice[i+2] == 'A' {
-									// Up arrow: Reverse the list so newest is at the bottom
+									// up arrow: reverse the list so newest is at the bottom
 									for j := limit - 1; j >= 0; j-- {
 										historyList = append(historyList, results[j])
 									}
 								} else {
-									// Down arrow: Normal order, newest is at the top
+									// down arrow: normal order, newest is at the top
 									for j := 0; j < limit; j++ {
 										historyList = append(historyList, results[j])
 									}
@@ -459,18 +513,19 @@ func runWrapper() {
 								overlay.UpdateItems(historyList)
 
 								if inputSlice[i+2] == 'A' {
-									overlay.Cursor = len(historyList) - 1 // Up arrow: Start at the bottom
+									overlay.Cursor = len(historyList) - 1 // up arrow: start at the bottom
 								} else {
-									overlay.Cursor = 0 // Down arrow: Start at the top
+									overlay.Cursor = 0 // down arrow: start at the top
 								}
 
 								selected := overlay.Items[overlay.Cursor].Cmd
-								_, _ = ptmx.Write([]byte{0x15}) // ctrl+u to clear line
-								_, _ = ptmx.Write([]byte(selected))
 								naiveBuffer = selected
+								cursorOffset = 0
+
+								writeSelectedToPty(selected)
 
 								userNavigated = true
-								renderNow()
+								renderOverlay()
 							}
 							i += 2
 							continue
@@ -481,6 +536,7 @@ func runWrapper() {
 								if len(ghostText) > 0 {
 									intercepted = true
 									naiveBuffer += ghostText
+									cursorOffset = 0
 									_, _ = ptmx.Write([]byte(ghostText))
 									shouldOverlayDraw = true
 									i += 2
@@ -490,11 +546,48 @@ func runWrapper() {
 						}
 					}
 
+					// left/right arrow cursor tracking
+					isLeftRightArrow := false
+					if i+2 < n && (inputSlice[i+1] == '[' || inputSlice[i+1] == 'O') {
+						if inputSlice[i+2] == 'D' {
+							if (overlay.Visible && overlay.TypedQuery == "") || (!overlay.Visible && naiveBuffer == "") {
+								intercepted = true
+								i += 2
+								continue
+							} else if naiveBuffer != "" || overlay.Visible {
+								cursorOffset++
+								if cursorOffset > len(naiveBuffer) {
+									cursorOffset = len(naiveBuffer)
+								}
+								shouldOverlayDraw = true
+								userNavigated = false
+							}
+							isLeftRightArrow = true
+						} else if inputSlice[i+2] == 'C' {
+							if (overlay.Visible && overlay.TypedQuery == "") || (!overlay.Visible && naiveBuffer == "") {
+								intercepted = true
+								i += 2
+								continue
+							} else if naiveBuffer != "" || overlay.Visible {
+								cursorOffset--
+								if cursorOffset < 0 {
+									cursorOffset = 0
+								}
+								shouldOverlayDraw = true
+								userNavigated = false
+							}
+							isLeftRightArrow = true
+						}
+					}
+
 					// forward escape sequence to pty if not intercepted
 					if !intercepted {
 						_, _ = os.Stdout.Write([]byte(overlay.ClearAndDisable()))
 						disableGhostText.Store(true)
-						naiveBuffer = ""
+						if !isLeftRightArrow {
+							naiveBuffer = ""
+							cursorOffset = 0
+						}
 
 						_, _ = ptmx.Write([]byte{b})
 						// skip remaining bytes of the escape sequence to avoid misinterpretation
@@ -529,6 +622,7 @@ func runWrapper() {
 
 					_, _ = ptmx.Write([]byte{0x0d})
 					naiveBuffer = ""
+					cursorOffset = 0
 					disableGhostText.Store(false)
 					shouldOverlayDraw = false
 					userNavigated = false
@@ -546,6 +640,7 @@ func runWrapper() {
 						}
 
 						naiveBuffer = selected
+						cursorOffset = 0
 
 						_, _ = ptmx.Write([]byte{0x15}) // ctrl+u to clear line
 						_, _ = ptmx.Write([]byte(selected))
@@ -565,9 +660,33 @@ func runWrapper() {
 					// we handle line editing keys manually to keep naiveBuffer in sync
 					// since terminal is in raw mode, we must update our state for every change
 					switch b {
-					case 127, 0x08: // backspace: remove last character from buffer
+					case 0x01: // ctrl+a: move to beginning of line
+						cursorOffset = len(naiveBuffer)
+						if naiveBuffer != "" || overlay.Visible {
+							shouldOverlayDraw = true
+						}
+						userNavigated = false
+					case 0x05: // ctrl+e: move to end of line
+						cursorOffset = 0
+						if naiveBuffer != "" || overlay.Visible {
+							shouldOverlayDraw = true
+						}
+						userNavigated = false
+
+					case 127, 0x08: // backspace: remove character
 						if len(naiveBuffer) > 0 {
-							naiveBuffer = naiveBuffer[:len(naiveBuffer)-1]
+							if cursorOffset <= 0 {
+								naiveBuffer = naiveBuffer[:len(naiveBuffer)-1]
+								cursorOffset = 0
+							} else {
+								if cursorOffset > len(naiveBuffer) {
+									cursorOffset = len(naiveBuffer)
+								}
+								pos := len(naiveBuffer) - cursorOffset
+								if pos > 0 && pos <= len(naiveBuffer) {
+									naiveBuffer = naiveBuffer[:pos-1] + naiveBuffer[pos:]
+								}
+							}
 							shouldOverlayDraw = true
 							userNavigated = false
 						}
@@ -579,10 +698,15 @@ func runWrapper() {
 						} else {
 							naiveBuffer = ""
 						}
+						cursorOffset = 0
 						shouldOverlayDraw = true
 						userNavigated = false
-					case '\r', '\n', 0x03, 0x15, 0x0C: // enter, ctrl+c, ctrl+u, ctrl+l: clear buffer on line reset
+					case 0x0c: // ctrl+l: clear screen but keep buffer and redraw menu
+						shouldOverlayDraw = true
+						userNavigated = false
+					case '\r', '\n', 0x03, 0x15: // enter, ctrl+c, ctrl+u: clear buffer on line reset
 						naiveBuffer = ""
+						cursorOffset = 0
 						disableGhostText.Store(false)
 						_, _ = os.Stdout.Write([]byte(overlay.ClearAndDisable()))
 						userNavigated = false
@@ -596,11 +720,25 @@ func runWrapper() {
 									_, _ = ptmx.Write([]byte{0x15}) // ctrl+u to clear the current input line
 									_, _ = ptmx.Write([]byte(target + " "))
 									naiveBuffer = target + " "
+									cursorOffset = 0
 									shouldOverlayDraw = true
 									continue
 								}
 							}
-							naiveBuffer += string(b)
+							if cursorOffset == 0 {
+								naiveBuffer += string(b)
+							} else {
+								if cursorOffset > len(naiveBuffer) {
+									cursorOffset = len(naiveBuffer)
+								}
+								pos := len(naiveBuffer) - cursorOffset
+								if pos >= 0 && pos <= len(naiveBuffer) {
+									naiveBuffer = naiveBuffer[:pos] + string(b) + naiveBuffer[pos:]
+								} else {
+									naiveBuffer += string(b)
+									cursorOffset = 0
+								}
+							}
 							shouldOverlayDraw = true
 						}
 					}
