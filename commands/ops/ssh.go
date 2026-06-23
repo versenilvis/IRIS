@@ -48,9 +48,7 @@ func sshHostGenerator(tokens []string, _ string, _ string) []core.Suggestion {
 				results = append(results, core.Suggestion{Cmd: host, Desc: "ssh host"})
 			}
 		}
-		if err := scanner.Err(); err != nil {
-			// ignore scanner error for config file reading
-		}
+		_ = scanner.Err()
 		_ = f.Close()
 	}
 
