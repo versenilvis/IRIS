@@ -31,13 +31,11 @@ func sshHostGenerator(tokens []string, _ string, _ string) []core.Suggestion {
 
 		scanner := bufio.NewScanner(f)
 		for scanner.Scan() {
-			line := strings.TrimSpace(scanner.Text())
-			if !strings.HasPrefix(strings.ToLower(line), "host ") {
+			parts := strings.Fields(scanner.Text())
+			if len(parts) < 2 || !strings.EqualFold(parts[0], "host") {
 				continue
 			}
 
-			// "Host foo bar baz" → each token is a separate alias
-			parts := strings.Fields(line)
 			for _, host := range parts[1:] {
 				// skip wildcards
 				if strings.ContainsAny(host, "*?!") {
@@ -49,6 +47,9 @@ func sshHostGenerator(tokens []string, _ string, _ string) []core.Suggestion {
 				seen[host] = true
 				results = append(results, core.Suggestion{Cmd: host, Desc: "ssh host"})
 			}
+		}
+		if err := scanner.Err(); err != nil {
+			// ignore scanner error for config file reading
 		}
 		_ = f.Close()
 	}
