@@ -90,9 +90,9 @@ func runWrapper() {
 	ctx := context.Background()
 	c := exec.CommandContext(ctx, adapter.GetShellPath())
 	c.ExtraFiles = make([]*os.File, 11)
-	// pass write end of pipe to shell as fd 10 (I chose 10 just because it won't conflict with other file descriptors)
+	// pass write end of pipe to shell as fd 13 (since index 10 maps to 13)
 	c.ExtraFiles[10] = w
-	c.Env = adapter.GetEnv(10, os.Getpid())
+	c.Env = adapter.GetEnv(13, os.Getpid())
 
 	ptmx, err := pty.Start(c)
 	if err != nil {
@@ -246,6 +246,7 @@ func runWrapper() {
 
 		for scanner.Scan() {
 			query := scanner.Text()
+			debugLog("[IPC] Received query: '%s'", query)
 
 			if query == "IRIS_CMD_STOP" {
 				// hook: after user executes a command, print the update notice exactly once per session
