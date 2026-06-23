@@ -29,9 +29,19 @@ jobs:
         id: version
         run: |
           BASE=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          BASE=${BASE%%-nightly*}
+          if [[ "$BASE" == *"-nightly"* ]]; then
+            # already a nightly tag, just strip the suffix
+            NEXT_BASE=${BASE%%-nightly*}
+          else
+            # stable tag, increment patch version
+            CLEAN=${BASE%%-nightly*}
+            VERSION_NUM=${CLEAN#v}
+            IFS='.' read -r major minor patch <<< "$VERSION_NUM"
+            patch=$((patch + 1))
+            NEXT_BASE="v${major}.${minor}.${patch}"
+          fi
           SHORT=$(git rev-parse --short HEAD)
-          echo "version=${BASE}-nightly.${SHORT}" >> $GITHUB_OUTPUT
+          echo "version=${NEXT_BASE}-nightly.${SHORT}" >> $GITHUB_OUTPUT
 
       - name: Build Binaries
         run: |
