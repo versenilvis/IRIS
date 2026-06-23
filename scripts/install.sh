@@ -47,18 +47,45 @@ main() {
     bin=$(find . -name "iris" -type f | head -1)
     [ -z "$bin" ] && err "Binary not found in archive"
 
-    mkdir -p "${BIN_DIR}"
-    cp "$bin" "${BIN_DIR}/iris"
-    chmod +x "${BIN_DIR}/iris"
-
-    echo ""
-    echo "Installed iris to ${BIN_DIR}/iris"
-    echo ""
-
-    if "${BIN_DIR}/iris" --version >/dev/null 2>&1; then
-        echo "Installation verified."
+    # check if we have write permission to the install directory
+    has_write_permission=0
+    if [ -d "${BIN_DIR}" ]; then
+        if [ -w "${BIN_DIR}" ]; then
+            has_write_permission=1
+        fi
     else
-        echo "Warning: could not verify binary"
+        parent_dir=$(dirname "${BIN_DIR}")
+        if [ -w "${parent_dir}" ]; then
+            has_write_permission=1
+        fi
+    fi
+
+    if [ "${has_write_permission}" = "1" ]; then
+        mkdir -p "${BIN_DIR}"
+        cp "$bin" "${BIN_DIR}/iris"
+        chmod +x "${BIN_DIR}/iris"
+        echo "Installed iris to ${BIN_DIR}/iris"
+        echo ""
+        if "${BIN_DIR}/iris" version >/dev/null 2>&1; then
+            echo "Installation verified."
+        else
+            echo "Warning: could not verify binary"
+        fi
+    else
+        chmod +x "$bin"
+        if "$bin" version >/dev/null 2>&1; then
+            echo "Binary verification successful."
+        else
+            echo "Warning: could not verify binary"
+        fi
+
+        cp "$bin" "/tmp/iris"
+        chmod +x "/tmp/iris"
+
+        echo ""
+        echo "Warning: permission denied to write to ${BIN_DIR}"
+        echo "Please complete the installation by running:"
+        echo "  sudo cp /tmp/iris ${BIN_DIR}/iris && sudo chmod +x ${BIN_DIR}/iris"
     fi
 
     echo ""
