@@ -13,8 +13,8 @@ func processGenerator(tokens []string, _ string, _ string) []core.Suggestion {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// output: "PID COMMAND"
-	cmd := exec.CommandContext(ctx, "ps", "-eo", "pid,comm", "--no-headers")
+	// output: "pid command"
+	cmd := exec.CommandContext(ctx, "ps", "-eo", "pid,comm")
 	out, err := cmd.Output()
 	if err != nil {
 		return nil
@@ -32,6 +32,9 @@ func processGenerator(tokens []string, _ string, _ string) []core.Suggestion {
 			continue
 		}
 		pid := parts[0]
+		if pid[0] < '0' || pid[0] > '9' {
+			continue
+		}
 		name := parts[1]
 
 		// suggest both PID and process name
