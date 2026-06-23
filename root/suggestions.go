@@ -12,53 +12,69 @@ import (
 // mergeResults collects and dedupes suggestions for a query and mode
 // example: mergeResults("git ", "spec")
 func MergeResults(query string, mode string) []core.Suggestion {
-	if query == "" && mode != "history" {
-		debugLog("[Merge] Query empty, returning nil")
-		return nil
-	}
-
 	maxSugg := config.Get().UI.MaxSuggestions
-	normalizedQuery := strings.TrimSpace(query)
 	seen := make(map[string]bool)
 	deduped := []core.Suggestion{}
 
-	if mode == "history" {
-		histResults, _ := integration.SearchHistory(query)
-		for _, h := range histResults {
-			normalizedCmd := strings.TrimSpace(h.Cmd)
-			if seen[normalizedCmd] {
-				continue
-			}
-			seen[normalizedCmd] = true
-			deduped = append(deduped, core.Suggestion{
-				Cmd:  h.Cmd,
-				Desc: " history",
-				Icon: fmt.Sprintf("%d", h.ID),
-			})
-			if len(deduped) >= maxSugg {
-				break
-			}
-		}
-		debugLog("[Merge] History mode found %d items", len(deduped))
-		return deduped
+	// always call lookup to scan aliases and get spec suggestions
+	var cmdResults []core.Suggestion
+	if query != "" {
+		debugLog("[Merge] Calling Lookup for '%s'", query)
+		cmdResults = core.Lookup(query)
 	}
 
-	debugLog("[Merge] Calling Lookup for '%s'", query)
-	cmdResults := core.Lookup(query)
-	debugLog("[Merge] Lookup returned %d raw items", len(cmdResults))
+	// search history if in history mode or if query is not empty
+	var histResults []integration.HistResult
+	if mode == "history" || query != "" {
+		aliases := core.GetAliasesCopy()
+		histResults, _ = integration.SearchHistory(query, aliases)
+	}
 
-	for _, s := range cmdResults {
+	// add suggestion helper to deduplicate
+	addSuggestion := func(s core.Suggestion) {
 		normalizedCmd := strings.TrimSpace(s.Cmd)
-		if normalizedCmd == normalizedQuery { // filter exact matches to avoid loops
-			debugLog("[Merge] Filtered EXACT MATCH: '%s'", normalizedCmd)
-			continue
+		if normalizedCmd == "" {
+			return
 		}
-
+		// filter exact match for spec commands to avoid loops
+		if s.Desc != " history" && !strings.HasPrefix(s.Desc, "alias:") {
+			normalizedQuery := strings.TrimSpace(query)
+			if normalizedCmd == normalizedQuery {
+				return
+			}
+		}
 		if !seen[s.Cmd] {
 			seen[s.Cmd] = true
 			deduped = append(deduped, s)
 		}
 	}
+
+	if mode == "history" {
+		// history mode: history first, then spec/alias
+		for _, h := range histResults {
+			addSuggestion(core.Suggestion{
+				Cmd:  h.Cmd,
+				Desc: " history",
+				Icon: fmt.Sprintf("%d", h.ID),
+			})
+		}
+		for _, s := range cmdResults {
+			addSuggestion(s)
+		}
+	} else {
+		// spec mode: spec/alias first, then history
+		for _, s := range cmdResults {
+			addSuggestion(s)
+		}
+		for _, h := range histResults {
+			addSuggestion(core.Suggestion{
+				Cmd:  h.Cmd,
+				Desc: " history",
+				Icon: fmt.Sprintf("%d", h.ID),
+			})
+		}
+	}
+
 	if len(deduped) > maxSugg {
 		deduped = deduped[:maxSugg]
 	}
