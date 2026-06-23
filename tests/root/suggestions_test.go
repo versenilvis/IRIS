@@ -7,7 +7,7 @@ import (
 )
 
 func TestMergeResults(t *testing.T) {
-	// REQUIREMENT: Dedup exact match
+
 	t.Run("Dedup exact match", func(t *testing.T) {
 		// Mock history items that might conflict with specs
 		res := root.MergeResults("git", "spec")
@@ -20,7 +20,7 @@ func TestMergeResults(t *testing.T) {
 		}
 	})
 
-	// REQUIREMENT: Limit 100
+
 	t.Run("Limit 100", func(t *testing.T) {
 		res := root.MergeResults("a", "history")
 		if len(res) > 100 {

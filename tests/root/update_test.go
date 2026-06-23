@@ -4,7 +4,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/versenilvis/iris/config"
 	"github.com/versenilvis/iris/root"
 )
 
@@ -43,25 +45,33 @@ func TestUpdateState(t *testing.T) {
 
 	// Override home dir for testing
 	homeBackup := os.Getenv("HOME")
-	if err := os.Setenv("HOME", tmpDir); err != nil {
+	err = os.Setenv("HOME", tmpDir)
+	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = os.Setenv("HOME", homeBackup) }()
 
-	// Ensure .iris directory exists
-	_ = os.MkdirAll(filepath.Join(tmpDir, ".iris"), 0755)
-
-	state := root.LoadUpdateState()
-	state.SeenVersion = "v1.0.0"
-	state.LastCheck = 123456789
-
-	root.SaveUpdateState(state)
-
-	loaded := root.LoadUpdateState()
-	if loaded.SeenVersion != state.SeenVersion {
-		t.Errorf("Expected SeenVersion %q, got %q", state.SeenVersion, loaded.SeenVersion)
+	xdgBackup := os.Getenv("XDG_DATA_HOME")
+	err = os.Setenv("XDG_DATA_HOME", filepath.Join(tmpDir, ".local", "share"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	if loaded.LastCheck != state.LastCheck {
-		t.Errorf("Expected LastCheck %d, got %d", state.LastCheck, loaded.LastCheck)
+	defer func() { _ = os.Setenv("XDG_DATA_HOME", xdgBackup) }()
+
+	state := config.LoadState()
+	state.Updater.SeenVersion = "v1.0.0"
+	state.Updater.LastCheckTime = time.Unix(123456789, 0)
+
+	err = config.SaveState(state)
+	if err != nil {
+		t.Fatalf("failed to save state: %v", err)
+	}
+
+	loaded := config.LoadState()
+	if loaded.Updater.SeenVersion != state.Updater.SeenVersion {
+		t.Errorf("Expected SeenVersion %q, got %q", state.Updater.SeenVersion, loaded.Updater.SeenVersion)
+	}
+	if loaded.Updater.LastCheckTime.Unix() != state.Updater.LastCheckTime.Unix() {
+		t.Errorf("Expected LastCheck %v, got %v", state.Updater.LastCheckTime, loaded.Updater.LastCheckTime)
 	}
 }

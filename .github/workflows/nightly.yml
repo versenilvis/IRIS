@@ -28,9 +28,13 @@ jobs:
       - name: Get version info
         id: version
         run: |
-          BASE=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          BASE=$(git describe --tags --abbrev=0 --exclude="*-nightly*" 2>/dev/null || echo "v0.0.0")
+          VERSION_NUM=${BASE#v}
+          IFS='.' read -r major minor patch <<< "$VERSION_NUM"
+          patch=$((patch + 1))
+          NEXT_BASE="v${major}.${minor}.${patch}"
           SHORT=$(git rev-parse --short HEAD)
-          echo "version=${BASE}-nightly.${SHORT}" >> $GITHUB_OUTPUT
+          echo "version=${NEXT_BASE}-nightly.${SHORT}" >> $GITHUB_OUTPUT
 
       - name: Build Binaries
         run: |

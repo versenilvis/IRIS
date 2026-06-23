@@ -2,13 +2,19 @@ package core
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/versenilvis/iris/integration/shell"
 )
 
-var ShellAliases = map[string]string{}
+var (
+	ShellAliases   = map[string]string{}
+	shellAliasesMu sync.RWMutex
+)
 
 func GetAlias(name string) (string, bool) {
+	shellAliasesMu.RLock()
+	defer shellAliasesMu.RUnlock()
 	val, ok := ShellAliases[name]
 	return val, ok
 }
@@ -19,8 +25,15 @@ func GetAlias(name string) (string, bool) {
 // e.g. Lookup("git checkout ") -> suggests branch names via generator
 func Lookup(input string) []Suggestion {
 	if shell.Current != nil {
-		ShellAliases = shell.Current.ScanAliases()
+		aliases := shell.Current.ScanAliases()
+		shellAliasesMu.Lock()
+		ShellAliases = aliases
+		shellAliasesMu.Unlock()
 	}
+
+	shellAliasesMu.RLock()
+	aliases := ShellAliases
+	shellAliasesMu.RUnlock()
 
 	if input == "" {
 		return nil
@@ -35,13 +48,12 @@ func Lookup(input string) []Suggestion {
 	// in the future, maybe we will write unit test or using Lookup in another module
 	// it will be safer because we maybe forget to check it in that module
 
-	pathCmds = make(map[string]bool)
 	scanExternalCommands()
 
 	// if you have an alias in your shell config like: alias gca="git commit -a"
 	// if the first word match it, IRIS will suggest "git commit -a"
 	if len(tokens) > 1 {
-		if target, ok := ShellAliases[tokens[0]]; ok {
+		if target, ok := aliases[tokens[0]]; ok {
 			aliasTokens := Tokenize(target)
 			if len(aliasTokens) > 0 && aliasTokens[len(aliasTokens)-1] == "" {
 				aliasTokens = aliasTokens[:len(aliasTokens)-1]
@@ -52,7 +64,7 @@ func Lookup(input string) []Suggestion {
 
 	if len(tokens) == 1 {
 		query := tokens[0]
-		results := topLevelSuggestions(query)
+		results := topLevelSuggestions(query, aliases)
 
 		if spec, exists := Registry[query]; exists {
 			hasTrailingSpace := query != "" && query[len(query)-1] == ' '
@@ -244,10 +256,10 @@ func Lookup(input string) []Suggestion {
 	return results
 }
 
-func topLevelSuggestions(query string) []Suggestion {
+func topLevelSuggestions(query string, aliases map[string]string) []Suggestion {
 	results, seen := []Suggestion{}, make(map[string]bool)
 
-	for name, target := range ShellAliases {
+	for name, target := range aliases {
 		if !seen[name] && (query == "" || HasPrefix(name, query)) {
 			results = append(results, Suggestion{
 				Cmd: target, Desc: "alias: " + name, Icon: "root",

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/versenilvis/iris/config"
 )
 
 var initCmd = &cobra.Command{
@@ -23,6 +24,12 @@ For example, add this to your ~/.zshrc:
 		case "bash", "zsh":
 			fmt.Printf(`
 # Iris Autostart Hook
+if [ -n "$TMUX" ] && [ -n "$IRIS_PID" ]; then
+    if ps -o comm= -p $PPID 2>/dev/null | grep -q "tmux"; then
+        unset IRIS_PID IRIS_IS_CHILD IRIS_FD
+    fi
+fi
+
 if [ -z "$IRIS_PID" ]; then
     export IRIS_ACTIVE_SHELL="%s"
     exec iris
@@ -31,6 +38,14 @@ fi
 		case "fish":
 			fmt.Printf(`
 # Iris Autostart Hook
+if set -q TMUX; and set -q IRIS_PID
+    if ps -o comm= -p $PPID 2>/dev/null | grep -q "tmux"
+        set -e IRIS_PID
+        set -e IRIS_IS_CHILD
+        set -e IRIS_FD
+    end
+end
+
 if not set -q IRIS_PID
     set -gx IRIS_ACTIVE_SHELL "fish"
     exec iris
@@ -106,7 +121,62 @@ var setupCmd = &cobra.Command{
 			fmt.Printf("✓ Added iris integration to %s\n", configFile)
 		}
 
+		// initialize default config file if it does not exist
+		if path, err := config.ConfigPath(); err == nil {
+			if _, statErr := os.Stat(path); os.IsNotExist(statErr) {
+				_ = os.MkdirAll(filepath.Dir(path), 0755)
+				defaultContent := `# ~/.config/iris/config.toml
+# iris configuration file
+
+[core]
+# schema version
+# do not edit this field manually
+version = 1
+
+# override shell: "bash", "zsh", "fish", keep empty for auto detection
+shell = ""
+
+# startup mode: "last", "spec", "history"
+# "last" = remember last mode used
+mode = "last"
+
+# enable debug logging
+debug = false
+
+[ui]
+# enable inline ghost text
+ghost-text = true
+
+# maximum suggestions to display
+max-suggestions = 100
+
+# maximum height of the overlay
+max-height = 15
+
+[git]
+# hide current branch in checkout/switch list
+filter-active-branch = true
+
+# merge remote and local branches with same name
+deduplicate-branches = true
+
+[updater]
+# check for updates on startup
+check-on-startup = true
+
+# update channel: "stable", "nightly"
+channel = "stable"
+
+# interval between update checks, e.g. "24h", "6h", "30m"
+check-interval = "24h"
+`
+				if errWrite := os.WriteFile(path, []byte(defaultContent), 0644); errWrite == nil {
+					fmt.Printf("✓ Initialized default config file at %s\n", path)
+				}
+			}
+		}
+
 		fmt.Println("\nSetup complete! Please restart your terminal or run:")
-		fmt.Printf("  source %s\n", configFile)
+		fmt.Printf("  \033[32msource %s\033[0m\n", configFile)
 	},
 }

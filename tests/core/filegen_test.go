@@ -22,7 +22,7 @@ func TestFileGenerator(t *testing.T) {
 	_ = os.Chdir(tmp)
 	defer func() { _ = os.Chdir(oldWd) }()
 
-	// REQUIREMENT: dirOnly shows only dirs
+
 	t.Run("dirOnly shows only dirs", func(t *testing.T) {
 		gen := core.FileGenerator("/")
 		results := gen([]string{"cd", ""}, "cd ", "")
@@ -33,7 +33,7 @@ func TestFileGenerator(t *testing.T) {
 		}
 	})
 
-	// REQUIREMENT: Filter extension shows only matching files
+
 	t.Run("Filter extension", func(t *testing.T) {
 		gen := core.FileGenerator(".go")
 		results := gen([]string{"ls", ""}, "ls ", "")
@@ -51,7 +51,7 @@ func TestFileGenerator(t *testing.T) {
 		}
 	})
 
-	// REQUIREMENT: Nested path (src/mai -> correct dir + prefix)
+
 	t.Run("Nested path", func(t *testing.T) {
 		gen := core.FileGenerator()
 		results := gen([]string{"ls", "src/u"}, "ls src/u", "src/u")
@@ -66,7 +66,7 @@ func TestFileGenerator(t *testing.T) {
 		}
 	})
 
-	// REQUIREMENT: Deep scan 1 level finds files in subdir
+
 	t.Run("Deep scan 1 level", func(t *testing.T) {
 		gen := core.FileGenerator()
 		results := gen([]string{"ls", "src/"}, "ls src/", "src/")
@@ -81,10 +81,9 @@ func TestFileGenerator(t *testing.T) {
 		}
 	})
 
-	// REQUIREMENT: Deep scan does not go deeper than 1 level
-	// (This is implicitly tested by the logic in FileGenerator)
 
-	// REQUIREMENT: Hidden files are skipped
+
+
 	t.Run("Hidden files are skipped", func(t *testing.T) {
 		gen := core.FileGenerator()
 		results := gen([]string{"ls", ""}, "ls ", "")
