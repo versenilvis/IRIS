@@ -19,6 +19,16 @@ func GetAlias(name string) (string, bool) {
 	return val, ok
 }
 
+func GetAliasesCopy() map[string]string {
+	shellAliasesMu.RLock()
+	defer shellAliasesMu.RUnlock()
+	cp := make(map[string]string, len(ShellAliases))
+	for k, v := range ShellAliases {
+		cp[k] = v
+	}
+	return cp
+}
+
 // Lookup finds matching suggestions for your input by looking at how many words you typed
 // it changes aliases to real commands, finds subcommands inside others, and runs generators for more suggestions
 // e.g. Lookup("git che") -> suggests "git checkout"
