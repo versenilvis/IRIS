@@ -20,7 +20,7 @@
 ## Installation
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/versenilvis/iris/main/scripts/install.sh | sudo sh
+curl -sSL https://raw.githubusercontent.com/versenilvis/iris/main/scripts/install.sh | sh
 ```
 
 ## Shortcuts
