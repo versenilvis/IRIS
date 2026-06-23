@@ -146,11 +146,20 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 	var alternativeQueries []string
 	for name, target := range aliases {
 		if target != "" {
-			if strings.HasPrefix(strings.ToLower(query), strings.ToLower(target)) {
+			qLow := strings.ToLower(query)
+			tLow := strings.ToLower(target)
+			nLow := strings.ToLower(name)
+
+			if qLow == tLow {
+				alternativeQueries = append(alternativeQueries, name)
+			} else if strings.HasPrefix(qLow, tLow+" ") {
 				suffix := query[len(target):]
 				alternativeQueries = append(alternativeQueries, name+suffix)
 			}
-			if strings.HasPrefix(strings.ToLower(query), strings.ToLower(name)) {
+
+			if qLow == nLow {
+				alternativeQueries = append(alternativeQueries, target)
+			} else if strings.HasPrefix(qLow, nLow+" ") {
 				suffix := query[len(name):]
 				alternativeQueries = append(alternativeQueries, target+suffix)
 			}
@@ -231,9 +240,14 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 		return bestTier
 	}
 
+	tiers := make([]int, len(results))
+	for i, r := range results {
+		tiers[i] = getTier(r.Cmd, query)
+	}
+
 	sort.SliceStable(results, func(i, j int) bool {
-		tI := getTier(results[i].Cmd, query)
-		tJ := getTier(results[j].Cmd, query)
+		tI := tiers[i]
+		tJ := tiers[j]
 		if tI != tJ {
 			return tI < tJ
 		}
