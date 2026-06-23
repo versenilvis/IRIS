@@ -169,32 +169,29 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 			}
 		}
 
-		acceptableFirstWords := make(map[string]bool)
-		if queryFirstWord != "" {
-			acceptableFirstWords[queryFirstWord] = true
-			for name, target := range aliases {
-				if strings.EqualFold(target, queryFirstWord) {
-					acceptableFirstWords[strings.ToLower(name)] = true
-				} else if strings.EqualFold(name, queryFirstWord) {
-					acceptableFirstWords[strings.ToLower(target)] = true
-				}
-			}
-		}
-
 		matches := searcherCache.SearchWithScores(q, &fuzzy.SearchOptions{Limit: 200})
 		for _, m := range matches {
 			if seenCmds[m.Str] {
 				continue
 			}
+
+			// filter results by command name match
+			firstWord := m.Str
+			if idx := strings.IndexByte(m.Str, ' '); idx != -1 {
+				firstWord = m.Str[:idx]
+			}
+			firstWordLow := strings.ToLower(firstWord)
+
 			if queryFirstWord != "" {
-				firstWord := m.Str
-				if idx := strings.IndexByte(m.Str, ' '); idx != -1 {
-					firstWord = m.Str[:idx]
+				if firstWordLow != queryFirstWord {
+					continue
 				}
-				if !acceptableFirstWords[strings.ToLower(firstWord)] {
+			} else {
+				if !strings.HasPrefix(firstWordLow, qLow) {
 					continue
 				}
 			}
+
 			seenCmds[m.Str] = true
 			results = append(results, HistResult{
 				ID:         idMapCache[m.Str],

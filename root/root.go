@@ -57,9 +57,7 @@ func init() {
 		if shellFlag != "" {
 			config.Get().Core.Shell = shellFlag
 		}
-		if debugMode {
-			config.Get().Core.Debug = true
-		}
+		config.Get().Core.Debug = true
 		if config.Get().Core.Debug {
 			logDir, err := config.CachePath()
 			if err == nil {

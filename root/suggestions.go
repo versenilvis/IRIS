@@ -23,12 +23,14 @@ func MergeResults(query string, mode string) []core.Suggestion {
 		cmdResults = core.Lookup(query)
 	}
 
-	// search history if in history mode or if query is not empty
+	// search history if in history mode
 	var histResults []integration.HistResult
-	if mode == "history" || query != "" {
+	if mode == "history" {
 		aliases := core.GetAliasesCopy()
 		histResults, _ = integration.SearchHistory(query, aliases)
 	}
+
+	normalizedQuery := strings.TrimSpace(query)
 
 	// add suggestion helper to deduplicate
 	addSuggestion := func(s core.Suggestion) {
@@ -37,7 +39,6 @@ func MergeResults(query string, mode string) []core.Suggestion {
 			return
 		}
 		// filter exact match to avoid loops and redundant suggestions
-		normalizedQuery := strings.TrimSpace(query)
 		if normalizedCmd == normalizedQuery {
 			return
 		}
@@ -60,16 +61,9 @@ func MergeResults(query string, mode string) []core.Suggestion {
 			addSuggestion(s)
 		}
 	} else {
-		// spec mode: spec/alias first, then history
+		// spec mode: spec/alias only
 		for _, s := range cmdResults {
 			addSuggestion(s)
-		}
-		for _, h := range histResults {
-			addSuggestion(core.Suggestion{
-				Cmd:  h.Cmd,
-				Desc: " history",
-				Icon: fmt.Sprintf("%d", h.ID),
-			})
 		}
 	}
 

@@ -141,6 +141,10 @@ func Lookup(input string) []Suggestion {
 			depth++
 			continue
 		}
+		// invalid subcommand word typed
+		if len(currentSubs) > 0 {
+			return nil
+		}
 		break
 	}
 
