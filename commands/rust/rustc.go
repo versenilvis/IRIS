@@ -25,7 +25,6 @@ func init() {
 			{Name: "-W", Description: "set lint warning"},
 			{Name: "-A", Description: "set lint allow"},
 			{Name: "-D", Description: "set lint deny"},
-			{Name: "--edition", Description: "Rust edition"},
 			{Name: "--verbose", Description: "verbose"},
 			{Name: "--version", Description: "print version"},
 		},
