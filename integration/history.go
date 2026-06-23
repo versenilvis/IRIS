@@ -107,6 +107,9 @@ func SearchHistory(query string) ([]HistResult, error) {
 				allCmds = append(allCmds, cmd)
 			}
 		}
+		if err := scanner.Err(); err != nil {
+			return nil, err
+		}
 
 		// build historyCache backwards so newest commands come first
 		seen := make(map[string]bool)
@@ -145,8 +148,10 @@ func SearchHistory(query string) ([]HistResult, error) {
 	// when query has a clear first word, only keep history entries that share the same first word
 	// this prevents e.g. curl commands from showing up when typing "git ..."
 	queryFirstWord := ""
-	if fields := strings.Fields(query); len(fields) > 0 {
-		queryFirstWord = strings.ToLower(fields[0])
+	if strings.IndexByte(query, ' ') != -1 {
+		if fields := strings.Fields(query); len(fields) > 0 {
+			queryFirstWord = strings.ToLower(fields[0])
+		}
 	}
 
 	var results []HistResult

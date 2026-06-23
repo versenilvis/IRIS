@@ -1,4 +1,4 @@
-package dev
+package git
 
 import (
 	"context"
@@ -9,14 +9,45 @@ import (
 	"github.com/versenilvis/iris/commands/core"
 )
 
-// GitRemoteGenerator suggests git remotes
 func GitRemoteGenerator(tokens []string, _ string, _ string) []core.Suggestion {
 	return getGitResults(tokens, "remote")
 }
 
-// GitStashGenerator suggests git stashes
 func GitStashGenerator(tokens []string, _ string, _ string) []core.Suggestion {
 	return getGitResults(tokens, "stash", "list", "--format=%gd: %gs")
+}
+
+func GitTagGenerator(tokens []string, _ string, _ string) []core.Suggestion {
+	return getGitResults(tokens, "tag", "-l")
+}
+
+func GitCommitGenerator(tokens []string, _ string, _ string) []core.Suggestion {
+	cwd := core.GetCWD()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "git", "log", "--format=%h [%cr] %s", "-30")
+	cmd.Dir = cwd
+	out, err := cmd.Output()
+	if err != nil {
+		return nil
+	}
+
+	var results []core.Suggestion
+	for _, line := range strings.Split(string(out), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, " ", 2)
+		hash := parts[0]
+		desc := ""
+		if len(parts) == 2 {
+			desc = parts[1]
+		}
+		results = append(results, core.Suggestion{Cmd: hash, Desc: desc})
+	}
+	return results
 }
 
 func getGitResults(tokens []string, args ...string) []core.Suggestion {
@@ -25,7 +56,7 @@ func getGitResults(tokens []string, args ...string) []core.Suggestion {
 
 func getGitResultsFiltered(tokens []string, localOnly bool, args ...string) []core.Suggestion {
 	cwd := core.GetCWD()
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -49,13 +80,18 @@ func getGitResultsFiltered(tokens []string, localOnly bool, args ...string) []co
 	lines := strings.Split(string(out), "\n")
 	var results []core.Suggestion
 
-	// more robust subcommand detection: find the first non-flag after "git"
+	// find the subcommand by skipping global flags that take arguments
 	subcommand := ""
 	for i := 1; i < len(tokens); i++ {
-		if !strings.HasPrefix(tokens[i], "-") {
-			subcommand = tokens[i]
-			break
+		t := tokens[i]
+		if strings.HasPrefix(t, "-") {
+			if t == "-c" || t == "-C" || t == "--git-dir" || t == "--work-tree" || t == "--namespace" || t == "--super-prefix" || t == "--config-env" || t == "--exec-path" {
+				i++
+			}
+			continue
 		}
+		subcommand = t
+		break
 	}
 
 	for _, line := range lines {
@@ -115,9 +151,19 @@ func getGitResultsFiltered(tokens []string, localOnly bool, args ...string) []co
 			Desc: suggestionDesc,
 		})
 	}
+
+	if activeBranch != "" {
+		for i, r := range results {
+			if r.Cmd == activeBranch {
+				copy(results[1:i+1], results[0:i])
+				results[0] = r
+				break
+			}
+		}
+	}
+
 	return results
 }
-
 
 // GitBranchGenerator suggests git branches (local + remote, deduped)
 func GitBranchGenerator(tokens []string, _ string, _ string) []core.Suggestion {
@@ -153,7 +199,6 @@ func gitLocalBranchGenerator(tokens []string, _ string, _ string) []core.Suggest
 	return getGitResultsFiltered(tokens, true, "branch", "-a", "--format=%(refname:short)")
 }
 
-
 func GitPushPullGenerator(tokens []string, prefix string, partial string) []core.Suggestion {
 	// count completed positional args (not flags, not the partial being typed)
 	// tokens[0] = "git", tokens[1] = "push"/"pull", so start at 2
@@ -186,7 +231,7 @@ func init() {
 		},
 		Subcommands: []core.Subcommand{
 			{
-				Name: "init",
+				Name:        "init",
 				Description: "create empty repo",
 				Options: []core.Option{
 					{Name: "--bare", Description: "create bare repo"},
@@ -194,7 +239,7 @@ func init() {
 				},
 			},
 			{
-				Name: "clone",
+				Name:        "clone",
 				Description: "clone a repository",
 				Options: []core.Option{
 					{Name: "--depth", Description: "shallow clone depth"},
@@ -203,7 +248,7 @@ func init() {
 				},
 			},
 			{
-				Name: "status",
+				Name:        "status",
 				Description: "show working tree",
 				Options: []core.Option{
 					{Name: "-s", Description: "short format"},
@@ -211,9 +256,9 @@ func init() {
 				},
 			},
 			{
-				Name: "add",
+				Name:        "add",
 				Description: "stage changes",
-				Generator: core.FileGenerator(),
+				Generator:   core.FileGenerator(),
 				Options: []core.Option{
 					{Name: "-A", Description: "add all files"},
 					{Name: "-p", Description: "interactive patch"},
@@ -221,7 +266,7 @@ func init() {
 				},
 			},
 			{
-				Name: "commit",
+				Name:        "commit",
 				Description: "record changes",
 				Options: []core.Option{
 					{Name: "-m", Description: "commit message"},
@@ -337,13 +382,36 @@ func init() {
 			{
 				Name:        "tag",
 				Description: "manage tags",
-				Generator:   func(tokens []string, prefix string, partial string) []core.Suggestion { return getGitResults(tokens, "tag", "-l") },
+				Generator:   GitTagGenerator,
 				Options: []core.Option{
 					{Name: "-a", Description: "annotated tag"},
 					{Name: "-d", Description: "delete tag"},
 					{Name: "-l", Description: "list tags"},
 					{Name: "--delete", Description: "delete tag"},
 					{Name: "-m", Description: "tag message"},
+				},
+			},
+			{
+				Name:        "show",
+				Description: "show object",
+				Generator: func(tokens []string, prefix string, partial string) []core.Suggestion {
+					tags := GitTagGenerator(tokens, prefix, partial)
+					commits := GitCommitGenerator(tokens, prefix, partial)
+					return append(tags, commits...)
+				},
+				Options: []core.Option{
+					{Name: "--stat", Description: "diffstat only"},
+					{Name: "--name-only", Description: "filenames only"},
+				},
+			},
+			{
+				Name:        "revert",
+				Description: "revert a commit",
+				Generator:   GitCommitGenerator,
+				Options: []core.Option{
+					{Name: "--no-commit", Description: "no auto commit"},
+					{Name: "--abort", Description: "abort revert"},
+					{Name: "--continue", Description: "continue revert"},
 				},
 			},
 			{
@@ -404,15 +472,38 @@ func init() {
 				},
 			},
 			{
-				Name: "cherry-pick",
+				Name:        "cherry-pick",
 				Description: "apply commit",
+				Generator:   GitCommitGenerator,
 				Options: []core.Option{
 					{Name: "--no-commit", Description: "no auto commit"},
 					{Name: "--abort", Description: "abort pick"},
+					{Name: "--continue", Description: "continue pick"},
 				},
 			},
 			{
-				Name: "bisect",
+				Name:        "worktree",
+				Description: "manage worktrees",
+				Subcommands: []core.Subcommand{
+					{Name: "add", Description: "add new worktree", Generator: core.FileGenerator("/")},
+					{Name: "list", Description: "list worktrees"},
+					{Name: "remove", Description: "remove worktree"},
+					{Name: "prune", Description: "prune stale worktrees"},
+				},
+			},
+			{
+				Name:        "submodule",
+				Description: "manage submodules",
+				Subcommands: []core.Subcommand{
+					{Name: "add", Description: "add submodule"},
+					{Name: "init", Description: "init submodule config"},
+					{Name: "update", Description: "update submodules", Options: []core.Option{{Name: "--init", Description: "init if needed"}, {Name: "--recursive", Description: "recursive update"}}},
+					{Name: "status", Description: "show submodule status"},
+					{Name: "foreach", Description: "run command in each submodule"},
+				},
+			},
+			{
+				Name:        "bisect",
 				Description: "binary search bug",
 				Subcommands: []core.Subcommand{
 					{Name: "start", Description: "start bisect"},

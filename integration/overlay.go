@@ -99,7 +99,9 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool) string {
 	if ghostText != "" || padLen > 0 {
 		s.WriteString("\0337") // SAVE CURSOR at prompt
 		if ghostText != "" {
-			s.WriteString("\033[90m" + ghostText + "\033[0m")
+			s.WriteString("\033[90m")
+			s.WriteString(ghostText)
+			s.WriteString("\033[0m")
 		}
 		if padLen > 0 {
 			s.WriteString(strings.Repeat(" ", padLen))

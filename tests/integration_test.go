@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/versenilvis/iris/commands/core"
-	_ "github.com/versenilvis/iris/commands/fs" // Register z command
+	_ "github.com/versenilvis/iris/commands"
 )
 
 func TestIntegration_ZoxideMultiWord(t *testing.T) {

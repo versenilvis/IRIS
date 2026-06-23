@@ -4,13 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"os/signal"
-	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -19,50 +17,46 @@ import (
 
 	"github.com/creack/pty"
 	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/config"
 	"github.com/versenilvis/iris/integration"
 	"github.com/versenilvis/iris/integration/shell"
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 )
 
-type State struct {
-	Mode string `json:"mode"`
-}
-
-func getStateFile() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	dir := filepath.Join(home, ".iris")
-	_ = os.MkdirAll(dir, 0755)
-	return filepath.Join(dir, "state.json")
-}
-
 func loadMode() string {
-	file := getStateFile()
-	if file != "" {
-		data, err := os.ReadFile(file)
-		if err == nil {
-			var state State
-			if err := json.Unmarshal(data, &state); err == nil {
-				if state.Mode == "history" || state.Mode == "spec" {
-					return state.Mode
-				}
-			}
+	mode := config.Get().Core.Mode
+	if mode == "last" {
+		state := config.LoadState()
+		if state.LastMode == "history" || state.LastMode == "spec" {
+			return state.LastMode
 		}
+		return "spec"
+	}
+	if mode == "history" || mode == "spec" {
+		return mode
 	}
 	return "spec"
 }
 
 func saveMode(mode string) {
-	file := getStateFile()
-	if file != "" {
-		state := State{Mode: mode}
-		data, err := json.MarshalIndent(state, "", "  ")
-		if err == nil {
-			_ = os.WriteFile(file, data, 0644)
-		}
+	state := config.LoadState()
+	state.LastMode = mode
+	_ = config.SaveState(state)
+}
+
+var (
+	oldState   *term.State
+	oldStateMu sync.Mutex
+)
+
+// restoreTerminal restores the terminal state if needed
+func restoreTerminal() {
+	oldStateMu.Lock()
+	defer oldStateMu.Unlock()
+	if oldState != nil {
+		_ = term.Restore(int(os.Stdin.Fd()), oldState)
+		oldState = nil
 	}
 }
 
@@ -107,15 +101,25 @@ func runWrapper() {
 	core.ShellPID = c.Process.Pid
 
 	// put terminal in raw mode to intercept every keystroke
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
-	if err != nil {
-		panic(err)
+	var errMakeRaw error
+	oldState, errMakeRaw = term.MakeRaw(int(os.Stdin.Fd()))
+	if errMakeRaw != nil {
+		panic(errMakeRaw)
 	}
-	defer func() { _ = term.Restore(int(os.Stdin.Fd()), oldState) }()
+	defer restoreTerminal()
 
 	sigCh := make(chan os.Signal, 2)
 	signal.Notify(sigCh, syscall.SIGWINCH, syscall.SIGUSR1)
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				WriteCrashLog(r)
+				restoreTerminal()
+				printCrashNotice()
+				startRescueShell()
+				os.Exit(2)
+			}
+		}()
 		for s := range sigCh {
 			switch s {
 			case syscall.SIGWINCH:
@@ -135,13 +139,29 @@ func runWrapper() {
 				}
 
 				if c.Process != nil {
+					cwd, err := os.Readlink(fmt.Sprintf("/proc/%d/cwd", c.Process.Pid))
+					if err != nil {
+						ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+						out, errCmd := exec.CommandContext(ctx, "lsof", "-p", fmt.Sprintf("%d", c.Process.Pid), "-a", "-d", "cwd", "-F", "n").Output()
+						cancel()
+						if errCmd == nil {
+							for _, line := range strings.Split(string(out), "\n") {
+								if strings.HasPrefix(line, "n") {
+									cwd = strings.TrimSpace(line[1:])
+									err = nil
+									break
+								}
+							}
+						}
+					}
+					if err == nil {
+						_ = os.Chdir(cwd)
+					}
 					_ = syscall.Kill(c.Process.Pid, syscall.SIGKILL)
 					_ = ptmx.Close()
 				}
 
-				if oldState != nil {
-					_ = term.Restore(int(os.Stdin.Fd()), oldState)
-				}
+				restoreTerminal()
 				_ = syscall.Exec(exe, os.Args, os.Environ())
 			}
 		}
@@ -155,12 +175,21 @@ func runWrapper() {
 
 	// bridge pty output to actual stdout
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				WriteCrashLog(r)
+				restoreTerminal()
+				printCrashNotice()
+				startRescueShell()
+				os.Exit(2)
+			}
+		}()
 		buf := make([]byte, 4096)
 		for {
 			n, err := ptmx.Read(buf)
 			if err != nil {
 				if err == io.EOF {
-					_ = term.Restore(int(os.Stdin.Fd()), oldState)
+					restoreTerminal()
 					os.Exit(0)
 				}
 				continue
@@ -170,6 +199,7 @@ func runWrapper() {
 	}()
 
 	var disableGhostText atomic.Bool
+	disableGhostText.Store(!config.Get().UI.GhostText)
 	var userNavigated bool
 	var renderOverlay func()
 
@@ -187,6 +217,15 @@ func runWrapper() {
 
 	// listen for suggestion requests from shell scripts via the ipc pipe
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				WriteCrashLog(r)
+				restoreTerminal()
+				printCrashNotice()
+				startRescueShell()
+				os.Exit(2)
+			}
+		}()
 		scanner := bufio.NewScanner(r)
 		scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 			if atEOF && len(data) == 0 {
@@ -236,6 +275,9 @@ func runWrapper() {
 			}
 			rBuf.WriteString(overlay.Render())
 			_, _ = os.Stdout.Write([]byte(rBuf.String()))
+		}
+		if err := scanner.Err(); err != nil {
+			debugLog("[IPC] scanner error: %v", err)
 		}
 	}()
 

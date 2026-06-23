@@ -8,7 +8,7 @@ import (
 
 var DebugWriter io.Writer
 
-func debugLog(format string, a ...interface{}) {
+func debugLog(format string, a ...any) {
 	if DebugWriter != nil {
 		_, _ = fmt.Fprintf(DebugWriter, format+"\n", a...)
 	}

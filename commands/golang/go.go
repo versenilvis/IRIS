@@ -1,4 +1,4 @@
-package dev
+package golang
 
 import (
 	"github.com/versenilvis/iris/commands/core"
