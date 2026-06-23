@@ -13,12 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/versenilvis/iris/commands/core"
-	_ "github.com/versenilvis/iris/commands/dev"
-	_ "github.com/versenilvis/iris/commands/fs"
-	_ "github.com/versenilvis/iris/commands/info"
-	_ "github.com/versenilvis/iris/commands/runner"
-	_ "github.com/versenilvis/iris/commands/search"
-	_ "github.com/versenilvis/iris/commands/view"
+	_ "github.com/versenilvis/iris/commands"
 	"github.com/versenilvis/iris/config"
 	"golang.org/x/term"
 )

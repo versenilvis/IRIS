@@ -276,6 +276,9 @@ func runWrapper() {
 			rBuf.WriteString(overlay.Render())
 			_, _ = os.Stdout.Write([]byte(rBuf.String()))
 		}
+		if err := scanner.Err(); err != nil {
+			debugLog("[IPC] scanner error: %v", err)
+		}
 	}()
 
 	var naiveBuffer string

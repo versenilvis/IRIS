@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/versenilvis/iris/commands/core"
-	_ "github.com/versenilvis/iris/commands/dev"
+	_ "github.com/versenilvis/iris/commands"
 )
 
 // setupGitRepo creates a real git repo in a temp dir with:
@@ -302,6 +302,75 @@ func TestGitSuggestions(t *testing.T) {
 		}
 		if !found {
 			t.Error("git reset HEAD should suggest file.go")
+		}
+	})
+
+	t.Run("show suggests tags and commits", func(t *testing.T) {
+		res := core.Lookup("git show ")
+		foundTag := false
+		foundCommit := false
+		for _, r := range res {
+			if strings.Contains(r.Cmd, "v1.0") {
+				foundTag = true
+			}
+			// commit hashes are 7+ hex chars
+			parts := strings.Fields(r.Cmd)
+			if len(parts) > 0 {
+				h := parts[len(parts)-1]
+				if len(h) >= 7 {
+					foundCommit = true
+				}
+			}
+		}
+		if !foundTag {
+			t.Error("git show should suggest tag v1.0")
+		}
+		if !foundCommit {
+			t.Error("git show should suggest commit hashes")
+		}
+	})
+
+	t.Run("cherry-pick suggests commits", func(t *testing.T) {
+		res := core.Lookup("git cherry-pick ")
+		if len(res) == 0 {
+			t.Error("git cherry-pick should suggest commits")
+		}
+		// all suggestions should be short hex hashes
+		for _, r := range res {
+			parts := strings.Fields(r.Cmd)
+			if len(parts) == 0 {
+				continue
+			}
+			h := parts[len(parts)-1]
+			if len(h) < 7 {
+				t.Errorf("cherry-pick suggestion looks invalid: %s", r.Cmd)
+			}
+		}
+	})
+
+	t.Run("revert suggests commits", func(t *testing.T) {
+		res := core.Lookup("git revert ")
+		if len(res) == 0 {
+			t.Error("git revert should suggest commits")
+		}
+	})
+
+	t.Run("global flags don't break subcommand detection", func(t *testing.T) {
+		ctx := context.Background()
+		out, err := exec.CommandContext(ctx, "git", "rev-parse", "--abbrev-ref", "HEAD").Output()
+		if err != nil {
+			t.Skip("can't determine HEAD branch")
+		}
+		activeBranch := strings.TrimSpace(string(out))
+
+		res := core.Lookup("git -c core.pager=cat checkout ")
+		for _, r := range res {
+			parts := strings.Fields(r.Cmd)
+			for _, p := range parts {
+				if p == activeBranch {
+					t.Errorf("git -c core.pager=cat checkout should not suggest active branch '%s', got: %s", activeBranch, r.Cmd)
+				}
+			}
 		}
 	})
 }
