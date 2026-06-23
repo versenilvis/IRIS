@@ -36,12 +36,10 @@ func MergeResults(query string, mode string) []core.Suggestion {
 		if normalizedCmd == "" {
 			return
 		}
-		// filter exact match for spec commands to avoid loops
-		if s.Desc != " history" && !strings.HasPrefix(s.Desc, "alias:") {
-			normalizedQuery := strings.TrimSpace(query)
-			if normalizedCmd == normalizedQuery {
-				return
-			}
+		// filter exact match to avoid loops and redundant suggestions
+		normalizedQuery := strings.TrimSpace(query)
+		if normalizedCmd == normalizedQuery {
+			return
 		}
 		if !seen[s.Cmd] {
 			seen[s.Cmd] = true

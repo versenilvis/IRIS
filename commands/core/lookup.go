@@ -247,7 +247,7 @@ func Lookup(input string) []Suggestion {
 		}
 	}
 
-	if partial == "" || (len(partial) > 0 && partial[0] == '-') {
+	if len(partial) > 0 && partial[0] == '-' {
 		usedOpts := make(map[string]bool)
 		for _, t := range tokens {
 			if strings.HasPrefix(t, "-") {
@@ -257,7 +257,7 @@ func Lookup(input string) []Suggestion {
 		for _, opt := range currentOpts {
 			if !usedOpts[opt.Name] && (partial == "" || HasPrefix(opt.Name, partial)) {
 				results = append(results, Suggestion{
-					Cmd: prefix + " " + opt.Name, Desc: opt.Description, Icon: rootCmdName,
+					Cmd: linePrefix + " " + opt.Name, Desc: opt.Description, Icon: rootCmdName,
 				})
 			}
 		}
