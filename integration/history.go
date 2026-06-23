@@ -107,6 +107,9 @@ func SearchHistory(query string) ([]HistResult, error) {
 				allCmds = append(allCmds, cmd)
 			}
 		}
+		if err := scanner.Err(); err != nil {
+			return nil, err
+		}
 
 		// build historyCache backwards so newest commands come first
 		seen := make(map[string]bool)
