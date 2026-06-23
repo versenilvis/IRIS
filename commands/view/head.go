@@ -1,4 +1,4 @@
-package fs
+package view
 
 import (
 	"github.com/versenilvis/iris/commands/core"
@@ -6,12 +6,11 @@ import (
 
 func init() {
 	core.Register(&core.Spec{
-		Name:        "cat",
-		Description: "concatenate and print",
+		Name:        "head",
+		Description: "output first lines of file",
 		Generator:   core.FileGenerator(),
 		Options: []core.Option{
-			{Name: "-n", Description: "number lines"},
-			{Name: "-b", Description: "number non-blank"},
+			{Name: "-n", Description: "number of lines"},
 		},
 	})
 }

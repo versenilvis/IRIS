@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/versenilvis/iris/commands/core"
-	"github.com/versenilvis/iris/commands/dev"
+	"github.com/versenilvis/iris/commands/js"
 	_ "github.com/versenilvis/iris/commands"
 )
 
@@ -36,7 +36,7 @@ func TestNpmScriptGenerator(t *testing.T) {
 		core.ShellPID = 0
 		_ = os.Chdir(tmp)
 
-		results := dev.NpmScriptGenerator(nil, "", "")
+		results := js.NpmScriptGenerator(nil, "", "")
 
 		found := make(map[string]bool)
 		for _, r := range results {
@@ -64,7 +64,7 @@ func TestNpmScriptGenerator(t *testing.T) {
 		defer os.Remove(filepath.Join(tmp, "package.json"))
 
 		_ = os.Chdir(tmp)
-		results := dev.NpmScriptGenerator(nil, "", "")
+		results := js.NpmScriptGenerator(nil, "", "")
 
 		if len(results) < 2 {
 			t.Fatal("expected at least 2 results")
@@ -96,7 +96,7 @@ func TestNpmScriptGenerator(t *testing.T) {
 		_ = os.Chdir(emptyDir)
 		defer func() { _ = os.Chdir(tmp) }()
 
-		results := dev.NpmScriptGenerator(nil, "", "")
+		results := js.NpmScriptGenerator(nil, "", "")
 		if len(results) == 0 {
 			t.Error("expected fallback suggestions when no package.json")
 		}
