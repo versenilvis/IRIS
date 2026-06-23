@@ -15,12 +15,14 @@ const (
 )
 
 type Overlay struct {
-	mu           sync.Mutex
-	Visible      bool
-	Items        []core.Suggestion
-	Cursor       int
-	StartIdx     int
-	LastGhostLen int
+	mu            sync.Mutex
+	Visible       bool
+	Items         []core.Suggestion
+	Cursor        int
+	StartIdx      int
+	LastGhostLen  int
+	TypedQuery    string
+	UserNavigated bool
 }
 
 var (
@@ -93,11 +95,11 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool) string {
 	}
 
 	// add extra padding to erase any stray characters left by fast backspaces
-	// before the debounce timer fired. 10 spaces is safe and won't hit right prompts
+	// before the debounce timer fired, 10 spaces is safe and won't hit right prompts
 	padLen += 10
 
 	if ghostText != "" || padLen > 0 {
-		s.WriteString("\0337") // SAVE CURSOR at prompt
+		s.WriteString("\0337") // save cursor at prompt
 		if ghostText != "" {
 			s.WriteString("\033[90m")
 			s.WriteString(ghostText)
@@ -106,7 +108,7 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool) string {
 		if padLen > 0 {
 			s.WriteString(strings.Repeat(" ", padLen))
 		}
-		s.WriteString("\0338") // RESTORE CURSOR back to prompt
+		s.WriteString("\0338") // restore cursor back to prompt
 		o.LastGhostLen = len(ghostText)
 	}
 
@@ -123,7 +125,7 @@ func (o *Overlay) Render() string {
 
 	var s strings.Builder
 	s.WriteString("\033[?7l")
-	s.WriteString("\0337") // DEC save cursor for menu drawing
+	s.WriteString("\0337") // dec save cursor for menu drawing
 
 	windowSize := maxItems
 	if len(o.Items) < windowSize {
@@ -174,7 +176,7 @@ func (o *Overlay) Render() string {
 	// top border with scroll indicator
 	s.WriteString("\0338")
 	fmt.Fprintf(&s, "\033[%dB", 1)
-	s.WriteString("\033[2K")
+	s.WriteString("\r\033[2K")
 
 	scrollInfo := ""
 	if len(o.Items) > windowSize {
@@ -192,7 +194,7 @@ func (o *Overlay) Render() string {
 	for i := start; i < end; i++ {
 		s.WriteString("\0338")
 		fmt.Fprintf(&s, "\033[%dB", (i-start)+2)
-		s.WriteString("\033[2K")
+		s.WriteString("\r\033[2K")
 
 		it := o.Items[i]
 		rawIcon := fixedWidth(it.Icon, iconW)
@@ -216,10 +218,10 @@ func (o *Overlay) Render() string {
 		}
 	}
 
-	// Bottom border
+	// bottom border
 	s.WriteString("\0338")
 	fmt.Fprintf(&s, "\033[%dB", windowSize+2)
-	s.WriteString("\033[2K")
+	s.WriteString("\r\033[2K")
 	bottomBorder := "╰" + strings.Repeat("─", boxWidth) + "╯"
 	s.WriteString(borderStyle.Render(bottomBorder))
 
@@ -257,6 +259,8 @@ func (o *Overlay) ClearAndDisable() string {
 
 	o.Visible = false
 	o.Items = nil
+	o.TypedQuery = ""
+	o.UserNavigated = false
 
 	var s strings.Builder
 	s.WriteString("\033[?7l")
