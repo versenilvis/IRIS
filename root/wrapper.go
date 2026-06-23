@@ -246,7 +246,6 @@ func runWrapper() {
 
 		for scanner.Scan() {
 			query := scanner.Text()
-			debugLog("[IPC] Received query: '%s'", query)
 
 			if query == "IRIS_CMD_STOP" {
 				// hook: after user executes a command, print the update notice exactly once per session
@@ -308,8 +307,7 @@ func runWrapper() {
 			ptyWriteTimer = nil
 		}
 		if pendingSelected != "" {
-			_, _ = ptmx.Write([]byte{0x15})
-			_, _ = ptmx.Write([]byte(pendingSelected))
+			_, _ = ptmx.Write(append([]byte{0x15}, pendingSelected...))
 			lastPtyWrite = time.Now()
 			pendingSelected = ""
 		}
@@ -325,8 +323,7 @@ func runWrapper() {
 				ptyWriteTimer.Stop()
 				ptyWriteTimer = nil
 			}
-			_, _ = ptmx.Write([]byte{0x15})
-			_, _ = ptmx.Write([]byte(selected))
+			_, _ = ptmx.Write(append([]byte{0x15}, selected...))
 			lastPtyWrite = now
 			pendingSelected = ""
 		} else {
@@ -337,8 +334,7 @@ func runWrapper() {
 					ptyWriteMu.Lock()
 					defer ptyWriteMu.Unlock()
 					if pendingSelected != "" {
-						_, _ = ptmx.Write([]byte{0x15})
-						_, _ = ptmx.Write([]byte(pendingSelected))
+						_, _ = ptmx.Write(append([]byte{0x15}, pendingSelected...))
 						lastPtyWrite = time.Now()
 						pendingSelected = ""
 					}
@@ -374,8 +370,9 @@ func runWrapper() {
 		bufferMu.Unlock()
 		navCopy := userNavigated
 
-		if offsetCopy > 0 && offsetCopy <= len(bufCopy) {
-			bufCopy = bufCopy[:len(bufCopy)-offsetCopy]
+		runes := []rune(bufCopy)
+		if offsetCopy > 0 && offsetCopy <= len(runes) {
+			bufCopy = string(runes[:len(runes)-offsetCopy])
 		}
 
 		if bufCopy == "" && !navCopy {
@@ -398,8 +395,9 @@ func runWrapper() {
 			modeCopy = mode
 			bufferMu.Unlock()
 
-			if offsetCopy > 0 && offsetCopy <= len(bufCopy) {
-				bufCopy = bufCopy[:len(bufCopy)-offsetCopy]
+			runes := []rune(bufCopy)
+			if offsetCopy > 0 && offsetCopy <= len(runes) {
+				bufCopy = string(runes[:len(runes)-offsetCopy])
 			}
 
 			var b strings.Builder
@@ -705,8 +703,7 @@ func runWrapper() {
 						cursorOffset = 0
 						bufferMu.Unlock()
 
-						_, _ = ptmx.Write([]byte{0x15}) // ctrl+u to clear line
-						_, _ = ptmx.Write([]byte(selected))
+						_, _ = ptmx.Write(append([]byte{0x15}, selected...))
 
 						overlay.Cursor = 0 // this prevents when you tab, it switches between suggestions non-stop
 
@@ -743,16 +740,19 @@ func runWrapper() {
 					case 127, 0x08: // backspace: remove character
 						bufferMu.Lock()
 						if len(naiveBuffer) > 0 {
+							runes := []rune(naiveBuffer)
 							if cursorOffset <= 0 {
-								naiveBuffer = naiveBuffer[:len(naiveBuffer)-1]
+								if len(runes) > 0 {
+									naiveBuffer = string(runes[:len(runes)-1])
+								}
 								cursorOffset = 0
 							} else {
-								if cursorOffset > len(naiveBuffer) {
-									cursorOffset = len(naiveBuffer)
+								if cursorOffset > len(runes) {
+									cursorOffset = len(runes)
 								}
-								pos := len(naiveBuffer) - cursorOffset
-								if pos > 0 && pos <= len(naiveBuffer) {
-									naiveBuffer = naiveBuffer[:pos-1] + naiveBuffer[pos:]
+								pos := len(runes) - cursorOffset
+								if pos > 0 && pos <= len(runes) {
+									naiveBuffer = string(append(runes[:pos-1], runes[pos:]...))
 								}
 							}
 							shouldOverlayDraw = true
@@ -798,8 +798,7 @@ func runWrapper() {
 
 							if isSpaceAlias && ok {
 								// clear the current alias and replace it with the full command
-								_, _ = ptmx.Write([]byte{0x15}) // ctrl+u to clear the current input line
-								_, _ = ptmx.Write([]byte(target + " "))
+								_, _ = ptmx.Write(append([]byte{0x15}, target + " "...))
 								bufferMu.Lock()
 								naiveBuffer = target + " "
 								cursorOffset = 0
