@@ -19,6 +19,16 @@ func GetAlias(name string) (string, bool) {
 	return val, ok
 }
 
+func GetAliasesCopy() map[string]string {
+	shellAliasesMu.RLock()
+	defer shellAliasesMu.RUnlock()
+	cp := make(map[string]string, len(ShellAliases))
+	for k, v := range ShellAliases {
+		cp[k] = v
+	}
+	return cp
+}
+
 // Lookup finds matching suggestions for your input by looking at how many words you typed
 // it changes aliases to real commands, finds subcommands inside others, and runs generators for more suggestions
 // e.g. Lookup("git che") -> suggests "git checkout"
@@ -131,6 +141,10 @@ func Lookup(input string) []Suggestion {
 			depth++
 			continue
 		}
+		// invalid subcommand word typed
+		if len(currentSubs) > 0 {
+			return nil
+		}
 		break
 	}
 
@@ -237,7 +251,7 @@ func Lookup(input string) []Suggestion {
 		}
 	}
 
-	if partial == "" || (len(partial) > 0 && partial[0] == '-') {
+	if len(partial) > 0 && partial[0] == '-' {
 		usedOpts := make(map[string]bool)
 		for _, t := range tokens {
 			if strings.HasPrefix(t, "-") {
@@ -247,7 +261,7 @@ func Lookup(input string) []Suggestion {
 		for _, opt := range currentOpts {
 			if !usedOpts[opt.Name] && (partial == "" || HasPrefix(opt.Name, partial)) {
 				results = append(results, Suggestion{
-					Cmd: prefix + " " + opt.Name, Desc: opt.Description, Icon: rootCmdName,
+					Cmd: linePrefix + " " + opt.Name, Desc: opt.Description, Icon: rootCmdName,
 				})
 			}
 		}

@@ -46,9 +46,21 @@ func saveMode(mode string) {
 }
 
 var (
-	oldState   *term.State
-	oldStateMu sync.Mutex
+	oldState     *term.State
+	oldStateMu   sync.Mutex
+	activeMode   string
+	activeModeMu sync.RWMutex
+	stdoutMu     sync.Mutex
 )
+
+func writeStdout(data []byte) {
+	if len(data) == 0 {
+		return
+	}
+	stdoutMu.Lock()
+	defer stdoutMu.Unlock()
+	_, _ = os.Stdout.Write(data)
+}
 
 // restoreTerminal restores the terminal state if needed
 func restoreTerminal() {
@@ -65,6 +77,10 @@ func restoreTerminal() {
 // it handles raw terminal mode to intercept keystrokes and
 // coordinates between the shell process and the suggestion overlay
 func runWrapper() {
+	var naiveBuffer string
+	cursorOffset := 0
+	var bufferMu sync.Mutex
+
 	r, w, err := os.Pipe() // pipe for ipc communication from shell to iris
 	if err != nil {
 		return
@@ -86,9 +102,9 @@ func runWrapper() {
 	ctx := context.Background()
 	c := exec.CommandContext(ctx, adapter.GetShellPath())
 	c.ExtraFiles = make([]*os.File, 11)
-	// pass write end of pipe to shell as fd 10 (I chose 10 just because it won't conflict with other file descriptors)
+	// pass write end of pipe to shell as fd 13 (since index 10 maps to 13)
 	c.ExtraFiles[10] = w
-	c.Env = adapter.GetEnv(10, os.Getpid())
+	c.Env = adapter.GetEnv(13, os.Getpid())
 
 	ptmx, err := pty.Start(c)
 	if err != nil {
@@ -194,7 +210,7 @@ func runWrapper() {
 				}
 				continue
 			}
-			_, _ = os.Stdout.Write(buf[:n])
+			writeStdout(buf[:n])
 		}
 	}()
 
@@ -258,114 +274,162 @@ func runWrapper() {
 				continue
 			}
 
-			if isExecuting() {
+			if overlay.UserNavigated {
 				continue
 			}
 
-			results := MergeResults(query, "spec")
+			// sync local buffer with actual command line
+			bufferMu.Lock()
+			naiveBuffer = query
+			cursorOffset = 0
+			bufferMu.Unlock()
+
+			activeModeMu.RLock()
+			currentMode := activeMode
+			activeModeMu.RUnlock()
+
+			results := MergeResults(query, currentMode)
 			if len(results) == 0 {
-				_, _ = os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+				writeStdout([]byte(overlay.ClearAndDisable()))
 				continue
 			}
-			_, _ = os.Stdout.Write([]byte(overlay.Clear()))
+			writeStdout([]byte(overlay.Clear()))
+			overlay.TypedQuery = query
+			overlay.UserNavigated = false
 			overlay.UpdateItems(results)
 			var rBuf strings.Builder
 			if !disableGhostText.Load() {
 				rBuf.WriteString(overlay.RenderGhostText(query, false))
 			}
 			rBuf.WriteString(overlay.Render())
-			_, _ = os.Stdout.Write([]byte(rBuf.String()))
+			writeStdout([]byte(rBuf.String()))
 		}
 		if err := scanner.Err(); err != nil {
 			debugLog("[IPC] scanner error: %v", err)
 		}
 	}()
 
-	var naiveBuffer string
 	suggestionsEnabled := true
-	mode := loadMode()
+	activeModeMu.Lock()
+	activeMode = loadMode()
+	activeModeMu.Unlock()
+
+	writeStdout([]byte(overlay.Clear()))
 
 	var renderTimer *time.Timer
 	var renderMu sync.Mutex
 
-	// renderOverlay decides whether to draw the suggestion menu based on current state
+	renderMenuNow := func() {
+		if isExecuting() {
+			return
+		}
+
+		// copy state safely inside timer
+		bufferMu.Lock()
+		bufCopy := naiveBuffer
+		offsetCopy := cursorOffset
+		bufferMu.Unlock()
+
+		activeModeMu.RLock()
+		modeCopy := activeMode
+		activeModeMu.RUnlock()
+
+		navCopy := userNavigated
+
+		runes := []rune(bufCopy)
+		if offsetCopy > 0 && offsetCopy <= len(runes) {
+			bufCopy = string(runes[:len(runes)-offsetCopy])
+		}
+
+		var b strings.Builder
+		if !navCopy {
+			if bufCopy == "" {
+				writeStdout([]byte(overlay.ClearAndDisable()))
+				return
+			}
+			debugLog("[Render] query: '%s', mode: %s", bufCopy, modeCopy)
+			results := MergeResults(bufCopy, modeCopy)
+			debugLog("[Render] results found: %d", len(results))
+
+			if len(results) == 0 || (len(results) == 1 && strings.TrimSpace(results[0].Cmd) == strings.TrimSpace(bufCopy) && !strings.HasSuffix(bufCopy, " ")) {
+				b.WriteString(overlay.ClearAndDisable())
+				writeStdout([]byte(b.String()))
+				return
+			}
+
+			if overlay.Visible {
+				b.WriteString(overlay.Clear())
+			}
+			overlay.TypedQuery = bufCopy
+			overlay.UpdateItems(results)
+		} else {
+			if overlay.Visible {
+				b.WriteString(overlay.Clear())
+			}
+		}
+
+		overlay.UserNavigated = navCopy
+		if !disableGhostText.Load() {
+			b.WriteString(overlay.RenderGhostText(bufCopy, navCopy))
+		}
+		currentCmd := ""
+		if len(overlay.Items) > 0 && overlay.Cursor >= 0 && overlay.Cursor < len(overlay.Items) {
+			currentCmd = overlay.Items[overlay.Cursor].Cmd
+		}
+		debugLog("[RenderOverlay] nav: %v, cursor: %d, typedQuery: '%s', currentCmd: '%s'", navCopy, overlay.Cursor, overlay.TypedQuery, currentCmd)
+		b.WriteString(overlay.Render())
+		writeStdout([]byte(b.String()))
+	}
+
+	var isNavTimerRunning bool
+
 	renderOverlay = func() {
 		renderMu.Lock()
 		defer renderMu.Unlock()
 
-		if renderTimer != nil {
-			renderTimer.Stop()
-		}
-
 		if !suggestionsEnabled || isExecuting() {
+			if renderTimer != nil {
+				renderTimer.Stop()
+				renderTimer = nil
+			}
+			isNavTimerRunning = false
 			return
 		}
 
-		bufCopy := naiveBuffer
-		modeCopy := mode
 		navCopy := userNavigated
 
-		if bufCopy == "" && !navCopy {
-			_, _ = os.Stdout.Write([]byte(overlay.ClearAndDisable()))
-			return
-		}
-
-		// Debounce for 15ms to allow PTY to process the keystroke and update the terminal cursor.
-		// This completely prevents the asynchronous ghost text race condition where the PTY echo
-		// overwrites the first letter of our ghost text!
-		renderTimer = time.AfterFunc(15*time.Millisecond, func() {
-			if isExecuting() {
+		if navCopy {
+			if isNavTimerRunning {
 				return
 			}
-
-			var b strings.Builder
-			if !navCopy {
-				debugLog("[Render] query: '%s', mode: %s", bufCopy, modeCopy)
-				results := MergeResults(bufCopy, modeCopy)
-				debugLog("[Render] results found: %d", len(results))
-
-				if len(results) == 0 {
-					b.WriteString(overlay.ClearAndDisable())
-					_, _ = os.Stdout.Write([]byte(b.String()))
-					return
-				}
-
-				if overlay.Visible {
-					b.WriteString(overlay.Clear())
-				}
-				overlay.UpdateItems(results)
-			} else {
-				if overlay.Visible {
-					b.WriteString(overlay.Clear())
-				}
+			if renderTimer != nil {
+				renderTimer.Stop()
 			}
-
-			if !disableGhostText.Load() {
-				b.WriteString(overlay.RenderGhostText(bufCopy, navCopy))
+			isNavTimerRunning = true
+			// IMPORTANT: please dont change this to above 24ms or under 19ms
+			// I still can get the reason why it only works stably between 20-23ms
+			renderTimer = time.AfterFunc(23*time.Millisecond, func() {
+				renderMu.Lock()
+				renderTimer = nil
+				isNavTimerRunning = false
+				renderMu.Unlock()
+				renderMenuNow()
+			})
+		} else {
+			if renderTimer != nil {
+				renderTimer.Stop()
 			}
-			b.WriteString(overlay.Render())
-			_, _ = os.Stdout.Write([]byte(b.String()))
-		})
+			isNavTimerRunning = false
+			renderTimer = time.AfterFunc(25*time.Millisecond, func() {
+				renderMu.Lock()
+				renderTimer = nil
+				renderMu.Unlock()
+				renderMenuNow()
+			})
+		}
 	}
 
 	renderOverlay()
-
-	renderNow := func() {
-		renderMu.Lock()
-		if renderTimer != nil {
-			renderTimer.Stop()
-		}
-		renderMu.Unlock()
-
-		var b strings.Builder
-		if overlay.Visible {
-			if !disableGhostText.Load() {
-				b.WriteString(overlay.RenderGhostText(naiveBuffer, userNavigated))
-			}
-			b.WriteString(overlay.Render())
-		}
-		_, _ = os.Stdout.Write([]byte(b.String()))
-	}
 
 	// reads from stdin and decides what to forward or intercept
 	// for most cases, I just handle the already have terminal shortcuts
@@ -390,6 +454,15 @@ func runWrapper() {
 				intercepted := false
 
 				if b == '\033' {
+					// check for bracketed paste start/end
+					if i+5 < n && inputSlice[i+1] == '[' && inputSlice[i+2] == '2' && inputSlice[i+3] == '0' {
+						if (inputSlice[i+4] == '0' || inputSlice[i+4] == '1') && inputSlice[i+5] == '~' {
+							intercepted = true
+							_, _ = ptmx.Write(inputSlice[i : i+6])
+							i += 5
+							continue
+						}
+					}
 					// handle escape sequences like arrow keys and functional shortcuts
 					if i+2 < n && (inputSlice[i+1] == '[' || inputSlice[i+1] == 'O') {
 						// shift tab: hide/unhide menu dropdown
@@ -397,7 +470,7 @@ func runWrapper() {
 							intercepted = true
 							suggestionsEnabled = !suggestionsEnabled
 							if !suggestionsEnabled {
-								_, _ = os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+								writeStdout([]byte(overlay.ClearAndDisable()))
 							} else {
 								shouldOverlayDraw = true
 							}
@@ -408,9 +481,19 @@ func runWrapper() {
 						if overlay.Visible && (inputSlice[i+2] == 'A' || inputSlice[i+2] == 'B') {
 							intercepted = true
 							userNavigated = true
+							overlay.UserNavigated = true
 
-							_, _ = os.Stdout.Write([]byte(overlay.Clear())) // clear old menu
+							// clear ghost text synchronously
+							if overlay.LastGhostLen > 0 {
+								var gs strings.Builder
+								gs.WriteString("\0337")
+								gs.WriteString(strings.Repeat(" ", overlay.LastGhostLen+10))
+								gs.WriteString("\0338")
+								writeStdout([]byte(gs.String()))
+								overlay.LastGhostLen = 0
+							}
 
+							oldCursor := overlay.Cursor
 							if inputSlice[i+2] == 'A' { // up arrow
 								overlay.Cursor--
 								if overlay.Cursor < 0 {
@@ -423,20 +506,36 @@ func runWrapper() {
 								}
 							}
 
-							selected := overlay.Items[overlay.Cursor].Cmd
-							_, _ = ptmx.Write([]byte{0x15}) // ctrl+u to clear line
-							_, _ = ptmx.Write([]byte(selected))
-							naiveBuffer = selected
+							// boundary hit - ignore redundant write to avoid PTY flooding
+							if overlay.Cursor == oldCursor {
+								i += 2
+								continue
+							}
 
-							renderNow()
+							selected := overlay.Items[overlay.Cursor].Cmd
+							bufferMu.Lock()
+							naiveBuffer = selected
+							cursorOffset = 0
+							bufferMu.Unlock()
+
+							_, _ = ptmx.Write(append([]byte{0x15}, selected...))
+
+							userNavigated = true
+							overlay.UserNavigated = true
+							renderOverlay()
 							i += 2
 							continue
 						} else if !overlay.Visible && naiveBuffer == "" && (inputSlice[i+2] == 'A' || inputSlice[i+2] == 'B') { // up/down arrow on empty prompt
 							intercepted = true
-							mode = "history"
-							saveMode(mode)
+							activeModeMu.Lock()
+							activeMode = "history"
+							saveMode(activeMode)
+							activeModeMu.Unlock()
 
-							results := MergeResults("", "history")
+							activeModeMu.RLock()
+							currentMode := activeMode
+							activeModeMu.RUnlock()
+							results := MergeResults("", currentMode)
 							if len(results) > 0 {
 								limit := 100
 								if len(results) < limit {
@@ -445,12 +544,12 @@ func runWrapper() {
 								var historyList []core.Suggestion
 
 								if inputSlice[i+2] == 'A' {
-									// Up arrow: Reverse the list so newest is at the bottom
+									// up arrow: reverse the list so newest is at the bottom
 									for j := limit - 1; j >= 0; j-- {
 										historyList = append(historyList, results[j])
 									}
 								} else {
-									// Down arrow: Normal order, newest is at the top
+									// down arrow: normal order, newest is at the top
 									for j := 0; j < limit; j++ {
 										historyList = append(historyList, results[j])
 									}
@@ -459,42 +558,104 @@ func runWrapper() {
 								overlay.UpdateItems(historyList)
 
 								if inputSlice[i+2] == 'A' {
-									overlay.Cursor = len(historyList) - 1 // Up arrow: Start at the bottom
+									overlay.Cursor = len(historyList) - 1 // up arrow: start at the bottom
 								} else {
-									overlay.Cursor = 0 // Down arrow: Start at the top
+									overlay.Cursor = 0 // down arrow: start at the top
 								}
 
 								selected := overlay.Items[overlay.Cursor].Cmd
-								_, _ = ptmx.Write([]byte{0x15}) // ctrl+u to clear line
-								_, _ = ptmx.Write([]byte(selected))
+								bufferMu.Lock()
 								naiveBuffer = selected
+								cursorOffset = 0
+								bufferMu.Unlock()
+
+								_, _ = ptmx.Write(append([]byte{0x15}, selected...))
 
 								userNavigated = true
-								renderNow()
+								overlay.UserNavigated = true
+								renderOverlay()
 							}
 							i += 2
 							continue
 						} else if overlay.Visible && !disableGhostText.Load() && inputSlice[i+2] == 'C' { // right arrow
+							bufferMu.Lock()
 							topCmd := overlay.Items[0].Cmd
-							if strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(naiveBuffer)) {
-								ghostText := topCmd[len(naiveBuffer):]
-								if len(ghostText) > 0 {
-									intercepted = true
-									naiveBuffer += ghostText
-									_, _ = ptmx.Write([]byte(ghostText))
-									shouldOverlayDraw = true
-									i += 2
-									continue
-								}
+							hasMatch := strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(naiveBuffer))
+							var ghostText string
+							if hasMatch {
+								ghostText = topCmd[len(naiveBuffer):]
+							}
+							bufferMu.Unlock()
+
+							if hasMatch && len(ghostText) > 0 {
+								intercepted = true
+								bufferMu.Lock()
+								naiveBuffer += ghostText
+								cursorOffset = 0
+								bufferMu.Unlock()
+								_, _ = ptmx.Write([]byte(ghostText))
+								shouldOverlayDraw = true
+								i += 2
+								continue
 							}
 						}
 					}
 
-					// forward escape sequence to pty if not intercepted
+					// left/right arrow cursor tracking
+					isLeftRightArrow := false
+					if i+2 < n && (inputSlice[i+1] == '[' || inputSlice[i+1] == 'O') {
+						if inputSlice[i+2] == 'D' {
+							bufferMu.Lock()
+							isEmptyQuery := (overlay.Visible && overlay.TypedQuery == "") || (!overlay.Visible && naiveBuffer == "")
+							bufferMu.Unlock()
+							if isEmptyQuery {
+								intercepted = true
+								i += 2
+								continue
+							}
+							bufferMu.Lock()
+							if naiveBuffer != "" || overlay.Visible {
+								cursorOffset++
+								if cursorOffset > len(naiveBuffer) {
+									cursorOffset = len(naiveBuffer)
+								}
+								shouldOverlayDraw = true
+								userNavigated = false
+							}
+							bufferMu.Unlock()
+							isLeftRightArrow = true
+						} else if inputSlice[i+2] == 'C' {
+							bufferMu.Lock()
+							isEmptyQuery := (overlay.Visible && overlay.TypedQuery == "") || (!overlay.Visible && naiveBuffer == "")
+							bufferMu.Unlock()
+							if isEmptyQuery {
+								intercepted = true
+								i += 2
+								continue
+							}
+							bufferMu.Lock()
+							if naiveBuffer != "" || overlay.Visible {
+								cursorOffset--
+								if cursorOffset < 0 {
+									cursorOffset = 0
+								}
+								shouldOverlayDraw = true
+								userNavigated = false
+							}
+							bufferMu.Unlock()
+							isLeftRightArrow = true
+						}
+					}
+
 					if !intercepted {
-						_, _ = os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+						writeStdout([]byte(overlay.ClearAndDisable()))
 						disableGhostText.Store(true)
-						naiveBuffer = ""
+						if !isLeftRightArrow {
+							bufferMu.Lock()
+							naiveBuffer = ""
+							cursorOffset = 0
+							bufferMu.Unlock()
+						}
 
 						_, _ = ptmx.Write([]byte{b})
 						// skip remaining bytes of the escape sequence to avoid misinterpretation
@@ -512,12 +673,14 @@ func runWrapper() {
 
 				if b == 0x12 { // ctrl+r: toggle between command specs and command history
 					intercepted = true
-					if mode == "spec" {
-						mode = "history"
+					activeModeMu.Lock()
+					if activeMode == "spec" {
+						activeMode = "history"
 					} else {
-						mode = "spec"
+						activeMode = "spec"
 					}
-					saveMode(mode)
+					saveMode(activeMode)
+					activeModeMu.Unlock()
 					shouldOverlayDraw = true
 					// enter: enter behavior is a bit different from tab suggestions in code editor
 					// I want it to execute the command anyway and ignore the suggestions
@@ -525,10 +688,23 @@ func runWrapper() {
 					// enter is not used to select suggestions
 				} else if overlay.Visible && (b == 0x0d || b == 0x0a) {
 					intercepted = true
-					_, _ = os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+					if overlay.UserNavigated && len(overlay.Items) > 0 && overlay.Cursor >= 0 && overlay.Cursor < len(overlay.Items) {
+						selected := overlay.Items[overlay.Cursor].Cmd
+						activeModeMu.RLock()
+						currentMode := activeMode
+						activeModeMu.RUnlock()
+						if currentMode == "spec" {
+							selected = strings.TrimSpace(selected) + " "
+						}
+						_, _ = ptmx.Write(append([]byte{0x15}, selected...))
+					}
+					writeStdout([]byte(overlay.ClearAndDisable()))
 
 					_, _ = ptmx.Write([]byte{0x0d})
+					bufferMu.Lock()
 					naiveBuffer = ""
+					cursorOffset = 0
+					bufferMu.Unlock()
 					disableGhostText.Store(false)
 					shouldOverlayDraw = false
 					userNavigated = false
@@ -539,16 +715,21 @@ func runWrapper() {
 						shouldOverlayDraw = true
 					} else {
 						selected := overlay.Items[overlay.Cursor].Cmd
-						_, _ = os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+						writeStdout([]byte(overlay.ClearAndDisable()))
 
-						if mode == "spec" {
+						activeModeMu.RLock()
+						currentMode := activeMode
+						activeModeMu.RUnlock()
+						if currentMode == "spec" {
 							selected = strings.TrimSpace(selected) + " "
 						}
 
+						bufferMu.Lock()
 						naiveBuffer = selected
+						cursorOffset = 0
+						bufferMu.Unlock()
 
-						_, _ = ptmx.Write([]byte{0x15}) // ctrl+u to clear line
-						_, _ = ptmx.Write([]byte(selected))
+						_, _ = ptmx.Write(append([]byte{0x15}, selected...))
 
 						overlay.Cursor = 0 // this prevents when you tab, it switches between suggestions non-stop
 
@@ -565,13 +746,47 @@ func runWrapper() {
 					// we handle line editing keys manually to keep naiveBuffer in sync
 					// since terminal is in raw mode, we must update our state for every change
 					switch b {
-					case 127, 0x08: // backspace: remove last character from buffer
-						if len(naiveBuffer) > 0 {
-							naiveBuffer = naiveBuffer[:len(naiveBuffer)-1]
+					case 0x01: // ctrl+a: move to beginning of line
+						bufferMu.Lock()
+						cursorOffset = len(naiveBuffer)
+						if naiveBuffer != "" || overlay.Visible {
 							shouldOverlayDraw = true
-							userNavigated = false
 						}
+						bufferMu.Unlock()
+						userNavigated = false
+					case 0x05: // ctrl+e: move to end of line
+						bufferMu.Lock()
+						cursorOffset = 0
+						if naiveBuffer != "" || overlay.Visible {
+							shouldOverlayDraw = true
+						}
+						bufferMu.Unlock()
+						userNavigated = false
+
+					case 127, 0x08: // backspace: remove character
+						bufferMu.Lock()
+						if len(naiveBuffer) > 0 {
+							runes := []rune(naiveBuffer)
+							if cursorOffset <= 0 {
+								if len(runes) > 0 {
+									naiveBuffer = string(runes[:len(runes)-1])
+								}
+								cursorOffset = 0
+							} else {
+								if cursorOffset > len(runes) {
+									cursorOffset = len(runes)
+								}
+								pos := len(runes) - cursorOffset
+								if pos > 0 && pos <= len(runes) {
+									naiveBuffer = string(append(runes[:pos-1], runes[pos:]...))
+								}
+							}
+						}
+						bufferMu.Unlock()
+						shouldOverlayDraw = true
+						userNavigated = false
 					case 0x17: // ctrl+w: delete the last word in the buffer
+						bufferMu.Lock()
 						trimBuf := strings.TrimRight(naiveBuffer, " ")
 						lastSpace := strings.LastIndex(trimBuf, " ")
 						if lastSpace >= 0 {
@@ -579,29 +794,66 @@ func runWrapper() {
 						} else {
 							naiveBuffer = ""
 						}
+						cursorOffset = 0
+						bufferMu.Unlock()
 						shouldOverlayDraw = true
 						userNavigated = false
-					case '\r', '\n', 0x03, 0x15, 0x0C: // enter, ctrl+c, ctrl+u, ctrl+l: clear buffer on line reset
+					case 0x0c: // ctrl+l: clear screen but keep buffer and redraw menu
+						shouldOverlayDraw = true
+						userNavigated = false
+					case '\r', '\n', 0x03, 0x15: // enter, ctrl+c, ctrl+u: clear buffer on line reset
+						bufferMu.Lock()
 						naiveBuffer = ""
+						cursorOffset = 0
+						bufferMu.Unlock()
+						activeModeMu.Lock()
+						activeMode = loadMode()
+						activeModeMu.Unlock()
 						disableGhostText.Store(false)
-						_, _ = os.Stdout.Write([]byte(overlay.ClearAndDisable()))
+						writeStdout([]byte(overlay.ClearAndDisable()))
 						userNavigated = false
 					default:
 						// track normal printable characters in the buffer for matching
 						if b >= 32 && b <= 126 {
 							// if user presses space, check if the current word is an alias
-							if b == ' ' && naiveBuffer != "" && !strings.Contains(naiveBuffer, " ") {
-								if target, ok := core.GetAlias(naiveBuffer); ok {
-									// clear the current alias and replace it with the full command
-									_, _ = ptmx.Write([]byte{0x15}) // ctrl+u to clear the current input line
-									_, _ = ptmx.Write([]byte(target + " "))
-									naiveBuffer = target + " "
-									shouldOverlayDraw = true
-									continue
+							bufferMu.Lock()
+							isSpaceAlias := b == ' ' && naiveBuffer != "" && !strings.Contains(naiveBuffer, " ")
+							var target string
+							var ok bool
+							if isSpaceAlias {
+								target, ok = core.GetAlias(naiveBuffer)
+							}
+							bufferMu.Unlock()
+
+							if isSpaceAlias && ok {
+								// clear the current alias and replace it with the full command
+								_, _ = ptmx.Write(append([]byte{0x15}, target+" "...))
+								bufferMu.Lock()
+								naiveBuffer = target + " "
+								cursorOffset = 0
+								bufferMu.Unlock()
+								shouldOverlayDraw = true
+								continue
+							}
+							bufferMu.Lock()
+							if cursorOffset == 0 {
+								naiveBuffer += string(b)
+							} else {
+								if cursorOffset > len(naiveBuffer) {
+									cursorOffset = len(naiveBuffer)
+								}
+								pos := len(naiveBuffer) - cursorOffset
+								if pos >= 0 && pos <= len(naiveBuffer) {
+									naiveBuffer = naiveBuffer[:pos] + string(b) + naiveBuffer[pos:]
+								} else {
+									naiveBuffer += string(b)
+									cursorOffset = 0
 								}
 							}
-							naiveBuffer += string(b)
+							bufferMu.Unlock()
 							shouldOverlayDraw = true
+							userNavigated = false
+							overlay.UserNavigated = false
 						}
 					}
 				}
