@@ -76,7 +76,7 @@ jobs:
           echo "" >> $GITHUB_ENV
           echo "## Installation" >> $GITHUB_ENV
           echo "\`\`\`bash" >> $GITHUB_ENV
-          echo "curl -sS https://raw.githubusercontent.com/versenilvis/iris/main/scripts/install.sh | sudo sh" >> $GITHUB_ENV
+          echo "curl -sS https://raw.githubusercontent.com/versenilvis/iris/main/scripts/install.sh | sh" >> $GITHUB_ENV
           echo "\`\`\`" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
         env:
