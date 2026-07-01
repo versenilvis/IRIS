@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/versenilvis/iris/integration/shell"
+	"github.com/versenilvis/iris/logger"
 )
 
 var (
@@ -103,7 +104,7 @@ func Lookup(input string) []Suggestion {
 
 	rootCmdName := tokens[0]
 	spec, exists := Registry[rootCmdName]
-	debugLog("[core] lookup tokens: %v, registry exists: %v", tokens, exists)
+	logger.Debugf("core lookup tokens: %v, registry exists: %v", tokens, exists)
 	if !exists {
 		return nil
 	}
@@ -174,8 +175,8 @@ func Lookup(input string) []Suggestion {
 	partial := tokens[len(tokens)-1]
 	allowMoreArgs := currentLimit <= 0 || argCount < currentLimit
 
-	debugLog("[core] query tokens: %v (partial: '%s')", tokens, partial)
-	debugLog("[core] depth: %d, argCount: %d, limit: %d, allowMore: %v", depth, argCount, currentLimit, allowMoreArgs)
+	logger.Debugf("core query tokens: %v (partial: '%s')", tokens, partial)
+	logger.Debugf("core depth: %d, argCount: %d, limit: %d, allowMore: %v", depth, argCount, currentLimit, allowMoreArgs)
 
 	prefixBuilder := strings.Builder{}
 	for i := 0; i < depth; i++ {

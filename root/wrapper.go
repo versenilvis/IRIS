@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -20,6 +21,7 @@ import (
 	"github.com/versenilvis/iris/config"
 	"github.com/versenilvis/iris/integration"
 	"github.com/versenilvis/iris/integration/shell"
+	"github.com/versenilvis/iris/logger"
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 )
@@ -116,12 +118,16 @@ func runWrapper() {
 	_ = pty.InheritSize(os.Stdin, ptmx)
 	core.ShellPID = c.Process.Pid
 
+	logger.Infof("PTY child shell started: shell=%s, path=%s, pid=%d", shellName, adapter.GetShellPath(), c.Process.Pid)
+
 	// put terminal in raw mode to intercept every keystroke
 	var errMakeRaw error
 	oldState, errMakeRaw = term.MakeRaw(int(os.Stdin.Fd()))
 	if errMakeRaw != nil {
+		logger.Errorf("Failed to set terminal raw mode: %v", errMakeRaw)
 		panic(errMakeRaw)
 	}
+	logger.Debugf("Terminal set to raw mode successfully")
 	defer restoreTerminal()
 
 	sigCh := make(chan os.Signal, 2)
@@ -139,6 +145,7 @@ func runWrapper() {
 		for s := range sigCh {
 			switch s {
 			case syscall.SIGWINCH:
+				logger.Debugf("Received SIGWINCH terminal resize signal")
 				_ = pty.InheritSize(os.Stdin, ptmx) // handle terminal window resize
 			// this is the core feature of reloading
 			// it helps IRIS reload itself that you dont need to restart the shell manually
@@ -178,7 +185,25 @@ func runWrapper() {
 				}
 
 				restoreTerminal()
-				_ = syscall.Exec(exe, os.Args, os.Environ())
+				execArgs := []string{os.Args[0]}
+				if logDir, err := config.CachePath(); err == nil {
+					argsFile := filepath.Join(logDir, "reload-args")
+					if data, err := os.ReadFile(argsFile); err == nil {
+						lines := strings.Split(string(data), "\n")
+						for _, line := range lines {
+							trimmed := strings.TrimSpace(line)
+							if trimmed != "" {
+								execArgs = append(execArgs, trimmed)
+							}
+						}
+						_ = os.Remove(argsFile)
+					} else {
+						execArgs = os.Args
+					}
+				} else {
+					execArgs = os.Args
+				}
+				_ = syscall.Exec(exe, execArgs, os.Environ())
 			}
 		}
 	}()
@@ -305,7 +330,7 @@ func runWrapper() {
 			writeStdout([]byte(rBuf.String()))
 		}
 		if err := scanner.Err(); err != nil {
-			debugLog("[IPC] scanner error: %v", err)
+			logger.Errorf("IPC scanner error: %v", err)
 		}
 	}()
 
@@ -347,9 +372,9 @@ func runWrapper() {
 				writeStdout([]byte(overlay.ClearAndDisable()))
 				return
 			}
-			debugLog("[Render] query: '%s', mode: %s", bufCopy, modeCopy)
+			logger.Debugf("Render query: '%s', mode: %s", bufCopy, modeCopy)
 			results := MergeResults(bufCopy, modeCopy)
-			debugLog("[Render] results found: %d", len(results))
+			logger.Debugf("Render results found: %d", len(results))
 
 			if len(results) == 0 || (len(results) == 1 && strings.TrimSpace(results[0].Cmd) == strings.TrimSpace(bufCopy) && !strings.HasSuffix(bufCopy, " ")) {
 				b.WriteString(overlay.ClearAndDisable())
@@ -376,7 +401,7 @@ func runWrapper() {
 		if len(overlay.Items) > 0 && overlay.Cursor >= 0 && overlay.Cursor < len(overlay.Items) {
 			currentCmd = overlay.Items[overlay.Cursor].Cmd
 		}
-		debugLog("[RenderOverlay] nav: %v, cursor: %d, typedQuery: '%s', currentCmd: '%s'", navCopy, overlay.Cursor, overlay.TypedQuery, currentCmd)
+		logger.Debugf("RenderOverlay nav: %v, cursor: %d, typedQuery: '%s', currentCmd: '%s'", navCopy, overlay.Cursor, overlay.TypedQuery, currentCmd)
 		b.WriteString(overlay.Render())
 		writeStdout([]byte(b.String()))
 	}
@@ -448,6 +473,8 @@ func runWrapper() {
 				continue
 			}
 
+			logger.Debugf("Stdin raw input: bytes=%q, hex=%x", inputSlice[:n], inputSlice[:n])
+
 			shouldOverlayDraw := false
 			for i := 0; i < n; i++ {
 				b := inputSlice[i]
@@ -458,6 +485,7 @@ func runWrapper() {
 					if i+5 < n && inputSlice[i+1] == '[' && inputSlice[i+2] == '2' && inputSlice[i+3] == '0' {
 						if (inputSlice[i+4] == '0' || inputSlice[i+4] == '1') && inputSlice[i+5] == '~' {
 							intercepted = true
+							logger.Debugf("Intercepted bracketed paste event")
 							_, _ = ptmx.Write(inputSlice[i : i+6])
 							i += 5
 							continue
@@ -469,6 +497,7 @@ func runWrapper() {
 						if inputSlice[i+1] == '[' && inputSlice[i+2] == 'Z' {
 							intercepted = true
 							suggestionsEnabled = !suggestionsEnabled
+							logger.Debugf("Intercepted Shift+Tab, suggestionsEnabled=%v", suggestionsEnabled)
 							if !suggestionsEnabled {
 								writeStdout([]byte(overlay.ClearAndDisable()))
 							} else {
@@ -494,17 +523,20 @@ func runWrapper() {
 							}
 
 							oldCursor := overlay.Cursor
-							if inputSlice[i+2] == 'A' { // up arrow
+							arrowDir := "down"
+							if inputSlice[i+2] == 'A' {
+								arrowDir = "up"
 								overlay.Cursor--
 								if overlay.Cursor < 0 {
 									overlay.Cursor = 0
 								}
-							} else { // down arrow
+							} else {
 								overlay.Cursor++
 								if overlay.Cursor >= len(overlay.Items) {
 									overlay.Cursor = len(overlay.Items) - 1
 								}
 							}
+							logger.Debugf("Intercepted %s Arrow, cursor moved %d -> %d", arrowDir, oldCursor, overlay.Cursor)
 
 							// boundary hit - ignore redundant write to avoid PTY flooding
 							if overlay.Cursor == oldCursor {
@@ -589,6 +621,7 @@ func runWrapper() {
 
 							if hasMatch && len(ghostText) > 0 {
 								intercepted = true
+								logger.Debugf("Intercepted Right Arrow (accepted ghost text: %q)", ghostText)
 								bufferMu.Lock()
 								naiveBuffer += ghostText
 								cursorOffset = 0
@@ -681,6 +714,7 @@ func runWrapper() {
 					}
 					saveMode(activeMode)
 					activeModeMu.Unlock()
+					logger.Debugf("Intercepted Ctrl+R, toggled mode to %q", activeMode)
 					shouldOverlayDraw = true
 					// enter: enter behavior is a bit different from tab suggestions in code editor
 					// I want it to execute the command anyway and ignore the suggestions
@@ -688,6 +722,7 @@ func runWrapper() {
 					// enter is not used to select suggestions
 				} else if overlay.Visible && (b == 0x0d || b == 0x0a) {
 					intercepted = true
+					logger.Debugf("Intercepted Enter key, navigated=%v", overlay.UserNavigated)
 					if overlay.UserNavigated && len(overlay.Items) > 0 && overlay.Cursor >= 0 && overlay.Cursor < len(overlay.Items) {
 						selected := overlay.Items[overlay.Cursor].Cmd
 						activeModeMu.RLock()
@@ -711,6 +746,7 @@ func runWrapper() {
 					continue
 				} else if b == 0x09 { // tab: select suggestions
 					intercepted = true
+					logger.Debugf("Intercepted Tab key, visible=%v, cursor=%d", overlay.Visible, overlay.Cursor)
 					if !overlay.Visible {
 						shouldOverlayDraw = true
 					} else {

@@ -7,10 +7,10 @@ import (
 	"github.com/versenilvis/iris/commands/core"
 	"github.com/versenilvis/iris/config"
 	"github.com/versenilvis/iris/integration"
+	"github.com/versenilvis/iris/logger"
 )
 
-// mergeResults collects and dedupes suggestions for a query and mode
-// example: mergeResults("git ", "spec")
+// MergeResults collects and dedupes suggestions for a query and mode
 func MergeResults(query string, mode string) []core.Suggestion {
 	maxSugg := config.Get().UI.MaxSuggestions
 	seen := make(map[string]bool)
@@ -19,7 +19,7 @@ func MergeResults(query string, mode string) []core.Suggestion {
 	// always call lookup to scan aliases and get spec suggestions
 	var cmdResults []core.Suggestion
 	if query != "" {
-		debugLog("[Merge] Calling Lookup for '%s'", query)
+		logger.Debugf("Merge Calling Lookup for '%s'", query)
 		cmdResults = core.Lookup(query)
 	}
 
