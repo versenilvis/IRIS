@@ -30,6 +30,11 @@ func Init(logFilePath string, debug bool) {
 	mu.Lock()
 	defer mu.Unlock()
 
+	if logFile != nil {
+		_ = logFile.Close()
+		logFile = nil
+	}
+
 	// get log level from env
 	lvlEnv := strings.ToLower(os.Getenv("IRIS_LOG_LEVEL"))
 	switch lvlEnv {
