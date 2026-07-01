@@ -38,7 +38,10 @@ It works exactly like coding editor suggestion menu drop down.`,
 			}()
 			if pidStr := os.Getenv("IRIS_PID"); pidStr != "" {
 				if pid, err := strconv.Atoi(pidStr); err == nil && pid > 0 {
-					_ = os.WriteFile("/tmp/iris-reload-args", []byte(strings.Join(os.Args[1:], "\n")), 0644)
+					if logDir, err := config.CachePath(); err == nil {
+						argsFile := filepath.Join(logDir, "reload-args")
+						_ = os.WriteFile(argsFile, []byte(strings.Join(os.Args[1:], "\n")), 0600)
+					}
 					_ = syscall.Kill(pid, syscall.SIGUSR1)
 					fmt.Println("\r\033[K\033[36m[IRIS] Sent reload signal to parent session.\033[0m")
 					return

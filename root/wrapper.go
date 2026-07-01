@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -185,15 +186,20 @@ func runWrapper() {
 
 				restoreTerminal()
 				execArgs := []string{os.Args[0]}
-				if data, err := os.ReadFile("/tmp/iris-reload-args"); err == nil {
-					lines := strings.Split(string(data), "\n")
-					for _, line := range lines {
-						trimmed := strings.TrimSpace(line)
-						if trimmed != "" {
-							execArgs = append(execArgs, trimmed)
+				if logDir, err := config.CachePath(); err == nil {
+					argsFile := filepath.Join(logDir, "reload-args")
+					if data, err := os.ReadFile(argsFile); err == nil {
+						lines := strings.Split(string(data), "\n")
+						for _, line := range lines {
+							trimmed := strings.TrimSpace(line)
+							if trimmed != "" {
+								execArgs = append(execArgs, trimmed)
+							}
 						}
+						_ = os.Remove(argsFile)
+					} else {
+						execArgs = os.Args
 					}
-					_ = os.Remove("/tmp/iris-reload-args")
 				} else {
 					execArgs = os.Args
 				}
