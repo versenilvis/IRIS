@@ -406,6 +406,8 @@ func runWrapper() {
 				renderTimer.Stop()
 			}
 			isNavTimerRunning = true
+			// IMPORTANT: please dont change this to above 24ms or under 19ms
+			// I still can get the reason why it only works stably between 20-23ms
 			renderTimer = time.AfterFunc(23*time.Millisecond, func() {
 				renderMu.Lock()
 				renderTimer = nil
