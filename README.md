@@ -43,6 +43,23 @@ curl -sSL https://raw.githubusercontent.com/versenilvis/iris/main/scripts/instal
 | <kbd>Ctrl</kbd> + <kbd>C</kbd>     | Cancel command          | Send `SIGINT`, clear the input buffer, and close the menu.                |
 | <kbd>Ctrl</kbd> + <kbd>W</kbd>     | Delete word             | Delete the word immediately before the cursor.                            |
 
+## Reporting bugs
+> [!NOTE]
+> Describing the bug you are facing, along with the relevant log  
+> Enabling debugging mode and then performing actions that led to the error
+
+Run IRIS with debugging mode:
+```bash
+iris -d
+```
+or `config.toml`:
+```toml
+debug=true
+```
+
+> [!IMPORTANT]
+> **Since IRIS logs everything you type, you should only enable debugging mode when you need to report bugs**
+
 ## License
 
 This project is licensed under the [0BSD License](LICENSE) - no strings attached. Meaning you can do whatever you want with it.
