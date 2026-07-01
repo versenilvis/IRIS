@@ -5,9 +5,14 @@
   
   [![GitHub Actions](https://img.shields.io/github/actions/workflow/status/versenilvis/IRIS/release.yml?branch=main&style=for-the-badge&logo=github&logoColor=white&label=Actions)](https://github.com/versenilvis/IRIS/actions/workflows/release.yml)
   [![License: 0BSD](https://img.shields.io/badge/License-0BSD-blue?style=for-the-badge&logo=github&logoColor=white)](./LICENSE)
+  
+  <a href="#why-iris-instead-of-fig-or-zsh-auto-plugins">Comparison</a> · <a href="#installation">Installation</a> · <a href="#shortcuts">Shortcuts</a> · <a href="#reporting-bugs">Reporting bugs</a> 
 
 </div>
 
+**IRIS is built on top of TTY, so it runs everywhere. It just needs a terminal!**
+
+Run iris wherever you already work; your local machine, a remote server, or anywhere you can ssh. Each suggestion menu renders directly inline inside your real terminal session, not an app's imitation of one, so it never breaks full-screen TUIs or terminal formatting. Automatically index your aliases and shell history to suggest commands that match your actual workflow in real time. Change configurations and propagate them instantly without restarting your shell. One single local native Go binary, not an app: no gui, no electron, no mac-only wrapper, no account, no telemetry. (if you've used fig: it's that, rebuilt to run purely on TTY)
 
 <!--
   [![Status](https://img.shields.io/badge/status-beta-yellow?style=for-the-badge&logo=github&logoColor=white)]()
@@ -16,12 +21,40 @@
 -->
 
 
+## Why Iris instead of Fig or Zsh auto-plugins
+How it compares
+
+| Feature                           | Iris                 | Fig                        | Zsh plugins           |
+| :-------------------------------- | :------------------- | :------------------------- | :-------------------- |
+| **Engine**                        | Native TTY binary    | Electron app               | Shell scripts         |
+| **Startup**                       | No startup cost      | Minimal                    | Slower shell startup  |
+| **UI**                            | Inline overlay       | GUI popover                | Inline suggestions    |
+| **SSH**                           | Works out of the box | Desktop companion required | Remote setup required |
+| **Tmux & Linux virtual terminal** | Full support         | Not supported              | Full support          |
+| **Memory**                        | < 15 MB              | Heavy                      | Moderate              |
+
+Supported shell & environment
+
+| Environment                                                                      | Iris  |  Fig  |       Shell plugins       |
+| :------------------------------------------------------------------------------- | :---: | :---: | :-----------------------: |
+| **Zsh**                                                                          |   ✓   |   ✓   |      ✓ (Zsh plugins)      |
+| **Bash**                                                                         |   ✓   |   ✓   |             -             |
+| **Fish**                                                                         |   ✓   |   ✓   |      ✓ (Fish native)      |
+| **Nushell**                                                                      |   ✓   |   -   |             -             |
+| **POSIX sh / Dash**                                                              |   ✓   |   -   |             -             |
+| **Busybox ash**                                                                  |   ✓   |   -   |             -             |
+| **Tmux**                                                                         |   ✓   |   -   |     ✓ (only Zsh/Fish)     |
+| **Linux virtual terminal (<kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>F1-F9</kbd>)** |   ✓   |   -   |             -             |
+| **SSH sessions**                                                                 |   ✓   |   -   | ✓ (requires remote setup) |
 
 ## Installation
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/versenilvis/iris/main/scripts/install.sh | sh
 ```
+
+> [!NOTE]
+> Currently, Windows is not supported
 
 ## Shortcuts
 
@@ -46,9 +79,9 @@ curl -sSL https://raw.githubusercontent.com/versenilvis/iris/main/scripts/instal
 ## Reporting bugs
 > [!NOTE]
 > Describing the bug you are facing, along with the relevant log  
-> Enabling debugging mode and then performing actions that led to the error
+> Enabling debug mode and then performing actions that led to the error
 
-Run IRIS with debugging mode:
+Run IRIS with debug mode:
 ```bash
 iris -d
 ```
@@ -58,7 +91,7 @@ debug=true
 ```
 
 > [!IMPORTANT]
-> **Since IRIS logs everything you type, you should only enable debugging mode when you need to report bugs**
+> **Since IRIS logs everything you type, you should only enable debug mode when you need to report bugs**
 
 ## License
 
@@ -67,3 +100,12 @@ This project is licensed under the [0BSD License](LICENSE) - no strings attached
 For those who fork it and want to publish a new version or something else; if you can, a credit or co-author mention is always welcome :) (though never required).
 
 Thank you!
+
+## Feedback
+
+I'd love to hear your feedback
+
+Feel free to reach out via:
+* [Email](mailto:versedev.store@proton.me)
+* [Twitter](https://twitter.com/versenilvis)
+* [GitHub issues](https://github.com/versenilvis/iris/issues/new)
