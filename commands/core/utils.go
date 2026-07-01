@@ -1,18 +1,8 @@
 package core
 
 import (
-	"fmt"
-	"io"
 	"strings"
 )
-
-var DebugWriter io.Writer
-
-func debugLog(format string, a ...any) {
-	if DebugWriter != nil {
-		_, _ = fmt.Fprintf(DebugWriter, format+"\n", a...)
-	}
-}
 
 // SplitAliasTokens parses the input string into shell-like tokens handling quotes
 // example: SplitAliasTokens("git commit -m \"hello world\"")
