@@ -710,6 +710,15 @@ func runWrapper() {
 					saveMode(activeMode)
 					activeModeMu.Unlock()
 					logger.Debugf("Intercepted Ctrl+R, toggled mode to %q", activeMode)
+					if userNavigated {
+						bufferMu.Lock()
+						naiveBuffer = overlay.TypedQuery
+						cursorOffset = 0
+						bufferMu.Unlock()
+						_, _ = ptmx.Write(append([]byte{0x15}, overlay.TypedQuery...))
+					}
+					userNavigated = false
+					overlay.UserNavigated = false
 					shouldOverlayDraw = true
 					// enter: enter behavior is a bit different from tab suggestions in code editor
 					// I want it to execute the command anyway and ignore the suggestions
