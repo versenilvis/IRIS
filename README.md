@@ -25,6 +25,11 @@ Run iris wherever you already work; your local machine, a remote server, or anyw
 
 
 ## Why Iris instead of Fig or Zsh auto-plugins
+
+> [!IMPORTANT]
+> Fig was officially sunset in September 2024 and migrated to Amazon Q Developer (which requires cloud authentication and proprietary bloat)
+> IRIS is the lightweight, open-source, zero-telemetry alternative built purely on native Go and TTY with no accounts, no GUI app, and no background daemons required
+
 How it compares
 
 | Feature                           | Iris                 | Fig                        | Zsh plugins           |
