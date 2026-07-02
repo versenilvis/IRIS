@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -54,8 +53,6 @@ var (
 	activeMode   string
 	activeModeMu sync.RWMutex
 	stdoutMu     sync.Mutex
-
-	ansiStripRegex = regexp.MustCompile(`\x1b\[[0-9;?]*[a-zA-Z]|\x1b\][^\x07]*(?:\x07|\x1b\\)|\r|\n`)
 )
 
 func writeStdout(data []byte) {
@@ -87,8 +84,6 @@ func runWrapper() {
 	var bufferMu sync.Mutex
 	var userNavigated bool
 	var renderMenuNow func()
-	var ptyQuietTimer *time.Timer
-	var ptyQuietMu sync.Mutex
 
 	r, w, err := os.Pipe() // pipe for ipc communication from shell to iris
 	if err != nil {
@@ -250,36 +245,14 @@ func runWrapper() {
 			bufferMu.Unlock()
 
 			if nbEmpty && !userNavigated {
-				if idx := bytes.LastIndexAny(buf[:n], "\r\n"); idx >= 0 {
-					lastPromptBuf = append([]byte(nil), buf[idx+1:n]...)
-				} else {
-					lastPromptBuf = append(lastPromptBuf, buf[:n]...)
+				lastPromptBuf = append(lastPromptBuf, buf[:n]...)
+				if idx := bytes.LastIndexByte(lastPromptBuf, '\n'); idx >= 0 {
+					lastPromptBuf = append([]byte(nil), lastPromptBuf[idx+1:]...)
 				}
-				clean := ansiStripRegex.ReplaceAll(lastPromptBuf, nil)
-				pLen := len([]rune(string(clean)))
-				if pLen > 0 {
+				pLen := integration.ComputeCursorCol(lastPromptBuf)
+				if pLen >= 0 {
 					overlay.SetPromptLen(pLen)
 				}
-			}
-
-			if userNavigated {
-				ptyQuietMu.Lock()
-				if ptyQuietTimer != nil {
-					ptyQuietTimer.Stop()
-				}
-				ptyQuietTimer = time.AfterFunc(6*time.Millisecond, func() {
-					if !userNavigated {
-						return
-					}
-					bufferMu.Lock()
-					settled := naiveBuffer
-					bufferMu.Unlock()
-					overlay.SetSettledCmd(settled)
-					if renderMenuNow != nil {
-						renderMenuNow()
-					}
-				})
-				ptyQuietMu.Unlock()
 			}
 		}
 	}()
@@ -430,7 +403,6 @@ func runWrapper() {
 				b.WriteString(overlay.Clear())
 			}
 			overlay.TypedQuery = bufCopy
-			overlay.SetSettledCmd(bufCopy)
 			overlay.UpdateItems(results)
 		} else {
 			if overlay.Visible {
@@ -574,7 +546,7 @@ func runWrapper() {
 							cursorOffset = 0
 							bufferMu.Unlock()
 
-							writeStdout([]byte(overlay.RenderCursorMove()))
+							writeStdout([]byte(overlay.Render()))
 							_, _ = ptmx.Write(append([]byte{0x15}, selected...))
 
 							i += 2
@@ -610,7 +582,6 @@ func runWrapper() {
 								}
 
 								overlay.TypedQuery = ""
-								overlay.SetSettledCmd("")
 								overlay.UpdateItems(historyList)
 
 								if inputSlice[i+2] == 'A' {
