@@ -117,6 +117,11 @@ func ComputeCursorCol(data []byte) int {
 			i++
 			continue
 		}
+		if b < 0x7f {
+			col++
+			i++
+			continue
+		}
 		r, size := utf8.DecodeRune(data[i:])
 		w := lipgloss.Width(string(r))
 		col += w
