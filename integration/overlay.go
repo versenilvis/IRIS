@@ -8,6 +8,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/logger"
 	"golang.org/x/term"
 )
 
@@ -26,12 +27,23 @@ type Overlay struct {
 	TypedQuery    string
 	UserNavigated bool
 	SettledCmd    string
+	LastOffset    int
+	PromptLen     int
 }
 
 func (o *Overlay) SetSettledCmd(cmd string) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	o.SettledCmd = cmd
+}
+
+func (o *Overlay) SetPromptLen(l int) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if o.PromptLen != l {
+		logger.Debugf("SetPromptLen: %d -> %d", o.PromptLen, l)
+		o.PromptLen = l
+	}
 }
 
 var (
@@ -124,6 +136,14 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool) string {
 }
 
 func (o *Overlay) Render() string {
+	return o.draw(true)
+}
+
+func (o *Overlay) RenderCursorMove() string {
+	return o.draw(false)
+}
+
+func (o *Overlay) draw(recomputeOffset bool) string {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
@@ -135,20 +155,24 @@ func (o *Overlay) Render() string {
 	s.WriteString("\033[?7l")
 
 	var offset int
-	if o.UserNavigated && o.SettledCmd != "" {
-		typedLen := len([]rune(o.TypedQuery))
-		currentLen := len([]rune(o.SettledCmd))
-		width, _, err := term.GetSize(int(os.Stdout.Fd()))
-		if err != nil || width <= 0 {
-			width = 120
-		}
-		if currentLen+4 < width {
-			offset = currentLen - typedLen
-		} else {
-			curCol := (currentLen + 2) % width
-			typedCol := (typedLen + 2) % width
+	if recomputeOffset {
+		if o.UserNavigated && o.SettledCmd != "" {
+			typedLen := len([]rune(o.TypedQuery))
+			currentLen := len([]rune(o.SettledCmd))
+			width, _, err := term.GetSize(int(os.Stdout.Fd()))
+			if err != nil || width <= 0 {
+				width = 120
+			}
+			pLen := o.PromptLen
+			curCol := (pLen + currentLen) % width
+			typedCol := (pLen + typedLen) % width
 			offset = curCol - typedCol
+			logger.Debugf("Overlay draw recompute: pLen=%d, width=%d, curLen=%d, typedLen=%d => curCol=%d, typedCol=%d, offset=%d",
+				pLen, width, currentLen, typedLen, curCol, typedCol, offset)
 		}
+		o.LastOffset = offset
+	} else {
+		offset = o.LastOffset
 	}
 
 	s.WriteString("\0337")
@@ -295,6 +319,7 @@ func (o *Overlay) ClearAndDisable() string {
 	o.TypedQuery = ""
 	o.UserNavigated = false
 	o.SettledCmd = ""
+	o.LastOffset = 0
 
 	var s strings.Builder
 	s.WriteString("\033[?7l")

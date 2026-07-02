@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -53,6 +54,8 @@ var (
 	activeMode   string
 	activeModeMu sync.RWMutex
 	stdoutMu     sync.Mutex
+
+	ansiStripRegex = regexp.MustCompile(`\x1b\[[0-9;?]*[a-zA-Z]|\x1b\][^\x07]*(?:\x07|\x1b\\)|\r|\n`)
 )
 
 func writeStdout(data []byte) {
@@ -229,6 +232,7 @@ func runWrapper() {
 				os.Exit(2)
 			}
 		}()
+		var lastPromptBuf []byte
 		buf := make([]byte, 4096)
 		for {
 			n, err := ptmx.Read(buf)
@@ -240,6 +244,23 @@ func runWrapper() {
 				continue
 			}
 			writeStdout(buf[:n])
+
+			bufferMu.Lock()
+			nbEmpty := naiveBuffer == ""
+			bufferMu.Unlock()
+
+			if nbEmpty && !userNavigated {
+				if idx := bytes.LastIndexAny(buf[:n], "\r\n"); idx >= 0 {
+					lastPromptBuf = append([]byte(nil), buf[idx+1:n]...)
+				} else {
+					lastPromptBuf = append(lastPromptBuf, buf[:n]...)
+				}
+				clean := ansiStripRegex.ReplaceAll(lastPromptBuf, nil)
+				pLen := len([]rune(string(clean)))
+				if pLen > 0 {
+					overlay.SetPromptLen(pLen)
+				}
+			}
 
 			if userNavigated {
 				ptyQuietMu.Lock()
@@ -430,8 +451,6 @@ func runWrapper() {
 		writeStdout([]byte(b.String()))
 	}
 
-	var isNavTimerRunning bool
-
 	renderOverlay = func() {
 		renderMu.Lock()
 		defer renderMu.Unlock()
@@ -441,41 +460,22 @@ func runWrapper() {
 				renderTimer.Stop()
 				renderTimer = nil
 			}
-			isNavTimerRunning = false
 			return
 		}
 
-		navCopy := userNavigated
-
-		if navCopy {
-			if isNavTimerRunning {
-				return
-			}
-			if renderTimer != nil {
-				renderTimer.Stop()
-			}
-			isNavTimerRunning = true
-			// IMPORTANT: please dont change this to above 24ms or under 19ms
-			// I still can get the reason why it only works stably between 20-23ms
-			renderTimer = time.AfterFunc(23*time.Millisecond, func() {
-				renderMu.Lock()
-				renderTimer = nil
-				isNavTimerRunning = false
-				renderMu.Unlock()
-				renderMenuNow()
-			})
-		} else {
-			if renderTimer != nil {
-				renderTimer.Stop()
-			}
-			isNavTimerRunning = false
-			renderTimer = time.AfterFunc(25*time.Millisecond, func() {
-				renderMu.Lock()
-				renderTimer = nil
-				renderMu.Unlock()
-				renderMenuNow()
-			})
+		if userNavigated {
+			return
 		}
+
+		if renderTimer != nil {
+			renderTimer.Stop()
+		}
+		renderTimer = time.AfterFunc(25*time.Millisecond, func() {
+			renderMu.Lock()
+			renderTimer = nil
+			renderMu.Unlock()
+			renderMenuNow()
+		})
 	}
 
 	renderOverlay()
@@ -574,11 +574,9 @@ func runWrapper() {
 							cursorOffset = 0
 							bufferMu.Unlock()
 
+							writeStdout([]byte(overlay.RenderCursorMove()))
 							_, _ = ptmx.Write(append([]byte{0x15}, selected...))
 
-							userNavigated = true
-							overlay.UserNavigated = true
-							renderOverlay()
 							i += 2
 							continue
 						} else if !overlay.Visible && naiveBuffer == "" && (inputSlice[i+2] == 'A' || inputSlice[i+2] == 'B') { // up/down arrow on empty prompt
@@ -611,6 +609,8 @@ func runWrapper() {
 									}
 								}
 
+								overlay.TypedQuery = ""
+								overlay.SetSettledCmd("")
 								overlay.UpdateItems(historyList)
 
 								if inputSlice[i+2] == 'A' {
@@ -625,11 +625,11 @@ func runWrapper() {
 								cursorOffset = 0
 								bufferMu.Unlock()
 
-								_, _ = ptmx.Write(append([]byte{0x15}, selected...))
-
 								userNavigated = true
 								overlay.UserNavigated = true
-								renderOverlay()
+
+								writeStdout([]byte(overlay.Render()))
+								_, _ = ptmx.Write(append([]byte{0x15}, selected...))
 							}
 							i += 2
 							continue
