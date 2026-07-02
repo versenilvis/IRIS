@@ -216,6 +216,18 @@ func runWrapper() {
 	pendingUpdate = startBackgroundUpdateCheck()
 	updatePrinted := false
 
+	isExecuting := func() bool {
+		pgrp, err := unix.IoctlGetInt(int(ptmx.Fd()), unix.TIOCGPGRP)
+		if err != nil {
+			return false
+		}
+		shellPGID, err := unix.Getpgid(core.ShellPID)
+		if err != nil {
+			return pgrp != core.ShellPID
+		}
+		return pgrp != shellPGID
+	}
+
 	// bridge pty output to actual stdout
 	go func() {
 		defer func() {
@@ -242,9 +254,12 @@ func runWrapper() {
 
 			bufferMu.Lock()
 			nbEmpty := naiveBuffer == ""
+			navigated := userNavigated
 			bufferMu.Unlock()
 
-			if nbEmpty && !userNavigated {
+			if isExecuting() {
+				lastPromptBuf = nil
+			} else if nbEmpty && !navigated {
 				lastPromptBuf = append(lastPromptBuf, buf[:n]...)
 				if idx := bytes.LastIndexByte(lastPromptBuf, '\n'); idx >= 0 {
 					lastPromptBuf = append([]byte(nil), lastPromptBuf[idx+1:]...)
@@ -260,18 +275,6 @@ func runWrapper() {
 	var disableGhostText atomic.Bool
 	disableGhostText.Store(!config.Get().UI.GhostText)
 	var renderOverlay func()
-
-	isExecuting := func() bool {
-		pgrp, err := unix.IoctlGetInt(int(ptmx.Fd()), unix.TIOCGPGRP)
-		if err != nil {
-			return false
-		}
-		shellPGID, err := unix.Getpgid(core.ShellPID)
-		if err != nil {
-			return pgrp != core.ShellPID
-		}
-		return pgrp != shellPGID
-	}
 
 	// listen for suggestion requests from shell scripts via the ipc pipe
 	go func() {
