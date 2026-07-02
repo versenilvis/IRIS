@@ -82,7 +82,7 @@ func runWrapper() {
 	var naiveBuffer string
 	cursorOffset := 0
 	var bufferMu sync.Mutex
-	var userNavigated bool
+	var userNavigated atomic.Bool
 	var renderMenuNow func()
 
 	r, w, err := os.Pipe() // pipe for ipc communication from shell to iris
@@ -164,8 +164,8 @@ func runWrapper() {
 				}
 
 				if c.Process != nil {
-					cwd, err := os.Readlink(fmt.Sprintf("/proc/%d/cwd", c.Process.Pid))
-					if err != nil {
+					cwd, linkErr := os.Readlink(fmt.Sprintf("/proc/%d/cwd", c.Process.Pid))
+					if linkErr != nil {
 						ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 						out, errCmd := exec.CommandContext(ctx, "lsof", "-p", fmt.Sprintf("%d", c.Process.Pid), "-a", "-d", "cwd", "-F", "n").Output()
 						cancel()
@@ -173,13 +173,13 @@ func runWrapper() {
 							for _, line := range strings.Split(string(out), "\n") {
 								if strings.HasPrefix(line, "n") {
 									cwd = strings.TrimSpace(line[1:])
-									err = nil
+									linkErr = nil
 									break
 								}
 							}
 						}
 					}
-					if err == nil {
+					if linkErr == nil {
 						_ = os.Chdir(cwd)
 					}
 					_ = syscall.Kill(c.Process.Pid, syscall.SIGKILL)
@@ -188,9 +188,9 @@ func runWrapper() {
 
 				restoreTerminal()
 				execArgs := []string{os.Args[0]}
-				if logDir, err := config.CachePath(); err == nil {
+				if logDir, pathErr := config.CachePath(); pathErr == nil {
 					argsFile := filepath.Join(logDir, "reload-args")
-					if data, err := os.ReadFile(argsFile); err == nil {
+					if data, readErr := os.ReadFile(argsFile); readErr == nil {
 						lines := strings.Split(string(data), "\n")
 						for _, line := range lines {
 							trimmed := strings.TrimSpace(line)
@@ -215,6 +215,18 @@ func runWrapper() {
 	// start background update check (async)
 	pendingUpdate = startBackgroundUpdateCheck()
 	updatePrinted := false
+
+	shellPGID, err := unix.Getpgid(core.ShellPID)
+	if err != nil {
+		shellPGID = core.ShellPID
+	}
+	isExecuting := func() bool {
+		pgrp, err := unix.IoctlGetInt(int(ptmx.Fd()), unix.TIOCGPGRP)
+		if err != nil {
+			return false
+		}
+		return pgrp != shellPGID
+	}
 
 	// bridge pty output to actual stdout
 	go func() {
@@ -242,9 +254,12 @@ func runWrapper() {
 
 			bufferMu.Lock()
 			nbEmpty := naiveBuffer == ""
+			navigated := userNavigated.Load()
 			bufferMu.Unlock()
 
-			if nbEmpty && !userNavigated {
+			if isExecuting() {
+				lastPromptBuf = nil
+			} else if nbEmpty && !navigated {
 				lastPromptBuf = append(lastPromptBuf, buf[:n]...)
 				if idx := bytes.LastIndexByte(lastPromptBuf, '\n'); idx >= 0 {
 					lastPromptBuf = append([]byte(nil), lastPromptBuf[idx+1:]...)
@@ -260,18 +275,6 @@ func runWrapper() {
 	var disableGhostText atomic.Bool
 	disableGhostText.Store(!config.Get().UI.GhostText)
 	var renderOverlay func()
-
-	isExecuting := func() bool {
-		pgrp, err := unix.IoctlGetInt(int(ptmx.Fd()), unix.TIOCGPGRP)
-		if err != nil {
-			return false
-		}
-		shellPGID, err := unix.Getpgid(core.ShellPID)
-		if err != nil {
-			return pgrp != core.ShellPID
-		}
-		return pgrp != shellPGID
-	}
 
 	// listen for suggestion requests from shell scripts via the ipc pipe
 	go func() {
@@ -376,7 +379,7 @@ func runWrapper() {
 		modeCopy := activeMode
 		activeModeMu.RUnlock()
 
-		navCopy := userNavigated
+		navCopy := userNavigated.Load()
 
 		runes := []rune(bufCopy)
 		if offsetCopy > 0 && offsetCopy <= len(runes) {
@@ -435,7 +438,7 @@ func runWrapper() {
 			return
 		}
 
-		if userNavigated {
+		if userNavigated.Load() {
 			return
 		}
 
@@ -505,7 +508,7 @@ func runWrapper() {
 
 						if overlay.Visible && (inputSlice[i+2] == 'A' || inputSlice[i+2] == 'B') {
 							intercepted = true
-							userNavigated = true
+							userNavigated.Store(true)
 							overlay.UserNavigated = true
 
 							// clear ghost text synchronously
@@ -596,7 +599,7 @@ func runWrapper() {
 								cursorOffset = 0
 								bufferMu.Unlock()
 
-								userNavigated = true
+								userNavigated.Store(true)
 								overlay.UserNavigated = true
 
 								writeStdout([]byte(overlay.Render()))
@@ -648,7 +651,7 @@ func runWrapper() {
 									cursorOffset = len(naiveBuffer)
 								}
 								shouldOverlayDraw = true
-								userNavigated = false
+								userNavigated.Store(false)
 							}
 							bufferMu.Unlock()
 							isLeftRightArrow = true
@@ -668,7 +671,7 @@ func runWrapper() {
 									cursorOffset = 0
 								}
 								shouldOverlayDraw = true
-								userNavigated = false
+								userNavigated.Store(false)
 							}
 							bufferMu.Unlock()
 							isLeftRightArrow = true
@@ -710,14 +713,14 @@ func runWrapper() {
 					saveMode(activeMode)
 					activeModeMu.Unlock()
 					logger.Debugf("Intercepted Ctrl+R, toggled mode to %q", activeMode)
-					if userNavigated {
+					if userNavigated.Load() {
 						bufferMu.Lock()
 						naiveBuffer = overlay.TypedQuery
 						cursorOffset = 0
 						bufferMu.Unlock()
 						_, _ = ptmx.Write(append([]byte{0x15}, overlay.TypedQuery...))
 					}
-					userNavigated = false
+					userNavigated.Store(false)
 					overlay.UserNavigated = false
 					shouldOverlayDraw = true
 					// enter: enter behavior is a bit different from tab suggestions in code editor
@@ -746,7 +749,7 @@ func runWrapper() {
 					bufferMu.Unlock()
 					disableGhostText.Store(false)
 					shouldOverlayDraw = false
-					userNavigated = false
+					userNavigated.Store(false)
 					continue
 				} else if b == 0x09 { // tab: select suggestions
 					intercepted = true
@@ -776,7 +779,7 @@ func runWrapper() {
 						shouldOverlayDraw = true // <- rerender after tab to choose, if you set to false,
 						// when you press tab continually, it will print all folder from menu suggestions
 						// and make the cursor jump to next line
-						userNavigated = false
+						userNavigated.Store(false)
 					}
 					continue
 				}
@@ -793,7 +796,7 @@ func runWrapper() {
 							shouldOverlayDraw = true
 						}
 						bufferMu.Unlock()
-						userNavigated = false
+						userNavigated.Store(false)
 					case 0x05: // ctrl+e: move to end of line
 						bufferMu.Lock()
 						cursorOffset = 0
@@ -801,7 +804,7 @@ func runWrapper() {
 							shouldOverlayDraw = true
 						}
 						bufferMu.Unlock()
-						userNavigated = false
+						userNavigated.Store(false)
 
 					case 127, 0x08: // backspace: remove character
 						bufferMu.Lock()
@@ -824,7 +827,7 @@ func runWrapper() {
 						}
 						bufferMu.Unlock()
 						shouldOverlayDraw = true
-						userNavigated = false
+						userNavigated.Store(false)
 					case 0x17: // ctrl+w: delete the last word in the buffer
 						bufferMu.Lock()
 						trimBuf := strings.TrimRight(naiveBuffer, " ")
@@ -837,10 +840,10 @@ func runWrapper() {
 						cursorOffset = 0
 						bufferMu.Unlock()
 						shouldOverlayDraw = true
-						userNavigated = false
+						userNavigated.Store(false)
 					case 0x0c: // ctrl+l: clear screen but keep buffer and redraw menu
 						shouldOverlayDraw = true
-						userNavigated = false
+						userNavigated.Store(false)
 					case '\r', '\n', 0x03, 0x15: // enter, ctrl+c, ctrl+u: clear buffer on line reset
 						bufferMu.Lock()
 						naiveBuffer = ""
@@ -851,7 +854,7 @@ func runWrapper() {
 						activeModeMu.Unlock()
 						disableGhostText.Store(false)
 						writeStdout([]byte(overlay.ClearAndDisable()))
-						userNavigated = false
+						userNavigated.Store(false)
 					default:
 						// track normal printable characters in the buffer for matching
 						if b >= 32 && b <= 126 {
@@ -892,7 +895,7 @@ func runWrapper() {
 							}
 							bufferMu.Unlock()
 							shouldOverlayDraw = true
-							userNavigated = false
+							userNavigated.Store(false)
 							overlay.UserNavigated = false
 						}
 					}
