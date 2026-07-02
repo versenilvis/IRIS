@@ -1,7 +1,10 @@
 <div align="center">
-  <img width="50%" alt="banner" src="https://github.com/user-attachments/assets/c5ec623b-8259-473f-b7c3-3d01a64deb5d" />
+  <!-- <img width="50%" alt="banner" src="https://github.com/user-attachments/assets/c5ec623b-8259-473f-b7c3-3d01a64deb5d" /> -->
+  <!-- <img width="25%" alt="logo" src="https://github.com/user-attachments/assets/79d3913c-56b7-42cb-8b07-53e98f39322b" /> -->
+  <img width="10%" alt="logo" src="https://github.com/user-attachments/assets/10b7ca98-872b-44a2-bdcd-265f18aa0564" />
+  
   <!-- <h1>IRIS</h1> -->
-  <p>IRIS (Intelligent Real-time Input Suggestion) - A shell auto-completion tool that works like code editor's IntelliSense.</p>
+  <p>IRIS (Intelligent Real-time Input Suggestion) - A shell auto-completion tool that works like code editor's IntelliSense</p>
   
   [![GitHub Actions](https://img.shields.io/github/actions/workflow/status/versenilvis/IRIS/release.yml?branch=main&style=for-the-badge&logo=github&logoColor=white&label=Actions)](https://github.com/versenilvis/IRIS/actions/workflows/release.yml)
   [![License: 0BSD](https://img.shields.io/badge/License-0BSD-blue?style=for-the-badge&logo=github&logoColor=white)](./LICENSE)
