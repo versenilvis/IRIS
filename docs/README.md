@@ -8,7 +8,7 @@ Iris is a fast terminal autocomplete assistant written in Go. It wraps around yo
 - [Usage guide](#usage-guide)
 - [Configuration guide](#configuration-guide)
 - [Troubleshooting guide](#troubleshooting-guide)
-- [Developer guide](file:///home/verse/dev/github/iris/docs/development.md)
+- [Developer guide](development.md)
 
 ## Getting started
 
