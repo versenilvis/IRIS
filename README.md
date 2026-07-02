@@ -9,7 +9,7 @@
   [![GitHub Actions](https://img.shields.io/github/actions/workflow/status/versenilvis/IRIS/release.yml?branch=main&style=for-the-badge&logo=github&logoColor=white&label=Actions)](https://github.com/versenilvis/IRIS/actions/workflows/release.yml)
   [![License: 0BSD](https://img.shields.io/badge/License-0BSD-blue?style=for-the-badge&logo=github&logoColor=white)](./LICENSE)
   
-  <a href="#why-iris-instead-of-fig-or-zsh-auto-plugins">Comparison</a> · <a href="#installation">Installation</a> · <a href="#shortcuts">Shortcuts</a> · <a href="#reporting-bugs">Reporting bugs</a> · <a href="./docs">Docs</a> 
+  <a href="#why-iris-instead-of-fig-or-zsh-auto-plugins">Comparison</a> · <a href="#installation">Installation</a> · <a href="#docs">Docs</a>  · <a href="#shortcuts">Shortcuts</a> · <a href="#reporting-bugs">Reporting bugs</a>
 
 </div>
 
@@ -64,6 +64,14 @@ curl -sSL https://raw.githubusercontent.com/versenilvis/iris/main/scripts/instal
 > [!NOTE]
 > Currently, Windows is not supported
 
+## Docs
+
+- [Getting started](./docs/README.md#getting-started): dependencies, installation methods, and shell integration setup
+- [Usage guide](./docs/README.md#usage-guide): core navigation, mode switching, instant alias expansion, and ghost text
+- [Configuration guide](./docs/README.md#configuration-guide): TOML configuration file structure, settings sections, and CLI commands
+- [Troubleshooting guide](./docs/README.md#troubleshooting-guide): debug mode, runtime log inspection, and common solutions
+- [Developer guide](./docs/development.md): system architecture overview, PTY bridge mechanics, and contribution instructions
+ 
 ## Shortcuts
 
 | Shortcut                           | Action                  | Description                                                               |
