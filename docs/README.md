@@ -1,6 +1,14 @@
 # IRIS documentation
 
-Iris is a fast terminal autocomplete assistant written in Go. It wraps around your shell (Zsh or Bash) to give you real-time command suggestions, a floating dropdown menu, and smart history search right where you type
+Iris is a fast terminal autocomplete assistant written in Go. It wraps around your shell (Zsh, Bash, or Fish) to give you real-time command suggestions, a floating dropdown menu, and smart history search right where you type
+
+## Table of contents
+
+- [Getting started](#getting-started)
+- [Usage guide](#usage-guide)
+- [Configuration guide](#configuration-guide)
+- [Troubleshooting guide](#troubleshooting-guide)
+- [Developer guide](file:///home/verse/dev/github/iris/docs/development.md)
 
 ## Getting started
 
@@ -74,7 +82,7 @@ end
 Verify your installation by running:
 
 ```bash
-iris --version
+iris version
 ```
 
 ## Usage guide
@@ -89,6 +97,8 @@ When you type a command or query, Iris displays a floating overlay box positione
 - Down arrow (`↓`): Move the selection cursor down through the suggestion list
 - Tab: Insert the currently highlighted suggestion directly into your command line buffer without executing it
 - Enter: Execute the currently highlighted command immediately or submit the text typed in your prompt
+- Esc: Temporarily dismiss and hide the overlay suggestion menu for the current line
+- Shift+Tab: Permanently disable overlay suggestions until toggled back on
 
 ### Mode switching
 
@@ -208,4 +218,4 @@ tail -f ~/.cache/iris/iris.log
 > ### Common issues and solutions
 > - Overlay Position Misaligned: Multi-line shell prompts (such as Starship) emitting ANSI codes can cause offset issues. Iris automatically parses carriage returns (`\r`) and horizontal escape codes (`\033[nC`) to anchor visual columns accurately
 > - Menu Disappears When Toggling Mode: When pressing `Ctrl+R` after arrow navigation, Iris restores the original search query automatically so suggestions reload cleanly
-> - Inspecting Crash Logs: If the session terminates unexpectedly, inspect captured stack traces by running `iris crash`
+> - Inspecting Crash Logs: If the session terminates unexpectedly, inspect captured stack traces by running `iris crash-log`
