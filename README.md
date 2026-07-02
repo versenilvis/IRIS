@@ -9,7 +9,7 @@
   [![GitHub Actions](https://img.shields.io/github/actions/workflow/status/versenilvis/IRIS/release.yml?branch=main&style=for-the-badge&logo=github&logoColor=white&label=Actions)](https://github.com/versenilvis/IRIS/actions/workflows/release.yml)
   [![License: 0BSD](https://img.shields.io/badge/License-0BSD-blue?style=for-the-badge&logo=github&logoColor=white)](./LICENSE)
   
-  <a href="#why-iris-instead-of-fig-or-zsh-auto-plugins">Comparison</a> · <a href="#installation">Installation</a> · <a href="#shortcuts">Shortcuts</a> · <a href="#reporting-bugs">Reporting bugs</a> 
+  <a href="#why-iris-instead-of-fig-or-zsh-auto-plugins">Comparison</a> · <a href="#installation">Installation</a> · <a href="#shortcuts">Shortcuts</a> · <a href="#reporting-bugs">Reporting bugs</a> · <a href="./docs">Docs</a> 
 
 </div>
 
