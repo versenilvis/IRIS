@@ -12,7 +12,7 @@ Iris is a fast terminal autocomplete assistant written in Go. It wraps around yo
 
 ## Getting started
 
-### Dependecies
+### Dependencies
 
 Before installing Iris, ensure your system meets the following requirements:
 - OS: Linux or macOS
