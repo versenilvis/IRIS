@@ -82,6 +82,10 @@ func runWrapper() {
 	var naiveBuffer string
 	cursorOffset := 0
 	var bufferMu sync.Mutex
+	var userNavigated bool
+	var renderMenuNow func()
+	var ptyQuietTimer *time.Timer
+	var ptyQuietMu sync.Mutex
 
 	r, w, err := os.Pipe() // pipe for ipc communication from shell to iris
 	if err != nil {
@@ -236,12 +240,31 @@ func runWrapper() {
 				continue
 			}
 			writeStdout(buf[:n])
+
+			if userNavigated {
+				ptyQuietMu.Lock()
+				if ptyQuietTimer != nil {
+					ptyQuietTimer.Stop()
+				}
+				ptyQuietTimer = time.AfterFunc(6*time.Millisecond, func() {
+					if !userNavigated {
+						return
+					}
+					bufferMu.Lock()
+					settled := naiveBuffer
+					bufferMu.Unlock()
+					overlay.SetSettledCmd(settled)
+					if renderMenuNow != nil {
+						renderMenuNow()
+					}
+				})
+				ptyQuietMu.Unlock()
+			}
 		}
 	}()
 
 	var disableGhostText atomic.Bool
 	disableGhostText.Store(!config.Get().UI.GhostText)
-	var userNavigated bool
 	var renderOverlay func()
 
 	isExecuting := func() bool {
@@ -344,7 +367,7 @@ func runWrapper() {
 	var renderTimer *time.Timer
 	var renderMu sync.Mutex
 
-	renderMenuNow := func() {
+	renderMenuNow = func() {
 		if isExecuting() {
 			return
 		}
@@ -386,6 +409,7 @@ func runWrapper() {
 				b.WriteString(overlay.Clear())
 			}
 			overlay.TypedQuery = bufCopy
+			overlay.SetSettledCmd(bufCopy)
 			overlay.UpdateItems(results)
 		} else {
 			if overlay.Visible {

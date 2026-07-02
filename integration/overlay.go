@@ -25,6 +25,13 @@ type Overlay struct {
 	LastGhostLen  int
 	TypedQuery    string
 	UserNavigated bool
+	SettledCmd    string
+}
+
+func (o *Overlay) SetSettledCmd(cmd string) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.SettledCmd = cmd
 }
 
 var (
@@ -128,10 +135,9 @@ func (o *Overlay) Render() string {
 	s.WriteString("\033[?7l")
 
 	var offset int
-	if o.UserNavigated && len(o.Items) > 0 && o.Cursor >= 0 && o.Cursor < len(o.Items) {
-		currentCmd := o.Items[o.Cursor].Cmd
+	if o.UserNavigated && o.SettledCmd != "" {
 		typedLen := len([]rune(o.TypedQuery))
-		currentLen := len([]rune(currentCmd))
+		currentLen := len([]rune(o.SettledCmd))
 		width, _, err := term.GetSize(int(os.Stdout.Fd()))
 		if err != nil || width <= 0 {
 			width = 120
@@ -288,6 +294,7 @@ func (o *Overlay) ClearAndDisable() string {
 	o.Items = nil
 	o.TypedQuery = ""
 	o.UserNavigated = false
+	o.SettledCmd = ""
 
 	var s strings.Builder
 	s.WriteString("\033[?7l")
