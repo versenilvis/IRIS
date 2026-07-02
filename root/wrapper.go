@@ -216,14 +216,14 @@ func runWrapper() {
 	pendingUpdate = startBackgroundUpdateCheck()
 	updatePrinted := false
 
+	shellPGID, err := unix.Getpgid(core.ShellPID)
+	if err != nil {
+		shellPGID = core.ShellPID
+	}
 	isExecuting := func() bool {
 		pgrp, err := unix.IoctlGetInt(int(ptmx.Fd()), unix.TIOCGPGRP)
 		if err != nil {
 			return false
-		}
-		shellPGID, err := unix.Getpgid(core.ShellPID)
-		if err != nil {
-			return pgrp != core.ShellPID
 		}
 		return pgrp != shellPGID
 	}
