@@ -164,8 +164,8 @@ func runWrapper() {
 				}
 
 				if c.Process != nil {
-					cwd, err := os.Readlink(fmt.Sprintf("/proc/%d/cwd", c.Process.Pid))
-					if err != nil {
+					cwd, linkErr := os.Readlink(fmt.Sprintf("/proc/%d/cwd", c.Process.Pid))
+					if linkErr != nil {
 						ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 						out, errCmd := exec.CommandContext(ctx, "lsof", "-p", fmt.Sprintf("%d", c.Process.Pid), "-a", "-d", "cwd", "-F", "n").Output()
 						cancel()
@@ -173,13 +173,13 @@ func runWrapper() {
 							for _, line := range strings.Split(string(out), "\n") {
 								if strings.HasPrefix(line, "n") {
 									cwd = strings.TrimSpace(line[1:])
-									err = nil
+									linkErr = nil
 									break
 								}
 							}
 						}
 					}
-					if err == nil {
+					if linkErr == nil {
 						_ = os.Chdir(cwd)
 					}
 					_ = syscall.Kill(c.Process.Pid, syscall.SIGKILL)
@@ -188,9 +188,9 @@ func runWrapper() {
 
 				restoreTerminal()
 				execArgs := []string{os.Args[0]}
-				if logDir, err := config.CachePath(); err == nil {
+				if logDir, pathErr := config.CachePath(); pathErr == nil {
 					argsFile := filepath.Join(logDir, "reload-args")
-					if data, err := os.ReadFile(argsFile); err == nil {
+					if data, readErr := os.ReadFile(argsFile); readErr == nil {
 						lines := strings.Split(string(data), "\n")
 						for _, line := range lines {
 							trimmed := strings.TrimSpace(line)
