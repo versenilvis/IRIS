@@ -218,6 +218,9 @@ func GitPushPullGenerator(tokens []string, prefix string, partial string) []core
 	}
 
 	// remote is set, suggest local branches only (no duplicates with origin/xxx)
+	if len(pArgs) >= 2 {
+		return nil
+	}
 	return gitLocalBranchGenerator(tokens, prefix, partial)
 }
 

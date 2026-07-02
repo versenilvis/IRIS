@@ -30,7 +30,7 @@ func init() {
 	idMapCache = make(map[string]int)
 }
 
-func SearchHistory(query string) ([]HistResult, error) {
+func SearchHistory(query string, aliases map[string]string) ([]HistResult, error) {
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -143,68 +143,119 @@ func SearchHistory(query string) ([]HistResult, error) {
 		return results, nil
 	}
 
-	matches := searcherCache.SearchWithScores(query, &fuzzy.SearchOptions{Limit: 200})
+	var alternativeQueries []string
+	for name, target := range aliases {
+		if target != "" {
+			qLow := strings.ToLower(query)
+			tLow := strings.ToLower(target)
+			nLow := strings.ToLower(name)
 
-	// when query has a clear first word, only keep history entries that share the same first word
-	// this prevents e.g. curl commands from showing up when typing "git ..."
-	queryFirstWord := ""
-	if strings.IndexByte(query, ' ') != -1 {
-		if fields := strings.Fields(query); len(fields) > 0 {
-			queryFirstWord = strings.ToLower(fields[0])
+			if qLow == tLow {
+				alternativeQueries = append(alternativeQueries, name)
+			} else if strings.HasPrefix(qLow, tLow+" ") {
+				suffix := query[len(target):]
+				alternativeQueries = append(alternativeQueries, name+suffix)
+			}
+
+			if qLow == nLow {
+				alternativeQueries = append(alternativeQueries, target)
+			} else if strings.HasPrefix(qLow, nLow+" ") {
+				suffix := query[len(name):]
+				alternativeQueries = append(alternativeQueries, target+suffix)
+			}
 		}
 	}
 
 	var results []HistResult
-	for _, m := range matches {
-		if queryFirstWord != "" {
+	seenCmds := make(map[string]bool)
+
+	addMatches := func(q string) {
+		qLow := strings.ToLower(q)
+		queryFirstWord := ""
+		if strings.IndexByte(qLow, ' ') != -1 {
+			if fields := strings.Fields(qLow); len(fields) > 0 {
+				queryFirstWord = fields[0]
+			}
+		}
+
+		matches := searcherCache.SearchWithScores(q, &fuzzy.SearchOptions{Limit: 200})
+		for _, m := range matches {
+			if seenCmds[m.Str] {
+				continue
+			}
+
+			// filter results by command name match
 			firstWord := m.Str
 			if idx := strings.IndexByte(m.Str, ' '); idx != -1 {
 				firstWord = m.Str[:idx]
 			}
-			if !strings.EqualFold(firstWord, queryFirstWord) {
-				continue
+			firstWordLow := strings.ToLower(firstWord)
+
+			if queryFirstWord != "" {
+				if firstWordLow != queryFirstWord {
+					continue
+				}
+			} else {
+				if !strings.HasPrefix(firstWordLow, qLow) {
+					continue
+				}
 			}
+
+			seenCmds[m.Str] = true
+			results = append(results, HistResult{
+				ID:         idMapCache[m.Str],
+				Cmd:        m.Str,
+				FuzzyScore: m.Score,
+			})
 		}
-		results = append(results, HistResult{
-			ID:         idMapCache[m.Str],
-			Cmd:        m.Str,
-			FuzzyScore: m.Score,
-		})
 	}
 
-	// within the same tier, we sort by ID
-	// tier 1: exact match
-	// tier 2: prefix match
-	// tier 3: substring match
-	// tier 4: fuzzy match
+	addMatches(query)
+
+	for _, altQ := range alternativeQueries {
+		addMatches(altQ)
+	}
+
 	getTier := func(cmd, q string) int {
-		cmdLow := strings.ToLower(cmd)
-		qLow := strings.ToLower(q)
-		if cmdLow == qLow {
-			return 1
+		bestTier := 4
+		check := func(ql string) {
+			cmdLow := strings.ToLower(cmd)
+			qlLow := strings.ToLower(ql)
+			tier := 4
+			if cmdLow == qlLow {
+				tier = 1
+			} else if strings.HasPrefix(cmdLow, qlLow) {
+				tier = 2
+			} else if strings.Contains(cmdLow, qlLow) {
+				tier = 3
+			}
+			if tier < bestTier {
+				bestTier = tier
+			}
 		}
-		if strings.HasPrefix(cmdLow, qLow) {
-			return 2
+		check(q)
+		for _, altQ := range alternativeQueries {
+			check(altQ)
 		}
-		if strings.Contains(cmdLow, qLow) {
-			return 3
-		}
-		return 4
+		return bestTier
+	}
+
+	tiers := make([]int, len(results))
+	for i, r := range results {
+		tiers[i] = getTier(r.Cmd, query)
 	}
 
 	sort.SliceStable(results, func(i, j int) bool {
-		tI := getTier(results[i].Cmd, query)
-		tJ := getTier(results[j].Cmd, query)
+		tI := tiers[i]
+		tJ := tiers[j]
 		if tI != tJ {
-			return tI < tJ // lower tier is better
+			return tI < tJ
 		}
 		
-		// If both are fuzzy matches (Tier 4), prioritize fuzzy score first!
 		if tI == 4 && results[i].FuzzyScore != results[j].FuzzyScore {
 			return results[i].FuzzyScore > results[j].FuzzyScore
 		}
 		
-		// if same tier (and same fuzzy score), sort by ID descending (most recent first)
 		return results[i].ID > results[j].ID
 	})
 

@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/versenilvis/iris/integration/shell"
+	"github.com/versenilvis/iris/logger"
 )
 
 var (
@@ -17,6 +18,16 @@ func GetAlias(name string) (string, bool) {
 	defer shellAliasesMu.RUnlock()
 	val, ok := ShellAliases[name]
 	return val, ok
+}
+
+func GetAliasesCopy() map[string]string {
+	shellAliasesMu.RLock()
+	defer shellAliasesMu.RUnlock()
+	cp := make(map[string]string, len(ShellAliases))
+	for k, v := range ShellAliases {
+		cp[k] = v
+	}
+	return cp
 }
 
 // Lookup finds matching suggestions for your input by looking at how many words you typed
@@ -93,7 +104,7 @@ func Lookup(input string) []Suggestion {
 
 	rootCmdName := tokens[0]
 	spec, exists := Registry[rootCmdName]
-	debugLog("[core] lookup tokens: %v, registry exists: %v", tokens, exists)
+	logger.Debugf("core lookup tokens: %v, registry exists: %v", tokens, exists)
 	if !exists {
 		return nil
 	}
@@ -131,6 +142,10 @@ func Lookup(input string) []Suggestion {
 			depth++
 			continue
 		}
+		// invalid subcommand word typed
+		if len(currentSubs) > 0 {
+			return nil
+		}
 		break
 	}
 
@@ -160,8 +175,8 @@ func Lookup(input string) []Suggestion {
 	partial := tokens[len(tokens)-1]
 	allowMoreArgs := currentLimit <= 0 || argCount < currentLimit
 
-	debugLog("[core] query tokens: %v (partial: '%s')", tokens, partial)
-	debugLog("[core] depth: %d, argCount: %d, limit: %d, allowMore: %v", depth, argCount, currentLimit, allowMoreArgs)
+	logger.Debugf("core query tokens: %v (partial: '%s')", tokens, partial)
+	logger.Debugf("core depth: %d, argCount: %d, limit: %d, allowMore: %v", depth, argCount, currentLimit, allowMoreArgs)
 
 	prefixBuilder := strings.Builder{}
 	for i := 0; i < depth; i++ {
@@ -237,7 +252,7 @@ func Lookup(input string) []Suggestion {
 		}
 	}
 
-	if partial == "" || (len(partial) > 0 && partial[0] == '-') {
+	if len(partial) > 0 && partial[0] == '-' {
 		usedOpts := make(map[string]bool)
 		for _, t := range tokens {
 			if strings.HasPrefix(t, "-") {
@@ -247,7 +262,7 @@ func Lookup(input string) []Suggestion {
 		for _, opt := range currentOpts {
 			if !usedOpts[opt.Name] && (partial == "" || HasPrefix(opt.Name, partial)) {
 				results = append(results, Suggestion{
-					Cmd: prefix + " " + opt.Name, Desc: opt.Description, Icon: rootCmdName,
+					Cmd: linePrefix + " " + opt.Name, Desc: opt.Description, Icon: rootCmdName,
 				})
 			}
 		}
