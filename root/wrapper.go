@@ -82,6 +82,8 @@ func runWrapper() {
 	var naiveBuffer string
 	cursorOffset := 0
 	var bufferMu sync.Mutex
+	var userNavigated bool
+	var renderMenuNow func()
 
 	r, w, err := os.Pipe() // pipe for ipc communication from shell to iris
 	if err != nil {
@@ -225,6 +227,7 @@ func runWrapper() {
 				os.Exit(2)
 			}
 		}()
+		var lastPromptBuf []byte
 		buf := make([]byte, 4096)
 		for {
 			n, err := ptmx.Read(buf)
@@ -236,12 +239,26 @@ func runWrapper() {
 				continue
 			}
 			writeStdout(buf[:n])
+
+			bufferMu.Lock()
+			nbEmpty := naiveBuffer == ""
+			bufferMu.Unlock()
+
+			if nbEmpty && !userNavigated {
+				lastPromptBuf = append(lastPromptBuf, buf[:n]...)
+				if idx := bytes.LastIndexByte(lastPromptBuf, '\n'); idx >= 0 {
+					lastPromptBuf = append([]byte(nil), lastPromptBuf[idx+1:]...)
+				}
+				pLen := integration.ComputeCursorCol(lastPromptBuf)
+				if pLen >= 0 {
+					overlay.SetPromptLen(pLen)
+				}
+			}
 		}
 	}()
 
 	var disableGhostText atomic.Bool
 	disableGhostText.Store(!config.Get().UI.GhostText)
-	var userNavigated bool
 	var renderOverlay func()
 
 	isExecuting := func() bool {
@@ -344,7 +361,7 @@ func runWrapper() {
 	var renderTimer *time.Timer
 	var renderMu sync.Mutex
 
-	renderMenuNow := func() {
+	renderMenuNow = func() {
 		if isExecuting() {
 			return
 		}
@@ -406,8 +423,6 @@ func runWrapper() {
 		writeStdout([]byte(b.String()))
 	}
 
-	var isNavTimerRunning bool
-
 	renderOverlay = func() {
 		renderMu.Lock()
 		defer renderMu.Unlock()
@@ -417,41 +432,22 @@ func runWrapper() {
 				renderTimer.Stop()
 				renderTimer = nil
 			}
-			isNavTimerRunning = false
 			return
 		}
 
-		navCopy := userNavigated
-
-		if navCopy {
-			if isNavTimerRunning {
-				return
-			}
-			if renderTimer != nil {
-				renderTimer.Stop()
-			}
-			isNavTimerRunning = true
-			// IMPORTANT: please dont change this to above 24ms or under 19ms
-			// I still can get the reason why it only works stably between 20-23ms
-			renderTimer = time.AfterFunc(23*time.Millisecond, func() {
-				renderMu.Lock()
-				renderTimer = nil
-				isNavTimerRunning = false
-				renderMu.Unlock()
-				renderMenuNow()
-			})
-		} else {
-			if renderTimer != nil {
-				renderTimer.Stop()
-			}
-			isNavTimerRunning = false
-			renderTimer = time.AfterFunc(25*time.Millisecond, func() {
-				renderMu.Lock()
-				renderTimer = nil
-				renderMu.Unlock()
-				renderMenuNow()
-			})
+		if userNavigated {
+			return
 		}
+
+		if renderTimer != nil {
+			renderTimer.Stop()
+		}
+		renderTimer = time.AfterFunc(25*time.Millisecond, func() {
+			renderMu.Lock()
+			renderTimer = nil
+			renderMu.Unlock()
+			renderMenuNow()
+		})
 	}
 
 	renderOverlay()
@@ -550,11 +546,9 @@ func runWrapper() {
 							cursorOffset = 0
 							bufferMu.Unlock()
 
+							writeStdout([]byte(overlay.Render()))
 							_, _ = ptmx.Write(append([]byte{0x15}, selected...))
 
-							userNavigated = true
-							overlay.UserNavigated = true
-							renderOverlay()
 							i += 2
 							continue
 						} else if !overlay.Visible && naiveBuffer == "" && (inputSlice[i+2] == 'A' || inputSlice[i+2] == 'B') { // up/down arrow on empty prompt
@@ -587,6 +581,7 @@ func runWrapper() {
 									}
 								}
 
+								overlay.TypedQuery = ""
 								overlay.UpdateItems(historyList)
 
 								if inputSlice[i+2] == 'A' {
@@ -601,11 +596,11 @@ func runWrapper() {
 								cursorOffset = 0
 								bufferMu.Unlock()
 
-								_, _ = ptmx.Write(append([]byte{0x15}, selected...))
-
 								userNavigated = true
 								overlay.UserNavigated = true
-								renderOverlay()
+
+								writeStdout([]byte(overlay.Render()))
+								_, _ = ptmx.Write(append([]byte{0x15}, selected...))
 							}
 							i += 2
 							continue
@@ -715,6 +710,15 @@ func runWrapper() {
 					saveMode(activeMode)
 					activeModeMu.Unlock()
 					logger.Debugf("Intercepted Ctrl+R, toggled mode to %q", activeMode)
+					if userNavigated {
+						bufferMu.Lock()
+						naiveBuffer = overlay.TypedQuery
+						cursorOffset = 0
+						bufferMu.Unlock()
+						_, _ = ptmx.Write(append([]byte{0x15}, overlay.TypedQuery...))
+					}
+					userNavigated = false
+					overlay.UserNavigated = false
 					shouldOverlayDraw = true
 					// enter: enter behavior is a bit different from tab suggestions in code editor
 					// I want it to execute the command anyway and ignore the suggestions

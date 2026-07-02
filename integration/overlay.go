@@ -3,11 +3,14 @@ package integration
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/logger"
 	"golang.org/x/term"
 )
 
@@ -15,6 +18,112 @@ const (
 	boxWidth = 72
 	maxItems = 6
 )
+
+func ComputeCursorCol(data []byte) int {
+	col := 0
+	i := 0
+	n := len(data)
+	for i < n {
+		b := data[i]
+		if b == '\r' {
+			col = 0
+			i++
+			continue
+		}
+		if b == '\b' || b == 0x7f {
+			col--
+			if col < 0 {
+				col = 0
+			}
+			i++
+			continue
+		}
+		if b == '\t' {
+			col = (col + 8) &^ 7
+			i++
+			continue
+		}
+		if b == '\033' {
+			if i+1 < n && data[i+1] == '[' {
+				j := i + 2
+				for j < n && data[j] >= 0x20 && data[j] <= 0x3F {
+					j++
+				}
+				if j < n {
+					cmd := data[j]
+					paramsStr := string(data[i+2 : j])
+					paramsStr = strings.TrimLeft(paramsStr, "?>=")
+					parts := strings.Split(paramsStr, ";")
+					getParam := func(idx, def int) int {
+						if idx < len(parts) && parts[idx] != "" {
+							if v, err := strconv.Atoi(parts[idx]); err == nil && v > 0 {
+								return v
+							}
+						}
+						return def
+					}
+					switch cmd {
+					case 'C':
+						col += getParam(0, 1)
+					case 'D':
+						col -= getParam(0, 1)
+						if col < 0 {
+							col = 0
+						}
+					case 'G':
+						col = getParam(0, 1) - 1
+						if col < 0 {
+							col = 0
+						}
+					}
+					i = j + 1
+					continue
+				}
+				break
+			} else if i+1 < n && data[i+1] == ']' {
+				j := i + 2
+				for j < n {
+					if data[j] == '\007' {
+						j++
+						break
+					}
+					if data[j] == '\033' && j+1 < n && data[j+1] == '\\' {
+						j += 2
+						break
+					}
+					j++
+				}
+				i = j
+				continue
+			} else if i+1 < n && (data[i+1] == 'P' || data[i+1] == 'X' || data[i+1] == '^' || data[i+1] == '_') {
+				j := i + 2
+				for j < n {
+					if data[j] == '\033' && j+1 < n && data[j+1] == '\\' {
+						j += 2
+						break
+					}
+					j++
+				}
+				i = j
+				continue
+			} else if i+1 < n {
+				i += 2
+				continue
+			} else {
+				break
+			}
+		}
+		if b < 0x20 {
+			i++
+			continue
+		}
+		r, size := utf8.DecodeRune(data[i:])
+		w := lipgloss.Width(string(r))
+		col += w
+		i += size
+	}
+	return col
+}
 
 type Overlay struct {
 	mu            sync.Mutex
@@ -25,6 +134,16 @@ type Overlay struct {
 	LastGhostLen  int
 	TypedQuery    string
 	UserNavigated bool
+	PromptLen     int
+}
+
+func (o *Overlay) SetPromptLen(l int) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if o.PromptLen != l {
+		logger.Debugf("SetPromptLen: %d -> %d", o.PromptLen, l)
+		o.PromptLen = l
+	}
 }
 
 var (
@@ -117,6 +236,10 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool) string {
 }
 
 func (o *Overlay) Render() string {
+	return o.draw()
+}
+
+func (o *Overlay) draw() string {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
@@ -127,23 +250,20 @@ func (o *Overlay) Render() string {
 	var s strings.Builder
 	s.WriteString("\033[?7l")
 
-	var offset int
-	if o.UserNavigated && len(o.Items) > 0 && o.Cursor >= 0 && o.Cursor < len(o.Items) {
-		currentCmd := o.Items[o.Cursor].Cmd
-		typedLen := len([]rune(o.TypedQuery))
-		currentLen := len([]rune(currentCmd))
-		width, _, err := term.GetSize(int(os.Stdout.Fd()))
-		if err != nil || width <= 0 {
-			width = 120
-		}
-		if currentLen+4 < width {
-			offset = currentLen - typedLen
-		} else {
-			curCol := (currentLen + 2) % width
-			typedCol := (typedLen + 2) % width
-			offset = curCol - typedCol
-		}
+	typedLen := len([]rune(o.TypedQuery))
+	targetCol := o.PromptLen + typedLen
+
+	width, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil || width <= 0 {
+		width = 120
 	}
+	if targetCol+boxWidth > width {
+		targetCol = width - boxWidth
+	}
+	if targetCol < 0 {
+		targetCol = 0
+	}
+	logger.Debugf("Overlay draw: pLen=%d, typedLen=%d, targetCol=%d, width=%d", o.PromptLen, typedLen, targetCol, width)
 
 	s.WriteString("\0337")
 
@@ -164,7 +284,6 @@ func (o *Overlay) Render() string {
 	if o.Cursor >= o.StartIdx+windowSize-scrolloffDown {
 		o.StartIdx = o.Cursor - windowSize + scrolloffDown + 1
 	}
-
 	if o.StartIdx < 0 {
 		o.StartIdx = 0
 	}
@@ -177,7 +296,6 @@ func (o *Overlay) Render() string {
 
 	start := o.StartIdx
 	end := start + windowSize
-
 	totalLines := windowSize + 2
 
 	for range totalLines {
@@ -187,14 +305,17 @@ func (o *Overlay) Render() string {
 
 	s.WriteString("\0337")
 
+	moveToTarget := func() {
+		s.WriteString("\r")
+		if targetCol > 0 {
+			fmt.Fprintf(&s, "\033[%dC", targetCol)
+		}
+	}
+
 	s.WriteString("\0338")
 	fmt.Fprintf(&s, "\033[%dB", 1)
 	s.WriteString("\033[2K")
-	if offset > 0 {
-		fmt.Fprintf(&s, "\033[%dD", offset)
-	} else if offset < 0 {
-		fmt.Fprintf(&s, "\033[%dC", -offset)
-	}
+	moveToTarget()
 
 	scrollInfo := ""
 	if len(o.Items) > windowSize {
@@ -213,11 +334,7 @@ func (o *Overlay) Render() string {
 		s.WriteString("\0338")
 		fmt.Fprintf(&s, "\033[%dB", (i-start)+2)
 		s.WriteString("\033[2K")
-		if offset > 0 {
-			fmt.Fprintf(&s, "\033[%dD", offset)
-		} else if offset < 0 {
-			fmt.Fprintf(&s, "\033[%dC", -offset)
-		}
+		moveToTarget()
 
 		it := o.Items[i]
 		rawIcon := fixedWidth(it.Icon, iconW)
@@ -244,11 +361,7 @@ func (o *Overlay) Render() string {
 	s.WriteString("\0338")
 	fmt.Fprintf(&s, "\033[%dB", windowSize+2)
 	s.WriteString("\033[2K")
-	if offset > 0 {
-		fmt.Fprintf(&s, "\033[%dD", offset)
-	} else if offset < 0 {
-		fmt.Fprintf(&s, "\033[%dC", -offset)
-	}
+	moveToTarget()
 	bottomBorder := "╰" + strings.Repeat("─", boxWidth) + "╯"
 	s.WriteString(borderStyle.Render(bottomBorder))
 
