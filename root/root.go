@@ -8,13 +8,15 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/spf13/cobra"
-	"github.com/versenilvis/iris/commands/core"
 	_ "github.com/versenilvis/iris/commands"
 	"github.com/versenilvis/iris/config"
+	"github.com/versenilvis/iris/logger"
 	"golang.org/x/term"
 )
 
@@ -36,6 +38,10 @@ It works exactly like coding editor suggestion menu drop down.`,
 			}()
 			if pidStr := os.Getenv("IRIS_PID"); pidStr != "" {
 				if pid, err := strconv.Atoi(pidStr); err == nil && pid > 0 {
+					if logDir, err := config.CachePath(); err == nil {
+						argsFile := filepath.Join(logDir, "reload-args")
+						_ = os.WriteFile(argsFile, []byte(strings.Join(os.Args[1:], "\n")), 0600)
+					}
 					_ = syscall.Kill(pid, syscall.SIGUSR1)
 					fmt.Println("\r\033[K\033[36m[IRIS] Sent reload signal to parent session.\033[0m")
 					return
@@ -46,7 +52,6 @@ It works exactly like coding editor suggestion menu drop down.`,
 	}
 	shellFlag   string
 	debugMode   bool
-	debugLogger *os.File
 )
 
 func init() {
@@ -57,25 +62,13 @@ func init() {
 		if shellFlag != "" {
 			config.Get().Core.Shell = shellFlag
 		}
-		if debugMode {
-			config.Get().Core.Debug = true
+		logDir, err := config.CachePath()
+		if err == nil {
+			logger.Init(filepath.Join(logDir, "iris.log"), debugMode || config.Get().Core.Debug)
+			logger.Infof("IRIS session started: os=%s, arch=%s, go=%s, pid=%d", runtime.GOOS, runtime.GOARCH, runtime.Version(), os.Getpid())
+			cfg := config.Get()
+			logger.Debugf("IRIS loaded config: shell=%q, mode=%q, ghost-text=%v, max-suggestions=%d", cfg.Core.Shell, cfg.Core.Mode, cfg.UI.GhostText, cfg.UI.MaxSuggestions)
 		}
-		if config.Get().Core.Debug {
-			logDir, err := config.CachePath()
-			if err == nil {
-				_ = os.MkdirAll(logDir, 0755)
-				f, _ := os.OpenFile(filepath.Join(logDir, "iris.log"), os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
-				debugLogger = f
-				core.DebugWriter = f
-				_, _ = fmt.Fprintf(debugLogger, "--- IRIS DEBUG LOG ---\n")
-			}
-		}
-	}
-}
-
-func debugLog(format string, a ...any) {
-	if debugLogger != nil {
-		_, _ = fmt.Fprintf(debugLogger, format+"\n", a...)
 	}
 }
 

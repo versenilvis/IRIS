@@ -2,25 +2,148 @@ package integration
 
 import (
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/logger"
+	"golang.org/x/term"
 )
 
 const (
 	boxWidth = 72
-	maxItems = 6 // max items showing in the menu preview
+	maxItems = 6
 )
 
+func ComputeCursorCol(data []byte) int {
+	col := 0
+	i := 0
+	n := len(data)
+	for i < n {
+		b := data[i]
+		if b == '\r' {
+			col = 0
+			i++
+			continue
+		}
+		if b == '\b' || b == 0x7f {
+			col--
+			if col < 0 {
+				col = 0
+			}
+			i++
+			continue
+		}
+		if b == '\t' {
+			col = (col + 8) &^ 7
+			i++
+			continue
+		}
+		if b == '\033' {
+			if i+1 < n && data[i+1] == '[' {
+				j := i + 2
+				for j < n && data[j] >= 0x20 && data[j] <= 0x3F {
+					j++
+				}
+				if j < n {
+					cmd := data[j]
+					paramsStr := string(data[i+2 : j])
+					paramsStr = strings.TrimLeft(paramsStr, "?>=")
+					parts := strings.Split(paramsStr, ";")
+					getParam := func(idx, def int) int {
+						if idx < len(parts) && parts[idx] != "" {
+							if v, err := strconv.Atoi(parts[idx]); err == nil && v > 0 {
+								return v
+							}
+						}
+						return def
+					}
+					switch cmd {
+					case 'C':
+						col += getParam(0, 1)
+					case 'D':
+						col -= getParam(0, 1)
+						if col < 0 {
+							col = 0
+						}
+					case 'G':
+						col = getParam(0, 1) - 1
+						if col < 0 {
+							col = 0
+						}
+					}
+					i = j + 1
+					continue
+				}
+				break
+			} else if i+1 < n && data[i+1] == ']' {
+				j := i + 2
+				for j < n {
+					if data[j] == '\007' {
+						j++
+						break
+					}
+					if data[j] == '\033' && j+1 < n && data[j+1] == '\\' {
+						j += 2
+						break
+					}
+					j++
+				}
+				i = j
+				continue
+			} else if i+1 < n && (data[i+1] == 'P' || data[i+1] == 'X' || data[i+1] == '^' || data[i+1] == '_') {
+				j := i + 2
+				for j < n {
+					if data[j] == '\033' && j+1 < n && data[j+1] == '\\' {
+						j += 2
+						break
+					}
+					j++
+				}
+				i = j
+				continue
+			} else if i+1 < n {
+				i += 2
+				continue
+			} else {
+				break
+			}
+		}
+		if b < 0x20 {
+			i++
+			continue
+		}
+		r, size := utf8.DecodeRune(data[i:])
+		w := lipgloss.Width(string(r))
+		col += w
+		i += size
+	}
+	return col
+}
+
 type Overlay struct {
-	mu           sync.Mutex
-	Visible      bool
-	Items        []core.Suggestion
-	Cursor       int
-	StartIdx     int
-	LastGhostLen int
+	mu            sync.Mutex
+	Visible       bool
+	Items         []core.Suggestion
+	Cursor        int
+	StartIdx      int
+	LastGhostLen  int
+	TypedQuery    string
+	UserNavigated bool
+	PromptLen     int
+}
+
+func (o *Overlay) SetPromptLen(l int) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if o.PromptLen != l {
+		logger.Debugf("SetPromptLen: %d -> %d", o.PromptLen, l)
+		o.PromptLen = l
+	}
 }
 
 var (
@@ -53,11 +176,10 @@ func (o *Overlay) UpdateItems(items []core.Suggestion) {
 
 	o.Items = items
 	o.Visible = len(o.Items) > 0
-	o.Cursor = 0 // reset to top result on update
+	o.Cursor = 0
 	o.StartIdx = 0
 }
 
-// fixedWidth pads or truncates a string to exact rune width
 func fixedWidth(s string, width int) string {
 	runes := []rune(s)
 	if len(runes) > width {
@@ -93,11 +215,11 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool) string {
 	}
 
 	// add extra padding to erase any stray characters left by fast backspaces
-	// before the debounce timer fired. 10 spaces is safe and won't hit right prompts
+	// before the debounce timer fired, 10 spaces is safe and won't hit right prompts
 	padLen += 10
 
 	if ghostText != "" || padLen > 0 {
-		s.WriteString("\0337") // SAVE CURSOR at prompt
+		s.WriteString("\0337") // save cursor at prompt
 		if ghostText != "" {
 			s.WriteString("\033[90m")
 			s.WriteString(ghostText)
@@ -106,7 +228,7 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool) string {
 		if padLen > 0 {
 			s.WriteString(strings.Repeat(" ", padLen))
 		}
-		s.WriteString("\0338") // RESTORE CURSOR back to prompt
+		s.WriteString("\0338") // restore cursor back to prompt
 		o.LastGhostLen = len(ghostText)
 	}
 
@@ -114,6 +236,10 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool) string {
 }
 
 func (o *Overlay) Render() string {
+	return o.draw()
+}
+
+func (o *Overlay) draw() string {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
@@ -123,16 +249,29 @@ func (o *Overlay) Render() string {
 
 	var s strings.Builder
 	s.WriteString("\033[?7l")
-	s.WriteString("\0337") // DEC save cursor for menu drawing
+
+	typedLen := len([]rune(o.TypedQuery))
+	targetCol := o.PromptLen + typedLen
+
+	width, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil || width <= 0 {
+		width = 120
+	}
+	if targetCol+boxWidth > width {
+		targetCol = width - boxWidth
+	}
+	if targetCol < 0 {
+		targetCol = 0
+	}
+	logger.Debugf("Overlay draw: pLen=%d, typedLen=%d, targetCol=%d, width=%d", o.PromptLen, typedLen, targetCol, width)
+
+	s.WriteString("\0337")
 
 	windowSize := maxItems
 	if len(o.Items) < windowSize {
 		windowSize = len(o.Items)
 	}
 
-	// when you use up arrow key, the selection bar will stick with the second item
-	// it stays still at second position until you reach the limit of the list
-	// but not apply the same with down arrow key
 	scrolloffUp := 1
 	scrolloffDown := 0
 	if windowSize <= 3 {
@@ -145,7 +284,6 @@ func (o *Overlay) Render() string {
 	if o.Cursor >= o.StartIdx+windowSize-scrolloffDown {
 		o.StartIdx = o.Cursor - windowSize + scrolloffDown + 1
 	}
-
 	if o.StartIdx < 0 {
 		o.StartIdx = 0
 	}
@@ -158,23 +296,26 @@ func (o *Overlay) Render() string {
 
 	start := o.StartIdx
 	end := start + windowSize
+	totalLines := windowSize + 2
 
-	totalLines := windowSize + 2 // top border + items + bottom border
-
-	// if we reach the last lines of terminal, it will auto expand space to have space for the menu
 	for range totalLines {
 		s.WriteByte('\n')
 	}
 	fmt.Fprintf(&s, "\033[%dA", totalLines)
 
-	// re-save after scroll up
-	// it means when you scroll up, then scroll down to the prompt, the menu is still be there
 	s.WriteString("\0337")
 
-	// top border with scroll indicator
+	moveToTarget := func() {
+		s.WriteString("\r")
+		if targetCol > 0 {
+			fmt.Fprintf(&s, "\033[%dC", targetCol)
+		}
+	}
+
 	s.WriteString("\0338")
 	fmt.Fprintf(&s, "\033[%dB", 1)
 	s.WriteString("\033[2K")
+	moveToTarget()
 
 	scrollInfo := ""
 	if len(o.Items) > windowSize {
@@ -193,6 +334,7 @@ func (o *Overlay) Render() string {
 		s.WriteString("\0338")
 		fmt.Fprintf(&s, "\033[%dB", (i-start)+2)
 		s.WriteString("\033[2K")
+		moveToTarget()
 
 		it := o.Items[i]
 		rawIcon := fixedWidth(it.Icon, iconW)
@@ -216,14 +358,14 @@ func (o *Overlay) Render() string {
 		}
 	}
 
-	// Bottom border
 	s.WriteString("\0338")
 	fmt.Fprintf(&s, "\033[%dB", windowSize+2)
 	s.WriteString("\033[2K")
+	moveToTarget()
 	bottomBorder := "╰" + strings.Repeat("─", boxWidth) + "╯"
 	s.WriteString(borderStyle.Render(bottomBorder))
 
-	s.WriteString("\0338") // restore to prompt
+	s.WriteString("\0338")
 	s.WriteString("\033[?7h")
 	return s.String()
 }
@@ -251,20 +393,22 @@ func (o *Overlay) ClearAndDisable() string {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
-	if !o.Visible {
+	if !o.Visible && len(o.Items) == 0 && o.LastGhostLen == 0 {
 		return ""
 	}
 
 	o.Visible = false
 	o.Items = nil
+	o.TypedQuery = ""
+	o.UserNavigated = false
 
 	var s strings.Builder
 	s.WriteString("\033[?7l")
 
 	if o.LastGhostLen > 0 {
-		s.WriteString("\0337") // save
+		s.WriteString("\0337")
 		s.WriteString(strings.Repeat(" ", o.LastGhostLen+10))
-		s.WriteString("\0338") // restore
+		s.WriteString("\0338")
 		o.LastGhostLen = 0
 	}
 
