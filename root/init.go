@@ -97,8 +97,9 @@ func init() {
 }
 
 var setupCmd = &cobra.Command{
-	Use:   "setup",
+	Use:   "setup [shell]",
 	Short: "Automatically setup iris shell integration and install binary",
+	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		home, _ := os.UserHomeDir()
 
@@ -122,8 +123,13 @@ var setupCmd = &cobra.Command{
 			return
 		}
 
-		shellPath := os.Getenv("SHELL")
-		shellName := filepath.Base(shellPath)
+		var shellName string
+		if len(args) > 0 {
+			shellName = args[0]
+		} else {
+			shellPath := os.Getenv("SHELL")
+			shellName = filepath.Base(shellPath)
+		}
 		var configFile string
 		var evalCmd string
 
