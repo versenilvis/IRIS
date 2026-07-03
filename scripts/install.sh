@@ -67,9 +67,6 @@ main() {
             echo "Installation verified."
             echo ""
             "${BIN_DIR}/iris" setup
-            echo ""
-            echo "Run the following to activate Iris in this session:"
-            printf "  \033[32msource ~/.zshrc\033[0m\n"
         else
             echo "Warning: could not verify installed binary at ${BIN_DIR}/iris"
         fi
@@ -84,9 +81,6 @@ main() {
             echo "Installation verified."
             echo ""
             "${local_bin}/iris" setup
-            echo ""
-            echo "Run the following to activate Iris in this session:"
-            printf "  \033[32msource ~/.zshrc\033[0m\n"
         else
             # both locations failed, sudo install
             echo ""
@@ -95,9 +89,6 @@ main() {
                 echo "Installation verified."
                 echo ""
                 "${BIN_DIR}/iris" setup
-                echo ""
-                echo "Run the following to activate Iris in this session:"
-                printf "  \033[32msource ~/.zshrc\033[0m\n"
             else
                 tmp_iris=$(mktemp "${TMPDIR:-/tmp}/iris.XXXXXX")
                 cp "$bin" "${tmp_iris}"
