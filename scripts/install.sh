@@ -89,11 +89,9 @@ main() {
             printf "  \033[32msource ~/.zshrc\033[0m\n"
         else
             # both locations failed, sudo install
-            cp "$bin" "/tmp/iris"
-            chmod +x "/tmp/iris"
             echo ""
             echo "Installation requires elevated permissions, enter your password:"
-            if sudo cp /tmp/iris "${BIN_DIR}/iris" && sudo chmod +x "${BIN_DIR}/iris"; then
+            if sudo cp "$bin" "${BIN_DIR}/iris" && sudo chmod +x "${BIN_DIR}/iris"; then
                 echo "Installation verified."
                 echo ""
                 "${BIN_DIR}/iris" setup
@@ -101,8 +99,11 @@ main() {
                 echo "Run the following to activate Iris in this session:"
                 printf "  \033[32msource ~/.zshrc\033[0m\n"
             else
+                tmp_iris=$(mktemp "${TMPDIR:-/tmp}/iris.XXXXXX")
+                cp "$bin" "${tmp_iris}"
+                chmod +x "${tmp_iris}"
                 echo ""
-                printf "Failed. Run manually: \033[32msudo cp /tmp/iris %s/iris\033[0m\n" "${BIN_DIR}"
+                printf "Failed. Run manually: \033[32msudo cp %s %s/iris\033[0m\n" "${tmp_iris}" "${BIN_DIR}"
             fi
         fi
     fi
