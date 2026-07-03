@@ -509,7 +509,7 @@ func (o *Overlay) draw() string {
 	padGap := 2
 	markerW := 1
 	iconW := 2
-	if isClassic {
+	if isClassic || !config.Get().UI.NerdFonts {
 		iconW = 0
 	}
 	sidePad := 1
