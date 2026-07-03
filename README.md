@@ -9,8 +9,13 @@
   [![GitHub Actions](https://img.shields.io/github/actions/workflow/status/versenilvis/IRIS/release.yml?branch=main&style=for-the-badge&logo=github&logoColor=white&label=Actions)](https://github.com/versenilvis/IRIS/actions/workflows/release.yml)
   [![License: 0BSD](https://img.shields.io/badge/License-0BSD-blue?style=for-the-badge&logo=github&logoColor=white)](./LICENSE)
   
-  <a href="#why-iris-instead-of-fig-or-zsh-auto-plugins">Comparison</a> · <a href="#installation">Installation</a> · <a href="#docs">Docs</a>  · <a href="#shortcuts">Shortcuts</a> · <a href="#reporting-bugs">Reporting bugs</a>
+  <a href="#why-iris-instead-of-fig">Comparison</a> · <a href="#installation">Installation</a> · <a href="#docs">Docs</a>  · <a href="#shortcuts">Shortcuts</a> · <a href="#reporting-bugs">Reporting bugs</a>
 
+</div>
+<div algin="center">
+  <!-- <img width="800" height="450" alt="output" src="https://github.com/user-attachments/assets/fd586c5b-89b6-4f6a-af9c-29248db5edc3" />-->
+  <!-- <img width="1280" height="720" alt="output" src="https://github.com/user-attachments/assets/a1003bda-7722-4185-9514-f1bf83fbb504" /> -->
+  <img width="1920" height="1080" alt="showcase" src="https://github.com/user-attachments/assets/dc2434c2-4f59-4432-b77f-78e65c4d412e" />
 </div>
 
 **IRIS is built on top of TTY, so it runs everywhere. It just needs a terminal!**
@@ -64,6 +69,26 @@ curl -sSL https://raw.githubusercontent.com/versenilvis/iris/main/scripts/instal
 
 > [!WARNING]
 > Currently, Windows is not supported
+
+## Theme
+> [!NOTE]
+> Currently, IRIS doesn't have custom theme 
+> But it does have 2 basic styles
+
+<table>
+  <tr>
+    <td align="center"><b>Modern style</b></td>
+    <td align="center"><b>Classic style</b></td>
+  </tr>
+  <tr>
+    <td><img width="100%" alt="spec" src="https://github.com/user-attachments/assets/cb92cc64-a08d-43ad-a412-22ab479e53aa" /></td>
+    <td><img width="100%" alt="spec" src="https://github.com/user-attachments/assets/6e68b330-39d9-4750-ac95-e94514ba4e7b" /></td>
+  </tr>
+  <tr>
+    <td><img width="100%" alt="history" src="https://github.com/user-attachments/assets/fd1a272a-19fe-472a-83d6-eec790813403" /></td>
+    <td><img width="100%" alt="history" src="https://github.com/user-attachments/assets/a1983d05-b771-4277-91cf-96009875979b" /></td>
+  </tr>
+</table>
 
 ## Docs
 
