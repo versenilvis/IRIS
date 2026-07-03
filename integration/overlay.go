@@ -312,17 +312,29 @@ func fixedWidth(s string, width int) string {
 	if width <= 0 {
 		return ""
 	}
-	runes := []rune(s)
-	if len(runes) > width {
-		if width == 1 {
-			return "…"
+	visualWidth := lipgloss.Width(s)
+	if visualWidth == width {
+		return s
+	}
+	if visualWidth < width {
+		return s + strings.Repeat(" ", width-visualWidth)
+	}
+	var sb strings.Builder
+	currentWidth := 0
+	for _, r := range s {
+		rw := lipgloss.Width(string(r))
+		if currentWidth+rw > width-1 {
+			break
 		}
-		return string(runes[:width-1]) + "…"
+		sb.WriteRune(r)
+		currentWidth += rw
 	}
-	if len(runes) < width {
-		return s + strings.Repeat(" ", width-len(runes))
+	sb.WriteString("…")
+	rem := width - lipgloss.Width(sb.String())
+	if rem > 0 {
+		sb.WriteString(strings.Repeat(" ", rem))
 	}
-	return s
+	return sb.String()
 }
 
 func (o *Overlay) RenderGhostText(buffer string, userNavigated bool) string {
