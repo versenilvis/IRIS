@@ -220,7 +220,11 @@ func runWrapper() {
 	if err != nil {
 		shellPGID = core.ShellPID
 	}
+	var isCommandActive atomic.Bool
 	isExecuting := func() bool {
+		if isCommandActive.Load() {
+			return true
+		}
 		pgrp, err := unix.IoctlGetInt(int(ptmx.Fd()), unix.TIOCGPGRP)
 		if err != nil {
 			return false
@@ -304,7 +308,18 @@ func runWrapper() {
 		for scanner.Scan() {
 			query := scanner.Text()
 
+			if query == "IRIS_CMD_START" {
+				isCommandActive.Store(true)
+				bufferMu.Lock()
+				naiveBuffer = ""
+				cursorOffset = 0
+				bufferMu.Unlock()
+				writeStdout([]byte(overlay.ClearAndDisable()))
+				continue
+			}
+
 			if query == "IRIS_CMD_STOP" {
+				isCommandActive.Store(false)
 				// hook: after user executes a command, print the update notice exactly once per session
 				if !updatePrinted {
 					select {
@@ -319,44 +334,34 @@ func runWrapper() {
 				continue
 			}
 
+			isCommandActive.Store(false)
+
 			if overlay.UserNavigated {
 				continue
 			}
 
 			if query == "" {
 				bufferMu.Lock()
+				wasEmpty := naiveBuffer == ""
 				naiveBuffer = ""
 				cursorOffset = 0
 				bufferMu.Unlock()
-				writeStdout([]byte(overlay.ClearAndDisable()))
+				if !wasEmpty {
+					writeStdout([]byte(overlay.ClearAndDisable()))
+				}
 				continue
 			}
 
-			// sync local buffer with actual command line
 			bufferMu.Lock()
+			if naiveBuffer == query {
+				bufferMu.Unlock()
+				continue
+			}
 			naiveBuffer = query
 			cursorOffset = 0
 			bufferMu.Unlock()
 
-			activeModeMu.RLock()
-			currentMode := activeMode
-			activeModeMu.RUnlock()
-
-			results := MergeResults(query, currentMode)
-			if len(results) == 0 {
-				writeStdout([]byte(overlay.ClearAndDisable()))
-				continue
-			}
-			writeStdout([]byte(overlay.Clear()))
-			overlay.TypedQuery = query
-			overlay.UserNavigated = false
-			overlay.UpdateItems(results)
-			var rBuf strings.Builder
-			if !disableGhostText.Load() {
-				rBuf.WriteString(overlay.RenderGhostText(query, false))
-			}
-			rBuf.WriteString(overlay.Render())
-			writeStdout([]byte(rBuf.String()))
+			renderOverlay()
 		}
 		if err := scanner.Err(); err != nil {
 			logger.Errorf("IPC scanner error: %v", err)
@@ -737,10 +742,10 @@ func runWrapper() {
 					// I want it to execute the command anyway and ignore the suggestions
 					// it means only tab to select suggestions, and enter to execute
 					// enter is not used to select suggestions
-				} else if overlay.Visible && (b == 0x0d || b == 0x0a) {
+				} else if b == 0x0d || b == 0x0a {
 					intercepted = true
 					logger.Debugf("Intercepted Enter key, navigated=%v", overlay.UserNavigated)
-					if overlay.UserNavigated && len(overlay.Items) > 0 && overlay.Cursor >= 0 && overlay.Cursor < len(overlay.Items) {
+					if overlay.Visible && overlay.UserNavigated && len(overlay.Items) > 0 && overlay.Cursor >= 0 && overlay.Cursor < len(overlay.Items) {
 						selected := overlay.Items[overlay.Cursor].Cmd
 						activeModeMu.RLock()
 						currentMode := activeMode
@@ -751,8 +756,34 @@ func runWrapper() {
 						_, _ = ptmx.Write(append([]byte{0x15}, selected...))
 					}
 					writeStdout([]byte(overlay.ClearAndDisable()))
+					renderMu.Lock()
+					if renderTimer != nil {
+						renderTimer.Stop()
+						renderTimer = nil
+					}
+					renderMu.Unlock()
 
-					_, _ = ptmx.Write([]byte{0x0d})
+					isCommandActive.Store(true)
+					_, _ = ptmx.Write([]byte{b})
+					bufferMu.Lock()
+					naiveBuffer = ""
+					cursorOffset = 0
+					bufferMu.Unlock()
+					disableGhostText.Store(false)
+					shouldOverlayDraw = false
+					userNavigated.Store(false)
+					continue
+				} else if b == 0x03 || b == 0x15 { // ctrl+c, ctrl+u
+					intercepted = true
+					writeStdout([]byte(overlay.ClearAndDisable()))
+					renderMu.Lock()
+					if renderTimer != nil {
+						renderTimer.Stop()
+						renderTimer = nil
+					}
+					renderMu.Unlock()
+					isCommandActive.Store(false)
+					_, _ = ptmx.Write([]byte{b})
 					bufferMu.Lock()
 					naiveBuffer = ""
 					cursorOffset = 0

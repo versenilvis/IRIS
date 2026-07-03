@@ -354,25 +354,29 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool) string {
 		}
 	}
 
+	if ghostText == "" && o.LastGhostLen == 0 {
+		return ""
+	}
+
 	padLen := o.LastGhostLen - len(ghostText)
 	if padLen < 0 {
 		padLen = 0
 	}
-	padLen += 10
-
-	if ghostText != "" || padLen > 0 {
-		s.WriteString("\0337")
-		if ghostText != "" {
-			s.WriteString("\033[90m")
-			s.WriteString(ghostText)
-			s.WriteString("\033[0m")
-		}
-		if padLen > 0 {
-			s.WriteString(strings.Repeat(" ", padLen))
-		}
-		s.WriteString("\0338")
-		o.LastGhostLen = len(ghostText)
+	if o.LastGhostLen > 0 {
+		padLen += 4
 	}
+
+	s.WriteString("\0337")
+	if ghostText != "" {
+		s.WriteString("\033[90m")
+		s.WriteString(ghostText)
+		s.WriteString("\033[0m")
+	}
+	if padLen > 0 {
+		s.WriteString(strings.Repeat(" ", padLen))
+	}
+	s.WriteString("\0338")
+	o.LastGhostLen = len(ghostText)
 
 	return s.String()
 }
