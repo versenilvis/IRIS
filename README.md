@@ -24,36 +24,37 @@ Run iris wherever you already work; your local machine, a remote server, or anyw
 -->
 
 
-## Why Iris instead of Fig or Zsh auto-plugins
+## Why Iris instead of Fig
 
 > [!IMPORTANT]
 > **[Fig](https://app.fig.io/) was officially sunset in September 2024 and migrated to Amazon Q Developer (which requires cloud authentication and proprietary bloat)**  
-> **IRIS is the lightweight, open-source, zero-telemetry alternative built purely on native Go and TTY with no accounts, no GUI app, and no background daemons required 😎**
+> **IRIS is the lightweight, open-source, zero-telemetry alternative built purely on native Go and TTY with no accounts, no GUI app, and no background daemons required**
 
-How it compares
+### How it compares
 
-| Feature                           | Iris                 | Fig                        | Zsh plugins           |
-| :-------------------------------- | :------------------- | :------------------------- | :-------------------- |
-| **Engine**                        | Native TTY binary    | Electron app               | Shell scripts         |
-| **Startup**                       | No startup cost      | Minimal                    | Slower shell startup  |
-| **UI**                            | Inline overlay       | GUI popover                | Inline suggestions    |
-| **SSH**                           | Works out of the box | Desktop companion required | Remote setup required |
-| **Tmux & Linux virtual terminal** | Full support         | Not supported              | Full support          |
-| **Memory**                        | < 15 MB              | Heavy                      | Moderate              |
+| Feature                     | Iris                 | Fig              |
+| :-------------------------- | :------------------- | :--------------- |
+| **Platforms**               | Linux, macOS         | macOS only       |
+| **Engine**                  | Native Go (TTY)      | Electron         |
+| **Startup**                 | Near-zero overhead   | Low overhead     |
+| **UI**                      | Inline overlay       | GUI popover      |
+| **Remote SSH**              | TTY-native, portable | macOS GUI-bound  |
+| **Tmux**                    | ✓                    | Limited          |
+| **Linux virtual terminals** | ✓                    | -                |
+| **Memory**                  | < 15 MB              | Electron runtime |
 
-Supported shell & environment
+## Why not shell autocomplete plugins?
 
-| Environment                                                                      | Iris  |  Fig  |       Shell plugins       |
-| :------------------------------------------------------------------------------- | :---: | :---: | :-----------------------: |
-| **Zsh**                                                                          |   ✓   |   ✓   |      ✓ (Zsh plugins)      |
-| **Bash**                                                                         |   ✓   |   ✓   |             -             |
-| **Fish**                                                                         |   ✓   |   ✓   |      ✓ (Fish native)      |
-| **Nushell**                                                                      |   ✓   |   -   |             -             |
-| **POSIX sh / Dash**                                                              |   ✓   |   -   |             -             |
-| **Busybox ash**                                                                  |   ✓   |   -   |             -             |
-| **Tmux**                                                                         |   ✓   |   -   |     ✓ (only Zsh/Fish)     |
-| **Linux virtual terminal (<kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>F1-F9</kbd>)** |   ✓   |   -   |             -             |
-| **SSH sessions**                                                                 |   ✓   |   -   | ✓ (requires remote setup) |
+Shell plugins are great, but they also come with trade-offs. And also, not everyone use Zsh or Fish especially on SSH.
+
+| Feature                     | Iris                    | Shell plugins                |
+| :-------------------------- | :---------------------- | :--------------------------- |
+| **Installation**            | Single binary           | Plugin manager required      |
+| **Shell support**           | Most shells supported   | Usually shell-specific       |
+| **Startup**                 | No shell initialization | Increases shell startup time |
+| **SSH**                     | One config              | Per-shell config             |
+| **Tmux**                    | ✓                       | Depends on the shell         |
+| **Linux virtual terminals** | ✓                       | Depends on the shell         |
 
 ## Installation
 
@@ -61,7 +62,7 @@ Supported shell & environment
 curl -sSL https://raw.githubusercontent.com/versenilvis/iris/main/scripts/install.sh | sh
 ```
 
-> [!NOTE]
+> [!WARNING]
 > Currently, Windows is not supported
 
 ## Docs
