@@ -136,7 +136,7 @@ iris [flags]
 
 # shell integration setup and initialization
 iris setup [shell]      automatically configure shell integration in RC file and initialize default config
-iris init [shell]       output raw shell wrapper code for manual evaluation in profile scripts
+iris init <shell>       output raw shell wrapper code for manual evaluation in profile scripts
 
 # configuration management
 iris config init        initialize default configuration file at ~/.config/iris/config.toml
