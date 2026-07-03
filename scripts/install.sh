@@ -65,12 +65,14 @@ main() {
         chmod +x "${BIN_DIR}/iris"
         if "${BIN_DIR}/iris" version >/dev/null 2>&1; then
             echo "Installation verified."
+            echo ""
+            "${BIN_DIR}/iris" setup
+            echo ""
+            echo "Run the following to activate Iris in this session:"
+            printf "  \033[32msource ~/.zshrc\033[0m\n"
         else
             echo "Warning: could not verify installed binary at ${BIN_DIR}/iris"
         fi
-        echo ""
-        echo "To complete setup, run:"
-        echo "  iris setup"
     else
         # fallback to ~/.local/bin which is user-writable without sudo
         local_bin="${HOME}/.local/bin"
@@ -80,35 +82,28 @@ main() {
         chmod +x "${local_bin}/iris"
         if "${local_bin}/iris" version >/dev/null 2>&1; then
             echo "Installation verified."
-            echo "Note: installed to ${local_bin}/iris"
-            echo "Make sure ${local_bin} is in your PATH."
             echo ""
-            echo "To complete setup, run:"
-            echo "  iris setup"
+            "${local_bin}/iris" setup
+            echo ""
+            echo "Run the following to activate Iris in this session:"
+            printf "  \033[32msource ~/.zshrc\033[0m\n"
         else
-            # both locations failed, ask user to sudo
+            # both locations failed, sudo install
             cp "$bin" "/tmp/iris"
             chmod +x "/tmp/iris"
             echo ""
-            echo "Installation requires elevated permissions."
-            echo "Run the following command to complete the installation:"
-            printf "  \033[32msudo cp /tmp/iris %s/iris && sudo chmod +x %s/iris\033[0m\n" "${BIN_DIR}" "${BIN_DIR}"
-            echo ""
-            printf "Run it now? [Y/n] "
-            read -r answer </dev/tty
-            case "${answer}" in
-                n|N) echo "Skipped. Run the command above manually to finish." ;;
-                *)
-                    if sudo cp /tmp/iris "${BIN_DIR}/iris" && sudo chmod +x "${BIN_DIR}/iris"; then
-                        echo "Installation verified."
-                        echo ""
-                        echo "To complete setup, run:"
-                        echo "  iris setup"
-                    else
-                        echo "Failed to install. Please run the command above manually."
-                    fi
-                    ;;
-            esac
+            echo "Installation requires elevated permissions, enter your password:"
+            if sudo cp /tmp/iris "${BIN_DIR}/iris" && sudo chmod +x "${BIN_DIR}/iris"; then
+                echo "Installation verified."
+                echo ""
+                "${BIN_DIR}/iris" setup
+                echo ""
+                echo "Run the following to activate Iris in this session:"
+                printf "  \033[32msource ~/.zshrc\033[0m\n"
+            else
+                echo ""
+                printf "Failed. Run manually: \033[32msudo cp /tmp/iris %s/iris\033[0m\n" "${BIN_DIR}"
+            fi
         fi
     fi
 }
