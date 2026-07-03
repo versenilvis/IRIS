@@ -72,8 +72,7 @@ curl -sSL https://raw.githubusercontent.com/versenilvis/iris/main/scripts/instal
 
 ## Theme
 > [!NOTE]
-> Currently, IRIS doesn't have custom theme 
-> But it does have 2 basic styles
+> Currently, IRIS doesn't have custom theme but it does have 2 basic styles
 
 <table>
   <tr>
