@@ -385,11 +385,13 @@ func renderMatchedTitle(title, typed string, selected bool, w int) string {
 		return base.Render(display)
 	}
 
-	matchLen := len(typed)
-	if matchLen > len(display) {
-		matchLen = len(display)
+	typedRunes := []rune(typed)
+	displayRunes := []rune(display)
+	matchLen := len(typedRunes)
+	if matchLen > len(displayRunes) {
+		matchLen = len(displayRunes)
 	}
-	return match.Render(display[:matchLen]) + base.Render(display[matchLen:])
+	return match.Render(string(displayRunes[:matchLen])) + base.Render(string(displayRunes[matchLen:]))
 }
 
 func (o *Overlay) Render() string {
