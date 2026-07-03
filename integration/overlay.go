@@ -385,11 +385,12 @@ func (o *Overlay) draw() string {
 	)
 
 	// left and right side border with item rows
-	descW := 22
+	descW := 24
 	padGap := 2
 	markerW := 1
+	iconW := 2
 	sidePad := 1
-	titleW := inner - sidePad*2 - markerW - 1 - padGap - descW
+	titleW := inner - sidePad*2 - markerW - 1 - iconW - 1 - padGap - descW
 
 	for i := start; i < end; i++ {
 		s.WriteString("\0338")
@@ -415,18 +416,67 @@ func (o *Overlay) draw() string {
 			markerStyle = bg.Foreground(t.Accent).Bold(true)
 		}
 
+		iconGlyph := lookupIcon(it.Icon)
+		iconColor := t.Muted
+		if selected {
+			iconColor = t.Accent
+		}
+		iconStr := bg.Foreground(iconColor).Render(fixedWidth(iconGlyph, iconW))
+
 		title := renderMatchedTitle(it.Cmd, o.TypedQuery, selected, titleW)
 
 		descColor := t.Desc
 		if selected {
 			descColor = t.DescSel
 		}
-		desc := bg.Foreground(descColor).Render(fixedWidth(it.Desc, descW))
 
-		fmt.Fprintf(&s, "%s%s%s%s%s%s%s%s%s",
+		var desc string
+		if it.Icon == "alias" {
+			boxStyle := lipgloss.NewStyle().Background(lipgloss.Color("#2a2342")).Foreground(lipgloss.Color("#a277ff"))
+			if selected {
+				boxStyle = lipgloss.NewStyle().Background(lipgloss.Color("#a277ff")).Foreground(lipgloss.Color("#110f18")).Bold(true)
+			}
+			tag := boxStyle.Render(" alias ")
+			tw := lipgloss.Width(tag)
+			rem := descW - tw - 1
+			if rem < 0 {
+				rem = 0
+			}
+			desc = tag + bg.Render(" ") + bg.Foreground(descColor).Render(fixedWidth(it.Desc, rem))
+		} else if it.Icon == "history" {
+			boxStyle := lipgloss.NewStyle().Background(lipgloss.Color("#1a2d36")).Foreground(lipgloss.Color("#61ffca"))
+			if selected {
+				boxStyle = lipgloss.NewStyle().Background(lipgloss.Color("#61ffca")).Foreground(lipgloss.Color("#110f18")).Bold(true)
+			}
+			tag := boxStyle.Render(" history ")
+			tw := lipgloss.Width(tag)
+			rem := descW - tw
+			if rem < 0 {
+				rem = 0
+			}
+			desc = tag + bg.Render(strings.Repeat(" ", rem))
+		} else if it.Icon == "system" {
+			boxStyle := lipgloss.NewStyle().Background(lipgloss.Color("#1e1d28")).Foreground(lipgloss.Color("#a277ff"))
+			if selected {
+				boxStyle = lipgloss.NewStyle().Background(lipgloss.Color("#a277ff")).Foreground(lipgloss.Color("#110f18")).Bold(true)
+			}
+			tag := boxStyle.Render(" system ")
+			tw := lipgloss.Width(tag)
+			rem := descW - tw
+			if rem < 0 {
+				rem = 0
+			}
+			desc = tag + bg.Render(strings.Repeat(" ", rem))
+		} else {
+			desc = bg.Foreground(descColor).Render(fixedWidth(it.Desc, descW))
+		}
+
+		fmt.Fprintf(&s, "%s%s%s%s%s%s%s%s%s%s%s",
 			left,
 			bg.Render(" "),
 			markerStyle.Render(marker),
+			bg.Render(" "),
+			iconStr,
 			bg.Render(" "),
 			title,
 			bg.Render(strings.Repeat(" ", padGap)),
@@ -441,8 +491,15 @@ func (o *Overlay) draw() string {
 	fmt.Fprintf(&s, "\033[%dB", windowSize+2)
 	s.WriteString("\033[2K")
 	moveToTarget()
-	footerInfo := " <Tab> Accept • <Ctrl+R> Mode "
-	footerRunes := len([]rune(footerInfo))
+
+	keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#a277ff")).Bold(true)
+	tabKey := keyStyle.Render("<Tab>")
+	ctrlRKey := keyStyle.Render("<Ctrl+R>")
+	acceptText := lipgloss.NewStyle().Foreground(t.ScrollInfo).Render(" Accept")
+	modeText := lipgloss.NewStyle().Foreground(t.ScrollInfo).Render(" Mode")
+	footerInfo := fmt.Sprintf(" %s%s • %s%s ", tabKey, acceptText, ctrlRKey, modeText)
+
+	footerRunes := lipgloss.Width(footerInfo)
 	rightDash = 2
 	leftDash = inner - footerRunes - rightDash
 	if leftDash < 0 {
@@ -451,7 +508,7 @@ func (o *Overlay) draw() string {
 	fmt.Fprintf(&s, "%s%s%s%s%s",
 		border.Render("╰"),
 		border.Render(strings.Repeat("─", leftDash)),
-		lipgloss.NewStyle().Foreground(t.ScrollInfo).Render(footerInfo),
+		footerInfo,
 		border.Render(strings.Repeat("─", rightDash)),
 		border.Render("╯"),
 	)
