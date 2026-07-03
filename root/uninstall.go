@@ -20,7 +20,11 @@ var uninstallCmd = &cobra.Command{
 	Short: "Uninstall Iris and remove shell integrations",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Uninstalling Iris...")
-		home, _ := os.UserHomeDir()
+		home, err := os.UserHomeDir()
+		if err != nil {
+			fmt.Printf("! could not determine home directory: %v\n", err)
+			return
+		}
 
 		configFiles := []string{
 			filepath.Join(home, ".zshrc"),
@@ -59,19 +63,19 @@ var uninstallCmd = &cobra.Command{
 			binLocations = append(binLocations, exe)
 		}
 
-		removedBin := false
+		anyFound := false
 		for _, loc := range binLocations {
 			if _, err := os.Stat(loc); err == nil {
+				anyFound = true
 				if errRemove := os.Remove(loc); errRemove == nil {
 					fmt.Printf("✓ Removed binary: %s\n", loc)
-					removedBin = true
 				} else {
 					fmt.Printf("! Could not remove binary at %s (try with sudo): %v\n", loc, errRemove)
 				}
 			}
 		}
 
-		if !removedBin {
+		if !anyFound {
 			fmt.Println("✓ No leftover binary files found")
 		}
 

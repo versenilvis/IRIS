@@ -26,7 +26,9 @@ for file in ${config_files}; do
     if [ -f "${file}" ]; then
         echo "Removing integration from ${file}..."
         tmp_file=$(mktemp)
-        if grep -v -i -E "(# iris autocomplete|# iris autostart|iris init)" "${file}" > "${tmp_file}" 2>/dev/null; then
+        grep -v -i -E "(# iris autocomplete|# iris autostart|iris init)" "${file}" > "${tmp_file}" 2>/dev/null
+        status=$?
+        if [ "${status}" -eq 0 ] || [ "${status}" -eq 1 ]; then
             mv "${tmp_file}" "${file}"
         else
             /bin/rm -f "${tmp_file}" 2>/dev/null || rm -f "${tmp_file}"
