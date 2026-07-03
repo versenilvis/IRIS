@@ -20,8 +20,7 @@ for loc in "${HOME}/.local/bin/iris" "/usr/local/bin/iris"; do
     fi
 done
 
-config_files="${HOME}/.zshrc ${HOME}/.bashrc ${HOME}/.config/fish/config.fish"
-for file in ${config_files}; do
+for file in "${HOME}/.zshrc" "${HOME}/.bashrc" "${HOME}/.config/fish/config.fish"; do
     if [ -f "${file}" ]; then
         echo "Removing integration from ${file}..."
         tmp_file=$(mktemp)
