@@ -839,14 +839,7 @@ func runWrapper() {
 						isEmptyNow := len(naiveBuffer) == 0
 						bufferMu.Unlock()
 
-						if wasEmpty {
-							if overlay.Visible {
-								writeStdout([]byte(overlay.ClearAndDisable()))
-							}
-							userNavigated.Store(false)
-							continue
-						}
-						if isEmptyNow {
+						if wasEmpty || isEmptyNow {
 							writeStdout([]byte(overlay.ClearAndDisable()))
 							userNavigated.Store(false)
 							continue
@@ -867,14 +860,7 @@ func runWrapper() {
 						isEmptyNow := len(naiveBuffer) == 0
 						bufferMu.Unlock()
 
-						if wasEmpty {
-							if overlay.Visible {
-								writeStdout([]byte(overlay.ClearAndDisable()))
-							}
-							userNavigated.Store(false)
-							continue
-						}
-						if isEmptyNow {
+						if wasEmpty || isEmptyNow {
 							writeStdout([]byte(overlay.ClearAndDisable()))
 							userNavigated.Store(false)
 							continue
