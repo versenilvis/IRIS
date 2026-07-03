@@ -65,29 +65,39 @@ main() {
         chmod +x "${BIN_DIR}/iris"
         if "${BIN_DIR}/iris" version >/dev/null 2>&1; then
             echo "Installation verified."
+            echo ""
+            "${BIN_DIR}/iris" setup
         else
             echo "Warning: could not verify installed binary at ${BIN_DIR}/iris"
         fi
     else
+        # fallback to ~/.local/bin which is user-writable without sudo
+        local_bin="${HOME}/.local/bin"
+        mkdir -p "${local_bin}"
         chmod +x "$bin"
-        if "$bin" version >/dev/null 2>&1; then
-            echo "Binary verification successful."
+        cp "$bin" "${local_bin}/iris"
+        chmod +x "${local_bin}/iris"
+        if "${local_bin}/iris" version >/dev/null 2>&1; then
+            echo "Installation verified."
+            echo ""
+            "${local_bin}/iris" setup
         else
-            echo "Warning: could not verify binary"
+            # both locations failed, sudo install
+            echo ""
+            echo "Installation requires elevated permissions, enter your password:"
+            if sudo cp "$bin" "${BIN_DIR}/iris" && sudo chmod +x "${BIN_DIR}/iris"; then
+                echo "Installation verified."
+                echo ""
+                "${BIN_DIR}/iris" setup
+            else
+                tmp_iris=$(mktemp "${TMPDIR:-/tmp}/iris.XXXXXX")
+                cp "$bin" "${tmp_iris}"
+                chmod +x "${tmp_iris}"
+                echo ""
+                printf "Failed. Run manually: \033[32msudo cp %s %s/iris\033[0m\n" "${tmp_iris}" "${BIN_DIR}"
+            fi
         fi
-
-        cp "$bin" "/tmp/iris"
-        chmod +x "/tmp/iris"
-
-        echo ""
-        echo "Warning: permission denied to write to ${BIN_DIR}"
-        echo "Please complete the installation by running:"
-        echo "  sudo cp /tmp/iris ${BIN_DIR}/iris && sudo chmod +x ${BIN_DIR}/iris"
     fi
-
-    echo ""
-    echo "To complete setup, run:"
-    echo "  iris setup"
 }
 
 get_arch() {
