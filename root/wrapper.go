@@ -336,7 +336,7 @@ func runWrapper() {
 
 			isCommandActive.Store(false)
 
-			if overlay.UserNavigated {
+			if overlay.GetUserNavigated() {
 				continue
 			}
 
@@ -402,7 +402,7 @@ func runWrapper() {
 
 		var b strings.Builder
 		if !navCopy {
-			if bufCopy == "" && !overlay.Visible {
+			if bufCopy == "" && !overlay.IsVisible() {
 				writeStdout([]byte(overlay.ClearAndDisable()))
 				return
 			}
@@ -416,26 +416,22 @@ func runWrapper() {
 				return
 			}
 
-			if overlay.Visible {
+			if overlay.IsVisible() {
 				b.WriteString(overlay.Clear())
 			}
-			overlay.TypedQuery = bufCopy
-			overlay.UpdateItems(results)
+			overlay.SetQueryAndItems(bufCopy, results)
 		} else {
-			if overlay.Visible {
+			if overlay.IsVisible() {
 				b.WriteString(overlay.Clear())
 			}
 		}
 
-		overlay.UserNavigated = navCopy
+		overlay.SetUserNavigated(navCopy)
 		if !disableGhostText.Load() {
 			b.WriteString(overlay.RenderGhostText(bufCopy, navCopy))
 		}
-		currentCmd := ""
-		if len(overlay.Items) > 0 && overlay.Cursor >= 0 && overlay.Cursor < len(overlay.Items) {
-			currentCmd = overlay.Items[overlay.Cursor].Cmd
-		}
-		logger.Debugf("RenderOverlay nav: %v, cursor: %d, typedQuery: '%s', currentCmd: '%s'", navCopy, overlay.Cursor, overlay.TypedQuery, currentCmd)
+		currentCmd := overlay.GetCurrentCmd()
+		logger.Debugf("RenderOverlay nav: %v, typedQuery: '%s', currentCmd: '%s'", navCopy, overlay.GetTypedQuery(), currentCmd)
 		b.WriteString(overlay.Render())
 		writeStdout([]byte(b.String()))
 	}
@@ -520,44 +516,28 @@ func runWrapper() {
 							continue
 						}
 
-						if overlay.Visible && (inputSlice[i+2] == 'A' || inputSlice[i+2] == 'B') {
+						if overlay.IsVisible() && (inputSlice[i+2] == 'A' || inputSlice[i+2] == 'B') {
 							intercepted = true
 							userNavigated.Store(true)
-							overlay.UserNavigated = true
 
-							// clear ghost text synchronously
-							if overlay.LastGhostLen > 0 {
+							if l := overlay.ClearGhostLen(); l > 0 {
 								var gs strings.Builder
 								gs.WriteString("\0337")
-								gs.WriteString(strings.Repeat(" ", overlay.LastGhostLen+10))
+								gs.WriteString(strings.Repeat(" ", l+10))
 								gs.WriteString("\0338")
 								writeStdout([]byte(gs.String()))
-								overlay.LastGhostLen = 0
 							}
 
-							oldCursor := overlay.Cursor
 							arrowDir := "down"
 							if inputSlice[i+2] == 'A' {
 								arrowDir = "up"
-								overlay.Cursor--
-								if overlay.Cursor < 0 {
-									overlay.Cursor = 0
-								}
-							} else {
-								overlay.Cursor++
-								if overlay.Cursor >= len(overlay.Items) {
-									overlay.Cursor = len(overlay.Items) - 1
-								}
 							}
-							logger.Debugf("Intercepted %s Arrow, cursor moved %d -> %d", arrowDir, oldCursor, overlay.Cursor)
-
-							// boundary hit - ignore redundant write to avoid PTY flooding
-							if overlay.Cursor == oldCursor {
+							moved, selected := overlay.MoveCursor(arrowDir)
+							if !moved {
 								i += 2
 								continue
 							}
 
-							selected := overlay.Items[overlay.Cursor].Cmd
 							bufferMu.Lock()
 							naiveBuffer = selected
 							cursorOffset = 0
@@ -568,7 +548,7 @@ func runWrapper() {
 
 							i += 2
 							continue
-						} else if !overlay.Visible && naiveBuffer == "" && (inputSlice[i+2] == 'A' || inputSlice[i+2] == 'B') { // up/down arrow on empty prompt
+						} else if !overlay.IsVisible() && naiveBuffer == "" && (inputSlice[i+2] == 'A' || inputSlice[i+2] == 'B') { // up/down arrow on empty prompt
 							intercepted = true
 							activeModeMu.Lock()
 							activeMode = "history"
@@ -587,43 +567,32 @@ func runWrapper() {
 								var historyList []core.Suggestion
 
 								if inputSlice[i+2] == 'A' {
-									// up arrow: reverse the list so newest is at the bottom
 									for j := limit - 1; j >= 0; j-- {
 										historyList = append(historyList, results[j])
 									}
 								} else {
-									// down arrow: normal order, newest is at the top
 									for j := 0; j < limit; j++ {
 										historyList = append(historyList, results[j])
 									}
 								}
 
-								overlay.TypedQuery = ""
-								overlay.UpdateItems(historyList)
+								selected := overlay.SetHistoryList(historyList, inputSlice[i+2] == 'A')
+								if selected != "" {
+									bufferMu.Lock()
+									naiveBuffer = selected
+									cursorOffset = 0
+									bufferMu.Unlock()
 
-								if inputSlice[i+2] == 'A' {
-									overlay.Cursor = len(historyList) - 1 // up arrow: start at the bottom
-								} else {
-									overlay.Cursor = 0 // down arrow: start at the top
+									userNavigated.Store(true)
+									writeStdout([]byte(overlay.Render()))
+									_, _ = ptmx.Write(append([]byte{0x15}, selected...))
 								}
-
-								selected := overlay.Items[overlay.Cursor].Cmd
-								bufferMu.Lock()
-								naiveBuffer = selected
-								cursorOffset = 0
-								bufferMu.Unlock()
-
-								userNavigated.Store(true)
-								overlay.UserNavigated = true
-
-								writeStdout([]byte(overlay.Render()))
-								_, _ = ptmx.Write(append([]byte{0x15}, selected...))
 							}
 							i += 2
 							continue
-						} else if overlay.Visible && !disableGhostText.Load() && inputSlice[i+2] == 'C' { // right arrow
+						} else if overlay.IsVisible() && !disableGhostText.Load() && inputSlice[i+2] == 'C' { // right arrow
 							bufferMu.Lock()
-							topCmd := overlay.Items[0].Cmd
+							topCmd := overlay.GetTopCmd()
 							hasMatch := strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(naiveBuffer))
 							var ghostText string
 							if hasMatch {
@@ -651,7 +620,7 @@ func runWrapper() {
 					if i+2 < n && (inputSlice[i+1] == '[' || inputSlice[i+1] == 'O') {
 						if inputSlice[i+2] == 'D' {
 							bufferMu.Lock()
-							isEmptyQuery := (overlay.Visible && overlay.TypedQuery == "") || (!overlay.Visible && naiveBuffer == "")
+							isEmptyQuery := (overlay.IsVisible() && overlay.GetTypedQuery() == "") || (!overlay.IsVisible() && naiveBuffer == "")
 							bufferMu.Unlock()
 							if isEmptyQuery {
 								intercepted = true
@@ -659,7 +628,7 @@ func runWrapper() {
 								continue
 							}
 							bufferMu.Lock()
-							if naiveBuffer != "" || overlay.Visible {
+							if naiveBuffer != "" || overlay.IsVisible() {
 								cursorOffset++
 								if cursorOffset > len(naiveBuffer) {
 									cursorOffset = len(naiveBuffer)
@@ -671,7 +640,7 @@ func runWrapper() {
 							isLeftRightArrow = true
 						} else if inputSlice[i+2] == 'C' {
 							bufferMu.Lock()
-							isEmptyQuery := (overlay.Visible && overlay.TypedQuery == "") || (!overlay.Visible && naiveBuffer == "")
+							isEmptyQuery := (overlay.IsVisible() && overlay.GetTypedQuery() == "") || (!overlay.IsVisible() && naiveBuffer == "")
 							bufferMu.Unlock()
 							if isEmptyQuery {
 								intercepted = true
@@ -679,7 +648,7 @@ func runWrapper() {
 								continue
 							}
 							bufferMu.Lock()
-							if naiveBuffer != "" || overlay.Visible {
+							if naiveBuffer != "" || overlay.IsVisible() {
 								cursorOffset--
 								if cursorOffset < 0 {
 									cursorOffset = 0
@@ -729,14 +698,13 @@ func runWrapper() {
 					logger.Debugf("Intercepted Ctrl+R, toggled mode to %q", activeMode)
 					if userNavigated.Load() {
 						bufferMu.Lock()
-						naiveBuffer = overlay.TypedQuery
+						naiveBuffer = overlay.GetTypedQuery()
 						cursorOffset = 0
 						bufferMu.Unlock()
-						_, _ = ptmx.Write(append([]byte{0x15}, overlay.TypedQuery...))
+						_, _ = ptmx.Write(append([]byte{0x15}, overlay.GetTypedQuery()...))
 					}
 					userNavigated.Store(false)
-					overlay.UserNavigated = false
-					overlay.Visible = true
+					overlay.Show()
 					shouldOverlayDraw = true
 					// enter: enter behavior is a bit different from tab suggestions in code editor
 					// I want it to execute the command anyway and ignore the suggestions
@@ -744,16 +712,18 @@ func runWrapper() {
 					// enter is not used to select suggestions
 				} else if b == 0x0d || b == 0x0a {
 					intercepted = true
-					logger.Debugf("Intercepted Enter key, navigated=%v", overlay.UserNavigated)
-					if overlay.Visible && overlay.UserNavigated && len(overlay.Items) > 0 && overlay.Cursor >= 0 && overlay.Cursor < len(overlay.Items) {
-						selected := overlay.Items[overlay.Cursor].Cmd
-						activeModeMu.RLock()
-						currentMode := activeMode
-						activeModeMu.RUnlock()
-						if currentMode == "spec" {
-							selected = strings.TrimSpace(selected) + " "
+					logger.Debugf("Intercepted Enter key, navigated=%v", overlay.GetUserNavigated())
+					if overlay.IsVisible() && overlay.GetUserNavigated() {
+						selected := overlay.GetCurrentCmd()
+						if selected != "" {
+							activeModeMu.RLock()
+							currentMode := activeMode
+							activeModeMu.RUnlock()
+							if currentMode == "spec" {
+								selected = strings.TrimSpace(selected) + " "
+							}
+							_, _ = ptmx.Write(append([]byte{0x15}, selected...))
 						}
-						_, _ = ptmx.Write(append([]byte{0x15}, selected...))
 					}
 					writeStdout([]byte(overlay.ClearAndDisable()))
 					renderMu.Lock()
@@ -794,11 +764,11 @@ func runWrapper() {
 					continue
 				} else if b == 0x09 { // tab: select suggestions
 					intercepted = true
-					logger.Debugf("Intercepted Tab key, visible=%v, cursor=%d", overlay.Visible, overlay.Cursor)
-					if !overlay.Visible {
+					logger.Debugf("Intercepted Tab key, visible=%v", overlay.IsVisible())
+					if !overlay.IsVisible() {
 						shouldOverlayDraw = true
 					} else {
-						selected := overlay.Items[overlay.Cursor].Cmd
+						selected := overlay.GetCurrentCmd()
 						writeStdout([]byte(overlay.ClearAndDisable()))
 
 						activeModeMu.RLock()
@@ -815,7 +785,7 @@ func runWrapper() {
 
 						_, _ = ptmx.Write(append([]byte{0x15}, selected...))
 
-						overlay.Cursor = 0 // this prevents when you tab, it switches between suggestions non-stop
+						overlay.ResetCursor() // this prevents when you tab, it switches between suggestions non-stop
 
 						shouldOverlayDraw = true // <- rerender after tab to choose, if you set to false,
 						// when you press tab continually, it will print all folder from menu suggestions
@@ -833,7 +803,7 @@ func runWrapper() {
 					case 0x01: // ctrl+a: move to beginning of line
 						bufferMu.Lock()
 						cursorOffset = len(naiveBuffer)
-						if naiveBuffer != "" || overlay.Visible {
+						if naiveBuffer != "" || overlay.IsVisible() {
 							shouldOverlayDraw = true
 						}
 						bufferMu.Unlock()
@@ -841,7 +811,7 @@ func runWrapper() {
 					case 0x05: // ctrl+e: move to end of line
 						bufferMu.Lock()
 						cursorOffset = 0
-						if naiveBuffer != "" || overlay.Visible {
+						if naiveBuffer != "" || overlay.IsVisible() {
 							shouldOverlayDraw = true
 						}
 						bufferMu.Unlock()
@@ -953,7 +923,7 @@ func runWrapper() {
 							bufferMu.Unlock()
 							shouldOverlayDraw = true
 							userNavigated.Store(false)
-							overlay.UserNavigated = false
+							overlay.SetUserNavigated(false)
 						}
 					}
 				}

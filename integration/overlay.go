@@ -244,6 +244,12 @@ func (o *Overlay) Show() {
 	o.Visible = true
 }
 
+func (o *Overlay) ResetCursor() {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.Cursor = 0
+}
+
 func (o *Overlay) SetQueryAndItems(query string, items []core.Suggestion) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -714,6 +720,8 @@ func (o *Overlay) ClearAndDisable() string {
 	o.Items = nil
 	o.TypedQuery = ""
 	o.UserNavigated = false
+	o.Cursor = 0
+	o.StartIdx = 0
 
 	var s strings.Builder
 	s.WriteString("\033[?7l")
