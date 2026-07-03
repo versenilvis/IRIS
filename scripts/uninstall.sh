@@ -1,43 +1,53 @@
-#!/bin/bash
+#!/bin/sh
 
 echo "Uninstalling Iris..."
 
+if command -v iris >/dev/null 2>&1; then
+    if iris uninstall --help >/dev/null 2>&1; then
+        iris uninstall
+        exit 0
+    fi
+fi
 
-BIN_LOCATIONS=(
-    "$HOME/.local/bin/iris"
-    "/usr/local/bin/iris"
-)
-
-for loc in "${BIN_LOCATIONS[@]}"; do
-    if [ -f "$loc" ]; then
-        echo "Removing binary: $loc"
-        if [ -w "$(dirname "$loc")" ]; then
-            rm -f "$loc"
+bin_dirs="${HOME}/.local/bin/iris /usr/local/bin/iris"
+for loc in ${bin_dirs}; do
+    if [ -f "${loc}" ]; then
+        echo "Removing binary: ${loc}"
+        if [ -w "$(dirname "${loc}")" ]; then
+            /bin/rm -f "${loc}" 2>/dev/null || rm -f "${loc}"
         else
-            sudo rm -f "$loc"
+            sudo /bin/rm -f "${loc}" 2>/dev/null || sudo rm -f "${loc}"
         fi
     fi
 done
 
-
-CONFIG_FILES=(
-    "$HOME/.zshrc"
-    "$HOME/.bashrc"
-    "$HOME/.config/fish/config.fish"
-)
-
-for file in "${CONFIG_FILES[@]}"; do
-    if [ -f "$file" ]; then
-        echo "Removing integration from $file..."
-        sed -i '/# Iris Autocomplete/d' "$file"
-        sed -i '/iris init/d' "$file"
-        sed -i '/^$/N;/^\n$/D' "$file"
+config_files="${HOME}/.zshrc ${HOME}/.bashrc ${HOME}/.config/fish/config.fish"
+for file in ${config_files}; do
+    if [ -f "${file}" ]; then
+        echo "Removing integration from ${file}..."
+        tmp_file=$(mktemp)
+        if grep -v -i -E "(# iris autocomplete|# iris autostart|iris init)" "${file}" > "${tmp_file}" 2>/dev/null; then
+            mv "${tmp_file}" "${file}"
+        else
+            /bin/rm -f "${tmp_file}" 2>/dev/null || rm -f "${tmp_file}"
+        fi
     fi
 done
 
-if [ -f "iris.log" ]; then
-    rm -f "iris.log"
-fi
+/bin/rm -rf "${HOME}/.config/iris" 2>/dev/null || rm -rf "${HOME}/.config/iris"
+/bin/rm -rf "${HOME}/.local/share/iris" 2>/dev/null || rm -rf "${HOME}/.local/share/iris"
+/bin/rm -rf "${HOME}/.cache/iris" 2>/dev/null || rm -rf "${HOME}/.cache/iris"
+/bin/rm -f "iris.log" 2>/dev/null || rm -f "iris.log"
 
 echo "✓ Iris has been successfully uninstalled"
-echo "Please restart your terminal or source your config file to clear the environment"
+if [ -n "${IRIS_PID}" ]; then
+    echo ""
+    echo "⚠️  You are currently inside an active Iris session."
+    echo "Iris runs as the parent process of this terminal - do NOT run 'pkill iris'"
+    echo "as it will immediately close this terminal window."
+    echo ""
+    echo "To fully exit, simply close this terminal window and open a new one."
+    echo "Iris will not start again since the shell config has been cleaned up."
+else
+    echo "Please close and reopen your terminal to complete the uninstall."
+fi

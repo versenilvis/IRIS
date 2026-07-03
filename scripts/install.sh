@@ -1,9 +1,6 @@
 #!/bin/sh
 set -e
 
-# Iris installer
-# Usage: curl -sS https://raw.githubusercontent.com/versenilvis/iris/main/scripts/install.sh | sudo sh
-
 REPO="versenilvis/iris"
 BIN_DIR="${BIN_DIR:-/usr/local/bin}"
 # allow overriding the GitHub API base URL for local testing
@@ -62,8 +59,15 @@ main() {
         fi
     fi
 
-    if "${BIN_DIR}/iris" version >/dev/null 2>&1; then
-        echo "Installation verified."
+    if [ "${has_write_permission}" -eq 1 ]; then
+        mkdir -p "${BIN_DIR}"
+        cp "$bin" "${BIN_DIR}/iris"
+        chmod +x "${BIN_DIR}/iris"
+        if "${BIN_DIR}/iris" version >/dev/null 2>&1; then
+            echo "Installation verified."
+        else
+            echo "Warning: could not verify installed binary at ${BIN_DIR}/iris"
+        fi
     else
         chmod +x "$bin"
         if "$bin" version >/dev/null 2>&1; then
