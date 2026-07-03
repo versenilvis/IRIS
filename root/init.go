@@ -175,6 +175,12 @@ mode = "last"
 debug = false
 
 [ui]
+# visual style: "modern" (icons, category pills, shortcut footer) or "classic" (minimalist, centered number, no icons)
+style = "modern"
+
+# enable Nerd Fonts icons in overlay menu
+nerd-fonts = true
+
 # enable inline ghost text
 ghost-text = true
 
