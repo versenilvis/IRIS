@@ -7,6 +7,7 @@ type Spec struct {
 	Name        string
 	Aliases     []string
 	Description string
+	Icon        string
 	Subcommands []Subcommand
 	Options     []Option
 	Generator   GeneratorFunc
@@ -18,6 +19,7 @@ type Subcommand struct {
 	Name        string
 	Aliases     []string
 	Description string
+	Icon        string
 	Subcommands []Subcommand
 	Options     []Option
 	Generator   GeneratorFunc

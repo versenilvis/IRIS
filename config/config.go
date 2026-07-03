@@ -42,6 +42,7 @@ type UIConfig struct {
 	GhostText      bool `toml:"ghost-text"`
 	MaxSuggestions int  `toml:"max-suggestions"`
 	MaxHeight      int  `toml:"max-height"`
+	NerdFonts      bool `toml:"nerd-fonts"`
 }
 
 type GitConfig struct {

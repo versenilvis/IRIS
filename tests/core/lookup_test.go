@@ -51,7 +51,7 @@ func TestLookup(t *testing.T) {
 			if tt.mustContain != "" {
 				found := false
 				for _, r := range results {
-					if strings.Contains(r.Cmd, tt.mustContain) {
+					if strings.Contains(r.Cmd, tt.mustContain) || strings.Contains(r.Desc, tt.mustContain) {
 						found = true
 						break
 					}

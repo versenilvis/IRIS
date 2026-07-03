@@ -1,7 +1,6 @@
 package root
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/versenilvis/iris/commands/core"
@@ -50,8 +49,8 @@ func MergeResults(query string, mode string) []core.Suggestion {
 		for _, h := range histResults {
 			addSuggestion(core.Suggestion{
 				Cmd:  h.Cmd,
-				Desc: " history",
-				Icon: fmt.Sprintf("%d", h.ID),
+				Desc: "history",
+				Icon: "history",
 			})
 		}
 		for _, s := range cmdResults {
