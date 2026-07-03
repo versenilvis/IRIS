@@ -620,7 +620,7 @@ func runWrapper() {
 					if i+2 < n && (inputSlice[i+1] == '[' || inputSlice[i+1] == 'O') {
 						if inputSlice[i+2] == 'D' {
 							bufferMu.Lock()
-							isEmptyQuery := (overlay.IsVisible() && overlay.GetTypedQuery() == "") || (!overlay.IsVisible() && naiveBuffer == "")
+							isEmptyQuery := naiveBuffer == "" && (!overlay.IsVisible() || overlay.GetTypedQuery() == "")
 							bufferMu.Unlock()
 							if isEmptyQuery {
 								intercepted = true
@@ -640,7 +640,7 @@ func runWrapper() {
 							isLeftRightArrow = true
 						} else if inputSlice[i+2] == 'C' {
 							bufferMu.Lock()
-							isEmptyQuery := (overlay.IsVisible() && overlay.GetTypedQuery() == "") || (!overlay.IsVisible() && naiveBuffer == "")
+							isEmptyQuery := naiveBuffer == "" && (!overlay.IsVisible() || overlay.GetTypedQuery() == "")
 							bufferMu.Unlock()
 							if isEmptyQuery {
 								intercepted = true
