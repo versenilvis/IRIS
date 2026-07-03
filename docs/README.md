@@ -136,7 +136,7 @@ iris [flags]
 
 # shell integration setup and initialization
 iris setup [shell]      automatically configure shell integration in RC file and initialize default config
-iris init [shell]       output raw shell wrapper code for manual evaluation in profile scripts
+iris init <shell>       output raw shell wrapper code for manual evaluation in profile scripts
 
 # configuration management
 iris config init        initialize default configuration file at ~/.config/iris/config.toml
@@ -145,7 +145,7 @@ iris config show        output current active/resolved configuration in TOML for
 # maintenance and diagnostics
 iris update             check GitHub release tracks and update binary to latest release
 iris version            print current semantic version string
-iris uninstall [shell]  remove shell integration hooks from RC files and uninstall Iris binary
+iris uninstall          remove shell integration hooks from RC files and uninstall Iris binary
 iris crash-log          display file path to the latest captured stack trace report
 iris crash-log --clear  remove all stored crash logs from ~/.cache/iris/crashes
 ```
