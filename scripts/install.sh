@@ -69,20 +69,23 @@ main() {
             echo "Warning: could not verify installed binary at ${BIN_DIR}/iris"
         fi
     else
+        # fallback to ~/.local/bin which is user-writable without sudo
+        local_bin="${HOME}/.local/bin"
+        mkdir -p "${local_bin}"
         chmod +x "$bin"
-        if "$bin" version >/dev/null 2>&1; then
-            echo "Binary verification successful."
+        cp "$bin" "${local_bin}/iris"
+        chmod +x "${local_bin}/iris"
+        if "${local_bin}/iris" version >/dev/null 2>&1; then
+            echo "Installation verified."
+            echo "Note: installed to ${local_bin}/iris (no sudo needed)"
+            echo "Make sure ${local_bin} is in your PATH."
         else
-            echo "Warning: could not verify binary"
+            cp "$bin" "/tmp/iris"
+            echo ""
+            echo "Warning: permission denied to write to ${BIN_DIR}"
+            echo "Please complete the installation by running:"
+            echo "  sudo cp /tmp/iris ${BIN_DIR}/iris && sudo chmod +x ${BIN_DIR}/iris"
         fi
-
-        cp "$bin" "/tmp/iris"
-        chmod +x "/tmp/iris"
-
-        echo ""
-        echo "Warning: permission denied to write to ${BIN_DIR}"
-        echo "Please complete the installation by running:"
-        echo "  sudo cp /tmp/iris ${BIN_DIR}/iris && sudo chmod +x ${BIN_DIR}/iris"
     fi
 
     echo ""
