@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -244,7 +245,16 @@ var updateCmd = &cobra.Command{
 
 		// download and replace the binary using the install script
 		installScript := "https://raw.githubusercontent.com/versenilvis/iris/main/scripts/install.sh"
-		fmt.Printf("running: curl -sS %s | sh\n\n", installScript)
+		fmt.Printf("running: curl -sSL %s | sh\n\n", installScript)
+
+		cmdRun := exec.Command("sh", "-c", "curl -sSL "+installScript+" | sh")
+		cmdRun.Stdout = os.Stdout
+		cmdRun.Stderr = os.Stderr
+		cmdRun.Stdin = os.Stdin
+		if err := cmdRun.Run(); err != nil {
+			fmt.Printf("\n\033[31m[IRIS] update failed: %v\033[0m\n", err)
+			return
+		}
 
 		// after a successful update, mark as seen so no more notifications
 		state := config.LoadState()
