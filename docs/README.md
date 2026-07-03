@@ -6,6 +6,7 @@ Iris is a fast terminal autocomplete assistant written in Go. It wraps around yo
 
 - [Getting started](#getting-started)
 - [Usage guide](#usage-guide)
+- [Commands reference](#commands-reference)
 - [Configuration guide](#configuration-guide)
 - [Troubleshooting guide](#troubleshooting-guide)
 - [Developer guide](development.md)
@@ -123,6 +124,32 @@ When ghost text is enabled, Iris displays inline completion suggestions ahead of
 
 - Right Arrow (`→`): Accept the inline ghost text suggestion and append it to your current command line buffer
 
+## Commands reference
+
+Iris provides a comprehensive set of CLI commands to manage shell integration, updates, configuration, and diagnostics:
+
+```bash
+# start interactive autocomplete session (wrapped terminal wrapper)
+iris [flags]
+  -s, --shell <shell>   specify target shell environment (zsh, bash, fish)
+  -d, --debug           enable runtime debug logging to ~/.cache/iris/iris.log
+
+# shell integration setup and initialization
+iris setup [shell]      automatically configure shell integration in RC file and initialize default config
+iris init [shell]       output raw shell wrapper code for manual evaluation in profile scripts
+
+# configuration management
+iris config init        initialize default configuration file at ~/.config/iris/config.toml
+iris config show        output current active/resolved configuration in TOML format
+
+# maintenance and diagnostics
+iris update             check GitHub release tracks and update binary to latest release
+iris version            print current semantic version string
+iris uninstall [shell]  remove shell integration hooks from RC files and uninstall Iris binary
+iris crash-log          display file path to the latest captured stack trace report
+iris crash-log --clear  remove all stored crash logs from ~/.cache/iris/crashes
+```
+
 ## Configuration guide
 
 Iris uses a clean TOML configuration file located at `~/.config/iris/config.toml` to customize UI presentation, suggestion behavior, and core engine settings
@@ -178,7 +205,7 @@ deduplicate-branches = true
 check-on-startup = true
 
 # update channel: "stable", "nightly"
-channel = "nightly"
+channel = "stable"
 
 # interval between update checks, e.g. "24h", "6h", "30m"
 check-interval = "24h"
@@ -197,9 +224,7 @@ Iris provides built-in commands to inspect and modify settings directly from you
 
 ```bash
 iris config init
-iris config view
-iris config edit
-iris config reset
+iris config show
 ```
 
 ## Troubleshooting guide
