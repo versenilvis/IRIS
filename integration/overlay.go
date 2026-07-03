@@ -195,21 +195,152 @@ func (o *Overlay) UpdateItems(items []core.Suggestion) {
 	o.StartIdx = 0
 }
 
+func (o *Overlay) IsVisible() bool {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.Visible
+}
+
+func (o *Overlay) GetUserNavigated() bool {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.UserNavigated
+}
+
+func (o *Overlay) SetUserNavigated(v bool) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.UserNavigated = v
+}
+
+func (o *Overlay) GetTypedQuery() string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.TypedQuery
+}
+
+func (o *Overlay) GetCurrentCmd() string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if len(o.Items) > 0 && o.Cursor >= 0 && o.Cursor < len(o.Items) {
+		return o.Items[o.Cursor].Cmd
+	}
+	return ""
+}
+
+func (o *Overlay) GetTopCmd() string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if len(o.Items) > 0 {
+		return o.Items[0].Cmd
+	}
+	return ""
+}
+
+func (o *Overlay) Show() {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.UserNavigated = false
+	o.Visible = true
+}
+
+func (o *Overlay) ResetCursor() {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.Cursor = 0
+}
+
+func (o *Overlay) SetQueryAndItems(query string, items []core.Suggestion) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.TypedQuery = query
+	o.UserNavigated = false
+	o.Items = items
+	o.Visible = len(o.Items) > 0
+	o.Cursor = 0
+	o.StartIdx = 0
+}
+
+func (o *Overlay) ClearGhostLen() int {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	l := o.LastGhostLen
+	o.LastGhostLen = 0
+	return l
+}
+
+func (o *Overlay) MoveCursor(dir string) (moved bool, selectedCmd string) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if !o.Visible || len(o.Items) == 0 {
+		return false, ""
+	}
+	o.UserNavigated = true
+	oldCursor := o.Cursor
+	if dir == "up" {
+		o.Cursor--
+		if o.Cursor < 0 {
+			o.Cursor = 0
+		}
+	} else {
+		o.Cursor++
+		if o.Cursor >= len(o.Items) {
+			o.Cursor = len(o.Items) - 1
+		}
+	}
+	if o.Cursor == oldCursor {
+		return false, ""
+	}
+	return true, o.Items[o.Cursor].Cmd
+}
+
+func (o *Overlay) SetHistoryList(items []core.Suggestion, startAtBottom bool) string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.TypedQuery = ""
+	o.UserNavigated = true
+	o.Items = items
+	o.Visible = len(o.Items) > 0
+	if startAtBottom && len(o.Items) > 0 {
+		o.Cursor = len(o.Items) - 1
+	} else {
+		o.Cursor = 0
+	}
+	o.StartIdx = 0
+	if len(o.Items) > 0 && o.Cursor >= 0 && o.Cursor < len(o.Items) {
+		return o.Items[o.Cursor].Cmd
+	}
+	return ""
+}
+
+
 func fixedWidth(s string, width int) string {
 	if width <= 0 {
 		return ""
 	}
-	runes := []rune(s)
-	if len(runes) > width {
-		if width == 1 {
-			return "…"
+	visualWidth := lipgloss.Width(s)
+	if visualWidth == width {
+		return s
+	}
+	if visualWidth < width {
+		return s + strings.Repeat(" ", width-visualWidth)
+	}
+	var sb strings.Builder
+	currentWidth := 0
+	for _, r := range s {
+		rw := lipgloss.Width(string(r))
+		if currentWidth+rw > width-1 {
+			break
 		}
-		return string(runes[:width-1]) + "…"
+		sb.WriteRune(r)
+		currentWidth += rw
 	}
-	if len(runes) < width {
-		return s + strings.Repeat(" ", width-len(runes))
+	sb.WriteString("…")
+	rem := width - lipgloss.Width(sb.String())
+	if rem > 0 {
+		sb.WriteString(strings.Repeat(" ", rem))
 	}
-	return s
+	return sb.String()
 }
 
 func (o *Overlay) RenderGhostText(buffer string, userNavigated bool) string {
@@ -229,25 +360,30 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool) string {
 		}
 	}
 
-	padLen := o.LastGhostLen - len(ghostText)
+	if ghostText == "" && o.LastGhostLen == 0 {
+		return ""
+	}
+
+	ghostWidth := lipgloss.Width(ghostText)
+	padLen := o.LastGhostLen - ghostWidth
 	if padLen < 0 {
 		padLen = 0
 	}
-	padLen += 10
-
-	if ghostText != "" || padLen > 0 {
-		s.WriteString("\0337")
-		if ghostText != "" {
-			s.WriteString("\033[90m")
-			s.WriteString(ghostText)
-			s.WriteString("\033[0m")
-		}
-		if padLen > 0 {
-			s.WriteString(strings.Repeat(" ", padLen))
-		}
-		s.WriteString("\0338")
-		o.LastGhostLen = len(ghostText)
+	if o.LastGhostLen > 0 {
+		padLen += 4
 	}
+
+	s.WriteString("\0337")
+	if ghostText != "" {
+		s.WriteString("\033[90m")
+		s.WriteString(ghostText)
+		s.WriteString("\033[0m")
+	}
+	if padLen > 0 {
+		s.WriteString(strings.Repeat(" ", padLen))
+	}
+	s.WriteString("\0338")
+	o.LastGhostLen = ghostWidth
 
 	return s.String()
 }
@@ -272,11 +408,13 @@ func renderMatchedTitle(title, typed string, selected bool, w int) string {
 		return base.Render(display)
 	}
 
-	matchLen := len(typed)
-	if matchLen > len(display) {
-		matchLen = len(display)
+	typedRunes := []rune(typed)
+	displayRunes := []rune(display)
+	matchLen := len(typedRunes)
+	if matchLen > len(displayRunes) {
+		matchLen = len(displayRunes)
 	}
-	return match.Render(display[:matchLen]) + base.Render(display[matchLen:])
+	return match.Render(string(displayRunes[:matchLen])) + base.Render(string(displayRunes[matchLen:]))
 }
 
 func (o *Overlay) Render() string {
@@ -396,7 +534,7 @@ func (o *Overlay) draw() string {
 	padGap := 2
 	markerW := 1
 	iconW := 2
-	if isClassic {
+	if isClassic || !config.Get().UI.NerdFonts {
 		iconW = 0
 	}
 	sidePad := 1
@@ -583,6 +721,8 @@ func (o *Overlay) ClearAndDisable() string {
 	o.Items = nil
 	o.TypedQuery = ""
 	o.UserNavigated = false
+	o.Cursor = 0
+	o.StartIdx = 0
 
 	var s strings.Builder
 	s.WriteString("\033[?7l")

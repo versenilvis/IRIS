@@ -45,11 +45,16 @@ if [ -n "$IRIS_PID" ] && [ -n "$IRIS_FD" ]; then
     print -u $IRIS_FD -N -r -- "IRIS_CMD_STOP" 2>/dev/null
   }
 
+  _iris_preexec() {
+    print -u $IRIS_FD -N -r -- "IRIS_CMD_START" 2>/dev/null
+  }
+
   autoload -Uz add-zle-hook-widget
   autoload -Uz add-zsh-hook
   
   add-zle-hook-widget line-pre-redraw _iris_send_lbuffer
   add-zsh-hook precmd _iris_precmd
+  add-zsh-hook preexec _iris_preexec
 fi
 `)
 		case "bash":
