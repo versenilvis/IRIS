@@ -122,7 +122,7 @@ func cleanShellConfig(filePath string) bool {
 		lines = append(lines, line)
 	}
 
-	if err := scanner.Err(); err != nil {
+	if scanErr := scanner.Err(); scanErr != nil {
 		return false
 	}
 
