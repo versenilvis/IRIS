@@ -47,13 +47,13 @@ func Lookup(input string) []Suggestion {
 	shellAliasesMu.RUnlock()
 
 	if input == "" {
-		return nil
+		return topLevelSuggestions("", aliases)
 	}
 
 	tokens := Tokenize(input)
 
 	if len(tokens) == 1 && tokens[0] == "" {
-		return nil
+		return topLevelSuggestions("", aliases)
 	}
 	// NOTE: remember that wrapper already check if we type nothing, but I just want to make sure
 	// in the future, maybe we will write unit test or using Lookup in another module

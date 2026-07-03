@@ -388,7 +388,7 @@ func runWrapper() {
 
 		var b strings.Builder
 		if !navCopy {
-			if bufCopy == "" {
+			if bufCopy == "" && !overlay.Visible {
 				writeStdout([]byte(overlay.ClearAndDisable()))
 				return
 			}
@@ -722,6 +722,7 @@ func runWrapper() {
 					}
 					userNavigated.Store(false)
 					overlay.UserNavigated = false
+					overlay.Visible = true
 					shouldOverlayDraw = true
 					// enter: enter behavior is a bit different from tab suggestions in code editor
 					// I want it to execute the command anyway and ignore the suggestions
