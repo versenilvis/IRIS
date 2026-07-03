@@ -145,7 +145,7 @@ iris config show        output current active/resolved configuration in TOML for
 # maintenance and diagnostics
 iris update             check GitHub release tracks and update binary to latest release
 iris version            print current semantic version string
-iris uninstall [shell]  remove shell integration hooks from RC files and uninstall Iris binary
+iris uninstall          remove shell integration hooks from RC files and uninstall Iris binary
 iris crash-log          display file path to the latest captured stack trace report
 iris crash-log --clear  remove all stored crash logs from ~/.cache/iris/crashes
 ```
