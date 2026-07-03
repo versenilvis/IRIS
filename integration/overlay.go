@@ -364,7 +364,8 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool) string {
 		return ""
 	}
 
-	padLen := o.LastGhostLen - len(ghostText)
+	ghostWidth := lipgloss.Width(ghostText)
+	padLen := o.LastGhostLen - ghostWidth
 	if padLen < 0 {
 		padLen = 0
 	}
@@ -382,7 +383,7 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool) string {
 		s.WriteString(strings.Repeat(" ", padLen))
 	}
 	s.WriteString("\0338")
-	o.LastGhostLen = len(ghostText)
+	o.LastGhostLen = ghostWidth
 
 	return s.String()
 }
