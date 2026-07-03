@@ -95,14 +95,13 @@ var uninstallCmd = &cobra.Command{
 }
 
 func cleanShellConfig(filePath string) bool {
-	f, err := os.Open(filePath)
+	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return false
 	}
-	defer func() { _ = f.Close() }()
 
 	var lines []string
-	scanner := bufio.NewScanner(f)
+	scanner := bufio.NewScanner(strings.NewReader(string(content)))
 	modified := false
 	skipNext := false
 
