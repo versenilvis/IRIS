@@ -17,11 +17,8 @@ func MergeResults(query string, mode string) []core.Suggestion {
 	deduped := []core.Suggestion{}
 
 	// always call lookup to scan aliases and get spec suggestions
-	var cmdResults []core.Suggestion
-	if query != "" {
-		logger.Debugf("Merge Calling Lookup for '%s'", query)
-		cmdResults = core.Lookup(query)
-	}
+	logger.Debugf("Merge Calling Lookup for '%s'", query)
+	cmdResults := core.Lookup(query)
 
 	// search history if in history mode
 	var histResults []integration.HistResult
