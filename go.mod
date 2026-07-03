@@ -7,7 +7,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/creack/pty v1.1.24
 	github.com/spf13/cobra v1.10.2
-	github.com/versenilvis/fuzzy v0.1.0-rc
+	github.com/versenilvis/fuzzy v0.1.0-rc1.2
 	golang.org/x/sys v0.38.0
 	golang.org/x/term v0.30.0
 )
