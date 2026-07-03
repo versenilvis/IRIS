@@ -323,6 +323,15 @@ func runWrapper() {
 				continue
 			}
 
+			if query == "" {
+				bufferMu.Lock()
+				naiveBuffer = ""
+				cursorOffset = 0
+				bufferMu.Unlock()
+				writeStdout([]byte(overlay.ClearAndDisable()))
+				continue
+			}
+
 			// sync local buffer with actual command line
 			bufferMu.Lock()
 			naiveBuffer = query
@@ -388,7 +397,7 @@ func runWrapper() {
 
 		var b strings.Builder
 		if !navCopy {
-			if bufCopy == "" {
+			if bufCopy == "" && !overlay.Visible {
 				writeStdout([]byte(overlay.ClearAndDisable()))
 				return
 			}
@@ -722,6 +731,7 @@ func runWrapper() {
 					}
 					userNavigated.Store(false)
 					overlay.UserNavigated = false
+					overlay.Visible = true
 					shouldOverlayDraw = true
 					// enter: enter behavior is a bit different from tab suggestions in code editor
 					// I want it to execute the command anyway and ignore the suggestions
@@ -808,7 +818,8 @@ func runWrapper() {
 
 					case 127, 0x08: // backspace: remove character
 						bufferMu.Lock()
-						if len(naiveBuffer) > 0 {
+						wasEmpty := len(naiveBuffer) == 0
+						if !wasEmpty {
 							runes := []rune(naiveBuffer)
 							if cursorOffset <= 0 {
 								if len(runes) > 0 {
@@ -825,11 +836,26 @@ func runWrapper() {
 								}
 							}
 						}
+						isEmptyNow := len(naiveBuffer) == 0
 						bufferMu.Unlock()
+
+						if wasEmpty {
+							if overlay.Visible {
+								writeStdout([]byte(overlay.ClearAndDisable()))
+							}
+							userNavigated.Store(false)
+							continue
+						}
+						if isEmptyNow {
+							writeStdout([]byte(overlay.ClearAndDisable()))
+							userNavigated.Store(false)
+							continue
+						}
 						shouldOverlayDraw = true
 						userNavigated.Store(false)
 					case 0x17: // ctrl+w: delete the last word in the buffer
 						bufferMu.Lock()
+						wasEmpty := len(naiveBuffer) == 0
 						trimBuf := strings.TrimRight(naiveBuffer, " ")
 						lastSpace := strings.LastIndex(trimBuf, " ")
 						if lastSpace >= 0 {
@@ -838,7 +864,21 @@ func runWrapper() {
 							naiveBuffer = ""
 						}
 						cursorOffset = 0
+						isEmptyNow := len(naiveBuffer) == 0
 						bufferMu.Unlock()
+
+						if wasEmpty {
+							if overlay.Visible {
+								writeStdout([]byte(overlay.ClearAndDisable()))
+							}
+							userNavigated.Store(false)
+							continue
+						}
+						if isEmptyNow {
+							writeStdout([]byte(overlay.ClearAndDisable()))
+							userNavigated.Store(false)
+							continue
+						}
 						shouldOverlayDraw = true
 						userNavigated.Store(false)
 					case 0x0c: // ctrl+l: clear screen but keep buffer and redraw menu

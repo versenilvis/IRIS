@@ -47,13 +47,13 @@ func Lookup(input string) []Suggestion {
 	shellAliasesMu.RUnlock()
 
 	if input == "" {
-		return nil
+		return topLevelSuggestions("", aliases)
 	}
 
 	tokens := Tokenize(input)
 
 	if len(tokens) == 1 && tokens[0] == "" {
-		return nil
+		return topLevelSuggestions("", aliases)
 	}
 	// NOTE: remember that wrapper already check if we type nothing, but I just want to make sure
 	// in the future, maybe we will write unit test or using Lookup in another module
@@ -277,7 +277,7 @@ func topLevelSuggestions(query string, aliases map[string]string) []Suggestion {
 	for name, target := range aliases {
 		if !seen[name] && (query == "" || HasPrefix(name, query)) {
 			results = append(results, Suggestion{
-				Cmd: target, Desc: "alias: " + name, Icon: "root",
+				Cmd: name, Desc: target, Icon: "alias",
 			})
 			seen[name] = true
 		}
@@ -299,7 +299,11 @@ func topLevelSuggestions(query string, aliases map[string]string) []Suggestion {
 			}
 		}
 		if match {
-			results = append(results, Suggestion{Cmd: name, Desc: spec.Description, Icon: name})
+			icon := spec.Icon
+			if icon == "" {
+				icon = name
+			}
+			results = append(results, Suggestion{Cmd: name, Desc: spec.Description, Icon: icon})
 			seen[name] = true
 		}
 	}
@@ -307,7 +311,7 @@ func topLevelSuggestions(query string, aliases map[string]string) []Suggestion {
 	for name := range pathCmds {
 		if !seen[name] && (query == "" || HasPrefix(name, query)) {
 			results = append(results, Suggestion{
-				Cmd: name, Desc: "system command", Icon: "root",
+				Cmd: name, Desc: "system command", Icon: "system",
 			})
 		}
 	}

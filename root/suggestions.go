@@ -1,7 +1,6 @@
 package root
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/versenilvis/iris/commands/core"
@@ -17,11 +16,8 @@ func MergeResults(query string, mode string) []core.Suggestion {
 	deduped := []core.Suggestion{}
 
 	// always call lookup to scan aliases and get spec suggestions
-	var cmdResults []core.Suggestion
-	if query != "" {
-		logger.Debugf("Merge Calling Lookup for '%s'", query)
-		cmdResults = core.Lookup(query)
-	}
+	logger.Debugf("Merge Calling Lookup for '%s'", query)
+	cmdResults := core.Lookup(query)
 
 	// search history if in history mode
 	var histResults []integration.HistResult
@@ -53,8 +49,8 @@ func MergeResults(query string, mode string) []core.Suggestion {
 		for _, h := range histResults {
 			addSuggestion(core.Suggestion{
 				Cmd:  h.Cmd,
-				Desc: " history",
-				Icon: fmt.Sprintf("%d", h.ID),
+				Desc: "history",
+				Icon: "history",
 			})
 		}
 		for _, s := range cmdResults {

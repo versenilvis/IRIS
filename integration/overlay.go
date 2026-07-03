@@ -10,12 +10,13 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/config"
 	"github.com/versenilvis/iris/logger"
 	"golang.org/x/term"
 )
 
 const (
-	boxWidth = 72
+	boxWidth = 76 // total visual width, corners included
 	maxItems = 6
 )
 
@@ -130,6 +131,36 @@ func ComputeCursorCol(data []byte) int {
 	return col
 }
 
+type Theme struct {
+	Border     lipgloss.Color
+	Accent     lipgloss.Color
+	Muted      lipgloss.Color
+	Text       lipgloss.Color
+	TextSel    lipgloss.Color
+	Match      lipgloss.Color
+	Desc       lipgloss.Color
+	DescSel    lipgloss.Color
+	SelBg      lipgloss.Color
+	ScrollInfo lipgloss.Color
+}
+
+var currentTheme = Theme{
+	Border:     lipgloss.Color("#a277ff"),
+	Accent:     lipgloss.Color("#61ffca"),
+	Muted:      lipgloss.Color("#6d6a7f"),
+	Text:       lipgloss.Color("#edecee"),
+	TextSel:    lipgloss.Color("#ffffff"),
+	Match:      lipgloss.Color("#61ffca"),
+	Desc:       lipgloss.Color("#9692a8"),
+	DescSel:    lipgloss.Color("#edecee"),
+	SelBg:      lipgloss.Color("#3d375e"),
+	ScrollInfo: lipgloss.Color("#a277ff"),
+}
+
+func SetTheme(t Theme) {
+	currentTheme = t
+}
+
 type Overlay struct {
 	mu            sync.Mutex
 	Visible       bool
@@ -151,34 +182,13 @@ func (o *Overlay) SetPromptLen(l int) {
 	}
 }
 
-var (
-	selBgColor = lipgloss.Color("#44475A")
-
-	iconStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#BD93F9"))
-	titleStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#F8F8F2"))
-	descStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#6272A4"))
-
-	iconSel  = iconStyle.Background(selBgColor)
-	titleSel = titleStyle.Background(selBgColor)
-	descSel  = descStyle.Background(selBgColor)
-	padSel   = lipgloss.NewStyle().Background(selBgColor)
-
-	borderColor = lipgloss.Color("#6272A4")
-	borderStyle = lipgloss.NewStyle().Foreground(borderColor)
-)
-
 func NewOverlay() *Overlay {
-	return &Overlay{
-		Visible:  false,
-		Cursor:   0,
-		StartIdx: 0,
-	}
+	return &Overlay{Visible: false, Cursor: 0, StartIdx: 0}
 }
 
 func (o *Overlay) UpdateItems(items []core.Suggestion) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
-
 	o.Items = items
 	o.Visible = len(o.Items) > 0
 	o.Cursor = 0
@@ -186,8 +196,14 @@ func (o *Overlay) UpdateItems(items []core.Suggestion) {
 }
 
 func fixedWidth(s string, width int) string {
+	if width <= 0 {
+		return ""
+	}
 	runes := []rune(s)
 	if len(runes) > width {
+		if width == 1 {
+			return "…"
+		}
 		return string(runes[:width-1]) + "…"
 	}
 	if len(runes) < width {
@@ -205,7 +221,6 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool) string {
 	}
 
 	var s strings.Builder
-
 	ghostText := ""
 	if !userNavigated && buffer != "" {
 		topCmd := o.Items[0].Cmd
@@ -218,13 +233,10 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool) string {
 	if padLen < 0 {
 		padLen = 0
 	}
-
-	// add extra padding to erase any stray characters left by fast backspaces
-	// before the debounce timer fired, 10 spaces is safe and won't hit right prompts
 	padLen += 10
 
 	if ghostText != "" || padLen > 0 {
-		s.WriteString("\0337") // save cursor at prompt
+		s.WriteString("\0337")
 		if ghostText != "" {
 			s.WriteString("\033[90m")
 			s.WriteString(ghostText)
@@ -233,11 +245,38 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool) string {
 		if padLen > 0 {
 			s.WriteString(strings.Repeat(" ", padLen))
 		}
-		s.WriteString("\0338") // restore cursor back to prompt
+		s.WriteString("\0338")
 		o.LastGhostLen = len(ghostText)
 	}
 
 	return s.String()
+}
+
+func renderMatchedTitle(title, typed string, selected bool, w int) string {
+	t := currentTheme
+	textColor := t.Text
+	if selected {
+		textColor = t.TextSel
+	}
+
+	base := lipgloss.NewStyle().Foreground(textColor)
+	match := lipgloss.NewStyle().Foreground(t.Match).Bold(true)
+	if selected {
+		base = base.Background(t.SelBg)
+		match = match.Background(t.SelBg)
+	}
+
+	display := fixedWidth(title, w)
+
+	if typed == "" || !strings.HasPrefix(strings.ToLower(display), strings.ToLower(typed)) {
+		return base.Render(display)
+	}
+
+	matchLen := len(typed)
+	if matchLen > len(display) {
+		matchLen = len(display)
+	}
+	return match.Render(display[:matchLen]) + base.Render(display[matchLen:])
 }
 
 func (o *Overlay) Render() string {
@@ -251,6 +290,10 @@ func (o *Overlay) draw() string {
 	if !o.Visible || len(o.Items) == 0 {
 		return ""
 	}
+
+	t := currentTheme
+	border := lipgloss.NewStyle().Foreground(t.Border)
+	scrollStyle := lipgloss.NewStyle().Foreground(t.ScrollInfo)
 
 	var s strings.Builder
 	s.WriteString("\033[?7l")
@@ -278,7 +321,6 @@ func (o *Overlay) draw() string {
 	}
 
 	scrolloffUp := 1
-	scrolloffDown := 0
 	if windowSize <= 3 {
 		scrolloffUp = 0
 	}
@@ -286,8 +328,8 @@ func (o *Overlay) draw() string {
 	if o.Cursor < o.StartIdx+scrolloffUp {
 		o.StartIdx = o.Cursor - scrolloffUp
 	}
-	if o.Cursor >= o.StartIdx+windowSize-scrolloffDown {
-		o.StartIdx = o.Cursor - windowSize + scrolloffDown + 1
+	if o.Cursor >= o.StartIdx+windowSize {
+		o.StartIdx = o.Cursor - windowSize + 1
 	}
 	if o.StartIdx < 0 {
 		o.StartIdx = 0
@@ -317,6 +359,12 @@ func (o *Overlay) draw() string {
 		}
 	}
 
+	inner := boxWidth - 2 // width between the two border pipes/corners
+
+	style := strings.ToLower(config.Get().UI.Style)
+	isClassic := style == "classic" || style == "minimal" || style == "minimalist"
+
+	// top side border with scroll counter
 	s.WriteString("\0338")
 	fmt.Fprintf(&s, "\033[%dB", 1)
 	s.WriteString("\033[2K")
@@ -326,14 +374,37 @@ func (o *Overlay) draw() string {
 	if len(o.Items) > windowSize {
 		scrollInfo = fmt.Sprintf(" %d/%d ", o.Cursor+1, len(o.Items))
 	}
+	leftDash := 3
+	if isClassic && scrollInfo != "" {
+		leftDash = (inner - len(scrollInfo)) / 2
+	}
+	rightDash := inner - leftDash - len(scrollInfo)
+	if scrollInfo == "" {
+		leftDash = 0
+		rightDash = inner
+	}
+	fmt.Fprintf(&s, "%s%s%s%s%s",
+		border.Render("╭"),
+		border.Render(strings.Repeat("─", leftDash)),
+		scrollStyle.Render(scrollInfo),
+		border.Render(strings.Repeat("─", rightDash)),
+		border.Render("╮"),
+	)
 
-	borderWidth := boxWidth - len(scrollInfo)
-	topBorder := "╭" + strings.Repeat("─", borderWidth/2) + scrollInfo + strings.Repeat("─", boxWidth-borderWidth/2-len(scrollInfo)) + "╮"
-	s.WriteString(borderStyle.Render(topBorder))
-
-	iconW := 6
-	descW := 22
-	titleW := boxWidth - iconW - descW - 3
+	// left and right side border with item rows
+	descW := 24
+	padGap := 2
+	markerW := 1
+	iconW := 2
+	if isClassic {
+		iconW = 0
+	}
+	sidePad := 1
+	titleW := inner - sidePad*2 - markerW - 1 - iconW
+	if iconW > 0 {
+		titleW--
+	}
+	titleW = titleW - padGap - descW
 
 	for i := start; i < end; i++ {
 		s.WriteString("\0338")
@@ -342,33 +413,139 @@ func (o *Overlay) draw() string {
 		moveToTarget()
 
 		it := o.Items[i]
-		rawIcon := fixedWidth(it.Icon, iconW)
-		rawTitle := fixedWidth(it.Cmd, titleW)
-		rawDesc := fixedWidth(it.Desc, descW)
+		selected := i == o.Cursor
 
-		left := borderStyle.Render("│")
-		right := borderStyle.Render("│")
+		left := border.Render("│")
+		right := border.Render("│")
 
-		if i == o.Cursor {
-			icon := iconSel.Render(" " + rawIcon + " ")
-			title := titleSel.Render(rawTitle)
-			pad := padSel.Render(" ")
-			desc := descSel.Render(rawDesc)
-			fmt.Fprintf(&s, "%s%s%s%s%s%s", left, icon, pad, title, desc, right)
-		} else {
-			icon := iconStyle.Render(" " + rawIcon + " ")
-			title := titleStyle.Render(rawTitle)
-			desc := descStyle.Render(rawDesc)
-			fmt.Fprintf(&s, "%s%s %s%s%s", left, icon, title, desc, right)
+		bg := lipgloss.NewStyle()
+		if selected {
+			bg = bg.Background(t.SelBg)
 		}
+
+		marker := " "
+		markerStyle := bg.Foreground(t.Muted)
+		if selected {
+			marker = "▶"
+			markerStyle = bg.Foreground(t.Accent).Bold(true)
+		}
+
+		iconGlyph := lookupIcon(it.Icon)
+		iconColor := t.Muted
+		if selected {
+			iconColor = t.Accent
+		}
+		iconStr := bg.Foreground(iconColor).Render(fixedWidth(iconGlyph, iconW))
+
+		title := renderMatchedTitle(it.Cmd, o.TypedQuery, selected, titleW)
+
+		descColor := t.Desc
+		if selected {
+			descColor = t.DescSel
+		}
+
+		var desc string
+		if isClassic {
+			if it.Icon == "alias" {
+				desc = bg.Foreground(descColor).Render(fixedWidth("alias: "+it.Desc, descW))
+			} else {
+				desc = bg.Foreground(descColor).Render(fixedWidth(it.Desc, descW))
+			}
+		} else {
+			switch it.Icon {
+			case "alias":
+				boxStyle := lipgloss.NewStyle().Background(lipgloss.Color("#2a2342")).Foreground(lipgloss.Color("#a277ff"))
+				if selected {
+					boxStyle = lipgloss.NewStyle().Background(lipgloss.Color("#a277ff")).Foreground(lipgloss.Color("#110f18")).Bold(true)
+				}
+				tag := boxStyle.Render(" alias ")
+				tw := lipgloss.Width(tag)
+				rem := descW - tw - 1
+				if rem < 0 {
+					rem = 0
+				}
+				desc = tag + bg.Render(" ") + bg.Foreground(descColor).Render(fixedWidth(it.Desc, rem))
+			case "history":
+				boxStyle := lipgloss.NewStyle().Background(lipgloss.Color("#1a2d36")).Foreground(lipgloss.Color("#61ffca"))
+				if selected {
+					boxStyle = lipgloss.NewStyle().Background(lipgloss.Color("#61ffca")).Foreground(lipgloss.Color("#110f18")).Bold(true)
+				}
+				tag := boxStyle.Render(" history ")
+				tw := lipgloss.Width(tag)
+				rem := descW - tw
+				if rem < 0 {
+					rem = 0
+				}
+				desc = tag + bg.Render(strings.Repeat(" ", rem))
+			case "system":
+				boxStyle := lipgloss.NewStyle().Background(lipgloss.Color("#1e1d28")).Foreground(lipgloss.Color("#a277ff"))
+				if selected {
+					boxStyle = lipgloss.NewStyle().Background(lipgloss.Color("#a277ff")).Foreground(lipgloss.Color("#110f18")).Bold(true)
+				}
+				tag := boxStyle.Render(" system ")
+				tw := lipgloss.Width(tag)
+				rem := descW - tw
+				if rem < 0 {
+					rem = 0
+				}
+				desc = tag + bg.Render(strings.Repeat(" ", rem))
+			default:
+				desc = bg.Foreground(descColor).Render(fixedWidth(it.Desc, descW))
+			}
+		}
+
+		iconSection := ""
+		if iconW > 0 {
+			iconSection = iconStr + bg.Render(" ")
+		}
+
+		fmt.Fprintf(&s, "%s%s%s%s%s%s%s%s%s%s",
+			left,
+			bg.Render(" "),
+			markerStyle.Render(marker),
+			bg.Render(" "),
+			iconSection,
+			title,
+			bg.Render(strings.Repeat(" ", padGap)),
+			desc,
+			bg.Render(" "),
+			right,
+		)
 	}
 
+	// bottom side border with footer shortcut hints
 	s.WriteString("\0338")
 	fmt.Fprintf(&s, "\033[%dB", windowSize+2)
 	s.WriteString("\033[2K")
 	moveToTarget()
-	bottomBorder := "╰" + strings.Repeat("─", boxWidth) + "╯"
-	s.WriteString(borderStyle.Render(bottomBorder))
+
+	footerInfo := ""
+	if !isClassic {
+		keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#a277ff")).Bold(true)
+		tabKey := keyStyle.Render("<Tab>")
+		ctrlRKey := keyStyle.Render("<Ctrl+R>")
+		acceptText := lipgloss.NewStyle().Foreground(t.ScrollInfo).Render(" Accept")
+		modeText := lipgloss.NewStyle().Foreground(t.ScrollInfo).Render(" Mode")
+		footerInfo = fmt.Sprintf(" %s%s • %s%s ", tabKey, acceptText, ctrlRKey, modeText)
+	}
+
+	footerRunes := lipgloss.Width(footerInfo)
+	rightDash = 2
+	leftDash = inner - footerRunes - rightDash
+	if footerInfo == "" {
+		leftDash = 0
+		rightDash = inner
+	}
+	if leftDash < 0 {
+		leftDash = 0
+	}
+	fmt.Fprintf(&s, "%s%s%s%s%s",
+		border.Render("╰"),
+		border.Render(strings.Repeat("─", leftDash)),
+		footerInfo,
+		border.Render(strings.Repeat("─", rightDash)),
+		border.Render("╯"),
+	)
 
 	s.WriteString("\0338")
 	s.WriteString("\033[?7h")

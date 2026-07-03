@@ -11,9 +11,11 @@ func DefaultConfig() *Config {
 			Debug:   false,
 		},
 		UI: UIConfig{
+			Style:          "modern",
 			GhostText:      true,
 			MaxSuggestions: 100,
 			MaxHeight:      15,
+			NerdFonts:      true,
 		},
 		Git: GitConfig{
 			FilterActiveBranch:  true,
