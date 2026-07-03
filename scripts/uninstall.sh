@@ -9,8 +9,7 @@ if command -v iris >/dev/null 2>&1; then
     fi
 fi
 
-bin_dirs="${HOME}/.local/bin/iris /usr/local/bin/iris"
-for loc in ${bin_dirs}; do
+for loc in "${HOME}/.local/bin/iris" "/usr/local/bin/iris"; do
     if [ -f "${loc}" ]; then
         echo "Removing binary: ${loc}"
         if [ -w "$(dirname "${loc}")" ]; then
