@@ -272,6 +272,7 @@ func Lookup(input string) []Suggestion {
 }
 
 func topLevelSuggestions(query string, aliases map[string]string) []Suggestion {
+	scanExternalCommands()
 	results, seen := []Suggestion{}, make(map[string]bool)
 
 	for name, target := range aliases {
