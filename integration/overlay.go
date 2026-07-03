@@ -10,6 +10,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/config"
 	"github.com/versenilvis/iris/logger"
 	"golang.org/x/term"
 )
@@ -360,6 +361,9 @@ func (o *Overlay) draw() string {
 
 	inner := boxWidth - 2 // width between the two border pipes/corners
 
+	style := strings.ToLower(config.Get().UI.Style)
+	isClassic := style == "classic" || style == "minimal" || style == "minimalist"
+
 	// top side border with scroll counter
 	s.WriteString("\0338")
 	fmt.Fprintf(&s, "\033[%dB", 1)
@@ -371,6 +375,9 @@ func (o *Overlay) draw() string {
 		scrollInfo = fmt.Sprintf(" %d/%d ", o.Cursor+1, len(o.Items))
 	}
 	leftDash := 3
+	if isClassic && scrollInfo != "" {
+		leftDash = (inner - len(scrollInfo)) / 2
+	}
 	rightDash := inner - leftDash - len(scrollInfo)
 	if scrollInfo == "" {
 		leftDash = 0
@@ -389,8 +396,15 @@ func (o *Overlay) draw() string {
 	padGap := 2
 	markerW := 1
 	iconW := 2
+	if isClassic {
+		iconW = 0
+	}
 	sidePad := 1
-	titleW := inner - sidePad*2 - markerW - 1 - iconW - 1 - padGap - descW
+	titleW := inner - sidePad*2 - markerW - 1 - iconW
+	if iconW > 0 {
+		titleW--
+	}
+	titleW = titleW - padGap - descW
 
 	for i := start; i < end; i++ {
 		s.WriteString("\0338")
@@ -431,53 +445,66 @@ func (o *Overlay) draw() string {
 		}
 
 		var desc string
-		if it.Icon == "alias" {
-			boxStyle := lipgloss.NewStyle().Background(lipgloss.Color("#2a2342")).Foreground(lipgloss.Color("#a277ff"))
-			if selected {
-				boxStyle = lipgloss.NewStyle().Background(lipgloss.Color("#a277ff")).Foreground(lipgloss.Color("#110f18")).Bold(true)
+		if isClassic {
+			if it.Icon == "alias" {
+				desc = bg.Foreground(descColor).Render(fixedWidth("alias: "+it.Desc, descW))
+			} else {
+				desc = bg.Foreground(descColor).Render(fixedWidth(it.Desc, descW))
 			}
-			tag := boxStyle.Render(" alias ")
-			tw := lipgloss.Width(tag)
-			rem := descW - tw - 1
-			if rem < 0 {
-				rem = 0
-			}
-			desc = tag + bg.Render(" ") + bg.Foreground(descColor).Render(fixedWidth(it.Desc, rem))
-		} else if it.Icon == "history" {
-			boxStyle := lipgloss.NewStyle().Background(lipgloss.Color("#1a2d36")).Foreground(lipgloss.Color("#61ffca"))
-			if selected {
-				boxStyle = lipgloss.NewStyle().Background(lipgloss.Color("#61ffca")).Foreground(lipgloss.Color("#110f18")).Bold(true)
-			}
-			tag := boxStyle.Render(" history ")
-			tw := lipgloss.Width(tag)
-			rem := descW - tw
-			if rem < 0 {
-				rem = 0
-			}
-			desc = tag + bg.Render(strings.Repeat(" ", rem))
-		} else if it.Icon == "system" {
-			boxStyle := lipgloss.NewStyle().Background(lipgloss.Color("#1e1d28")).Foreground(lipgloss.Color("#a277ff"))
-			if selected {
-				boxStyle = lipgloss.NewStyle().Background(lipgloss.Color("#a277ff")).Foreground(lipgloss.Color("#110f18")).Bold(true)
-			}
-			tag := boxStyle.Render(" system ")
-			tw := lipgloss.Width(tag)
-			rem := descW - tw
-			if rem < 0 {
-				rem = 0
-			}
-			desc = tag + bg.Render(strings.Repeat(" ", rem))
 		} else {
-			desc = bg.Foreground(descColor).Render(fixedWidth(it.Desc, descW))
+			switch it.Icon {
+			case "alias":
+				boxStyle := lipgloss.NewStyle().Background(lipgloss.Color("#2a2342")).Foreground(lipgloss.Color("#a277ff"))
+				if selected {
+					boxStyle = lipgloss.NewStyle().Background(lipgloss.Color("#a277ff")).Foreground(lipgloss.Color("#110f18")).Bold(true)
+				}
+				tag := boxStyle.Render(" alias ")
+				tw := lipgloss.Width(tag)
+				rem := descW - tw - 1
+				if rem < 0 {
+					rem = 0
+				}
+				desc = tag + bg.Render(" ") + bg.Foreground(descColor).Render(fixedWidth(it.Desc, rem))
+			case "history":
+				boxStyle := lipgloss.NewStyle().Background(lipgloss.Color("#1a2d36")).Foreground(lipgloss.Color("#61ffca"))
+				if selected {
+					boxStyle = lipgloss.NewStyle().Background(lipgloss.Color("#61ffca")).Foreground(lipgloss.Color("#110f18")).Bold(true)
+				}
+				tag := boxStyle.Render(" history ")
+				tw := lipgloss.Width(tag)
+				rem := descW - tw
+				if rem < 0 {
+					rem = 0
+				}
+				desc = tag + bg.Render(strings.Repeat(" ", rem))
+			case "system":
+				boxStyle := lipgloss.NewStyle().Background(lipgloss.Color("#1e1d28")).Foreground(lipgloss.Color("#a277ff"))
+				if selected {
+					boxStyle = lipgloss.NewStyle().Background(lipgloss.Color("#a277ff")).Foreground(lipgloss.Color("#110f18")).Bold(true)
+				}
+				tag := boxStyle.Render(" system ")
+				tw := lipgloss.Width(tag)
+				rem := descW - tw
+				if rem < 0 {
+					rem = 0
+				}
+				desc = tag + bg.Render(strings.Repeat(" ", rem))
+			default:
+				desc = bg.Foreground(descColor).Render(fixedWidth(it.Desc, descW))
+			}
 		}
 
-		fmt.Fprintf(&s, "%s%s%s%s%s%s%s%s%s%s%s",
+		iconSection := ""
+		if iconW > 0 {
+			iconSection = iconStr + bg.Render(" ")
+		}
+
+		fmt.Fprintf(&s, "%s%s%s%s%s%s%s%s%s%s",
 			left,
 			bg.Render(" "),
 			markerStyle.Render(marker),
 			bg.Render(" "),
-			iconStr,
-			bg.Render(" "),
+			iconSection,
 			title,
 			bg.Render(strings.Repeat(" ", padGap)),
 			desc,
@@ -492,16 +519,23 @@ func (o *Overlay) draw() string {
 	s.WriteString("\033[2K")
 	moveToTarget()
 
-	keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#a277ff")).Bold(true)
-	tabKey := keyStyle.Render("<Tab>")
-	ctrlRKey := keyStyle.Render("<Ctrl+R>")
-	acceptText := lipgloss.NewStyle().Foreground(t.ScrollInfo).Render(" Accept")
-	modeText := lipgloss.NewStyle().Foreground(t.ScrollInfo).Render(" Mode")
-	footerInfo := fmt.Sprintf(" %s%s • %s%s ", tabKey, acceptText, ctrlRKey, modeText)
+	footerInfo := ""
+	if !isClassic {
+		keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#a277ff")).Bold(true)
+		tabKey := keyStyle.Render("<Tab>")
+		ctrlRKey := keyStyle.Render("<Ctrl+R>")
+		acceptText := lipgloss.NewStyle().Foreground(t.ScrollInfo).Render(" Accept")
+		modeText := lipgloss.NewStyle().Foreground(t.ScrollInfo).Render(" Mode")
+		footerInfo = fmt.Sprintf(" %s%s • %s%s ", tabKey, acceptText, ctrlRKey, modeText)
+	}
 
 	footerRunes := lipgloss.Width(footerInfo)
 	rightDash = 2
 	leftDash = inner - footerRunes - rightDash
+	if footerInfo == "" {
+		leftDash = 0
+		rightDash = inner
+	}
 	if leftDash < 0 {
 		leftDash = 0
 	}
