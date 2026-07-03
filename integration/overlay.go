@@ -195,6 +195,119 @@ func (o *Overlay) UpdateItems(items []core.Suggestion) {
 	o.StartIdx = 0
 }
 
+func (o *Overlay) IsVisible() bool {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.Visible
+}
+
+func (o *Overlay) GetUserNavigated() bool {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.UserNavigated
+}
+
+func (o *Overlay) SetUserNavigated(v bool) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.UserNavigated = v
+}
+
+func (o *Overlay) GetTypedQuery() string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.TypedQuery
+}
+
+func (o *Overlay) GetCurrentCmd() string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if len(o.Items) > 0 && o.Cursor >= 0 && o.Cursor < len(o.Items) {
+		return o.Items[o.Cursor].Cmd
+	}
+	return ""
+}
+
+func (o *Overlay) GetTopCmd() string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if len(o.Items) > 0 {
+		return o.Items[0].Cmd
+	}
+	return ""
+}
+
+func (o *Overlay) Show() {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.UserNavigated = false
+	o.Visible = true
+}
+
+func (o *Overlay) SetQueryAndItems(query string, items []core.Suggestion) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.TypedQuery = query
+	o.UserNavigated = false
+	o.Items = items
+	o.Visible = len(o.Items) > 0
+	o.Cursor = 0
+	o.StartIdx = 0
+}
+
+func (o *Overlay) ClearGhostLen() int {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	l := o.LastGhostLen
+	o.LastGhostLen = 0
+	return l
+}
+
+func (o *Overlay) MoveCursor(dir string) (moved bool, selectedCmd string) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if !o.Visible || len(o.Items) == 0 {
+		return false, ""
+	}
+	o.UserNavigated = true
+	oldCursor := o.Cursor
+	if dir == "up" {
+		o.Cursor--
+		if o.Cursor < 0 {
+			o.Cursor = 0
+		}
+	} else {
+		o.Cursor++
+		if o.Cursor >= len(o.Items) {
+			o.Cursor = len(o.Items) - 1
+		}
+	}
+	if o.Cursor == oldCursor {
+		return false, ""
+	}
+	return true, o.Items[o.Cursor].Cmd
+}
+
+func (o *Overlay) SetHistoryList(items []core.Suggestion, startAtBottom bool) string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.TypedQuery = ""
+	o.UserNavigated = true
+	o.Items = items
+	o.Visible = len(o.Items) > 0
+	if startAtBottom && len(o.Items) > 0 {
+		o.Cursor = len(o.Items) - 1
+	} else {
+		o.Cursor = 0
+	}
+	o.StartIdx = 0
+	if len(o.Items) > 0 && o.Cursor >= 0 && o.Cursor < len(o.Items) {
+		return o.Items[o.Cursor].Cmd
+	}
+	return ""
+}
+
+
 func fixedWidth(s string, width int) string {
 	if width <= 0 {
 		return ""
