@@ -61,6 +61,7 @@ main() {
 
     if [ "${has_write_permission}" -eq 1 ]; then
         mkdir -p "${BIN_DIR}"
+        rm -f "${BIN_DIR}/iris" 2>/dev/null || true
         cp "$bin" "${BIN_DIR}/iris"
         chmod +x "${BIN_DIR}/iris"
         if "${BIN_DIR}/iris" version >/dev/null 2>&1; then
@@ -75,6 +76,7 @@ main() {
         local_bin="${HOME}/.local/bin"
         mkdir -p "${local_bin}"
         chmod +x "$bin"
+        rm -f "${local_bin}/iris" 2>/dev/null || true
         cp "$bin" "${local_bin}/iris"
         chmod +x "${local_bin}/iris"
         if "${local_bin}/iris" version >/dev/null 2>&1; then
@@ -85,7 +87,7 @@ main() {
             # both locations failed, sudo install
             echo ""
             echo "Installation requires elevated permissions, enter your password:"
-            if sudo cp "$bin" "${BIN_DIR}/iris" && sudo chmod +x "${BIN_DIR}/iris"; then
+            if sudo rm -f "${BIN_DIR}/iris" 2>/dev/null && sudo cp "$bin" "${BIN_DIR}/iris" && sudo chmod +x "${BIN_DIR}/iris"; then
                 echo "Installation verified."
                 echo ""
                 "${BIN_DIR}/iris" setup
