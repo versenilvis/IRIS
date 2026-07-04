@@ -22,7 +22,7 @@ func processGenerator(tokens []string, _ string, _ string) []core.Suggestion {
 
 	seen := make(map[string]bool)
 	var results []core.Suggestion
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue

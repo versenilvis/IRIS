@@ -170,7 +170,7 @@ func runWrapper() {
 						out, errCmd := exec.CommandContext(ctx, "lsof", "-p", fmt.Sprintf("%d", c.Process.Pid), "-a", "-d", "cwd", "-F", "n").Output()
 						cancel()
 						if errCmd == nil {
-							for _, line := range strings.Split(string(out), "\n") {
+							for line := range strings.SplitSeq(string(out), "\n") {
 								if strings.HasPrefix(line, "n") {
 									cwd = strings.TrimSpace(line[1:])
 									linkErr = nil
@@ -191,8 +191,8 @@ func runWrapper() {
 				if logDir, pathErr := config.CachePath(); pathErr == nil {
 					argsFile := filepath.Join(logDir, "reload-args")
 					if data, readErr := os.ReadFile(argsFile); readErr == nil {
-						lines := strings.Split(string(data), "\n")
-						for _, line := range lines {
+						lines := strings.SplitSeq(string(data), "\n")
+						for line := range lines {
 							trimmed := strings.TrimSpace(line)
 							if trimmed != "" {
 								execArgs = append(execArgs, trimmed)
@@ -560,10 +560,7 @@ func runWrapper() {
 							activeModeMu.RUnlock()
 							results := MergeResults("", currentMode)
 							if len(results) > 0 {
-								limit := 100
-								if len(results) < limit {
-									limit = len(results)
-								}
+								limit := min(len(results), 100)
 								var historyList []core.Suggestion
 
 								if inputSlice[i+2] == 'A' {
