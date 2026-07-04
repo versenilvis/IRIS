@@ -30,7 +30,7 @@ func init() {
 			{Name: "--config", Description: "Config file"},
 			{Name: "--origincert", Description: "Certificate generated"},
 			{Name: "--autoupdate-freq", Description: "Autoupdate frequency. Default is 24h0m0s. (default: 24h0m0s)"},
-			{Name: "--no-autoupdate", Description: "Adress"},
+			{Name: "--no-autoupdate", Description: "Address"},
 			{Name: "--pidfile", Description: "Application PID"},
 			{Name: "--loglevel", Description: "Logging level"},
 			{Name: "--transport-loglevel", Description: "Logging level"},

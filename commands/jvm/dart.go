@@ -29,7 +29,7 @@ func init() {
 			{Name: "show", Description: "Print code to terminal"},
 			{Name: "write", Description: "Overwrite formatted files on disk"},
 			{Name: "all", Description: "All visited files and directories"},
-			{Name: "changed", Description: "Nly the names of files whose formatting is changed"},
+			{Name: "changed", Description: "Only the names of files whose formatting is changed"},
 			{Name: "line", Description: "Single-line summary"},
 			{Name: "profile", Description: "How long it took to format each file"},
 			{Name: "line-length", Description: "Line length to wrap"},

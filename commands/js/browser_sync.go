@@ -55,7 +55,7 @@ func init() {
 			{Name: "--no-ghost-mode", Description: "Disable Ghost Mode"},
 			{Name: "--no-inject-changes", Description: "Reload on every file change"},
 			{Name: "--no-reload-on-restart", Description: "Don't auto-reload all browsers following a restart"},
-			{Name: "-u", Description: "Provide the full URL to the running browsersync isntance"},
+			{Name: "-u", Description: "Provide the full URL to the running browsersync instance"},
 		},
 	})
 }

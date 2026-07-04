@@ -28,7 +28,7 @@ func init() {
 			{Name: "--file", Description: "The premake5.lua file"},
 			{Name: "--debugger", Description: "Start MobDebug remote debugger. Works with ZeroBrane Studio"},
 			{Name: "--fatal", Description: "Treat warnings from project scripts as errors"},
-			{Name: "--insecure", Description: "Forfit SSH certification checks"},
+			{Name: "--insecure", Description: "Forfeit SSH certification checks"},
 			{Name: "--interactive", Description: "Interactive command prompt"},
 			{Name: "--os", Description: "Generate files for a different operating system"},
 			{Name: "--scripts", Description: "Search for additional scripts on the given path"},

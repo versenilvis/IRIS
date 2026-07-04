@@ -19,7 +19,7 @@ func init() {
 			{Name: "REVISION_ID/REVISION_NAME", Description: "The name/id of the revision to rollback"},
 			{Name: "upgrade", Description: "Upgrade an existing app to a newer version"},
 			{Name: "list-templates", Description: "List templates available for installation"},
-			{Name: "show-tempate", Description: "Show versions available to install for an app template"},
+			{Name: "show-template", Description: "Show versions available to install for an app template"},
 			{Name: "show-app", Description: "Show an app's available versions and revisions"},
 			{Name: "show-notes", Description: "Show contents of apps notes.txt"},
 			{Name: "catalog", Description: "Operations with catalogs"},

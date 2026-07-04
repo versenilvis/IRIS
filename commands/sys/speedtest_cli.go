@@ -13,7 +13,7 @@ func init() {
 			{Name: "--no-download", Description: "Do not perform download test"},
 			{Name: "--no-upload", Description: "Do not perform upload test"},
 			{Name: "--single", Description: "Suppress verbose output, only show basic information"},
-			{Name: "--csv", Description: "Single character delimiter to use in CSV ouput. Default ','"},
+			{Name: "--csv", Description: "Single character delimiter to use in CSV output. Default ','"},
 			{Name: "--csv-header", Description: "Print CSV headers"},
 			{Name: "--json", Description: "Display a list of speedtest.net servers sorted by distance"},
 			{Name: "--server", Description: "Specify a server ID to test against. Can be supplied multiple times"},

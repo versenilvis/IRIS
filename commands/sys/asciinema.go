@@ -18,7 +18,7 @@ func init() {
 			{Name: "auth", Description: "Link and manage your install ID with your asciinema.org user account"},
 		},
 		Options: []core.Option{
-			{Name: "--version", Description: "Ouput version information and exit"},
+			{Name: "--version", Description: "Output version information and exit"},
 			{Name: "-h", Description: "Output help message and exit"},
 			{Name: "--stdin", Description: "Enable stdin (keyboard) recording"},
 			{Name: "--append", Description: "Append to existing recording"},

@@ -40,7 +40,7 @@ func init() {
 			{Name: "cloud:domain:get", Description: "Show detailed information for a domain"},
 			{Name: "cloud:domain:list", Description: "Get a list of all domains"},
 			{Name: "cloud:domain:update", Description: "Update a domain"},
-			{Name: "coud:environment:activate", Description: "Activate an environment"},
+			{Name: "cloud:environment:activate", Description: "Activate an environment"},
 			{Name: "cloud:environment:branch", Description: "Branch an environment"},
 			{Name: "cloud:environment:checkout", Description: "Check out an environment"},
 			{Name: "cloud:environment:debug", Description: "Debug an environment by switching Symfony to the debug mode temporarily"},

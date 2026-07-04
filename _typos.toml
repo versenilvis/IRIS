@@ -1,2 +1,11 @@
 [default.extend-words]
 hel = "hel"
+wrk = "wrk"
+Wrk = "Wrk"
+Brane = "Brane"
+HGE = "HGE"
+udid = "udid"
+OT = "OT"
+crypted = "crypted"
+uncomplete = "uncomplete"
+edn = "edn"

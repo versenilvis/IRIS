@@ -15,7 +15,7 @@ func init() {
 			{Name: "link", Description: "Create node_modules symlinks for all projects"},
 			{Name: "list", Description: "List package information for all projects in the repo"},
 			{Name: "unlink", Description: "Delete node_modules symlinks for all projects in the repo"},
-			{Name: "update-autoinstaller", Description: "Updates autoinstaller package dependenices"},
+			{Name: "update-autoinstaller", Description: "Updates autoinstaller package dependencies"},
 			{Name: "update-cloud-credentials", Description: "(EXPERIMENTAL) Update the credentials used by the build cache provider"},
 			{Name: "version", Description: "Manage package versions in the repo"},
 			{Name: "rebuild", Description: "Clean and rebuild the entire set of projects"},
