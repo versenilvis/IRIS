@@ -7,7 +7,7 @@ import (
 func init() {
 	core.Register(&core.Spec{
 		Name:        "coda",
-		Description: "Execute ${formulaName}",
+		Description: "Coda CLI - interact with Coda docs and tables",
 		Subcommands: []core.Subcommand{
 			{Name: "init", Description: "Initialize an empty project with the recommended settings and dependencies"},
 			{Name: "execute", Description: "Execute the formula and print the output to the terminal"},

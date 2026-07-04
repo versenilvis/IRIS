@@ -7,7 +7,7 @@ import (
 func init() {
 	core.Register(&core.Spec{
 		Name:        "doppler",
-		Description: "Help for ${name}",
+		Description: "The official CLI for Doppler Secret Operations Platform",
 		Subcommands: []core.Subcommand{
 			{Name: "activity", Description: "Get workplace activity logs"},
 			{Name: "get", Description: "Get workplace activity log"},

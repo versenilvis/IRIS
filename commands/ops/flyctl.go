@@ -7,7 +7,7 @@ import (
 func init() {
 	core.Register(&core.Spec{
 		Name:        "flyctl",
-		Description: "Organization: ${app.Organization.Slug}",
+		Description: "Command line tool for Fly.io services",
 		Subcommands: []core.Subcommand{
 			{Name: "ping", Description: "Ping the Fly agent"},
 			{Name: "restart", Description: "Restart the Fly agent"},

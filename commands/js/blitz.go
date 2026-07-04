@@ -18,7 +18,7 @@ func init() {
 			{Name: "export", Description: "Exports a static page"},
 			{Name: "generate", Description: "Generate new files for your Blitz project"},
 			{Name: "type", Description: "What files to generate"},
-			{Name: "help", Description: "Display help for <%= config.bin %>"},
+			{Name: "help", Description: "Display help for blitz"},
 			{Name: "install", Description: "Install a Recipe into your Blitz app"},
 			{Name: "new", Description: "Create a new Blitz project"},
 			{Name: "name", Description: "Name of your new project"},

@@ -7,7 +7,7 @@ import (
 func init() {
 	core.Register(&core.Spec{
 		Name:        "arduino-cli",
-		Description: "${entry.matching_boards[0].name} on port ${entry.port.address}",
+		Description: "Arduino CLI - build, compile, and upload Arduino sketches",
 		Subcommands: []core.Subcommand{
 			{Name: "board", Description: "Arduino board commands"},
 			{Name: "FQBN", Description: "Fully qualified board name"},

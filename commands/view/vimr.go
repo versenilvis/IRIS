@@ -7,7 +7,7 @@ import (
 func init() {
 	core.Register(&core.Spec{
 		Name:        "vimr",
-		Description: "VimR — Neovim GUI for macOS in Swift",
+		Description: "VimR - Neovim GUI for macOS in Swift",
 		Options: []core.Option{
 			{Name: "-h", Description: "Show help"},
 			{Name: "--dry-run", Description: "Just print the 'open' command"},

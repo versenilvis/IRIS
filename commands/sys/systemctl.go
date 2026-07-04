@@ -7,7 +7,7 @@ import (
 func init() {
 	core.Register(&core.Spec{
 		Name:        "systemctl",
-		Description: "${activeString} - ${unit.description}",
+		Description: "Control the systemd system and service manager",
 		Subcommands: []core.Subcommand{
 			{Name: "list-units", Description: "List units currently in memory"},
 			{Name: "list-sockets", Description: "List socket units currently in memory ordered by address"},

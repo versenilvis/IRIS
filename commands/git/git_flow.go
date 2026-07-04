@@ -7,7 +7,7 @@ import (
 func init() {
 	core.Register(&core.Spec{
 		Name:        "git-flow",
-		Description: "${prefixTypeBranch.replace(",
+		Description: "Git extensions to provide high-level repository operations for Vincent Driessen's branching model",
 		Subcommands: []core.Subcommand{
 			{Name: "init", Description: "Initialize a new git repo with support for the branching model"},
 			{Name: "feature", Description: "List all feature branches"},

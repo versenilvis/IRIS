@@ -7,7 +7,7 @@ import (
 func init() {
 	core.Register(&core.Spec{
 		Name:        "diff",
-		Description: "Similar, but format ${name} input groups with GFTM",
+		Description: "Compare files line by line",
 		Options: []core.Option{
 			{Name: "-i", Description: "Ignore case differences in file contents"},
 			{Name: "--ignore-file-name-case", Description: "Ignore case when comparing file names"},

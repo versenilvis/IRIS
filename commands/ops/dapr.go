@@ -7,7 +7,7 @@ import (
 func init() {
 	core.Register(&core.Spec{
 		Name:        "dapr",
-		Description: "HTTP Port: ${app.httpPort} age: ${app.age}",
+		Description: "Distributed Application Runtime CLI",
 		Subcommands: []core.Subcommand{
 			{Name: "build-info", Description: "Print build info of Dapr CLI and runtime"},
 			{Name: "completion", Description: "Generates shell completion scripts"},

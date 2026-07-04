@@ -47,7 +47,7 @@ func init() {
 			{Name: "email", Description: "The user to be removed"},
 			{Name: "validate", Description: "Validate your integration"},
 			{Name: "versions", Description: "List the versions of your integration available for use in the Zapier editor"},
-			{Name: "help", Description: "Display help for <%= config.bin %>"},
+			{Name: "help", Description: "Display help for zapier"},
 			{Name: "command", Description: "Command to show help for"},
 		},
 		Options: []core.Option{

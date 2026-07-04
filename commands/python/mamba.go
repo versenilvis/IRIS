@@ -7,7 +7,7 @@ import (
 func init() {
 	core.Register(&core.Spec{
 		Name:        "mamba",
-		Description: "${conda_package.version} - ${conda_package.platform}",
+		Description: "Mamba is a fast, robust, and cross-platform package manager",
 		Subcommands: []core.Subcommand{
 			{Name: "activate", Description: "Activate an environment"},
 			{Name: "deactivate", Description: "Deactivate an environment"},

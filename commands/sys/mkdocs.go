@@ -7,7 +7,7 @@ import (
 func init() {
 	core.Register(&core.Spec{
 		Name:        "mkdocs",
-		Description: "help for ${name}",
+		Description: "Project documentation with Markdown",
 		Subcommands: []core.Subcommand{
 			{Name: "build", Description: "Build the MkDocs documentation"},
 			{Name: "gh-deploy", Description: "Deploy your documentation to GitHub Pages"},
