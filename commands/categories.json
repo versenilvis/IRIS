@@ -1,0 +1,18 @@
+{
+  "categories": [
+    { "id": "ops", "title": "Cloud, Containers, Kubernetes, DevOps & Databases" },
+    { "id": "js", "title": "JavaScript, TypeScript, Frontend & Node.js Tools" },
+    { "id": "python", "title": "Python Ecosystem & Data Science Tools" },
+    { "id": "rust", "title": "Rust Ecosystem & Modern CLI Tools" },
+    { "id": "golang", "title": "Go Development & Project Tools" },
+    { "id": "jvm", "title": "Java, Kotlin & JVM Build Tools" },
+    { "id": "cc", "title": "C/C++ Compilers & Build Systems" },
+    { "id": "git", "title": "Git Version Control & GitHub Tools" },
+    { "id": "pkginstaller", "title": "System Package Managers" },
+    { "id": "fs", "title": "Filesystem, Directory & Archive Utilities" },
+    { "id": "view", "title": "Editors, Pagers & File Viewers" },
+    { "id": "text", "title": "Text Processing, JSON & Stream Manipulation" },
+    { "id": "runner", "title": "Task Runners & Build Automation" },
+    { "id": "sys", "title": "System Administration, Network & Process Management" }
+  ]
+}

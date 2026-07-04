@@ -60,6 +60,11 @@ analyze:
 lint:
     @golangci-lint run ./...
 
+# generate README docs for commands
+[group('dev')]
+gen-docs:
+    @go run scripts/cmds_docs.go
+
 # test the update command (version check + comparison), no full iris session needed
 # usage: just debug-update v1.99.0
 [group('debug')]
