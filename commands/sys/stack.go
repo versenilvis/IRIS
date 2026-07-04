@@ -1,0 +1,66 @@
+package sys
+
+import (
+	"github.com/versenilvis/iris/commands/core"
+)
+
+func init() {
+	core.Register(&core.Spec{
+		Name:        "stack",
+		Description: "The Haskell Tool Stack",
+		Subcommands: []core.Subcommand{
+			{Name: "build", Description: "Build the package(s) in the current directory/configuration"},
+			{Name: "test", Description: "Shortcut for 'build --test'"},
+			{Name: "bench", Description: "Shortcut for 'build --bench'"},
+			{Name: "haddock", Description: "Shortcut for 'build --haddock'"},
+			{Name: "init", Description: "Create stack project config from cabal or hpack package specifications'"},
+			{Name: "setup", Description: "Get the appropriate GHC for your project"},
+			{Name: "path", Description: "Print out handy path information"},
+			{Name: "ls", Description: "List command. Supports snapshots, dependencies and stack's styles"},
+			{Name: "unpack", Description: "Unpack one or more packages locally"},
+			{Name: "update", Description: "Update the package index"},
+			{Name: "upgrade", Description: "Upgrade to the latest stack version"},
+			{Name: "upload", Description: "Upload a package to Hackage"},
+			{Name: "sdist", Description: "Create source distribution tarballs"},
+			{Name: "dot", Description: "Visualize your project's dependency graph using Graphviz dot"},
+			{Name: "repl", Description: "Load a REPL"},
+		},
+		Options: []core.Option{
+			{Name: "--help", Description: "Show help for stack"},
+			{Name: "--version", Description: "Show version for stack"},
+			{Name: "--numeric-version", Description: "Show only the numeric version for stack"},
+			{Name: "--hpack-numeric-version", Description: "Show only hpack's version number"},
+			{Name: "--verbosity", Description: "Verbosity: silent, error, warn, info, debug"},
+			{Name: "--verbose", Description: "Specialized GHC variant, e.g. integersimple (incompatible with --system-ghc)"},
+			{Name: "--ghc-build", Description: "Specialized GHC build, e.g. 'gmp4' or 'standard' (usually auto-detected)"},
+			{Name: "--jobs", Description: "Number of concurrent jobs to run. Should be provided as ARGS"},
+			{Name: "--extra-include-dirs", Description: "Extra directories to check for C header files"},
+			{Name: "--extra-lib-dir", Description: "Extra directories to check for libraries"},
+			{Name: "--color", Description: "Specify when to use color in output"},
+			{Name: "--compiler", Description: "Use the specified compiler"},
+			{Name: "--terminal", Description: "Enable overriding terminal detection in the case of running in a false terminal"},
+			{Name: "--no-terminal", Description: "Disable overriding terminal detection in the case of running in a false terminal"},
+			{Name: "--stack-colors", Description: "Specify stack's output styles"},
+			{Name: "--terminal-width", Description: "Specify the width of the terminal, used for pretty-print messages"},
+			{Name: "--stack-yaml", Description: "Override project stack.yaml file (overrides any STACK_YAML environment variable)"},
+			{Name: "--lock-file", Description: "Specify how to interact with lock files"},
+			{Name: "--resolver", Description: "Override resolver in project file"},
+			{Name: "--bench", Description: "Override resolver in project file"},
+			{Name: "--test", Description: "Run complete test suite"},
+			{Name: "--copy-bins", Description: "Enable opening the local Haddock"},
+			{Name: "--no-open", Description: "Disable opening the local Haddock"},
+			{Name: "--haddock-deps", Description: "Turn on all warnings(-Wall) and errors(-Werror)"},
+			{Name: "--only-locals", Description: "Watch all local files not taking targets into account"},
+			{Name: "-file-watch-poll", Description: "Like --file-watch, but polling the filesystem instead of using events"},
+			{Name: "--only-snapshot", Description: "Only build packages for the snapshot database, not the local database"},
+			{Name: "--only-configure", Description: "Enable library stripping for TARGETs and all its dependencies (default: enabled"},
+			{Name: "--no-library-stripping", Description: "Disable library stripping for TARGETs and all its dependencies (default: enabled"},
+			{Name: "--executable-stripping", Description: "Shortcut for 'build --test'"},
+			{Name: "--snapshot-location-base", Description: "The base location of LTS/Nightly snapshots"},
+			{Name: "--cwd", Description: "Sets the working directory before executing the command"},
+			{Name: "--setup-info-yaml", Description: "Alternate URL or relative / absolute path for stack dependencies"},
+			{Name: "--ghc-package-path", Description: "Additional package(s) that must be installed"},
+			{Name: "--stack-exe", Description: "Load a REPL"},
+		},
+	})
+}

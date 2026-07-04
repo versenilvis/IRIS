@@ -1,0 +1,66 @@
+package js
+
+import (
+	"github.com/versenilvis/iris/commands/core"
+)
+
+func init() {
+	core.Register(&core.Spec{
+		Name:        "webpack",
+		Description: "Run webpack (default command, can be omitted)",
+		Subcommands: []core.Subcommand{
+			{Name: "build", Description: "Run webpack (default command, can be omitted)"},
+			{Name: "configtest", Description: "Validate a webpack configuration"},
+			{Name: "config-path", Description: "Path to the webpack configuration file"},
+			{Name: "help", Description: "Display help for command and options"},
+			{Name: "info", Description: "Display information about your system"},
+			{Name: "init", Description: "Initialize a new webpack project"},
+			{Name: "loader", Description: "Scaffold a webpack loader"},
+			{Name: "plugin", Description: "Scaffold a webpack plugin"},
+			{Name: "serve", Description: "Run the webpack development server"},
+			{Name: "watch", Description: "Run webpack and watch for file changes"},
+		},
+		Options: []core.Option{
+			{Name: "--config", Description: "Provide path to a webpack configuration file e.g. ./webpack.config.js"},
+			{Name: "--config-name", Description: "Name of the configuration to use"},
+			{Name: "--merge", Description: "Merge two or more configurations using 'webpack-merge'"},
+			{Name: "--env", Description: "Environment passed to the configuration when it is a function"},
+			{Name: "--node-env", Description: "Sets process.env.NODE_ENV to the specified value"},
+			{Name: "--hot", Description: "Enables Hot Module Replacement"},
+			{Name: "--no-hot", Description: "Disables Hot Module Replacement"},
+			{Name: "--analyze", Description: "It invokes webpack-bundle-analyzer plugin to get bundle information"},
+			{Name: "--progress", Description: "Print compilation progress during build"},
+			{Name: "--prefetch", Description: "Prefetch this request"},
+			{Name: "--json", Description: "Prints result as JSON or store it in a file"},
+			{Name: "--no-amd", Description: "Negative 'amd' option"},
+			{Name: "--bail", Description: "Report the first error as a hard error instead of tolerating it"},
+			{Name: "--no-bail", Description: "Negative 'bail' option"},
+			{Name: "--cache", Description: "Enable in memory caching. Disable caching"},
+			{Name: "--no-cache", Description: "Negative 'cache' option"},
+			{Name: "--cache-cache-unaffected", Description: "Negative 'cache-cache-unaffected' option"},
+			{Name: "--cache-max-generations", Description: "In memory caching. Filesystem caching"},
+			{Name: "--cache-cache-directory", Description: "Base directory for the cache (defaults to node_modules/.cache/webpack)"},
+			{Name: "--cache-cache-location", Description: "Locations for the cache (defaults to cacheDirectory / name)"},
+			{Name: "--cache-compression", Description: "Compression type used for the cache files"},
+			{Name: "--no-cache-compression", Description: "Negative 'cache-compression' option"},
+			{Name: "--cache-hash-algorithm", Description: "Algorithm used for generation the hash (see node.js crypto package)"},
+			{Name: "--cache-idle-timeout", Description: "Time in ms after which idle period the cache storing should happen"},
+			{Name: "--cache-immutable-paths", Description: "Negative 'cache-memory-cache-unaffected' option"},
+			{Name: "--cache-name", Description: "Name for the cache. Different names will lead to different coexisting caches"},
+			{Name: "--cache-profile", Description: "Track and log detailed timing information for individual cache items"},
+			{Name: "--no-cache-profile", Description: "Negative 'cache-profile' option"},
+			{Name: "--cache-store", Description: "References to another configuration to depend on"},
+			{Name: "--dependencies-reset", Description: "Determine source maps to use"},
+			{Name: "--no-devtool", Description: "Do not generate source maps"},
+			{Name: "--entry", Description: "The entry point(s) of your application e.g. ./src/main.js"},
+			{Name: "--entry-reset", Description: "Support WebAssembly as asynchronous EcmaScript Module"},
+			{Name: "--experiments-back-compat", Description: "Enable backward-compat layer with deprecation warnings for many webpack 4 APIs"},
+			{Name: "--no-experiments-back-compat", Description: "Negative 'experiments-back-compat' option"},
+			{Name: "--experiments-css", Description: "Enable css support"},
+			{Name: "--no-experiments-css", Description: "Negative 'experiments-css' option"},
+			{Name: "--experiments-future-defaults", Description: "Apply defaults of next major version"},
+			{Name: "--experiments-layers", Description: "Enable module layers"},
+			{Name: "--no-experiments-layers", Description: "Negative 'experiments-layers' option"},
+		},
+	})
+}

@@ -1,0 +1,66 @@
+package js
+
+import (
+	"github.com/versenilvis/iris/commands/core"
+)
+
+func init() {
+	core.Register(&core.Spec{
+		Name:        "lerna",
+		Description: "Branch",
+		Subcommands: []core.Subcommand{
+			{Name: "*", Description: "Select all packages"},
+			{Name: "changed", Description: "Check which packages have changed since the last release"},
+			{Name: "run", Description: "Run an npm script in each package that contains that script"},
+			{Name: "script", Description: "Name of the npm script to run"},
+			{Name: "version", Description: "Bump version of packages changed since the last release"},
+			{Name: "diff", Description: "Diff all packages or a single package since the last release"},
+			{Name: "exec", Description: "Execute an arbitrary command in each package"},
+			{Name: "add", Description: "Add a dependency to matched packages"},
+			{Name: "clean", Description: "Remove the node_modules directory from all packages"},
+			{Name: "create", Description: "Create a new lerna-managed package"},
+		},
+		Options: []core.Option{
+			{Name: "--npm-client", Description: "The executable to run the script with"},
+			{Name: "--concurrency", Description: "Set a max buffer length for each underlying process call"},
+			{Name: "--no-progress", Description: "Disable progress bars. This is always the case in a CI environment"},
+			{Name: "--no-sort", Description: "Fail immediately if a cycle is found (in bootstrap, exec, publish or run)"},
+			{Name: "-h", Description: "Show help"},
+			{Name: "-v", Description: "Show version number"},
+			{Name: "--stream", Description: "Include only packages with names matching the given glob"},
+			{Name: "--ignore", Description: "Exclude packages with names matching the given glob"},
+			{Name: "--no-private", Description: "Exclude private packages. They are included by default"},
+			{Name: "--since", Description: "List local packages"},
+			{Name: "--json", Description: "Show information as a JSON array"},
+			{Name: "--ndjson", Description: "Show information as newline-delimited JSON"},
+			{Name: "-a", Description: "Show all packages (including private)"},
+			{Name: "-l", Description: "Show extended information"},
+			{Name: "-p", Description: "Show parseable output instead of columnified view"},
+			{Name: "--toposort", Description: "Show dependency graph as a JSON-formatted adjacency list"},
+			{Name: "-i", Description: "Use independent versioning mode"},
+			{Name: "--exact", Description: "Set the exact version of lerna in the package.json file"},
+			{Name: "--hoist", Description: "Skip prepublish lifecycle scripts run by default in bootstrapped packages"},
+			{Name: "--ignore-scripts", Description: "Skip any lifecycle scripts normally run (prepare, etc) in bootstrapped packages"},
+			{Name: "--registry", Description: "Forwarded npm commands will use the specified registry for your package(s)"},
+			{Name: "--use-workspaces", Description: "Enables integration with Yarn Workspaces"},
+			{Name: "--no-ci", Description: "Disable usage of `npm ci` in CI environments"},
+			{Name: "--force-local", Description: "Flatten the git history of the repository to import"},
+			{Name: "--dest", Description: "Specify the destination directory by the directory listed in lerna.json"},
+			{Name: "--preserve-commit", Description: "Preserve the original committer and commit date"},
+			{Name: "--npm-tag", Description: "Publish to npm with the given npm dist-tag (Defaults to latest)"},
+			{Name: "--canary", Description: "Create a canary release"},
+			{Name: "--skip-git", Description: "Don't run any git commands"},
+			{Name: "--force-publish", Description: "Force publish for the specified packages (comma-separated)"},
+			{Name: "--allow-branch", Description: "An allowlist of globs that match git branches where lerna version is enabled"},
+			{Name: "--amend", Description: "Perform all changes on the current commit, instead of adding a new one"},
+			{Name: "--changelog-preset", Description: "Change the changelog preset type"},
+			{Name: "--conventional-commits", Description: "Graduate the specified packages (comma-separated) or all packages using *"},
+			{Name: "--conventional-prerelease", Description: "Create an official release based on the changes packages"},
+			{Name: "--git-remote", Description: "Push the git changes to the specified remote instead of origin"},
+			{Name: "--ignore-changes", Description: "Ignore changes in files matched by glob(s) when detecting changed packages"},
+			{Name: "--include-merged-tags", Description: "Include tags from merged branches when detecting changed packages"},
+			{Name: "-m", Description: "Use the provided message when committing the version updates for publication"},
+			{Name: "--no-changelog", Description: "When using conventional-commits, do not generate any CHANGELOG.md files"},
+		},
+	})
+}
