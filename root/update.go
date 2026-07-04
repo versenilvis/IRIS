@@ -232,7 +232,7 @@ var updateCmd = &cobra.Command{
 			return
 		}
 
-		if !IsNewer(Version, latest) {
+		if Version != "dev" && Version != "" && !IsNewer(Version, latest) {
 			fmt.Printf("\033[32m[IRIS] already up to date (%s)\033[0m\n", Version)
 			// clear seen_version so the notification doesn't show again
 			state := config.LoadState()
