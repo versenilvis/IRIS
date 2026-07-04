@@ -205,7 +205,8 @@ func TestGitSuggestions(t *testing.T) {
 		res := core.Lookup("git push origin ")
 		var cmdStr strings.Builder
 		for _, r := range res {
-			cmdStr.WriteString(r.Cmd + " ")
+			cmdStr.WriteString(r.Cmd)
+			cmdStr.WriteByte(' ')
 		}
 		// should have at least dev or main from branch list
 		if !strings.Contains(cmdStr.String(), "dev") && !strings.Contains(cmdStr.String(), "main") {
