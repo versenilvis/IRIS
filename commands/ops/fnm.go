@@ -7,7 +7,7 @@ import (
 func init() {
 	core.Register(&core.Spec{
 		Name:        "fnm",
-		Description: "Node.js ${line.slice(2)}",
+		Description: "Fast and simple Node.js version manager",
 		Subcommands: []core.Subcommand{
 			{Name: "install", Description: "Install a new Node.js version"},
 			{Name: "uninstall", Description: "Uninstall a Node.js version"},

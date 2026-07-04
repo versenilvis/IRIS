@@ -7,7 +7,7 @@ import (
 func init() {
 	core.Register(&core.Spec{
 		Name:        "k3d",
-		Description: "Cluster with ${servers} server(s), ${agents} agent(s)",
+		Description: "Little helper to run k3s in Docker",
 		Subcommands: []core.Subcommand{
 			{Name: "cluster", Description: "Manage k3s clusters"},
 			{Name: "create", Description: "Create a new k3s cluster"},

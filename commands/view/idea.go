@@ -7,7 +7,7 @@ import (
 func init() {
 	core.Register(&core.Spec{
 		Name:        "idea",
-		Description: "${editorName} cli",
+		Description: "IntelliJ IDEA CLI",
 		Subcommands: []core.Subcommand{
 			{Name: "diff", Description: "Open the diff viewer to see the differences between two specified files"},
 			{Name: "merge", Description: "Open the Merge dialog to merge the specified files"},

@@ -7,6 +7,6 @@ import (
 func init() {
 	core.Register(&core.Spec{
 		Name:        "emacs",
-		Description: "An extensible, customizable, free/libre text editor — and more",
+		Description: "An extensible, customizable, free/libre text editor - and more",
 	})
 }

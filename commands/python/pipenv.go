@@ -26,7 +26,7 @@ func init() {
 		Options: []core.Option{
 			{Name: "--unused", Description: "Given a code path, show potentially unused dependencies"},
 			{Name: "--db", Description: "Ignore specified vulnerability during PyUp Safety checks"},
-			{Name: "--output", Description: "Translates to –json, –full-report or –bare from PyUp Safety check"},
+			{Name: "--output", Description: "Translates to --json, --full-report or --bare from PyUp Safety check"},
 			{Name: "--key", Description: "Quiet standard output, except vulnerability report"},
 			{Name: "--python", Description: "Specify which version of Python virtualenv should use"},
 			{Name: "--three", Description: "Use Python 3 when creating virtualenv"},

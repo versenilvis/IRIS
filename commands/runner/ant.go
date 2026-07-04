@@ -7,7 +7,7 @@ import (
 func init() {
 	core.Register(&core.Spec{
 		Name:        "ant",
-		Description: "Execute ${task} task",
+		Description: "Apache Ant - Java library and command-line build tool",
 		Options: []core.Option{
 			{Name: "--help", Description: "Show help for ant"},
 			{Name: "--noconfig", Description: "Enable use of jikes by default, unless set explicitly in configuration files"},
@@ -31,7 +31,7 @@ func init() {
 			{Name: "-inputhandler", Description: "The class which will handle input requests"},
 			{Name: "-find", Description: "Search for buildfile towards the root of the filesystem and use it"},
 			{Name: "-nice", Description: "A niceness value for the main thread"},
-			{Name: "-nouserlib", Description: "Run ant without using the jar files from ${user.home}/.ant/lib"},
+			{Name: "-nouserlib", Description: "Run ant without using the jar files from user home directory/.ant/lib"},
 			{Name: "-noclasspath", Description: "Run ant without using CLASSPATH"},
 			{Name: "-autoproxy", Description: "Java1.5+: use the OS proxy settings"},
 			{Name: "-main", Description: "Override Ant's normal entry point"},

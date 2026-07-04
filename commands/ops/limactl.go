@@ -7,7 +7,7 @@ import (
 func init() {
 	core.Register(&core.Spec{
 		Name:        "limactl",
-		Description: "Help for ${subcommandName}",
+		Description: "Lima: Linux virtual machines, with a focus on running containers",
 		Subcommands: []core.Subcommand{
 			{Name: "completion", Description: "Generate the autocompletion script for the specified shell"},
 			{Name: "copy", Description: "Copy files between host and guest"},

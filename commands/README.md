@@ -40,7 +40,7 @@ Currently, Iris natively supports **567** top-level CLI commands across **14** c
 | **`ansible-playbook`** | Runs Ansible playbooks, executing the defined tasks on the targeted hosts | [`ansible_playbook.go`](./ops/ansible_playbook.go) |
 | **`appwrite`** | Appwrite - Open-Source End-to-End Backend Server | [`appwrite.go`](./ops/appwrite.go) |
 | **`arch`** | 32-bit intel | [`arch.go`](./ops/arch.go) |
-| **`arduino-cli`** | ${entry.matching_boards[0].name} on port ${entry.port.address} | [`arduino_cli.go`](./ops/arduino_cli.go) |
+| **`arduino-cli`** | Arduino CLI - build, compile, and upload Arduino sketches | [`arduino_cli.go`](./ops/arduino_cli.go) |
 | **`argo`** | If True, Use the HTTP client. Defaults to the ARGO_HTTP1 environment variable | [`argo.go`](./ops/argo.go) |
 | **`asdf`** | Plugin name | [`asdf.go`](./ops/asdf.go) |
 | **`atlas`** | CLI tool to manage MongoDB Atlas | [`atlas.go`](./ops/atlas.go) |
@@ -54,31 +54,31 @@ Currently, Iris natively supports **567** top-level CLI commands across **14** c
 | **`checkov`** | Branch | [`checkov.go`](./ops/checkov.go) |
 | **`circleci`** | CircleCI CLI | [`circleci.go`](./ops/circleci.go) |
 | **`cloudflared`** | Specify the hostname of your application | [`cloudflared.go`](./ops/cloudflared.go) |
-| **`coda`** | Execute ${formulaName} | [`coda.go`](./ops/coda.go) |
+| **`coda`** | Coda CLI - interact with Coda docs and tables | [`coda.go`](./ops/coda.go) |
 | **`command`** | Run an external command | [`command.go`](./ops/command.go) |
 | **`copilot`** | Name of the application | [`copilot.go`](./ops/copilot.go) |
 | **`cosign`** | Provides utilities for attaching artifacts to other artifacts in a registry | [`cosign.go`](./ops/cosign.go) |
-| **`dapr`** | HTTP Port: ${app.httpPort} age: ${app.age} | [`dapr.go`](./ops/dapr.go) |
+| **`dapr`** | Distributed Application Runtime CLI | [`dapr.go`](./ops/dapr.go) |
 | **`datree`** | Help for | [`datree.go`](./ops/datree.go) |
 | **`deployctl`** | Command line tool for Deno Deploy | [`deployctl.go`](./ops/deployctl.go) |
 | **`direnv`** | Help for direnv | [`direnv.go`](./ops/direnv.go) |
 | **`docker`** | container engine | [`docker.go`](./ops/docker.go) |
 | **`docker-compose`** | multi-container (legacy) | [`docker.go`](./ops/docker.go) |
 | **`doctl`** | The official DigitalOcean command line interface (CLI) | [`doctl.go`](./ops/doctl.go) |
-| **`doppler`** | Help for ${name} | [`doppler.go`](./ops/doppler.go) |
+| **`doppler`** | The official CLI for Doppler Secret Operations Platform | [`doppler.go`](./ops/doppler.go) |
 | **`eas`** | Log in with your Expo account | [`eas.go`](./ops/eas.go) |
 | **`fastly`** | A CLI for interacting with the Fastly platform | [`fastly.go`](./ops/fastly.go) |
 | **`firebase`** | ProjectAlias | [`firebase.go`](./ops/firebase.go) |
-| **`flyctl`** | Organization: ${app.Organization.Slug} | [`flyctl.go`](./ops/flyctl.go) |
-| **`fnm`** | Node.js ${line.slice(2)} | [`fnm.go`](./ops/fnm.go) |
+| **`flyctl`** | Command line tool for Fly.io services | [`flyctl.go`](./ops/flyctl.go) |
+| **`fnm`** | Fast and simple Node.js version manager | [`fnm.go`](./ops/fnm.go) |
 | **`gcloud`** | Manage Google Cloud Platform resources and developer workflow | [`gcloud.go`](./ops/gcloud.go) |
 | **`gh`** | Current branch | [`gh.go`](./ops/gh.go) |
 | **`gpg`** | Encryption and signing tool | [`gpg.go`](./ops/gpg.go) |
 | **`hasura`** | .env filename to load ENV vars from | [`hasura.go`](./ops/hasura.go) |
 | **`helm`** | The Helm package manager for Kubernetes | [`helm.go`](./ops/helm.go) |
 | **`helmfile`** | Deploy helm charts | [`helmfile.go`](./ops/helmfile.go) |
-| **`hugo`** | help for ${name} | [`hugo.go`](./ops/hugo.go) |
-| **`k3d`** | Cluster with ${servers} server(s), ${agents} agent(s) | [`k3d.go`](./ops/k3d.go) |
+| **`hugo`** | The world | [`hugo.go`](./ops/hugo.go) |
+| **`k3d`** | Little helper to run k3s in Docker | [`k3d.go`](./ops/k3d.go) |
 | **`k6`** | Create an archive | [`k6.go`](./ops/k6.go) |
 | **`k9s`** | Kubernetes namespace | [`k9s.go`](./ops/k9s.go) |
 | **`kind`** | Cluster | [`kind.go`](./ops/kind.go) |
@@ -86,7 +86,7 @@ Currently, Iris natively supports **567** top-level CLI commands across **14** c
 | **`kubectl`** | kubernetes cli | [`kubectl.go`](./ops/kubectl.go) |
 | **`kubectx`** | Switch between Kubernetes-contexts | [`kubectx.go`](./ops/kubectx.go) |
 | **`kubens`** | Switch between Kubernetes-namespaces | [`kubens.go`](./ops/kubens.go) |
-| **`limactl`** | Help for ${subcommandName} | [`limactl.go`](./ops/limactl.go) |
+| **`limactl`** | Lima: Linux virtual machines, with a focus on running containers | [`limactl.go`](./ops/limactl.go) |
 | **`locust`** | Show program | [`locust.go`](./ops/locust.go) |
 | **`lpass`** | Command line interface for LastPass | [`lpass.go`](./ops/lpass.go) |
 | **`minikube`** | Format to print stdout in | [`minikube.go`](./ops/minikube.go) |
@@ -128,7 +128,7 @@ Currently, Iris natively supports **567** top-level CLI commands across **14** c
 | **`src`** | Interact with Sourcegraph from the command line | [`src.go`](./ops/src.go) |
 | **`ssh`** | secure shell | [`ssh.go`](./ops/ssh.go) |
 | **`ssh-keygen`** | Generates, manages and converts authentication keys for ssh | [`ssh_keygen.go`](./ops/ssh_keygen.go) |
-| **`stripe`** | Occurs whenever a previously uncaptured charge is captured | [`stripe.go`](./ops/stripe.go) |
+| **`stripe`** | Stripe CLI - build, test, and manage your Stripe integrations right from your terminal | [`stripe.go`](./ops/stripe.go) |
 | **`supabase`** | Supabase CLI | [`supabase.go`](./ops/supabase.go) |
 | **`surreal`** | Database authentication password to use when connecting [default: root] | [`surreal.go`](./ops/surreal.go) |
 | **`tailscale`** | Connect to Tailscale, logging in if needed | [`tailscale.go`](./ops/tailscale.go) |
@@ -247,7 +247,7 @@ Currently, Iris natively supports **567** top-level CLI commands across **14** c
 | **`django-admin`** | Show this help message and exit | [`django_admin.go`](./python/django_admin.go) |
 | **`googler`** | Google from the command-line | [`googler.go`](./python/googler.go) |
 | **`jupyter`** | Set log level to logging.DEBUG (maximize logging output) | [`jupyter.go`](./python/jupyter.go) |
-| **`mamba`** | ${conda_package.version} - ${conda_package.platform} | [`mamba.go`](./python/mamba.go) |
+| **`mamba`** | Mamba is a fast, robust, and cross-platform package manager | [`mamba.go`](./python/mamba.go) |
 | **`mypy`** | Mypy is a static type checker for Python | [`mypy.go`](./python/mypy.go) |
 | **`pipenv`** | Python package manager | [`pipenv.go`](./python/pipenv.go) |
 | **`pipx`** | Installed package | [`pipx.go`](./python/pipx.go) |
@@ -338,7 +338,7 @@ Currently, Iris natively supports **567** top-level CLI commands across **14** c
 | **`ghq`** | Clone/sync with a remote repository | [`ghq.go`](./git/ghq.go) |
 | **`git`** | version control | [`git.go`](./git/git.go) |
 | **`git-cliff`** | Increases the logging verbosity | [`git_cliff.go`](./git/git_cliff.go) |
-| **`git-flow`** | ${prefixTypeBranch.replace( | [`git_flow.go`](./git/git_flow.go) |
+| **`git-flow`** | Git extensions to provide high-level repository operations for Vincent Driessen | [`git_flow.go`](./git/git_flow.go) |
 | **`git-profile`** | Use profile | [`git_profile.go`](./git/git_profile.go) |
 | **`git-quick-stats`** | Show help for git-quick-stats | [`git_quick_stats.go`](./git/git_quick_stats.go) |
 | **`github`** | Open a git repository in GitHub Desktop | [`github.go`](./git/github.go) |
@@ -408,11 +408,11 @@ Currently, Iris natively supports **567** top-level CLI commands across **14** c
 | **`code`** | Read from stdin (e.g. | [`code.go`](./view/code.go) |
 | **`cot`** | Command-line utility for CotEditor | [`cot.go`](./view/cot.go) |
 | **`du`** | estimate file space usage | [`du.go`](./view/du.go) |
-| **`emacs`** | An extensible, customizable, free/libre text editor — and more | [`emacs.go`](./view/emacs.go) |
+| **`emacs`** | An extensible, customizable, free/libre text editor - and more | [`emacs.go`](./view/emacs.go) |
 | **`file`** | determine file type | [`file.go`](./view/file.go) |
 | **`glow`** | Render markdown on the CLI, with pizzazz! | [`glow.go`](./view/glow.go) |
 | **`head`** | output first lines of file | [`head.go`](./view/head.go) |
-| **`idea`** | ${editorName} cli | [`idea.go`](./view/idea.go) |
+| **`idea`** | IntelliJ IDEA CLI | [`idea.go`](./view/idea.go) |
 | **`less`** | view file contents (scrollable) | [`less.go`](./view/less.go) |
 | **`lvim`** | Hyperextensible Vim-based text editor | [`lvim.go`](./view/lvim.go) |
 | **`micro`** | True/false | [`micro.go`](./view/micro.go) |
@@ -425,7 +425,7 @@ Currently, Iris natively supports **567** top-level CLI commands across **14** c
 | **`tail`** | output last lines of file | [`tail.go`](./view/tail.go) |
 | **`vi`** | Print help message for vi and exit | [`vi.go`](./view/vi.go) |
 | **`vim`** | Vi IMproved, a programmer | [`vim.go`](./view/vim.go) |
-| **`vimr`** | VimR — Neovim GUI for macOS in Swift | [`vimr.go`](./view/vimr.go) |
+| **`vimr`** | VimR - Neovim GUI for macOS in Swift | [`vimr.go`](./view/vimr.go) |
 | **`wc`** | word, line, character count | [`wc.go`](./view/wc.go) |
 | **`xed`** | Xcode text editor invocation tool | [`xed.go`](./view/xed.go) |
 | **`xxd`** | Make a hexdump or do the reverse | [`xxd.go`](./view/xxd.go) |
@@ -438,7 +438,7 @@ Currently, Iris natively supports **567** top-level CLI commands across **14** c
 | :--- | :--- | :--- |
 | **`awk`** | pattern-directed scanning | [`textproc.go`](./text/textproc.go) |
 | **`cut`** | extract columns from lines | [`textproc.go`](./text/textproc.go) |
-| **`diff`** | Similar, but format ${name} input groups with GFTM | [`diff.go`](./text/diff.go) |
+| **`diff`** | Compare files line by line | [`diff.go`](./text/diff.go) |
 | **`dos2unix`** | DOS to Unix file format converter | [`dos2unix.go`](./text/dos2unix.go) |
 | **`egrep`** | grep with extended regex | [`grep.go`](./text/grep.go) |
 | **`fd`** | fast find alternative | [`rg.go`](./text/rg.go) |
@@ -470,7 +470,7 @@ Currently, Iris natively supports **567** top-level CLI commands across **14** c
 
 | Command | Description | Source File |
 | :--- | :--- | :--- |
-| **`ant`** | Execute ${task} task | [`ant.go`](./runner/ant.go) |
+| **`ant`** | Apache Ant - Java library and command-line build tool | [`ant.go`](./runner/ant.go) |
 | **`composer`** | Composer Command | [`composer.go`](./runner/composer.go) |
 | **`dbt`** | CLI for dbt - Data Build Tool | [`dbt.go`](./runner/dbt.go) |
 | **`drush`** | Drush is a command line shell and Unix scripting interface for Drupal | [`drush.go`](./runner/drush.go) |
@@ -582,9 +582,9 @@ Currently, Iris natively supports **567** top-level CLI commands across **14** c
 | **`login`** | Begin session on the system | [`login.go`](./sys/login.go) |
 | **`lsblk`** | List block devices | [`lsblk.go`](./sys/lsblk.go) |
 | **`lsof`** | List open files | [`lsof.go`](./sys/lsof.go) |
-| **`man`** | ${section} ${description} | [`man.go`](./sys/man.go) |
+| **`man`** | Format and display manual pages | [`man.go`](./sys/man.go) |
 | **`meroxa`** | The Meroxa CLI | [`meroxa.go`](./sys/meroxa.go) |
-| **`mkdocs`** | help for ${name} | [`mkdocs.go`](./sys/mkdocs.go) |
+| **`mkdocs`** | Project documentation with Markdown | [`mkdocs.go`](./sys/mkdocs.go) |
 | **`mkfifo`** | Make FIFOs (first-in, first-out) | [`mkfifo.go`](./sys/mkfifo.go) |
 | **`mkinitcpio`** | Create an initial ramdisk environment | [`mkinitcpio.go`](./sys/mkinitcpio.go) |
 | **`mknod`** | Create device special file | [`mknod.go`](./sys/mknod.go) |
@@ -595,7 +595,7 @@ Currently, Iris natively supports **567** top-level CLI commands across **14** c
 | **`neofetch`** | The most complete system information CLI tool | [`neofetch.go`](./sys/neofetch.go) |
 | **`netstat`** | network statistics | [`network.go`](./sys/network.go) |
 | **`networkQuality`** | Measure the different aspects of network quality | [`networkquality.go`](./sys/networkquality.go) |
-| **`networksetup`** | Interface: ${match[2]} | [`networksetup.go`](./sys/networksetup.go) |
+| **`networksetup`** | Configuration tool for network settings in macOS | [`networksetup.go`](./sys/networksetup.go) |
 | **`nextflow`** | Session ID | [`nextflow.go`](./sys/nextflow.go) |
 | **`nhost`** | Nhost | [`nhost.go`](./sys/nhost.go) |
 | **`nmap`** | Network exploration tool and security / port scanner | [`nmap.go`](./sys/nmap.go) |
@@ -643,7 +643,7 @@ Currently, Iris natively supports **567** top-level CLI commands across **14** c
 | **`su`** | (no letter) The same as -l | [`su.go`](./sys/su.go) |
 | **`sudo`** | Execute a command as the superuser or another user | [`sudo.go`](./sys/sudo.go) |
 | **`sysctl`** | Variable name | [`sysctl.go`](./sys/sysctl.go) |
-| **`systemctl`** | ${activeString} - ${unit.description} | [`systemctl.go`](./sys/systemctl.go) |
+| **`systemctl`** | Control the systemd system and service manager | [`systemctl.go`](./sys/systemctl.go) |
 | **`tac`** | Concatenate and print files in reverse | [`tac.go`](./sys/tac.go) |
 | **`tailcall`** | TailCall CLI for managing and optimizing GraphQL configurations | [`tailcall.go`](./sys/tailcall.go) |
 | **`tailwindcss`** | Display usage information | [`tailwindcss.go`](./sys/tailwindcss.go) |

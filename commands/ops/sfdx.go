@@ -22,7 +22,7 @@ func init() {
 			{Name: "plugins:update", Description: "Update installed plugins"},
 			{Name: "autocomplete", Description: "Display autocomplete installation instructions"},
 			{Name: "shell", Description: "Shell type"},
-			{Name: "update", Description: "Update the <%= config.bin %> CLI"},
+			{Name: "update", Description: "Update the sfdx CLI"},
 			{Name: "which", Description: "Show which plugin a command is in"},
 			{Name: "force:cmdt:create", Description: "Creates a new custom metadata type in the current project"},
 			{Name: "force:cmdt:field:create", Description: "Generate a custom metadata field based on the field type provided"},

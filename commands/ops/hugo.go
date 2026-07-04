@@ -7,7 +7,7 @@ import (
 func init() {
 	core.Register(&core.Spec{
 		Name:        "hugo",
-		Description: "help for ${name}",
+		Description: "The world's fastest framework for building websites",
 		Subcommands: []core.Subcommand{
 			{Name: "check", Description: "Contains some verification checks"},
 			{Name: "ulimit", Description: "Check system ulimit settings"},

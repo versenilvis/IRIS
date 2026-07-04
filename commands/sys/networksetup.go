@@ -7,7 +7,7 @@ import (
 func init() {
 	core.Register(&core.Spec{
 		Name:        "networksetup",
-		Description: "Interface: ${match[2]}",
+		Description: "Configuration tool for network settings in macOS",
 		Subcommands: []core.Subcommand{
 			{Name: "computername", Description: "The new name for your computer on the network"},
 			{Name: "ip", Description: "The IP address to set for the network service"},
