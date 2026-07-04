@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/versenilvis/iris/commands/core"
 	_ "github.com/versenilvis/iris/commands"
+	"github.com/versenilvis/iris/commands/core"
 )
 
 // setupGitRepo creates a real git repo in a temp dir with:
@@ -188,7 +188,6 @@ func TestGitSuggestions(t *testing.T) {
 		}
 	})
 
-
 	t.Run("branch with slash is suggested correctly", func(t *testing.T) {
 		res := core.Lookup("git checkout ")
 		found := false
@@ -204,13 +203,14 @@ func TestGitSuggestions(t *testing.T) {
 
 	t.Run("remote branches suggested for push", func(t *testing.T) {
 		res := core.Lookup("git push origin ")
-		cmdStr := ""
+		var cmdStr strings.Builder
 		for _, r := range res {
-			cmdStr += r.Cmd + " "
+			cmdStr.WriteString(r.Cmd)
+			cmdStr.WriteByte(' ')
 		}
 		// should have at least dev or main from branch list
-		if !strings.Contains(cmdStr, "dev") && !strings.Contains(cmdStr, "main") {
-			t.Errorf("git push origin should suggest local branches, got: %s", cmdStr)
+		if !strings.Contains(cmdStr.String(), "dev") && !strings.Contains(cmdStr.String(), "main") {
+			t.Errorf("git push origin should suggest local branches, got: %s", cmdStr.String())
 		}
 	})
 
@@ -226,8 +226,8 @@ func TestGitSuggestions(t *testing.T) {
 		res := core.Lookup("git checkout ")
 		for _, r := range res {
 			// the suggestion should not contain the active branch as a standalone word
-			parts := strings.Fields(r.Cmd)
-			for _, p := range parts {
+			parts := strings.FieldsSeq(r.Cmd)
+			for p := range parts {
 				if p == activeBranch {
 					t.Errorf("git checkout should not suggest active branch '%s', got: %s", activeBranch, r.Cmd)
 				}
@@ -365,8 +365,8 @@ func TestGitSuggestions(t *testing.T) {
 
 		res := core.Lookup("git -c core.pager=cat checkout ")
 		for _, r := range res {
-			parts := strings.Fields(r.Cmd)
-			for _, p := range parts {
+			parts := strings.FieldsSeq(r.Cmd)
+			for p := range parts {
 				if p == activeBranch {
 					t.Errorf("git -c core.pager=cat checkout should not suggest active branch '%s', got: %s", activeBranch, r.Cmd)
 				}
