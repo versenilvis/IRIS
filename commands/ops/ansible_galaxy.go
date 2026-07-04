@@ -1,0 +1,66 @@
+package ops
+
+import (
+	"github.com/versenilvis/iris/commands/core"
+)
+
+func init() {
+	core.Register(&core.Spec{
+		Name:        "ansible-galaxy",
+		Description: "The Galaxy API server URL",
+		Subcommands: []core.Subcommand{
+			{Name: "collection", Description: "Operate on collections"},
+			{Name: "download", Description: "Download collections"},
+			{Name: "init", Description: "Initialize collections"},
+			{Name: "collection_name", Description: "Name of the collection"},
+			{Name: "build", Description: "Build collections"},
+			{Name: "publish", Description: "Publish collections"},
+			{Name: "collection_path", Description: "The path to the collection tarball to publish"},
+			{Name: "list", Description: "List collections"},
+			{Name: "verify", Description: "Verify collections"},
+			{Name: "role", Description: "Operate on roles"},
+			{Name: "role_name", Description: "Name of the role"},
+			{Name: "remove", Description: "Remove roles"},
+			{Name: "search", Description: "Search roles"},
+			{Name: "searchterm", Description: "Search terms"},
+			{Name: "import", Description: "Import roles"},
+			{Name: "github_user", Description: "GitHub username"},
+			{Name: "github_repo", Description: "GitHub repository"},
+			{Name: "setup", Description: "Set up roles"},
+			{Name: "info", Description: "Role information"},
+			{Name: "install", Description: "Install roles"},
+		},
+		Options: []core.Option{
+			{Name: "--server", Description: "The Galaxy API server URL"},
+			{Name: "--token", Description: "Ignore SSL certificate validation errors"},
+			{Name: "--clear-response-cache", Description: "Clear the existing server response cache"},
+			{Name: "--no-cache", Description: "Do not use the server response cache"},
+			{Name: "--no-deps", Description: "Don't download collection(s) listed as dependencies"},
+			{Name: "--download-path", Description: "The directory to download the collections to"},
+			{Name: "--requirements-file", Description: "A file containing a list of collections to be downloaded"},
+			{Name: "--pre", Description: "Include pre-release versions"},
+			{Name: "--force", Description: "Force overwriting an existing role or collection"},
+			{Name: "--init-path", Description: "The path in which the skeleton collection will be created"},
+			{Name: "--collection-skeleton", Description: "The path to a collection skeleton that the new collection should be based upon"},
+			{Name: "--output-path", Description: "The path in which the collection is built to"},
+			{Name: "--no-wait", Description: "Don't wait for import validation results"},
+			{Name: "--import-timeout", Description: "The time to wait for the collection import process to finish"},
+			{Name: "--collections-path", Description: "Format to display the list of collections in"},
+			{Name: "--offline", Description: "Don't query the galaxy API when creating roles"},
+			{Name: "--role-skeleton", Description: "The path in which the skeleton role will be created"},
+			{Name: "--type", Description: "Initialize using an alternate role type"},
+			{Name: "--roles-path", Description: "The path to the directory containing your roles"},
+			{Name: "--platforms", Description: "List of OS platforms to filter by"},
+			{Name: "--galaxy-tags", Description: "List of Galaxy tags to filter by"},
+			{Name: "--author", Description: "GitHub username"},
+			{Name: "--branch", Description: "The name the role should have, if different than the repo name"},
+			{Name: "--status", Description: "The path to the directory containing your roles"},
+			{Name: "--remove", Description: "List all of your integrations"},
+			{Name: "--force-with-deps", Description: "Force overwriting an existing role and its dependencies"},
+			{Name: "--keep-scm-meta", Description: "Use tar instead of the scm archive option when packaging the role"},
+			{Name: "--help", Description: "Show help and exit"},
+			{Name: "--verbose", Description: "Verbose mode (-vvv for more, -vvvv to enable connection debugging)"},
+			{Name: "-v", Description: "Verbose mode (-vvv for more, -vvvv to enable connection debugging)"},
+		},
+	})
+}

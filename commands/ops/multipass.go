@@ -1,0 +1,66 @@
+package ops
+
+import (
+	"github.com/versenilvis/iris/commands/core"
+)
+
+func init() {
+	core.Register(&core.Spec{
+		Name:        "multipass",
+		Description: "Displays help on commandline options",
+		Subcommands: []core.Subcommand{
+			{Name: "alias", Description: "Create an alias"},
+			{Name: "definition", Description: "Alias definition in the form <instance>:<command>"},
+			{Name: "aliases", Description: "List available aliases"},
+			{Name: "delete", Description: "Delete instances"},
+			{Name: "exec", Description: "Run a command on an instance"},
+			{Name: "name", Description: "Name of the instance to run the command on"},
+			{Name: "command", Description: "Command to execute on the instance"},
+			{Name: "find", Description: "Display available images to create instances from"},
+			{Name: "get", Description: "Get a configuration setting"},
+			{Name: "key", Description: "Path to the setting whose configured value should be obtained"},
+			{Name: "help", Description: "Display help about a command"},
+			{Name: "info", Description: "Display information about instances"},
+			{Name: "launch", Description: "Create and start an Ubuntu instance"},
+			{Name: "list", Description: "List all available instances"},
+			{Name: "mount", Description: "Mount a local directory in the instance"},
+			{Name: "source", Description: "Path to the local directory to mount"},
+			{Name: "networks", Description: "List all available networks interfaces"},
+			{Name: "purge", Description: "Purge all deleted instances permanently"},
+			{Name: "recover", Description: "Recover deleted instances"},
+			{Name: "restart", Description: "Restart instances"},
+			{Name: "set", Description: "Set a configuration setting"},
+			{Name: "key=value", Description: "A key-value pair. The key specifies a path to"},
+			{Name: "shell", Description: "Open a shell on a running instance"},
+			{Name: "start", Description: "Start instances"},
+			{Name: "stop", Description: "Stop running instances"},
+			{Name: "suspend", Description: "Suspend running instances"},
+			{Name: "transfer", Description: "Transfer files between the host and instances"},
+			{Name: "destination", Description: "The destination path, prefixed with <name:> for paths inside"},
+			{Name: "umount", Description: "Unmount a directory from an instance"},
+			{Name: "unalias", Description: "Remove an alias"},
+			{Name: "version", Description: "Show version details"},
+		},
+		Options: []core.Option{
+			{Name: "-h", Description: "Displays help on commandline options"},
+			{Name: "--help-all", Description: "Displays help including Qt specific options"},
+			{Name: "-v", Description: "Increase logging verbosity. Repeat the 'v' in the short"},
+			{Name: "--format", Description: "Output list in the requested format."},
+			{Name: "--timeout", Description: "Maximum time, in seconds, to wait for the command to"},
+			{Name: "--all", Description: "Delete all instances"},
+			{Name: "-p", Description: "Purge instances immediately"},
+			{Name: "--show-unsupported", Description: "Show unsupported cloud images as well"},
+			{Name: "--raw", Description: "Output in raw format. For now, this affects only the"},
+			{Name: "-c", Description: "Number of CPUs to allocate. Minimum: 1, default: 1"},
+			{Name: "-d", Description: "Disk space to allocate. Positive integers, in bytes, or"},
+			{Name: "-m", Description: "Amount of memory to allocate. Positive integers, in"},
+			{Name: "-n", Description: "Name for the instance. If it is 'primary' (the"},
+			{Name: "--cloud-init", Description: "Path to a user-data cloud-init configuration, or '-' for"},
+			{Name: "--network", Description: "Add a network interface to the instance, where <spec> is"},
+			{Name: "--bridged", Description: "Adds one `--network bridged` network"},
+			{Name: "-g", Description: "A mapping of group IDs for use in the mount."},
+			{Name: "-u", Description: "A mapping of user IDs for use in the mount."},
+			{Name: "-t", Description: "Time from now, in minutes, to delay shutdown of the instance"},
+		},
+	})
+}

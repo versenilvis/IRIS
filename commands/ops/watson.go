@@ -1,0 +1,67 @@
+package ops
+
+import (
+	"github.com/versenilvis/iris/commands/core"
+)
+
+func init() {
+	core.Register(&core.Spec{
+		Name:        "watson",
+		Description: "A wonderful CLI to track your time",
+		Subcommands: []core.Subcommand{
+			{Name: "add", Description: "Add time to a project with tag(s) that was not tracked live"},
+			{Name: "DATETIME", Description: "The start time. Ex: 2022-03-04 12:00:00"},
+			{Name: "aggregate", Description: "Display a report of the time spent on each project aggregated by day"},
+			{Name: "cancel", Description: "Cancel the last call to the start command. The time will not be recorded"},
+			{Name: "config", Description: "Get and set configuration options"},
+			{Name: "backend.url", Description: "This is the API root url of your repository, e.g. https://my.server.com/api/"},
+			{Name: "options.stop_on_start", Description: "If true, starting a new project will stop running projects. Default false"},
+			{Name: "edit", Description: "Edit a frame"},
+			{Name: "frames", Description: "Display the list of all frame IDs"},
+			{Name: "help", Description: "Display help information"},
+			{Name: "log", Description: "Display each recorded session during the given timespan"},
+			{Name: "projects", Description: "Display the list of all the existing projects"},
+			{Name: "rename", Description: "Rename a project or tag"},
+			{Name: "type", Description: "Project or tag"},
+			{Name: "report", Description: "Display a report of the time spent on each project"},
+			{Name: "restart", Description: "Restart monitoring time for a previously stopped project"},
+			{Name: "status", Description: "Display when the current project was started and the time spent since"},
+			{Name: "stop", Description: "Stop monitoring time for the current project"},
+			{Name: "sync", Description: "Get the frames from the server and push the new ones"},
+			{Name: "tags", Description: "Display the list of all the tags"},
+		},
+		Options: []core.Option{
+			{Name: "--from", Description: "Date and time of start of tracked activity"},
+			{Name: "--to", Description: "Date and time of end of tracked activity"},
+			{Name: "--confirm-new-project", Description: "Confirm creation of new tag"},
+			{Name: "--current", Description: "Include currently running frame in report"},
+			{Name: "--no-current", Description: "Don't include currently running frame in report"},
+			{Name: "--project", Description: "Format output in JSON instead of plain text"},
+			{Name: "--csv", Description: "Format output in CSV instead of plain text"},
+			{Name: "--pager", Description: "View output through a pager"},
+			{Name: "--no-pager", Description: "Don't view output through a pager"},
+			{Name: "--edit", Description: "Edit the configuration file with an editor"},
+			{Name: "--confirm-new-tag", Description: "Confirm creation of new tag"},
+			{Name: "--reverse", Description: "Reverse the order of the days in output"},
+			{Name: "--no-reverse", Description: "Don't Reverse the order of the days in output"},
+			{Name: "--year", Description: "Reports activity for the current year"},
+			{Name: "--month", Description: "Reports activity for the current month"},
+			{Name: "--luna", Description: "Reports activity for the current moon cycle"},
+			{Name: "--week", Description: "Reports activity for the current week"},
+			{Name: "--day", Description: "Reports activity for the current day"},
+			{Name: "--all", Description: "Reports all activities"},
+			{Name: "-f", Description: "If specified, then the merge will automatically be performed"},
+			{Name: "--at", Description: "Start frame at this time. Must be in (YYYY-MM-DDT)?HH:MM(:SS)? format"},
+			{Name: "--stop", Description: "Stop an already running project"},
+			{Name: "--no-stop", Description: "Don't stop an already running project"},
+			{Name: "--gap", Description: "Leave gap between end time of previous project and start time of the current"},
+			{Name: "--no-gap", Description: "Confirm addition of new project"},
+			{Name: "--tags", Description: "Only show tags"},
+			{Name: "--elapsed", Description: "Only show time elapsed"},
+			{Name: "--help", Description: "Show help for watson"},
+			{Name: "--version", Description: "Show the version for watson"},
+			{Name: "--color", Description: "Color output"},
+			{Name: "--no-color", Description: "No color output"},
+		},
+	})
+}

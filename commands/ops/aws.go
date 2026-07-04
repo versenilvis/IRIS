@@ -1,0 +1,67 @@
+package ops
+
+import (
+	"github.com/versenilvis/iris/commands/core"
+)
+
+func init() {
+	core.Register(&core.Spec{
+		Name:        "aws",
+		Description: "Use a specific profile from your credential file",
+		Subcommands: []core.Subcommand{
+			{Name: "account", Description: "Operations for Amazon Web Services Account Management"},
+			{Name: "amplifybackend", Description: "AWS Amplify Admin API"},
+			{Name: "apigatewayv2", Description: "Amazon API Gateway V2"},
+			{Name: "artifact", Description: "This reference provides descriptions of the low-level AWS Artifact Service API"},
+			{Name: "bedrock-agent", Description: "Describes the API operations for creating and managing Amazon Bedrock agents"},
+			{Name: "bedrock-agent-runtime", Description: "Contains APIs related to model invocation and querying of knowledge bases"},
+			{Name: "bedrock-data-automation", Description: "Amazon Bedrock Keystone Build"},
+			{Name: "bedrock-data-automation-runtime", Description: "Amazon Bedrock Keystone Runtime"},
+			{Name: "bedrock-runtime", Description: "Describes the API operations for running inference using Amazon Bedrock models"},
+			{Name: "cloudhsmv2", Description: "For more information about CloudHSM, see CloudHSM and the  CloudHSM User Guide"},
+			{Name: "connectcampaigns", Description: "Provide APIs to create and manage Amazon Connect Campaigns"},
+			{Name: "connectcampaignsv2", Description: "Provide APIs to create and manage Amazon Connect Campaigns"},
+			{Name: "drs", Description: "AWS Elastic Disaster Recovery Service"},
+			{Name: "elastic-inference", Description: "Amazon Elastic Inference is no longer available.   Elastic Inference public APIs"},
+			{Name: "elastictranscoder", Description: "AWS Elastic Transcoder Service The AWS Elastic Transcoder Service"},
+			{Name: "finspace-data", Description: "The FinSpace APIs let you take actions inside the FinSpace"},
+			{Name: "forecast", Description: "Provides APIs for creating and managing Amazon Forecast resources"},
+			{Name: "forecastquery", Description: "Provides APIs for creating and managing Amazon Forecast resources"},
+			{Name: "glue", Description: "Glue Defines the public endpoint for the Glue service"},
+			{Name: "iot1click-projects", Description: "The AWS IoT 1-Click Projects API Reference"},
+			{Name: "kafka", Description: "The operations for managing an Amazon MSK cluster"},
+			{Name: "kendra", Description: "Amazon Kendra is a service for indexing large document sets"},
+			{Name: "kinesis-video-webrtc-storage", Description: "Webrtc"},
+			{Name: "lakeformation", Description: "Lake Formation Defines the public endpoint for the Lake Formation service"},
+			{Name: "machinelearning", Description: "Definition of the public APIs exposed by Amazon Machine Learning"},
+			{Name: "macie2", Description: "Amazon Macie"},
+			{Name: "marketplacecommerceanalytics", Description: "Provides AWS Marketplace business intelligence data on-demand"},
+			{Name: "mediaconnect", Description: "API for AWS Elemental MediaConnect"},
+			{Name: "mediaconvert", Description: "AWS Elemental MediaConvert"},
+			{Name: "medialive", Description: "API for AWS Elemental MediaLive"},
+			{Name: "mediapackage", Description: "AWS Elemental MediaPackage"},
+			{Name: "mediapackage-vod", Description: "AWS Elemental MediaPackage VOD"},
+			{Name: "mgn", Description: "The Application Migration Service service"},
+			{Name: "mturk", Description: "Amazon Mechanical Turk API Reference"},
+			{Name: "pinpoint", Description: "Doc Engage API - Amazon Pinpoint API"},
+			{Name: "pinpoint-sms-voice", Description: "Pinpoint SMS and Voice Messaging public facing APIs"},
+			{Name: "qldb", Description: "The resource management API for Amazon QLDB"},
+			{Name: "resourcegroupstaggingapi", Description: "Resource Groups Tagging API"},
+			{Name: "robomaker", Description: "This section provides documentation for the AWS RoboMaker API operations"},
+			{Name: "route53-recovery-readiness", Description: "Recovery readiness"},
+			{Name: "s3outposts", Description: "Amazon S3 on Outposts provides access to S3 on Outposts operations"},
+			{Name: "sagemaker-edge", Description: "SageMaker Edge Manager dataplane service for communicating with active agents"},
+			{Name: "sagemaker-geospatial", Description: "Provides APIs for creating and managing SageMaker geospatial resources"},
+			{Name: "sagemaker-runtime", Description: "The Amazon SageMaker runtime API"},
+			{Name: "schemas", Description: "Amazon EventBridge Schema Registry"},
+			{Name: "sms-voice", Description: "Pinpoint SMS and Voice Messaging public facing APIs"},
+			{Name: "snow-device-management", Description: "Amazon Web Services Snow Device Management documentation"},
+			{Name: "timestream-query", Description: "Amazon Timestream Query"},
+			{Name: "trustedadvisor", Description: "TrustedAdvisor Public API"},
+			{Name: "runtime.sagemaker", Description: "The Amazon SageMaker runtime API"},
+		},
+		Options: []core.Option{
+			{Name: "--profile", Description: "Use a specific profile from your credential file"},
+		},
+	})
+}
