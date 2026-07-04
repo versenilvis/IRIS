@@ -95,8 +95,8 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 					}
 				}
 			} else if shellName == "fish" {
-				if strings.HasPrefix(line, "- cmd: ") {
-					cmd = strings.TrimPrefix(line, "- cmd: ")
+				if after, ok := strings.CutPrefix(line, "- cmd: "); ok {
+					cmd = after
 				} else {
 					continue
 				}
@@ -128,10 +128,7 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 
 	if query == "" {
 		var results []HistResult
-		limit := 100
-		if len(historyCache) < limit {
-			limit = len(historyCache)
-		}
+		limit := min(len(historyCache), 100)
 
 		for i := 0; i < limit; i++ {
 			cmd := historyCache[i]
@@ -251,11 +248,11 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 		if tI != tJ {
 			return tI < tJ
 		}
-		
+
 		if tI == 4 && results[i].FuzzyScore != results[j].FuzzyScore {
 			return results[i].FuzzyScore > results[j].FuzzyScore
 		}
-		
+
 		return results[i].ID > results[j].ID
 	})
 

@@ -72,10 +72,7 @@ func ComputeCursorCol(data []byte) int {
 							col = 0
 						}
 					case 'G':
-						col = getParam(0, 1) - 1
-						if col < 0 {
-							col = 0
-						}
+						col = max(getParam(0, 1)-1, 0)
 					}
 					i = j + 1
 					continue
@@ -313,7 +310,6 @@ func (o *Overlay) SetHistoryList(items []core.Suggestion, startAtBottom bool) st
 	return ""
 }
 
-
 func fixedWidth(s string, width int) string {
 	if width <= 0 {
 		return ""
@@ -365,10 +361,7 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool) string {
 	}
 
 	ghostWidth := lipgloss.Width(ghostText)
-	padLen := o.LastGhostLen - ghostWidth
-	if padLen < 0 {
-		padLen = 0
-	}
+	padLen := max(o.LastGhostLen-ghostWidth, 0)
 	if o.LastGhostLen > 0 {
 		padLen += 4
 	}
@@ -410,10 +403,7 @@ func renderMatchedTitle(title, typed string, selected bool, w int) string {
 
 	typedRunes := []rune(typed)
 	displayRunes := []rune(display)
-	matchLen := len(typedRunes)
-	if matchLen > len(displayRunes) {
-		matchLen = len(displayRunes)
-	}
+	matchLen := min(len(typedRunes), len(displayRunes))
 	return match.Render(string(displayRunes[:matchLen])) + base.Render(string(displayRunes[matchLen:]))
 }
 
@@ -453,10 +443,7 @@ func (o *Overlay) draw() string {
 
 	s.WriteString("\0337")
 
-	windowSize := maxItems
-	if len(o.Items) < windowSize {
-		windowSize = len(o.Items)
-	}
+	windowSize := min(len(o.Items), maxItems)
 
 	scrolloffUp := 1
 	if windowSize <= 3 {
@@ -598,10 +585,7 @@ func (o *Overlay) draw() string {
 				}
 				tag := boxStyle.Render(" alias ")
 				tw := lipgloss.Width(tag)
-				rem := descW - tw - 1
-				if rem < 0 {
-					rem = 0
-				}
+				rem := max(descW-tw-1, 0)
 				desc = tag + bg.Render(" ") + bg.Foreground(descColor).Render(fixedWidth(it.Desc, rem))
 			case "history":
 				boxStyle := lipgloss.NewStyle().Background(lipgloss.Color("#1a2d36")).Foreground(lipgloss.Color("#61ffca"))
@@ -610,10 +594,7 @@ func (o *Overlay) draw() string {
 				}
 				tag := boxStyle.Render(" history ")
 				tw := lipgloss.Width(tag)
-				rem := descW - tw
-				if rem < 0 {
-					rem = 0
-				}
+				rem := max(descW-tw, 0)
 				desc = tag + bg.Render(strings.Repeat(" ", rem))
 			case "system":
 				boxStyle := lipgloss.NewStyle().Background(lipgloss.Color("#1e1d28")).Foreground(lipgloss.Color("#a277ff"))
@@ -622,10 +603,7 @@ func (o *Overlay) draw() string {
 				}
 				tag := boxStyle.Render(" system ")
 				tw := lipgloss.Width(tag)
-				rem := descW - tw
-				if rem < 0 {
-					rem = 0
-				}
+				rem := max(descW-tw, 0)
 				desc = tag + bg.Render(strings.Repeat(" ", rem))
 			default:
 				desc = bg.Foreground(descColor).Render(fixedWidth(it.Desc, descW))
@@ -698,7 +676,7 @@ func (o *Overlay) Clear() string {
 	s.WriteString("\033[?7l")
 	s.WriteString("\0337")
 
-	for i := 0; i < maxItems+2; i++ {
+	for i := range maxItems + 2 {
 		s.WriteString("\0338")
 		fmt.Fprintf(&s, "\033[%dB", i+1)
 		s.WriteString("\r\033[2K")
@@ -736,7 +714,7 @@ func (o *Overlay) ClearAndDisable() string {
 
 	s.WriteString("\0337")
 
-	for i := 0; i < maxItems+2; i++ {
+	for i := range maxItems + 2 {
 		s.WriteString("\0338")
 		fmt.Fprintf(&s, "\033[%dB", i+1)
 		s.WriteString("\r\033[2K")

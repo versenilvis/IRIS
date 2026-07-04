@@ -22,7 +22,7 @@ func dockerContainerGenerator(tokens []string, _ string, _ string) []core.Sugges
 	}
 
 	var results []core.Suggestion
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
@@ -45,7 +45,7 @@ func dockerRunningContainerGenerator(tokens []string, _ string, _ string) []core
 	}
 
 	var results []core.Suggestion
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
@@ -69,7 +69,7 @@ func dockerImageGenerator(tokens []string, _ string, _ string) []core.Suggestion
 
 	seen := make(map[string]bool)
 	var results []core.Suggestion
-	for _, line := range strings.Split(string(out), "\n") {
+	for line := range strings.SplitSeq(string(out), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || line == "<none>:<none>" || seen[line] {
 			continue

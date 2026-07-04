@@ -34,10 +34,10 @@ func init() {
 			lastComment := ""
 			for scanner.Scan() {
 				line := strings.TrimSpace(scanner.Text())
-				
+
 				// Handle comments
-				if strings.HasPrefix(line, "#") {
-					lastComment = strings.TrimSpace(strings.TrimPrefix(line, "#"))
+				if after, ok := strings.CutPrefix(line, "#"); ok {
+					lastComment = strings.TrimSpace(after)
 					continue
 				}
 
@@ -55,7 +55,7 @@ func init() {
 					seen[recipe] = true
 
 					cmd := recipe
-					
+
 					desc := "just recipe"
 					if lastComment != "" {
 						desc = lastComment

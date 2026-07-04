@@ -51,10 +51,7 @@ func ZoxideGenerator() core.GeneratorFunc {
 			home, _ := os.UserHomeDir()
 
 			if fullQuery == "" {
-				limit := 20
-				if len(dirs) < limit {
-					limit = len(dirs)
-				}
+				limit := min(len(dirs), 20)
 				for i := 0; i < limit; i++ {
 					path := dirs[i]
 					display := strings.Replace(path, home, "~", 1)

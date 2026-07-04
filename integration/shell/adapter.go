@@ -102,8 +102,8 @@ func ScanPosixAliases(files []string) map[string]string {
 
 func ParseAliases(data string) map[string]string {
 	aliases := make(map[string]string)
-	lines := strings.Split(data, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(data, "\n")
+	for line := range lines {
 		line = strings.TrimSpace(line)
 		if !strings.HasPrefix(line, "alias ") {
 			continue
@@ -115,12 +115,12 @@ func ParseAliases(data string) map[string]string {
 
 		pairs := SplitAliasTokens(body)
 		for _, pair := range pairs {
-			eqIdx := strings.IndexByte(pair, '=')
-			if eqIdx < 0 {
+			before, after, ok := strings.Cut(pair, "=")
+			if !ok {
 				continue
 			}
-			key := strings.TrimSpace(pair[:eqIdx])
-			val := strings.Trim(strings.TrimSpace(pair[eqIdx+1:]), `"'`)
+			key := strings.TrimSpace(before)
+			val := strings.Trim(strings.TrimSpace(after), `"'`)
 			if key != "" && val != "" {
 				aliases[key] = val
 			}

@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
+	_ "github.com/versenilvis/iris/commands"
 	"github.com/versenilvis/iris/commands/core"
 	"github.com/versenilvis/iris/commands/js"
-	_ "github.com/versenilvis/iris/commands"
 )
 
 func TestNpmScriptGenerator(t *testing.T) {
@@ -20,11 +20,11 @@ func TestNpmScriptGenerator(t *testing.T) {
 		pkg := map[string]any{
 			"name": "test-app",
 			"scripts": map[string]string{
-				"dev":      "vite",
-				"build":    "vite build",
-				"test":     "vitest",
-				"lint":     "eslint .",
-				"preview":  "vite preview",
+				"dev":       "vite",
+				"build":     "vite build",
+				"test":      "vitest",
+				"lint":      "eslint .",
+				"preview":   "vite preview",
 				"typecheck": "tsc --noEmit",
 			},
 		}
@@ -173,7 +173,7 @@ func sshHostGeneratorFromPath(configPath string) []core.Suggestion {
 	_ = scanner
 
 	data, _ := os.ReadFile(configPath)
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		line = strings.TrimSpace(line)
 		if !strings.HasPrefix(strings.ToLower(line), "host ") {
 			continue

@@ -1,6 +1,8 @@
 package core
 
 import (
+	"maps"
+	"slices"
 	"strings"
 	"sync"
 
@@ -24,9 +26,7 @@ func GetAliasesCopy() map[string]string {
 	shellAliasesMu.RLock()
 	defer shellAliasesMu.RUnlock()
 	cp := make(map[string]string, len(ShellAliases))
-	for k, v := range ShellAliases {
-		cp[k] = v
-	}
+	maps.Copy(cp, ShellAliases)
 	return cp
 }
 
@@ -123,11 +123,8 @@ func Lookup(input string) []Suggestion {
 		for _, sub := range currentSubs {
 			match := sub.Name == tok
 			if !match {
-				for _, a := range sub.Aliases {
-					if a == tok {
-						match = true
-						break
-					}
+				if slices.Contains(sub.Aliases, tok) {
+					match = true
 				}
 			}
 
@@ -209,8 +206,8 @@ func Lookup(input string) []Suggestion {
 				suggested = "\"" + suggested + "\""
 			}
 
-			// if the suggestion is a full path that includes 
-			// words already in the command line (multi-word support), we replace 
+			// if the suggestion is a full path that includes
+			// words already in the command line (multi-word support), we replace
 			// the entire argument part by using prefix only
 			finalCmd := ""
 			if len(tokens) > depth+1 && strings.HasPrefix(g.Cmd, tokens[depth]) {
