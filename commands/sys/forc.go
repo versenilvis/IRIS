@@ -1,0 +1,67 @@
+package sys
+
+import (
+	"github.com/versenilvis/iris/commands/core"
+)
+
+func init() {
+	core.Register(&core.Spec{
+		Name:        "forc",
+		Description: "Fuel Orchestrator",
+		Subcommands: []core.Subcommand{
+			{Name: "addr2line", Description: "Show location and context of an opcode address in its source file"},
+			{Name: "build", Description: "Compile the current or target project"},
+			{Name: "check", Description: "Check the current or target project and all of its dependencies for errors"},
+			{Name: "completions", Description: "Generate tab-completion scripts for your shell"},
+			{Name: "bash", Description: "Bourne Again SHell (bash)"},
+			{Name: "elvish", Description: "Elvish shell"},
+			{Name: "fish", Description: "Friendly Interactive SHell (fish)"},
+			{Name: "power-shell", Description: "PowerShell"},
+			{Name: "zsh", Description: "Z SHell (zsh)"},
+			{Name: "fig", Description: "Fig"},
+			{Name: "new", Description: "Create a new Forc project at `<path>`"},
+			{Name: "init", Description: "Create a new Forc project in an existing directory"},
+			{Name: "parse-bytecode", Description: "Parse bytecode file into a debug format"},
+			{Name: "test", Description: "Run the Sway unit tests for the current project"},
+			{Name: "update", Description: "Update dependencies in the Forc dependencies directory"},
+			{Name: "plugins", Description: "List all forc plugins"},
+			{Name: "template", Description: "Create a new Forc project from a git template"},
+			{Name: "run", Description: "Run script project. Crafts a script transaction then sends it to a running node"},
+			{Name: "crypto", Description: "Forc plugin for hashing arbitrary data"},
+			{Name: "keccak256", Description: "Hashes the argument or file with this algorithm"},
+			{Name: "sha256", Description: "Hashes the argument or file with this algorithm"},
+			{Name: "address", Description: "Converts an address to another format"},
+			{Name: "get-public-key", Description: "Get the public key from a message and its signature"},
+			{Name: "new-key", Description: "Creates a new key for use with fuel-core"},
+			{Name: "parse-secret", Description: "Parses a private key to view the associated public key"},
+			{Name: "help", Description: "Print this message or the help of the given subcommand(s)"},
+			{Name: "doc", Description: "Forc plugin for building a Sway package's documentation"},
+			{Name: "fmt", Description: "Forc plugin for running the Sway code formatter"},
+			{Name: "submit", Description: "A `forc` plugin for interacting with a Fuel node"},
+			{Name: "deploy", Description: "Build output file options"},
+		},
+		Options: []core.Option{
+			{Name: "-S", Description: "Where to search for the project root"},
+			{Name: "-g", Description: "Source file mapping in JSON format"},
+			{Name: "-c", Description: "How many lines of context to show"},
+			{Name: "-i", Description: "Opcode index"},
+			{Name: "-h", Description: "Print help information"},
+			{Name: "--help", Description: "Compile the current or target project"},
+			{Name: "-p", Description: "Path to the project, if not specified, current working directory will be used"},
+			{Name: "-t", Description: "Terse mode. Limited warning and error output"},
+			{Name: "-o", Description: "If set, outputs a binary file representing the script bytes"},
+			{Name: "-T", Description: "Specify shell to enable tab-completion for"},
+			{Name: "--target", Description: "Bourne Again SHell (bash)"},
+			{Name: "-r", Description: "Pretty-print the logs emiited from tests"},
+			{Name: "-l", Description: "Print `Log` and `LogData` receipts for tests"},
+			{Name: "-d", Description: "Dependency to be updated. If not set, all dependencies will be updated"},
+			{Name: "-u", Description: "The template url, should be a git repo"},
+			{Name: "-k", Description: "Key type to generate. It can either be `block-production` or `peering`"},
+			{Name: "--key-type", Description: "Print help information"},
+			{Name: "-s", Description: "Silent mode. Don't output any warnings or errors to the command line"},
+			{Name: "-f", Description: "Print help information"},
+			{Name: "-v", Description: "Use verbose output"},
+			{Name: "-L", Description: "Set the log level"},
+		},
+	})
+}
