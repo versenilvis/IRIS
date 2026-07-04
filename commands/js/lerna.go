@@ -21,7 +21,7 @@ func init() {
 			{Name: "create", Description: "Create a new lerna-managed package"},
 		},
 		Options: []core.Option{
-			{Name: "--npm-client", Description: "The exececutable to run the script with"},
+			{Name: "--npm-client", Description: "The executable to run the script with"},
 			{Name: "--concurrency", Description: "Set a max buffer length for each underlying process call"},
 			{Name: "--no-progress", Description: "Disable progress bars. This is always the case in a CI environment"},
 			{Name: "--no-sort", Description: "Fail immediately if a cycle is found (in bootstrap, exec, publish or run)"},

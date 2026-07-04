@@ -33,7 +33,7 @@ func init() {
 			{Name: "--verbosity", Description: "Verbosity: silent, error, warn, info, debug"},
 			{Name: "--verbose", Description: "Specialized GHC variant, e.g. integersimple (incompatible with --system-ghc)"},
 			{Name: "--ghc-build", Description: "Specialized GHC build, e.g. 'gmp4' or 'standard' (usually auto-detected)"},
-			{Name: "--jobs", Description: "Number of concurrent jobs to run. Should be provied as ARGS"},
+			{Name: "--jobs", Description: "Number of concurrent jobs to run. Should be provided as ARGS"},
 			{Name: "--extra-include-dirs", Description: "Extra directories to check for C header files"},
 			{Name: "--extra-lib-dir", Description: "Extra directories to check for libraries"},
 			{Name: "--color", Description: "Specify when to use color in output"},

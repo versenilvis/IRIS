@@ -52,7 +52,7 @@ func init() {
 			{Name: "-o", Description: "If set, outputs a binary file representing the script bytes"},
 			{Name: "-T", Description: "Specify shell to enable tab-completion for"},
 			{Name: "--target", Description: "Bourne Again SHell (bash)"},
-			{Name: "-r", Description: "Pretty-print the logs emiited from tests"},
+			{Name: "-r", Description: "Pretty-print the logs emitted from tests"},
 			{Name: "-l", Description: "Print `Log` and `LogData` receipts for tests"},
 			{Name: "-d", Description: "Dependency to be updated. If not set, all dependencies will be updated"},
 			{Name: "-u", Description: "The template url, should be a git repo"},

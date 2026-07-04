@@ -12,7 +12,7 @@ func init() {
 			{Name: "publish", Description: "Copy all the files that should be published in remote NPM registry"},
 			{Name: "add", Description: "Copy the current version from the store to your project"},
 			{Name: "package", Description: "The package you want to add"},
-			{Name: "link", Description: "Alterative to 'add', instead using local '.yalc' as symlink source"},
+			{Name: "link", Description: "Alternative to 'add', instead using local '.yalc' as symlink source"},
 			{Name: "update", Description: "Update package(s)"},
 			{Name: "remove", Description: "Remove package info from 'package.json' & 'yalc.lock'"},
 			{Name: "clean", Description: "Unpublish a package published with yalc publish"},

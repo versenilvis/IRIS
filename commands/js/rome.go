@@ -29,7 +29,7 @@ func init() {
 			{Name: "--apply-unsafe", Description: "Apply safe and unsafe fixes"},
 			{Name: "--max-diagnostics", Description: "Cap the amount of diagnostics displayed"},
 			{Name: "--config-path", Description: "Set the filesystem path to the config dir of the rome.json file"},
-			{Name: "--verbose", Description: "Print additional verbose advices on diagnostics"},
+			{Name: "--verbose", Description: "Print additional verbose advice on diagnostics"},
 			{Name: "--formatter-enabled", Description: "Allow to enable or disable the formatter check"},
 			{Name: "--linter-enabled", Description: "Allow to enable or disable the linter check"},
 			{Name: "--organize-imports-enabled", Description: "Allow to enable or disable the organize imports"},

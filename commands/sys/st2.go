@@ -48,7 +48,7 @@ func init() {
 			{Name: "--include-metadata", Description: "Include metadata (timestamp, output type) with the output"},
 			{Name: "--prefix", Description: "Only return values with names starting with the provided prefix"},
 			{Name: "-d", Description: "Decrypt secrets and displays plain text"},
-			{Name: "--enrypted", Description: "Scope item is under. Example: 'user'"},
+			{Name: "--encrypted", Description: "Scope item is under. Example: 'user'"},
 			{Name: "--skip-dependencies", Description: "Skip dependencies"},
 			{Name: "--iftt", Description: "Show trigger and action in display list"},
 			{Name: "--enabled", Description: "Show enabled"},

@@ -87,7 +87,7 @@ func init() {
 			{Name: "--what", Description: "Which types of resources to remove"},
 			{Name: "--now", Description: "Start or stop unit after enabling or disabling it"},
 			{Name: "--dry-run", Description: "Only print what would be done"},
-			{Name: "-q", Description: "Supress output"},
+			{Name: "-q", Description: "Suppress output"},
 			{Name: "--wait", Description: "Do not wait until operation finished"},
 			{Name: "--no-wall", Description: "Don't send wall message before halt/power-off/reboot"},
 			{Name: "--no-reload", Description: "Don't reload daemon after en-/dis-abling unit files"},

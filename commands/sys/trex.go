@@ -28,7 +28,7 @@ func init() {
 			{Name: "--canary", Description: "Install from dev branch"},
 			{Name: "-w", Description: "Use reboot script alias protocol (rsap)"},
 			{Name: "-wv", Description: "Verbose output in --watch mode (rsap)"},
-			{Name: "--perms", Description: "Specify cli permisions"},
+			{Name: "--perms", Description: "Specify cli permissions"},
 			{Name: "-f", Description: "Update outdated dependencies"},
 			{Name: "-h", Description: "Print help info"},
 		},

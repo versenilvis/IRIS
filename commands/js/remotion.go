@@ -72,7 +72,7 @@ func init() {
 			{Name: "--concurrency-per-lambda", Description: "Concurrency with which each Lambda function should render"},
 			{Name: "--overwrite", Description: "Overwrite a video if it already exists in the S3 bucket"},
 			{Name: "--function-name", Description: "Name of the function that should be invoked"},
-			{Name: "--renderer-function-name", Description: "The time in milisecond that a delayRender() may take before it times out"},
+			{Name: "--renderer-function-name", Description: "The time in millisecond that a delayRender() may take before it times out"},
 			{Name: "--quality", Description: "Quality for rendered frames, JPEG only, 0-100"},
 			{Name: "--scale", Description: "Upscale or downscale or the dimensions of the video"},
 			{Name: "--codec", Description: "Video or audio codec"},

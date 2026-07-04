@@ -21,7 +21,7 @@ func init() {
 			{Name: "-e", Description: "Ignore all files & directories matching the pattern"},
 			{Name: "-i", Description: "Outputs Tokei in a specific format"},
 			{Name: "-s", Description: "Sort languages based on column"},
-			{Name: "-t", Description: "Filters output by language type, seperated by a comma. i.e. -t=Rust,Markdown"},
+			{Name: "-t", Description: "Filters output by language type, separated by a comma. i.e. -t=Rust,Markdown"},
 		},
 	})
 }
