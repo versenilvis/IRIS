@@ -1,14 +1,14 @@
 package git
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "git-cliff",
 		Description: "Increases the logging verbosity",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--verbose", Description: "Increases the logging verbosity"},
 			{Name: "--init", Description: "Writes the default configuration file to cliff.toml"},
 			{Name: "--latest", Description: "Processes the commits starting from the latest tag"},

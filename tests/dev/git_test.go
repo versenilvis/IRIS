@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	_ "github.com/versenilvis/iris/commands"
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 // setupGitRepo creates a real git repo in a temp dir with:
@@ -100,14 +100,14 @@ func TestGitSuggestions(t *testing.T) {
 	defer cleanup()
 
 	t.Run("git top-level", func(t *testing.T) {
-		res := core.Lookup("git ")
+		res := spec.Lookup("git ")
 		if len(res) < 10 {
 			t.Errorf("expected many git subcommands, got %d", len(res))
 		}
 	})
 
 	t.Run("tag -d shows tags", func(t *testing.T) {
-		res := core.Lookup("git tag -d ")
+		res := spec.Lookup("git tag -d ")
 		found := false
 		for _, r := range res {
 			if strings.Contains(r.Cmd, "v1.0") {
@@ -120,7 +120,7 @@ func TestGitSuggestions(t *testing.T) {
 	})
 
 	t.Run("push HEAD options", func(t *testing.T) {
-		res := core.Lookup("git push origin HEAD --")
+		res := spec.Lookup("git push origin HEAD --")
 		found := false
 		for _, r := range res {
 			if strings.Contains(r.Cmd, "--force") {
@@ -133,7 +133,7 @@ func TestGitSuggestions(t *testing.T) {
 	})
 
 	t.Run("push -u origin suggests branches", func(t *testing.T) {
-		res := core.Lookup("git push -u origin ")
+		res := spec.Lookup("git push -u origin ")
 		found := false
 		for _, r := range res {
 			if strings.Contains(r.Cmd, "dev") {
@@ -152,7 +152,7 @@ func TestGitSuggestions(t *testing.T) {
 			t.Skip("can't determine HEAD branch")
 		}
 		activeBranch := strings.TrimSpace(string(out))
-		res := core.Lookup("git push origin ")
+		res := spec.Lookup("git push origin ")
 		found := false
 		for _, r := range res {
 			parts := strings.Fields(r.Cmd)
@@ -173,7 +173,7 @@ func TestGitSuggestions(t *testing.T) {
 	})
 
 	t.Run("push origin no duplicate branches", func(t *testing.T) {
-		res := core.Lookup("git push origin ")
+		res := spec.Lookup("git push origin ")
 		seen := make(map[string]int)
 		for _, r := range res {
 			parts := strings.Fields(r.Cmd)
@@ -189,7 +189,7 @@ func TestGitSuggestions(t *testing.T) {
 	})
 
 	t.Run("branch with slash is suggested correctly", func(t *testing.T) {
-		res := core.Lookup("git checkout ")
+		res := spec.Lookup("git checkout ")
 		found := false
 		for _, r := range res {
 			if strings.Contains(r.Cmd, "feature/login") {
@@ -202,7 +202,7 @@ func TestGitSuggestions(t *testing.T) {
 	})
 
 	t.Run("remote branches suggested for push", func(t *testing.T) {
-		res := core.Lookup("git push origin ")
+		res := spec.Lookup("git push origin ")
 		var cmdStr strings.Builder
 		for _, r := range res {
 			cmdStr.WriteString(r.Cmd)
@@ -223,7 +223,7 @@ func TestGitSuggestions(t *testing.T) {
 		}
 		activeBranch := strings.TrimSpace(string(out))
 
-		res := core.Lookup("git checkout ")
+		res := spec.Lookup("git checkout ")
 		for _, r := range res {
 			// the suggestion should not contain the active branch as a standalone word
 			parts := strings.FieldsSeq(r.Cmd)
@@ -236,7 +236,7 @@ func TestGitSuggestions(t *testing.T) {
 	})
 
 	t.Run("checkout -b no suggest", func(t *testing.T) {
-		res := core.Lookup("git checkout -b ")
+		res := spec.Lookup("git checkout -b ")
 		for _, r := range res {
 			if strings.Contains(r.Cmd, "dev") {
 				t.Error("git checkout -b should not suggest existing branches")
@@ -245,7 +245,7 @@ func TestGitSuggestions(t *testing.T) {
 	})
 
 	t.Run("switch -c no suggest", func(t *testing.T) {
-		res := core.Lookup("git switch -c ")
+		res := spec.Lookup("git switch -c ")
 		for _, r := range res {
 			if strings.Contains(r.Cmd, "dev") {
 				t.Error("git switch -c should not suggest existing branches")
@@ -255,7 +255,7 @@ func TestGitSuggestions(t *testing.T) {
 
 	t.Run("stash variants suggest entries", func(t *testing.T) {
 		for _, cmd := range []string{"apply", "drop", "pop"} {
-			res := core.Lookup("git stash " + cmd + " ")
+			res := spec.Lookup("git stash " + cmd + " ")
 			found := false
 			for _, r := range res {
 				if strings.Contains(r.Cmd, "stash@{0}") {
@@ -270,7 +270,7 @@ func TestGitSuggestions(t *testing.T) {
 
 	t.Run("remote subcommands suggest remotes", func(t *testing.T) {
 		for _, cmd := range []string{"remove", "rename", "set-url"} {
-			res := core.Lookup("git remote " + cmd + " ")
+			res := spec.Lookup("git remote " + cmd + " ")
 			found := false
 			for _, r := range res {
 				// origin is our fake remote
@@ -288,12 +288,12 @@ func TestGitSuggestions(t *testing.T) {
 		emptyDir := t.TempDir()
 		_ = os.Chdir(emptyDir)
 		defer func() { _ = os.Chdir(tmp) }()
-		_ = core.Lookup("git status ")
+		_ = spec.Lookup("git status ")
 	})
 
 	t.Run("reset options", func(t *testing.T) {
-		_ = core.Lookup("git reset --soft origin/main ")
-		res := core.Lookup("git reset HEAD ")
+		_ = spec.Lookup("git reset --soft origin/main ")
+		res := spec.Lookup("git reset HEAD ")
 		found := false
 		for _, r := range res {
 			if strings.Contains(r.Cmd, "file.go") {
@@ -306,7 +306,7 @@ func TestGitSuggestions(t *testing.T) {
 	})
 
 	t.Run("show suggests tags and commits", func(t *testing.T) {
-		res := core.Lookup("git show ")
+		res := spec.Lookup("git show ")
 		foundTag := false
 		foundCommit := false
 		for _, r := range res {
@@ -331,7 +331,7 @@ func TestGitSuggestions(t *testing.T) {
 	})
 
 	t.Run("cherry-pick suggests commits", func(t *testing.T) {
-		res := core.Lookup("git cherry-pick ")
+		res := spec.Lookup("git cherry-pick ")
 		if len(res) == 0 {
 			t.Error("git cherry-pick should suggest commits")
 		}
@@ -349,7 +349,7 @@ func TestGitSuggestions(t *testing.T) {
 	})
 
 	t.Run("revert suggests commits", func(t *testing.T) {
-		res := core.Lookup("git revert ")
+		res := spec.Lookup("git revert ")
 		if len(res) == 0 {
 			t.Error("git revert should suggest commits")
 		}
@@ -363,7 +363,7 @@ func TestGitSuggestions(t *testing.T) {
 		}
 		activeBranch := strings.TrimSpace(string(out))
 
-		res := core.Lookup("git -c core.pager=cat checkout ")
+		res := spec.Lookup("git -c core.pager=cat checkout ")
 		for _, r := range res {
 			parts := strings.FieldsSeq(r.Cmd)
 			for p := range parts {

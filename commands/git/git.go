@@ -6,23 +6,23 @@ import (
 	"strings"
 	"time"
 
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
-func GitRemoteGenerator(tokens []string, _ string, _ string) []core.Suggestion {
+func GitRemoteGenerator(tokens []string, _ string, _ string) []spec.Suggestion {
 	return getGitResults(tokens, "remote")
 }
 
-func GitStashGenerator(tokens []string, _ string, _ string) []core.Suggestion {
+func GitStashGenerator(tokens []string, _ string, _ string) []spec.Suggestion {
 	return getGitResults(tokens, "stash", "list", "--format=%gd: %gs")
 }
 
-func GitTagGenerator(tokens []string, _ string, _ string) []core.Suggestion {
+func GitTagGenerator(tokens []string, _ string, _ string) []spec.Suggestion {
 	return getGitResults(tokens, "tag", "-l")
 }
 
-func GitCommitGenerator(tokens []string, _ string, _ string) []core.Suggestion {
-	cwd := core.GetCWD()
+func GitCommitGenerator(tokens []string, _ string, _ string) []spec.Suggestion {
+	cwd := spec.GetCWD()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -33,7 +33,7 @@ func GitCommitGenerator(tokens []string, _ string, _ string) []core.Suggestion {
 		return nil
 	}
 
-	var results []core.Suggestion
+	var results []spec.Suggestion
 	for line := range strings.SplitSeq(string(out), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
@@ -45,17 +45,17 @@ func GitCommitGenerator(tokens []string, _ string, _ string) []core.Suggestion {
 		if len(parts) == 2 {
 			desc = parts[1]
 		}
-		results = append(results, core.Suggestion{Cmd: hash, Desc: desc})
+		results = append(results, spec.Suggestion{Cmd: hash, Desc: desc})
 	}
 	return results
 }
 
-func getGitResults(tokens []string, args ...string) []core.Suggestion {
+func getGitResults(tokens []string, args ...string) []spec.Suggestion {
 	return getGitResultsFiltered(tokens, false, args...)
 }
 
-func getGitResultsFiltered(tokens []string, localOnly bool, args ...string) []core.Suggestion {
-	cwd := core.GetCWD()
+func getGitResultsFiltered(tokens []string, localOnly bool, args ...string) []spec.Suggestion {
+	cwd := spec.GetCWD()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -78,7 +78,7 @@ func getGitResultsFiltered(tokens []string, localOnly bool, args ...string) []co
 
 	seen := make(map[string]bool)
 	lines := strings.Split(string(out), "\n")
-	var results []core.Suggestion
+	var results []spec.Suggestion
 
 	// find the subcommand by skipping global flags that take arguments
 	subcommand := ""
@@ -146,7 +146,7 @@ func getGitResultsFiltered(tokens []string, localOnly bool, args ...string) []co
 			}
 		}
 
-		results = append(results, core.Suggestion{
+		results = append(results, spec.Suggestion{
 			Cmd:  suggestionCmd,
 			Desc: suggestionDesc,
 		})
@@ -166,7 +166,7 @@ func getGitResultsFiltered(tokens []string, localOnly bool, args ...string) []co
 }
 
 // GitBranchGenerator suggests git branches (local + remote, deduped)
-func GitBranchGenerator(tokens []string, _ string, _ string) []core.Suggestion {
+func GitBranchGenerator(tokens []string, _ string, _ string) []spec.Suggestion {
 	// check if we are in "create" mode (-b or -B or -c)
 	isCreateMode := false
 	for _, t := range tokens {
@@ -185,7 +185,7 @@ func GitBranchGenerator(tokens []string, _ string, _ string) []core.Suggestion {
 
 // gitLocalBranchGenerator is like GitBranchGenerator but only local branches
 // used for push/pull where remote tracking branches cause duplicates
-func gitLocalBranchGenerator(tokens []string, _ string, _ string) []core.Suggestion {
+func gitLocalBranchGenerator(tokens []string, _ string, _ string) []spec.Suggestion {
 	isCreateMode := false
 	for _, t := range tokens {
 		if t == "-b" || t == "-B" || t == "-c" || t == "-C" {
@@ -199,7 +199,7 @@ func gitLocalBranchGenerator(tokens []string, _ string, _ string) []core.Suggest
 	return getGitResultsFiltered(tokens, true, "branch", "-a", "--format=%(refname:short)")
 }
 
-func GitPushPullGenerator(tokens []string, prefix string, partial string) []core.Suggestion {
+func GitPushPullGenerator(tokens []string, prefix string, partial string) []spec.Suggestion {
 	// count completed positional args (not flags, not the partial being typed)
 	// tokens[0] = "git", tokens[1] = "push"/"pull", so start at 2
 	// exclude tokens[len-1] because that's the partial being typed
@@ -225,18 +225,18 @@ func GitPushPullGenerator(tokens []string, prefix string, partial string) []core
 }
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "git",
 		Description: "version control",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--version", Description: "print version"},
 			{Name: "--help", Description: "show help"},
 		},
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{
 				Name:        "init",
 				Description: "create empty repo",
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "--bare", Description: "create bare repo"},
 					{Name: "-b", Description: "initial branch name"},
 				},
@@ -244,7 +244,7 @@ func init() {
 			{
 				Name:        "clone",
 				Description: "clone a repository",
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "--depth", Description: "shallow clone depth"},
 					{Name: "--branch", Description: "specific branch"},
 					{Name: "--bare", Description: "clone as bare"},
@@ -253,7 +253,7 @@ func init() {
 			{
 				Name:        "status",
 				Description: "show working tree",
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "-s", Description: "short format"},
 					{Name: "--porcelain", Description: "machine format"},
 				},
@@ -261,8 +261,8 @@ func init() {
 			{
 				Name:        "add",
 				Description: "stage changes",
-				Generator:   core.FileGenerator(),
-				Options: []core.Option{
+				Generator:   spec.FileGenerator(),
+				Options: []spec.Option{
 					{Name: "-A", Description: "add all files"},
 					{Name: "-p", Description: "interactive patch"},
 					{Name: ".", Description: "add current dir"},
@@ -271,7 +271,7 @@ func init() {
 			{
 				Name:        "commit",
 				Description: "record changes",
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "-m", Description: "commit message"},
 					{Name: "-a", Description: "auto stage tracked"},
 					{Name: "--amend", Description: "amend last commit"},
@@ -282,7 +282,7 @@ func init() {
 				Name:        "push",
 				Description: "update remote refs",
 				Generator:   GitPushPullGenerator,
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "-u", Description: "set upstream"},
 					{Name: "--force", Description: "force push"},
 					{Name: "--tags", Description: "push tags"},
@@ -292,7 +292,7 @@ func init() {
 				Name:        "pull",
 				Description: "fetch and merge",
 				Generator:   GitPushPullGenerator,
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "--rebase", Description: "rebase on pull"},
 				},
 			},
@@ -300,7 +300,7 @@ func init() {
 				Name:        "fetch",
 				Description: "download objects",
 				Generator:   GitRemoteGenerator,
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "--all", Description: "fetch all remotes"},
 					{Name: "--prune", Description: "remove stale refs"},
 				},
@@ -308,17 +308,17 @@ func init() {
 			{
 				Name:        "checkout",
 				Description: "switch branches",
-				Generator: func(tokens []string, prefix string, partial string) []core.Suggestion {
+				Generator: func(tokens []string, prefix string, partial string) []spec.Suggestion {
 					for _, t := range tokens {
 						if t == "-b" || t == "-B" {
 							return nil
 						}
 					}
 					branches := GitBranchGenerator(tokens, prefix, partial)
-					files := core.FileGenerator()(tokens, prefix, partial)
+					files := spec.FileGenerator()(tokens, prefix, partial)
 					return append(branches, files...)
 				},
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "-b", Description: "create new branch"},
 				},
 			},
@@ -326,7 +326,7 @@ func init() {
 				Name:        "switch",
 				Description: "switch branches",
 				Generator:   GitBranchGenerator,
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "-c", Description: "create and switch"},
 				},
 			},
@@ -334,7 +334,7 @@ func init() {
 				Name:        "branch",
 				Description: "manage branches",
 				Generator:   GitBranchGenerator,
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "-d", Description: "delete branch"},
 					{Name: "-D", Description: "force delete"},
 					{Name: "-a", Description: "list all"},
@@ -345,7 +345,7 @@ func init() {
 				Name:        "merge",
 				Description: "join branches",
 				Generator:   GitBranchGenerator,
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "--no-ff", Description: "no fast forward"},
 					{Name: "--squash", Description: "squash commits"},
 					{Name: "--abort", Description: "abort merge"},
@@ -355,7 +355,7 @@ func init() {
 				Name:        "rebase",
 				Description: "reapply commits",
 				Generator:   GitBranchGenerator,
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "-i", Description: "interactive"},
 					{Name: "--onto", Description: "rebase onto"},
 					{Name: "--abort", Description: "abort rebase"},
@@ -365,8 +365,8 @@ func init() {
 			{
 				Name:        "log",
 				Description: "show commit log",
-				Generator:   core.FileGenerator(),
-				Options: []core.Option{
+				Generator:   spec.FileGenerator(),
+				Options: []spec.Option{
 					{Name: "--oneline", Description: "compact format"},
 					{Name: "--graph", Description: "show graph"},
 					{Name: "-n", Description: "limit count"},
@@ -375,8 +375,8 @@ func init() {
 			{
 				Name:        "diff",
 				Description: "show changes",
-				Generator:   core.FileGenerator(),
-				Options: []core.Option{
+				Generator:   spec.FileGenerator(),
+				Options: []spec.Option{
 					{Name: "--staged", Description: "staged changes"},
 					{Name: "--stat", Description: "diffstat only"},
 					{Name: "--", Description: "separate paths"},
@@ -386,7 +386,7 @@ func init() {
 				Name:        "tag",
 				Description: "manage tags",
 				Generator:   GitTagGenerator,
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "-a", Description: "annotated tag"},
 					{Name: "-d", Description: "delete tag"},
 					{Name: "-l", Description: "list tags"},
@@ -397,12 +397,12 @@ func init() {
 			{
 				Name:        "show",
 				Description: "show object",
-				Generator: func(tokens []string, prefix string, partial string) []core.Suggestion {
+				Generator: func(tokens []string, prefix string, partial string) []spec.Suggestion {
 					tags := GitTagGenerator(tokens, prefix, partial)
 					commits := GitCommitGenerator(tokens, prefix, partial)
 					return append(tags, commits...)
 				},
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "--stat", Description: "diffstat only"},
 					{Name: "--name-only", Description: "filenames only"},
 				},
@@ -411,7 +411,7 @@ func init() {
 				Name:        "revert",
 				Description: "revert a commit",
 				Generator:   GitCommitGenerator,
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "--no-commit", Description: "no auto commit"},
 					{Name: "--abort", Description: "abort revert"},
 					{Name: "--continue", Description: "continue revert"},
@@ -420,12 +420,12 @@ func init() {
 			{
 				Name:        "reset",
 				Description: "reset HEAD",
-				Generator: func(tokens []string, prefix string, partial string) []core.Suggestion {
+				Generator: func(tokens []string, prefix string, partial string) []spec.Suggestion {
 					branches := GitBranchGenerator(tokens, prefix, partial)
-					files := core.FileGenerator()(tokens, prefix, partial)
+					files := spec.FileGenerator()(tokens, prefix, partial)
 					return append(branches, files...)
 				},
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "--hard", Description: "discard changes"},
 					{Name: "--soft", Description: "keep staged"},
 					{Name: "--mixed", Description: "unstage changes"},
@@ -434,8 +434,8 @@ func init() {
 			{
 				Name:        "restore",
 				Description: "restore working tree files",
-				Generator:   core.FileGenerator(),
-				Options: []core.Option{
+				Generator:   spec.FileGenerator(),
+				Options: []spec.Option{
 					{Name: "-s", Description: "source tree"},
 					{Name: "-W", Description: "working tree"},
 				},
@@ -443,8 +443,8 @@ func init() {
 			{
 				Name:        "rm",
 				Description: "remove files",
-				Generator:   core.FileGenerator(),
-				Options: []core.Option{
+				Generator:   spec.FileGenerator(),
+				Options: []spec.Option{
 					{Name: "-f", Description: "force"},
 					{Name: "-r", Description: "recursive"},
 					{Name: "--cached", Description: "unstage only"},
@@ -453,8 +453,8 @@ func init() {
 			{
 				Name:        "stash",
 				Description: "stash changes",
-				Subcommands: []core.Subcommand{
-					{Name: "pop", Description: "apply and drop", Generator: GitStashGenerator, Options: []core.Option{{Name: "--index", Description: "try to reinstate index"}}},
+				Subcommands: []spec.Subcommand{
+					{Name: "pop", Description: "apply and drop", Generator: GitStashGenerator, Options: []spec.Option{{Name: "--index", Description: "try to reinstate index"}}},
 					{Name: "apply", Description: "apply stash", Generator: GitStashGenerator},
 					{Name: "drop", Description: "remove stash", Generator: GitStashGenerator},
 					{Name: "list", Description: "list stashes"},
@@ -466,8 +466,8 @@ func init() {
 			{
 				Name:        "remote",
 				Description: "manage remotes",
-				Subcommands: []core.Subcommand{
-					{Name: "add", Description: "add remote", Options: []core.Option{{Name: "-f", Description: "fetch immediately"}}},
+				Subcommands: []spec.Subcommand{
+					{Name: "add", Description: "add remote", Options: []spec.Option{{Name: "-f", Description: "fetch immediately"}}},
 					{Name: "remove", Description: "remove remote", Generator: GitRemoteGenerator},
 					{Name: "rename", Description: "rename remote", Generator: GitRemoteGenerator},
 					{Name: "set-url", Description: "change remote url", Generator: GitRemoteGenerator},
@@ -478,7 +478,7 @@ func init() {
 				Name:        "cherry-pick",
 				Description: "apply commit",
 				Generator:   GitCommitGenerator,
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "--no-commit", Description: "no auto commit"},
 					{Name: "--abort", Description: "abort pick"},
 					{Name: "--continue", Description: "continue pick"},
@@ -487,8 +487,8 @@ func init() {
 			{
 				Name:        "worktree",
 				Description: "manage worktrees",
-				Subcommands: []core.Subcommand{
-					{Name: "add", Description: "add new worktree", Generator: core.FileGenerator("/")},
+				Subcommands: []spec.Subcommand{
+					{Name: "add", Description: "add new worktree", Generator: spec.FileGenerator("/")},
 					{Name: "list", Description: "list worktrees"},
 					{Name: "remove", Description: "remove worktree"},
 					{Name: "prune", Description: "prune stale worktrees"},
@@ -497,10 +497,10 @@ func init() {
 			{
 				Name:        "submodule",
 				Description: "manage submodules",
-				Subcommands: []core.Subcommand{
+				Subcommands: []spec.Subcommand{
 					{Name: "add", Description: "add submodule"},
 					{Name: "init", Description: "init submodule config"},
-					{Name: "update", Description: "update submodules", Options: []core.Option{{Name: "--init", Description: "init if needed"}, {Name: "--recursive", Description: "recursive update"}}},
+					{Name: "update", Description: "update submodules", Options: []spec.Option{{Name: "--init", Description: "init if needed"}, {Name: "--recursive", Description: "recursive update"}}},
 					{Name: "status", Description: "show submodule status"},
 					{Name: "foreach", Description: "run command in each submodule"},
 				},
@@ -508,7 +508,7 @@ func init() {
 			{
 				Name:        "bisect",
 				Description: "binary search bug",
-				Subcommands: []core.Subcommand{
+				Subcommands: []spec.Subcommand{
 					{Name: "start", Description: "start bisect"},
 					{Name: "good", Description: "mark good"},
 					{Name: "bad", Description: "mark bad"},

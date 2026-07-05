@@ -1,14 +1,14 @@
 package git
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "svn",
 		Description: "Specify a username ARG",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "help", Description: "Show help for svn"},
 			{Name: "subcommand", Description: "Help about specific subcommand"},
 			{Name: "status", Description: "Show the working tree status"},
@@ -17,7 +17,7 @@ func init() {
 			{Name: "repository", Description: "The repository you want to checkout"},
 			{Name: "commit", Description: "Commit to a repository"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--password", Description: "Specify a password ARG"},
 			{Name: "--password-from-stdin", Description: "Read password from stdin"},
 			{Name: "--no-auth-cache", Description: "Do not cache authentication tokens"},
