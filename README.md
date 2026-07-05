@@ -75,7 +75,7 @@ curl -sSL https://raw.githubusercontent.com/versenilvis/iris/main/scripts/instal
 
 ## Theme
 <div align="center">
-  <img width="1920" height="1080" alt="output (1)" src="https://github.com/user-attachments/assets/d45cf36e-6d7d-437a-9af9-28cd994bf55f" />
+  <img width="1920" height="1080" alt="Kitty terminal showcase" src="https://github.com/user-attachments/assets/d45cf36e-6d7d-437a-9af9-28cd994bf55f" />
   😺 <i>Kitty terminal</i>
 </div>
 
