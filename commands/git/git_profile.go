@@ -1,18 +1,18 @@
 package git
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "git-profile",
 		Description: "Use profile",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "use", Description: "Use a profile"},
 			{Name: "profile", Description: "Profile you want to apply in this repository"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Help for git-profile script"},
 		},
 	})

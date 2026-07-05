@@ -1,20 +1,20 @@
 package git
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ghq",
 		Description: "Clone/sync with a remote repository",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "get", Description: "Clone/sync with a remote repository"},
 			{Name: "list", Description: "List local repositories"},
 			{Name: "root", Description: "Show repositories' root"},
 			{Name: "create", Description: "Create a new repository"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-u", Description: "Update local repository if cloned already (default: false)"},
 			{Name: "-p", Description: "Clone with SSH (default: false)"},
 			{Name: "--shallow", Description: "Do a shallow clone (default: false)"},

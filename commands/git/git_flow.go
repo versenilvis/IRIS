@@ -1,14 +1,14 @@
 package git
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "git-flow",
 		Description: "Git extensions to provide high-level repository operations for Vincent Driessen's branching model",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "init", Description: "Initialize a new git repo with support for the branching model"},
 			{Name: "feature", Description: "List all feature branches"},
 			{Name: "start", Description: "Create a new feature branch"},
@@ -21,7 +21,7 @@ func init() {
 			{Name: "hotfix", Description: "List all hotfix branches"},
 			{Name: "support", Description: "List all support branches"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-d", Description: "Use default branch naming conventions"},
 			{Name: "-f", Description: "Force setting of gitflow branches, even if already configured"},
 		},
