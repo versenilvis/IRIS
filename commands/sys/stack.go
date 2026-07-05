@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "stack",
 		Description: "The Haskell Tool Stack",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "build", Description: "Build the package(s) in the current directory/configuration"},
 			{Name: "test", Description: "Shortcut for 'build --test'"},
 			{Name: "bench", Description: "Shortcut for 'build --bench'"},
@@ -25,7 +25,7 @@ func init() {
 			{Name: "dot", Description: "Visualize your project's dependency graph using Graphviz dot"},
 			{Name: "repl", Description: "Load a REPL"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for stack"},
 			{Name: "--version", Description: "Show version for stack"},
 			{Name: "--numeric-version", Description: "Show only the numeric version for stack"},

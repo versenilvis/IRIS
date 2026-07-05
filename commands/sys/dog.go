@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "dog",
 		Description: "Human-readable host names, nameservers, types, or classes",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "A", Description: "Query Domain A Record"},
 			{Name: "MX", Description: "Query Domain MX Record"},
 			{Name: "CNAME", Description: "Query Domain CNAME Record"},
@@ -18,7 +18,7 @@ func init() {
 			{Name: "TTL", Description: "Query TTL Record"},
 			{Name: "ANY +noall +answer", Description: "Query ALL DNS Records"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-q", Description: "Host name or IP address to query"},
 			{Name: "-t", Description: "Type of the DNS record being queried (A, MX, NS...)"},
 			{Name: "-n", Description: "Address of the nameserver to send packets to"},

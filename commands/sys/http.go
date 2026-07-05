@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "http",
 		Description: "HTTPie: command-line HTTP client for the API era",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--json", Description: "Disables all sorting while formatting output"},
 			{Name: "--sorted", Description: "Re-enables all sorting options while formatting output"},
 			{Name: "--format-options", Description: "Controls output formatting"},

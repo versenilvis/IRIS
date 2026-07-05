@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ibus",
 		Description: "Set or get engine",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "engine", Description: "Set or get engine"},
 			{Name: "exit", Description: "Exit ibus-daemon"},
 			{Name: "list-engine", Description: "Show available engines"},

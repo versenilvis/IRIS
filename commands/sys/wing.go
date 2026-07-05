@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "wing",
 		Description: "Runs a Wing executable in the Wing Console",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "run", Description: "Runs a Wing executable in the Wing Console"},
 			{Name: "executable", Description: "Executable .wx file"},
 			{Name: "compile", Description: "Compiles a Wing program"},
@@ -16,7 +16,7 @@ func init() {
 			{Name: "upgrade", Description: "Upgrades the Wing toolchain to the latest version"},
 			{Name: "help", Description: "Display help for command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Display help for command"},
 			{Name: "-o", Description: "Output directory"},
 			{Name: "-t", Description: "Target platform (options: 'tf-aws', 'sim')"},

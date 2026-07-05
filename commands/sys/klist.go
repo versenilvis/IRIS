@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "klist",
 		Description: "Credential cache to list",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-c", Description: "Credential cache to list"},
 			{Name: "--cache", Description: "Credential cache to list"},
 			{Name: "-s", Description: "Display AFS tokens"},

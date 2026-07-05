@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "aliases",
 		Description: "Prints help information",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "add", Description: "Add an alias via the cli"},
 			{Name: "name", Description: "The name of the alias"},
 			{Name: "command", Description: "The command you want to run"},
@@ -30,7 +30,7 @@ func init() {
 			{Name: "move", Description: "Move a user up or down the prioritization list"},
 			{Name: "use", Description: "Assign a user to the top of the priority list"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Prints help information"},
 			{Name: "--version", Description: "Prints version information"},
 			{Name: "-E", Description: "Whether to enable the user if they are not currently enabled"},

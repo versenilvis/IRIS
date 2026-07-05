@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "where",
 		Description: "For each name, indicate how it should be interpreted",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-w", Description: "For each name, print 'name: word', where 'word' is the kind of command"},
 			{Name: "-p", Description: "Do a path search for the name, even if it's an alias/function/builtin"},
 			{Name: "-m", Description: "The arguments are taken as patterns (pattern characters must be quoted)"},

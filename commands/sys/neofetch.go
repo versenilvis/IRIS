@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "neofetch",
 		Description: "The most complete system information CLI tool",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for neofetch"},
 			{Name: "--disable", Description: "Disable information line"},
 			{Name: "--title_fqdn", Description: "Hide/Show Fully Qualified Domain Name in title"},

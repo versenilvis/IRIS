@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "kafkactl",
 		Description: "Command-line interface for Apache Kafka",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "edit", Description: "Alter topics, partitions"},
 			{Name: "partition", Description: "Alter a partition"},
 			{Name: "topic", Description: "Alter a topic"},
@@ -37,7 +37,7 @@ func init() {
 			{Name: "version", Description: "Print the version of kafkactl"},
 			{Name: "help", Description: "Help about any command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--replicas", Description: "Set replicas for a partition"},
 			{Name: "--validate-only", Description: "Validate only"},
 			{Name: "--config", Description: "Configs in format `key=value`"},

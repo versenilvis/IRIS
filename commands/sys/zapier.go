@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "zapier",
 		Description: "Change the way structured data is presented. If",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "build", Description: "Build a pushable zip from the current directory"},
 			{Name: "path", Description: "Relative to your current path - IE: `.` for current directory"},
 			{Name: "delete:integration", Description: "Delete your integration (including all versions)"},
@@ -50,7 +50,7 @@ func init() {
 			{Name: "help", Description: "Display help for zapier"},
 			{Name: "command", Description: "Command to show help for"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-f", Description: "Show extra debugging output"},
 			{Name: "-m", Description: "Build a pushable zip from the current directory"},
 			{Name: "-t", Description: "The template to start your integration with"},

@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "rscript",
 		Description: "Scripting Front-End for R",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-e", Description: "R expression to run"},
 			{Name: "--help", Description: "Print usage and exit"},
 			{Name: "--version", Description: "Print version and exit"},

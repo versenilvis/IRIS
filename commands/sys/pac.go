@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "pac",
 		Description: "7",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "admin", Description: "Work with your Power Platform Admin Account"},
 			{Name: "list", Description: "List all environments from your tenant"},
 			{Name: "create", Description: "Creates a Dataverse instance in your tenant"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "update-settings", Description: "Update environment settings"},
 			{Name: "package", Description: "Commands for working with Dataverse package projects"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--environment", Description: "List all environments that contain given string in their name or ID"},
 			{Name: "--type", Description: "List all environments with the given type"},
 			{Name: "--name", Description: "List all environments that contain given string in their name"},

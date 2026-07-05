@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "launchctl",
 		Description: "Service or domain target",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "bootstrap", Description: "Bootstraps a domain or a service into a domain"},
 			{Name: "bootout", Description: "Tears down a domain or removes a service from a domain"},
 			{Name: "enable", Description: "Enables an existing service"},
@@ -59,7 +59,7 @@ func init() {
 			{Name: "version", Description: "Prints the launchd version"},
 			{Name: "help", Description: "Prints the usage for a given subcommand"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-w", Description: "Enable if disabled"},
 			{Name: "-F", Description: "Force load"},
 			{Name: "-S", Description: "Session"},

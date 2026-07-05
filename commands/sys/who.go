@@ -1,17 +1,17 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "who",
 		Description: "Display who is logged in",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "am", Description: "Returns the invoker's real user name"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-a", Description: "Same as -bdlprTtu"},
 			{Name: "-b", Description: "Time of last system boot"},
 			{Name: "-d", Description: "Print dead processes"},

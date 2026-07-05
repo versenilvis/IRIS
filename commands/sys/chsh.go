@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "chsh",
 		Description: "Change your login shell",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-s", Description: "Specify login shell"},
 			{Name: "-l", Description: "Print list of shells and exit"},
 			{Name: "-u", Description: "Print help message and exit"},

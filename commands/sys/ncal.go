@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ncal",
 		Description: "Displays a calendar and the date of Easter",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Turns off highlighting of today"},
 			{Name: "-J", Description: "Display date of Easter (for western churches)"},
 			{Name: "-j", Description: "Display Julian days (days one-based, numbered from January 1)"},

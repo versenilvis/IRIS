@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "adb",
 		Description: "Forward-lock the app",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "devices", Description: "List connected devices"},
 			{Name: "help", Description: "Show this help message"},
 			{Name: "get-state", Description: "Print offline | bootloader | device"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "install-multiple", Description: "Push multiple APKs to the device for a single package and install them"},
 			{Name: "install-multi-package", Description: "Push one or more packages to the device and install them atomically"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-l", Description: "Forward-lock the app"},
 			{Name: "-r", Description: "Replace existing application"},
 			{Name: "-t", Description: "Allow test packages"},

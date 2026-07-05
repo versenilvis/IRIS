@@ -1,17 +1,17 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "shortcuts",
 		Description: "Run a shortcut",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "help", Description: "Show help information"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-i", Description: "The input to provide to the shortcut"},
 			{Name: "-o", Description: "Where to write the shortcut output, if applicable"},
 			{Name: "--output-type", Description: "JavaScript Object Notation (JSON)"},

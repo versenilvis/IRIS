@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "bc",
 		Description: "An arbitrary precision calculator language",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Print the usage and exit"},
 			{Name: "--interactive", Description: "Force interactive mode"},
 			{Name: "--mathlib", Description: "Define the standard math library"},

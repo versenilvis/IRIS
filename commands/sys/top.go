@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "top",
 		Description: "Display Linux tasks",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Show library version and usage prompt"},
 			{Name: "-b", Description: "Starts top in Batch mode"},
 			{Name: "-c", Description: "Starts top with last remembered c state reversed"},

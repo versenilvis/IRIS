@@ -1,19 +1,19 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "croc",
 		Description: "Send file(s), or folder",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "send", Description: "Send file(s), or folder"},
 			{Name: "relay", Description: "Start your own relay"},
 			{Name: "help", Description: "Shows a list of commands or help for one command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--code", Description: "Codephrase used to connect to relay"},
 			{Name: "--hash", Description: "Hash algorithm"},
 			{Name: "--text", Description: "Send some text"},

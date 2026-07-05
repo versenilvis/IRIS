@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ykman",
 		Description: "Configure your YubiKey via the command line",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "list", Description: "List connected YubiKeys"},
 			{Name: "config", Description: "Enable or disable applications"},
 			{Name: "mode", Description: "Manage connection modes (USB Interfaces)"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "generate", Description: "Generate a self-signed X.509 certificate"},
 			{Name: "PUBLIC-KEY", Description: "File containing a public key. Use '-' to use stdin"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-c", Description: "Check if YubiKey is in FIPS Approved mode (available on YubiKey 4 FIPS only)"},
 			{Name: "-h", Description: "Show info usage information"},
 			{Name: "-s", Description: "List available smart card readers"},

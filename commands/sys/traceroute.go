@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "traceroute",
 		Description: "Print the route packets take to network host",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for traceroute"},
 			{Name: "-a", Description: "Turn on AS# lookups for each hop encountered"},
 			{Name: "-A", Description: "Turn on AS# lookups and use the given server instead of the default"},

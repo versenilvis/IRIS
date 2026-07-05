@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "tac",
 		Description: "Concatenate and print files in reverse",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Display this help and exit"},
 			{Name: "--before", Description: "Attach the separator before instead of after"},
 			{Name: "--regex", Description: "Interpret the separator as a regular expression"},

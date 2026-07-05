@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "fdisk",
 		Description: "Manipulate disk partition table",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for fdisk"},
 			{Name: "--version", Description: "Show version for lsblk"},
 			{Name: "--sector-size", Description: "Specify the sector size of the disk"},

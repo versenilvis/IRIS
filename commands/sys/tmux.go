@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "tmux",
 		Description: "Format output",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "a", Description: "Attach to last session"},
 			{Name: "working-directory", Description: "The session's working directory"},
 			{Name: "bind", Description: "Bind a key to a command"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "lockc", Description: "Lock a client"},
 			{Name: "lock", Description: "Lock all clients attached to the server"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-F", Description: "Format output"},
 			{Name: "-f", Description: "Set client flags"},
 			{Name: "-d", Description: "Detach all others clients to the session"},

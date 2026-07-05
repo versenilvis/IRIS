@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "yank",
 		Description: "Yank terminal output to clipboard",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-i", Description: "Ignore case differences between pattern and the input"},
 			{Name: "-l", Description: "Use the default delimiters except for space"},
 			{Name: "-x", Description: "Use alternate screen"},

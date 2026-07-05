@@ -1,17 +1,17 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "dscacheutil",
 		Description: "Utility for managing the Directory Service cache",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "category", Description: "Category to query"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "List the options for calling dscacheutil"},
 			{Name: "-q", Description: "Query the Directory Service cache"},
 			{Name: "-a", Description: "Attribute to query"},

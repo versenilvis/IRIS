@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "mkfifo",
 		Description: "Make FIFOs (first-in, first-out)",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-m", Description: "FIFO(s) to create"},
 		},
 	})
