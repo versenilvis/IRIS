@@ -1,19 +1,19 @@
 package cc
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "bazel",
 		Description: "Bazel target",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "run", Description: "Runs the specified target"},
 			{Name: "test", Description: "Builds and runs the specified test targets"},
 			{Name: "build", Description: "Builds the specified targets"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--autodetect_server_javabase", Description: "Back to the local JDK for running the bazel server and instead exits"},
 			{Name: "--nobatch", Description: "Run with a server"},
 			{Name: "--batch_cpu_scheduling", Description: "Only on Linux; use 'batch' CPU scheduling for Bazel"},

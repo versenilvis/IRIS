@@ -1,14 +1,14 @@
 package cc
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "zig",
 		Description: "Enable or disable colored message",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "build", Description: "Build project from build.zig"},
 			{Name: "install", Description: "Copy build artifacts to prefix path"},
 			{Name: "uninstall", Description: "Remove build artifacts from prefix path"},
@@ -40,7 +40,7 @@ func init() {
 			{Name: "version", Description: "Print version number and exit"},
 			{Name: "zen", Description: "Print Zen of Zig and exit"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--color", Description: "Enable or disable colored message"},
 			{Name: "--cache-dir", Description: "Override path to local Zig cache directory"},
 			{Name: "--global-cache-dir", Description: "Override path to global Zig cache directory"},

@@ -1,14 +1,14 @@
 package cc
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "xcodeproj",
 		Description: "Xcodeproj lets you create and modify Xcode projects",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--ignore", Description: "A key to ignore in the comparison. Can be specified multiple times"},
 			{Name: "--format", Description: "YAML output format"},
 			{Name: "--group-option", Description: "Shows the difference between two targets"},

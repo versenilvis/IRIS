@@ -1,14 +1,14 @@
 package cc
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "premake",
 		Description: "The premake5.lua file",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "clean", Description: "Remove all binaries and generated files"},
 			{Name: "vs2022", Description: "Generate Visual Studio 2022 project files"},
 			{Name: "vs2019", Description: "Generate Visual Studio 2019 project files"},
@@ -24,7 +24,7 @@ func init() {
 			{Name: "xcode4", Description: "Generate Apple Xcode 4 project files"},
 			{Name: "codelite", Description: "Generate CodeLite project files"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--file", Description: "The premake5.lua file"},
 			{Name: "--debugger", Description: "Start MobDebug remote debugger. Works with ZeroBrane Studio"},
 			{Name: "--fatal", Description: "Treat warnings from project scripts as errors"},

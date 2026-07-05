@@ -1,14 +1,14 @@
 package cc
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "cmake",
 		Description: "Command-line interface of the cross-platform buildsystem generator CMake",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "permissions", Description: "Format: <u=rwx,g=rx,o=rx>"},
 			{Name: "cat", Description: "Concatenate files and print on the standard output"},
 			{Name: "chdir", Description: "Change the current working directory and run a command"},
@@ -37,7 +37,7 @@ func init() {
 			{Name: "time", Description: "Run command and display elapsed time"},
 			{Name: "true", Description: "Do nothing, with an exit code of 0"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--build", Description: "Use a build preset to specify build options"},
 			{Name: "--list-presets", Description: "For multi-configuration tools, choose configuration <cfg>"},
 			{Name: "--clean-first", Description: "Build target clean first, then build"},

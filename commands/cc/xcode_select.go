@@ -1,14 +1,14 @@
 package cc
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "xcode-select",
 		Description: "Active developer directory for Xcode tools",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Help message"},
 			{Name: "-p", Description: "Display path to active developer directory"},
 			{Name: "-s", Description: "Set path to active developer directory"},

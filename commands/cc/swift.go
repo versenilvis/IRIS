@@ -1,14 +1,14 @@
 package cc
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "swift",
 		Description: "Show help information",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "build", Description: "Build sources into binary products"},
 			{Name: "target", Description: "The name of the target to build"},
 			{Name: "product", Description: "The name of the product to build"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "compute-checksum", Description: "Compute the checksum for a binary artifact"},
 			{Name: "archive-source", Description: "Create a source archive for the package"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help information"},
 			{Name: "--version", Description: "Show the version"},
 			{Name: "-access-notes-path", Description: "Specify YAML file to override attributes on Swift declarations in this module"},
