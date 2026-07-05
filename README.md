@@ -12,11 +12,14 @@
   <a href="#why-iris-instead-of-fig">Comparison</a> · <a href="#installation">Installation</a> · <a href="#docs">Docs</a>  · <a href="#shortcuts">Shortcuts</a> · <a href="#reporting-bugs">Reporting bugs</a>
 
 </div>
-<div algin="center">
+<div align="center">
   <!-- <img width="800" height="450" alt="output" src="https://github.com/user-attachments/assets/fd586c5b-89b6-4f6a-af9c-29248db5edc3" />-->
   <!-- <img width="1280" height="720" alt="output" src="https://github.com/user-attachments/assets/a1003bda-7722-4185-9514-f1bf83fbb504" /> -->
   <img width="1920" height="1080" alt="showcase" src="https://github.com/user-attachments/assets/dc2434c2-4f59-4432-b77f-78e65c4d412e" />
+  👻 <i>Ghostty terminal </i>
 </div>
+
+<br>
 
 **IRIS is built on top of TTY, so it runs everywhere. It just needs a terminal!**
 
@@ -71,6 +74,11 @@ curl -sSL https://raw.githubusercontent.com/versenilvis/iris/main/scripts/instal
 > Currently, Windows is not supported
 
 ## Theme
+<div align="center">
+  <img width="1920" height="1080" alt="output (1)" src="https://github.com/user-attachments/assets/d45cf36e-6d7d-437a-9af9-28cd994bf55f" />
+  😺 <i>Kitty terminal</i>
+</div>
+
 > [!NOTE]
 > Currently, IRIS doesn't have custom theme but it does have 2 basic styles
 
