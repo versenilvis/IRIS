@@ -1,11 +1,11 @@
 package golang
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	globalBuildOptions := []core.Option{
+	globalBuildOptions := []spec.Option{
 		{Name: "-v", Description: "print package names"},
 		{Name: "-n", Description: "print commands but do not run"},
 		{Name: "-x", Description: "print commands as they run"},
@@ -22,7 +22,7 @@ func init() {
 		{Name: "-a", Description: "force rebuilding of up-to-date packages"},
 	}
 
-	buildModeSubcommands := []core.Subcommand{
+	buildModeSubcommands := []spec.Subcommand{
 		{Name: "archive", Description: "build non-main packages into .a files"},
 		{Name: "c-archive", Description: "build main package into C archive"},
 		{Name: "c-shared", Description: "build main package into C shared library"},
@@ -32,21 +32,21 @@ func init() {
 		{Name: "shared", Description: "combine packages into single shared library"},
 	}
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "go",
 		Description: "tool for managing Go source code",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{
 				Name:        "build",
 				Description: "compile packages and dependencies",
 				MaxArgs:     1,
-				Generator:   core.FileGenerator(".go"),
+				Generator:   spec.FileGenerator(".go"),
 				Options: append(globalBuildOptions, 
-					core.Option{Name: ".", Description: "current package"},
-					core.Option{Name: "./...", Description: "all packages"},
-					core.Option{Name: "-o", Description: "output file or directory"},
-					core.Option{Name: "-i", Description: "install dependency packages"},
-					core.Option{Name: "-buildmode", Description: "build mode to use"},
+					spec.Option{Name: ".", Description: "current package"},
+					spec.Option{Name: "./...", Description: "all packages"},
+					spec.Option{Name: "-o", Description: "output file or directory"},
+					spec.Option{Name: "-i", Description: "install dependency packages"},
+					spec.Option{Name: "-buildmode", Description: "build mode to use"},
 				),
 				Subcommands: buildModeSubcommands,
 			},
@@ -54,32 +54,32 @@ func init() {
 				Name:        "run",
 				Description: "compile and run Go program",
 				MaxArgs:     1,
-				Generator:   core.FileGenerator(".go"),
+				Generator:   spec.FileGenerator(".go"),
 				Options: append(globalBuildOptions,
-					core.Option{Name: ".", Description: "current package"},
-					core.Option{Name: "-exec", Description: "invoke binary using xprog"},
+					spec.Option{Name: ".", Description: "current package"},
+					spec.Option{Name: "-exec", Description: "invoke binary using xprog"},
 				),
 			},
 			{
 				Name:        "test",
 				Description: "test packages",
 				MaxArgs:     1,
-				Generator:   core.FileGenerator(".go"),
+				Generator:   spec.FileGenerator(".go"),
 				Options: append(globalBuildOptions,
-					core.Option{Name: ".", Description: "current package"},
-					core.Option{Name: "./...", Description: "all packages"},
-					core.Option{Name: "-c", Description: "compile test binary but do not run"},
-					core.Option{Name: "-i", Description: "install test dependencies"},
-					core.Option{Name: "-json", Description: "convert output to JSON"},
-					core.Option{Name: "-bench", Description: "run benchmarks"},
-					core.Option{Name: "-run", Description: "run specific test regex"},
-					core.Option{Name: "-cover", Description: "enable coverage report"},
+					spec.Option{Name: ".", Description: "current package"},
+					spec.Option{Name: "./...", Description: "all packages"},
+					spec.Option{Name: "-c", Description: "compile test binary but do not run"},
+					spec.Option{Name: "-i", Description: "install test dependencies"},
+					spec.Option{Name: "-json", Description: "convert output to JSON"},
+					spec.Option{Name: "-bench", Description: "run benchmarks"},
+					spec.Option{Name: "-run", Description: "run specific test regex"},
+					spec.Option{Name: "-cover", Description: "enable coverage report"},
 				),
 			},
 			{
 				Name:        "mod",
 				Description: "module maintenance",
-				Subcommands: []core.Subcommand{
+				Subcommands: []spec.Subcommand{
 					{Name: "init", Description: "initialize new module"},
 					{Name: "tidy", Description: "add missing and remove unused modules"},
 					{Name: "download", Description: "download modules to local cache"},
@@ -94,9 +94,9 @@ func init() {
 				Name:        "get",
 				Description: "add dependencies to current module and install them",
 				Options: append(globalBuildOptions,
-					core.Option{Name: "-u", Description: "update to newer minor/patch releases"},
-					core.Option{Name: "-t", Description: "download modules needed for tests"},
-					core.Option{Name: "-d", Description: "only download, do not install"},
+					spec.Option{Name: "-u", Description: "update to newer minor/patch releases"},
+					spec.Option{Name: "-t", Description: "download modules needed for tests"},
+					spec.Option{Name: "-d", Description: "only download, do not install"},
 				),
 			},
 			{
@@ -108,16 +108,16 @@ func init() {
 				Name:        "list",
 				Description: "list packages or modules",
 				Options: append(globalBuildOptions,
-					core.Option{Name: "-m", Description: "list modules instead of packages"},
-					core.Option{Name: "-u", Description: "add upgrade information"},
-					core.Option{Name: "-json", Description: "print in JSON format"},
-					core.Option{Name: "-f", Description: "specify alternate format"},
+					spec.Option{Name: "-m", Description: "list modules instead of packages"},
+					spec.Option{Name: "-u", Description: "add upgrade information"},
+					spec.Option{Name: "-json", Description: "print in JSON format"},
+					spec.Option{Name: "-f", Description: "specify alternate format"},
 				),
 			},
 			{
 				Name:        "fmt",
 				Description: "gofmt (reformat) package sources",
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "-n", Description: "print commands that would be executed"},
 					{Name: "-x", Description: "print commands as they are executed"},
 				},
@@ -130,7 +130,7 @@ func init() {
 			{
 				Name:        "env",
 				Description: "print Go environment information",
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "-json", Description: "print environment in JSON format"},
 					{Name: "-u", Description: "unset named environment variables"},
 					{Name: "-w", Description: "change default settings of environment variables"},
@@ -139,7 +139,7 @@ func init() {
 			{
 				Name:        "version",
 				Description: "print Go version",
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "-m", Description: "print embedded module version info"},
 					{Name: "-v", Description: "report unrecognized files"},
 				},
@@ -148,22 +148,22 @@ func init() {
 				Name:        "clean",
 				Description: "remove object files and cached files",
 				Options: append(globalBuildOptions,
-					core.Option{Name: "-i", Description: "remove installed archive or binary"},
-					core.Option{Name: "-cache", Description: "remove entire go build cache"},
-					core.Option{Name: "-modcache", Description: "remove entire module cache"},
+					spec.Option{Name: "-i", Description: "remove installed archive or binary"},
+					spec.Option{Name: "-cache", Description: "remove entire go build cache"},
+					spec.Option{Name: "-modcache", Description: "remove entire module cache"},
 				),
 			},
 			{
 				Name:        "tool",
 				Description: "run specified go tool",
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "-n", Description: "print command but do not execute"},
 				},
 			},
 			{
 				Name:        "work",
 				Description: "workspace maintenance",
-				Subcommands: []core.Subcommand{
+				Subcommands: []spec.Subcommand{
 					{Name: "init", Description: "initialize workspace file"},
 					{Name: "edit", Description: "edit go.work from tools or scripts"},
 					{Name: "sync", Description: "sync workspace build list to modules"},
@@ -173,7 +173,7 @@ func init() {
 			{
 				Name:        "doc",
 				Description: "show documentation for package or symbol",
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "-all", Description: "show all documentation"},
 					{Name: "-cmd", Description: "treat package main like regular package"},
 					{Name: "-src", Description: "show full source code"},
