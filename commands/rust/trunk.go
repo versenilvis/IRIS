@@ -1,14 +1,14 @@
 package rust
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "trunk",
 		Description: "Run on all files instead of only changed files",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "init", Description: "Setup trunk in this repo"},
 			{Name: "check", Description: "Universal code checker"},
 			{Name: "upgrade", Description: "Upgrade all linters to latest versions"},
@@ -28,7 +28,7 @@ func init() {
 			{Name: "shutdown", Description: "Shutdown the trunk daemon if it is running"},
 			{Name: "status", Description: "Report daemon status"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-a", Description: "Run on all files instead of only changed files"},
 			{Name: "-n", Description: "Don't automatically apply fixes"},
 			{Name: "--include-existing-autofixes", Description: "Show autofixes for existing issues"},

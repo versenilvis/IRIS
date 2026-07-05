@@ -1,14 +1,14 @@
 package rust
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "rustup",
 		Description: "The Rust toolchain installer",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "show", Description: "Show the active and installed toolchains or profiles"},
 			{Name: "active-toolchain", Description: "Show the active toolchain"},
 			{Name: "home", Description: "Display the computed value of RUSTUP_HOME"},
@@ -37,7 +37,7 @@ func init() {
 			{Name: "auto-self-update", Description: "The rustup auto self update mode"},
 			{Name: "completions", Description: "Generate tab-completion scripts for your shell"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Prints help information"},
 			{Name: "--force", Description: "Force an update, even if some components are missing"},
 			{Name: "--force-non-host", Description: "Prints help information"},
