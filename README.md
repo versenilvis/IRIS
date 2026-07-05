@@ -96,6 +96,7 @@ curl -sSL https://raw.githubusercontent.com/versenilvis/iris/main/scripts/instal
 - [Configuration guide](./docs/README.md#configuration-guide): TOML configuration file structure, settings sections, and CLI commands
 - [Troubleshooting guide](./docs/README.md#troubleshooting-guide): debug mode, runtime log inspection, and common solutions
 - [Developer guide](./docs/development.md): system architecture overview, PTY bridge mechanics, and contribution instructions
+- [Command specifications](./specs/README.md): comprehensive list of all 500+ supported CLI tools and autocompletion definitions
  
 ## Shortcuts
 

@@ -9,7 +9,7 @@ import (
 
 	_ "github.com/versenilvis/iris/commands"
 	"github.com/versenilvis/iris/commands/core"
-	"github.com/versenilvis/iris/commands/js"
+	"github.com/versenilvis/iris/specs/js"
 )
 
 func TestNpmScriptGenerator(t *testing.T) {

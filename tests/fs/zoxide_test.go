@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/versenilvis/iris/commands/fs"
+	"github.com/versenilvis/iris/specs/fs"
 )
 
 func TestZoxideGenerator(t *testing.T) {
