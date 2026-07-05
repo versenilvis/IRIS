@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "yalc",
 		Description: "Work with yarn/npm packages locally like a boss",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "publish", Description: "Copy all the files that should be published in remote NPM registry"},
 			{Name: "add", Description: "Copy the current version from the store to your project"},
 			{Name: "package", Description: "The package you want to add"},
@@ -22,7 +22,7 @@ func init() {
 			{Name: "restore", Description: "Restore retreated packages"},
 			{Name: "retreat", Description: "Remove packages from project, but leave in lock file (to be restored later)"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--push", Description: "Publish without running scripts"},
 			{Name: "--no-sig", Description: "Disable adding hash signature of all files when copying package content"},
 			{Name: "--content", Description: "Show included files in the published package"},

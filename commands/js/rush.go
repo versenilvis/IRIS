@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "rush",
 		Description: "Projects",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "add", Description: "Adds one or more dependencies to the package.json and runs rush update"},
 			{Name: "init", Description: "Initializes a new repository to be managed by Rush"},
 			{Name: "init-autoinstaller", Description: "Initializes a new autoinstaller"},
@@ -21,7 +21,7 @@ func init() {
 			{Name: "rebuild", Description: "Clean and rebuild the entire set of projects"},
 			{Name: "tab-complete", Description: "Provides tab completion"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-t", Description: "Multi-Project Build Tool"},
 			{Name: "-p", Description: "Specify package to the dependencies of the current project"},
 			{Name: "--exact", Description: "If specified, the dependency will be added to all projects"},

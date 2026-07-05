@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "vue",
 		Description: "Vue cli tools",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "create", Description: "Create a new project powered by vue-cli-service"},
 			{Name: "add", Description: "Install a plugin and invoke its generator in an already created project"},
 			{Name: "invoke", Description: "Invoke the generator of a plugin in an already created project"},
@@ -23,7 +23,7 @@ func init() {
 			{Name: "migrate", Description: "(experimental) run migrator for an already-installed cli plugin"},
 			{Name: "info", Description: "Print debugging information about your environment"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-p", Description: "Skip prompts and use saved or remote preset"},
 			{Name: "-d", Description: "Skip prompts and use default preset"},
 			{Name: "-i", Description: "Skip prompts and use inline JSON string as preset"},

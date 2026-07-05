@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "asar",
 		Description: "A simple extensive tar-like archive format with indexing",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "pack", Description: "Create asar archive"},
 			{Name: "directory", Description: "The directory you want to archive"},
 			{Name: "output", Description: "The name of the output file"},
@@ -18,7 +18,7 @@ func init() {
 			{Name: "filename", Description: "The name of the file you want to extract"},
 			{Name: "extract", Description: "Extract archive"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for asar"},
 			{Name: "--V", Description: "Output the version number"},
 		},

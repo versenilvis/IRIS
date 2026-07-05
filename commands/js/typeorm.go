@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "typeorm",
 		Description: "Show help for command",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "schema:sync", Description: "Synchronizes your entities with database schema"},
 			{Name: "schema:log", Description: "Shows sql to be executed by schema:sync command"},
 			{Name: "schema:drop", Description: "Drops all tables in the database on your default connection"},
@@ -24,7 +24,7 @@ func init() {
 			{Name: "cache:clear", Description: "Clears all data stored in query runner cache"},
 			{Name: "init", Description: "Generates initial TypeORM project structure"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for command"},
 			{Name: "-v", Description: "Show the version"},
 			{Name: "-c", Description: "Name of the connection on which to run a query"},

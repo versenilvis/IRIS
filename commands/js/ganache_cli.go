@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ganache-cli",
 		Description: "Fast Ethereum RPC client",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-a", Description: "Specify the number of accounts to generate at startup"},
 			{Name: "-e", Description: "Amount of ether to assign each test account. Default is 100"},
 			{Name: "-b", Description: "Generate deterministic addresses based on a pre-defined mnemonic"},

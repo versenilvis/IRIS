@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "nuxi",
 		Description: "The directory of the target application",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help"},
 			{Name: "--verbose", Description: "Log information about the installation process"},
 			{Name: "--template", Description: "Specify a Git repository to use as a template"},

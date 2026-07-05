@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "tsc",
 		Description: "CLI tool for TypeScript compiler",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--all", Description: "Show all compiler options"},
 			{Name: "--generateTrace", Description: "Generates an event trace and a list of types"},
 			{Name: "--help", Description: "Gives local information for help on the CLI"},

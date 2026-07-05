@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "vite",
 		Description: "Native ESM-powered web dev build tool",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Show help message"},
 			{Name: "--host", Description: "Specify the hostname"},
 			{Name: "--port", Description: "Specify the port"},

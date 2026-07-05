@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "pnpx",
 		Description: "Execute binaries from npm packages",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--package", Description: "Package to be executed"},
 			{Name: "--cache", Description: "Location of the npm cache"},
 			{Name: "--always-spawn", Description: "Always spawn a child process to execute the command"},

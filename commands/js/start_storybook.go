@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "start-storybook",
 		Description: "Display usage information",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Display usage information"},
 			{Name: "-V", Description: "Display the version number"},
 			{Name: "-s", Description: "Directory where to load static files from, comma-separated list"},

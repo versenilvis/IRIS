@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "create-redwood-app",
 		Description: "Name of your Redwood project",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help"},
 			{Name: "--typescript", Description: "Generate a TypeScript project"},
 			{Name: "--overwrite", Description: "Create even if target directory isn't empty"},
