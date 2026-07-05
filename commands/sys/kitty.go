@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "kitty",
 		Description: "A cat like utility to display images in the terminal",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "close-tab", Description: "Close the specified tab(s)"},
 			{Name: "close-window", Description: "Close the specified window(s)"},
 			{Name: "detach-tab", Description: "Detach the specified tab"},
@@ -21,7 +21,7 @@ func init() {
 			{Name: "set-window-title", Description: "Set the title of the specified window(s)"},
 			{Name: "signal-child", Description: "Send one or more signals to the foreground process in the specified window(s)"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--align", Description: "Horizontal alignment for the displayed image"},
 			{Name: "--place", Description: "Choose where on the screen to display the image"},
 			{Name: "--scale-up", Description: "Mirror the image about a horizontal or vertical axis or both"},

@@ -1,14 +1,14 @@
 package cc
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "typst",
 		Description: "The Typst compiler",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "compile", Description: "Compiles an input file into a supported output format"},
 			{Name: "input", Description: "Path to input Typst file"},
 			{Name: "output", Description: "Path to output file (PDF, PNG, or SVG)"},
@@ -20,7 +20,7 @@ func init() {
 			{Name: "version", Description: "Which version to update to (defaults to latest)"},
 			{Name: "help", Description: "Print this message or the help of the given subcommand(s)"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--root", Description: "Configures the project root (for absolute paths)"},
 			{Name: "--font-path", Description: "Adds additional directories to search for fonts"},
 			{Name: "--diagnostic-format", Description: "The format to emit diagnostics in"},

@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "visudo",
 		Description: "Checking existing sudoers file for syntax errors",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--check", Description: "Checking existing sudoers file for syntax errors"},
 			{Name: "--file", Description: "Set an alternative sudoers file location"},
 			{Name: "--help", Description: "Display a short help message"},

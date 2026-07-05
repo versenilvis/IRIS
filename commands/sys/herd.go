@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "herd",
 		Description: "Display this application version",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "phpVersion", Description: "The PHP version you want to use; e.g 8.1"},
 			{Name: "nodeVersion", Description: "The Node version you want to use; e.g 21"},
 			{Name: "links", Description: "Display all of the registered Herd links"},
@@ -16,7 +16,7 @@ func init() {
 			{Name: "namespace", Description: "The namespace name"},
 			{Name: "site", Description: "The site to get the PHP executable path for"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Display this application version"},
 			{Name: "--quiet", Description: "Do not output any message"},
 			{Name: "--verbose", Description: "Force ANSI output"},

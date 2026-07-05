@@ -1,16 +1,16 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "kubectl",
 		Description: "kubernetes cli",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "get", Description: "display resources",
-				Subcommands: []core.Subcommand{
+				Subcommands: []spec.Subcommand{
 					{Name: "pods", Description: "list pods"},
 					{Name: "services", Description: "list services"},
 					{Name: "deployments", Description: "list deployments"},
@@ -19,13 +19,13 @@ func init() {
 				},
 			},
 			{Name: "apply", Description: "apply config",
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "-f", Description: "filename"},
 				},
 			},
 			{Name: "describe", Description: "show details"},
 			{Name: "logs", Description: "view pod logs",
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "-f", Description: "follow logs"},
 				},
 			},

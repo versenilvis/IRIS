@@ -1,18 +1,18 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "mknod",
 		Description: "Create device special file",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "c", Description: "Create (c)haracter device"},
 			{Name: "b", Description: "Create (b)lock device"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-F", Description: "Format"},
 		},
 	})

@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "stencil",
 		Description: "CLI to build Stencil projects and generate components",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "build", Description: "Build components for development or production"},
 			{Name: "workers", Description: "Number of workers"},
 			{Name: "test", Description: "Run unit and end-to-end tests"},
@@ -17,7 +17,7 @@ func init() {
 			{Name: "off", Description: "Disable sharing anonymous usage data"},
 			{Name: "on", Description: "Enable sharing anonymous usage data"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--ci", Description: "Set stencil config file"},
 			{Name: "--debug", Description: "Set the log level to debug"},
 			{Name: "--dev", Description: "Development build"},

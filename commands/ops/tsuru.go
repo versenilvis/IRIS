@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "tsuru",
 		Description: "Plan",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "app", Description: "App commands"},
 			{Name: "build", Description: "Builds a tsuru app image respecting"},
 			{Name: "create", Description: "Creates a new app using the given name and platform"},
@@ -53,7 +53,7 @@ func init() {
 			{Name: "login", Description: "Login to tsuru server"},
 			{Name: "logout", Description: "Logout from tsuru server"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-a", Description: "App name"},
 			{Name: "-o", Description: "Filter applications by pool"},
 			{Name: "-p", Description: "Filter applications by platform"},

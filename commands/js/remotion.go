@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "remotion",
 		Description: "Create videos programmatically in React",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "versions", Description: "Prints and validates versions of all Remotion packages"},
 			{Name: "gpu", Description: "Prints information about how Chrome uses the GPU"},
 			{Name: "compositions", Description: "Prints the list of available compositions"},
@@ -50,7 +50,7 @@ func init() {
 			{Name: "benchmark", Description: "Try different render configurations and compare them"},
 			{Name: "install", Description: "Ensure Remotion dependencies"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--props", Description: "Pass input props as filename or as JSON"},
 			{Name: "--env-file", Description: "Specify a location for a dotenv file"},
 			{Name: "--disable-headless", Description: "Run Chrome in normal mode rather than headless"},

@@ -1,17 +1,17 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ns",
 		Description: "Forces rebuilding the native application",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "next", Description: "The latest development release"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--clean", Description: "Forces rebuilding the native application"},
 			{Name: "--timeout", Description: "Specifies that you want to debug the app in an emulator"},
 			{Name: "--device", Description: "Specifies a connected device/emulator to start and run the app"},

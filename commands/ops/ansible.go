@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ansible",
 		Description: "Define and run a single Ansible task",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--ask-vault-pass", Description: "Ask for vault password"},
 			{Name: "--list-hosts", Description: "Outputs a list of matching hosts; does not execute"},
 			{Name: "--playbook-dir", Description: "Perform a syntax check on the playbook, but do not execute it"},

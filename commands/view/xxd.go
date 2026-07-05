@@ -1,14 +1,14 @@
 package view
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "xxd",
 		Description: "Make a hexdump or do the reverse",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-help", Description: "Show help for xxd"},
 			{Name: "-autoskip", Description: "Toggle autoskip: A single '*' replaces nul-lines.  Default off"},
 			{Name: "-bits", Description: "Switch to bits (binary digits) dump, rather than hexdump"},

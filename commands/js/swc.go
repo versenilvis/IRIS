@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "swc",
 		Description: "Path to the file",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--filename", Description: "Path to the file"},
 			{Name: "--config-file", Description: "Path to a .swcrc file to use"},
 			{Name: "--env-name", Description: "Whether or not to look up .swcrc files"},

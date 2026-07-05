@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "rancher",
 		Description: "Output format:",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "ls", Description: "List all apps in the current Rancher server"},
 			{Name: "delete", Description: "Delete an app"},
 			{Name: "APP_NAME/APP_ID", Description: "The name of the app to delete"},
@@ -56,7 +56,7 @@ func init() {
 			{Name: "token", Description: "Authenticate and generate new kubeconfig token"},
 			{Name: "help", Description: "Shows a list of commands or help for one command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--format", Description: "Output format: 'json', 'yaml' or custom format"},
 			{Name: "--quiet", Description: "Only display IDs or suppress help text"},
 			{Name: "--help", Description: "Show help"},

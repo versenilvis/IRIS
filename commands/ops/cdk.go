@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "cdk",
 		Description: "AWS CDK CLI",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "init", Description: "Create a new, empty CDK project from a template"},
 			{Name: "metadata", Description: "Returns all metadata associated with this stack"},
 			{Name: "doctor", Description: "Check your set-up for potential problems"},
@@ -25,7 +25,7 @@ func init() {
 			{Name: "context", Description: "Manage cached context values"},
 			{Name: "doc", Description: "Opens the reference documentation in a browser"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--version", Description: "The current version"},
 			{Name: "-h", Description: "Show help"},
 		},

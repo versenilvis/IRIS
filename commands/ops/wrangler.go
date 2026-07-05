@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "wrangler",
 		Description: "Path to configuration file [default: wrangler.toml]",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "kv:namespace", Description: "Interact with your Workers KV Namespaces"},
 			{Name: "create", Description: "Create a new namespace"},
 			{Name: "delete", Description: "Delete namespace"},
@@ -34,7 +34,7 @@ func init() {
 			{Name: "login", Description: "Authenticate Wrangler with your Cloudflare username and password"},
 			{Name: "report", Description: "Report an error caught by Wrangler to Cloudflare"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-c", Description: "Path to configuration file [default: wrangler.toml]"},
 			{Name: "-e", Description: "Environment to perform a command on"},
 			{Name: "-h", Description: "Prints help information"},

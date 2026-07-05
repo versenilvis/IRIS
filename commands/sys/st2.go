@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "st2",
 		Description: "Show this help and exit",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "list", Description: "Get the list of actions"},
 			{Name: "get", Description: "Get individual action"},
 			{Name: "create", Description: "Create a new action"},
@@ -18,7 +18,7 @@ func init() {
 			{Name: "disable", Description: "Disable an existing action"},
 			{Name: "execute", Description: "Invoke an action manually"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Show this help and exit"},
 			{Name: "-t", Description: "Print output in JSON format"},
 			{Name: "-y", Description: "Print output in YAML format"},

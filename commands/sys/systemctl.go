@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "systemctl",
 		Description: "Control the systemd system and service manager",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "list-units", Description: "List units currently in memory"},
 			{Name: "list-sockets", Description: "List socket units currently in memory ordered by address"},
 			{Name: "list-timers", Description: "List timer units currently in memory ordered by next elapse"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "daemon-reload", Description: "Reload systemd manager configuration"},
 			{Name: "daemon-reexec", Description: "Reexecute systemd manager"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Show this help"},
 			{Name: "--version", Description: "Show package version"},
 			{Name: "--system", Description: "Connect to system manager"},

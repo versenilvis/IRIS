@@ -1,14 +1,14 @@
 package jvm
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "clojure",
 		Description: "An alias to refer to its function or a qualified function",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-A", Description: "Use concatenated aliases to modify classpath"},
 			{Name: "-X", Description: "Invoke tool by name or via aliases ala -X"},
 			{Name: "-M", Description: "Use concatenated aliases to modify classpath or supply main opts"},

@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "arduino-cli",
 		Description: "Arduino CLI - build, compile, and upload Arduino sketches",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "board", Description: "Arduino board commands"},
 			{Name: "FQBN", Description: "Fully qualified board name"},
 			{Name: "port", Description: "Arduino board port connection"},
@@ -53,7 +53,7 @@ func init() {
 			{Name: "upload", Description: "Upload Arduino sketches. This does NOT compile the sketch prior to upload"},
 			{Name: "version", Description: "Shows the version number of Arduino CLI which is installed on your system"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--board-options", Description: "Max time to wait for port discovery, example: '30s, 1m (default 1s)'"},
 			{Name: "-b", Description: "Fully Qualified Board Name, example: 'arduino:avr:uno'"},
 			{Name: "-h", Description: "Help for attach"},

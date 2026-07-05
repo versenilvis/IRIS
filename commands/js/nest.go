@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "nest",
 		Description: "Report actions that would be taken without writing out results",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "new", Description: "Creates a new nest project"},
 			{Name: "project", Description: "The name of the project"},
 			{Name: "generate", Description: "Generate and/or modifies files based on a schematic"},
@@ -37,7 +37,7 @@ func init() {
 			{Name: "info", Description: "Display Nest project details"},
 			{Name: "update", Description: "Update Nest dependencies"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-d", Description: "Report actions that would be taken without writing out results"},
 			{Name: "-p", Description: "Project in which to generate files"},
 			{Name: "--flat", Description: "Enforce flat structure of generated element"},

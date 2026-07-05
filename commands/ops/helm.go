@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "helm",
 		Description: "The Helm package manager for Kubernetes",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "completion", Description: "Generate autocompletion scripts for the specified shell"},
 			{Name: "bash", Description: "Generate autocompletion script for bash"},
 			{Name: "fish", Description: "Generate autocompletion script for fish"},
@@ -58,7 +58,7 @@ func init() {
 			{Name: "version", Description: "Print the client version information"},
 			{Name: "help", Description: "Help about any command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--no-descriptions", Description: "Disable completion descriptions"},
 			{Name: "--starter", Description: "The name or absolute path to Helm starter scaffold"},
 			{Name: "--keyring", Description: "Keyring containing public keys"},

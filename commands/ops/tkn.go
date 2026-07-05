@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "tkn",
 		Description: "CLI for tekton pipelines",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "tkb", Description: "Manage Tekton Bundles"},
 			{Name: "list", Description: "List and print a Tekton bundle's contents"},
 			{Name: "push", Description: "Create or replace a Tekton bundle"},
@@ -50,7 +50,7 @@ func init() {
 			{Name: "version", Description: "Prints version information"},
 			{Name: "help", Description: "Help about any command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--allow-missing-template-keys", Description: "A directory to cache Tekton bundles in"},
 			{Name: "--no-cache", Description: "A Bearer token to authenticate against the repository"},
 			{Name: "--remote-password", Description: "If set to true, skips TLS check when connecting to the registry"},

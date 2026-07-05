@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "speedtest-cli",
 		Description: "Command line interface for testing internet bandwidth using speedtest.net",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show this help message and exit"},
 			{Name: "--no-download", Description: "Do not perform download test"},
 			{Name: "--no-upload", Description: "Do not perform upload test"},

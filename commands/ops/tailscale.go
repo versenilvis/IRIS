@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "tailscale",
 		Description: "Connect to Tailscale, logging in if needed",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "up", Description: "Connect to Tailscale, logging in if needed"},
 			{Name: "down", Description: "Disconnect from Tailscale"},
 			{Name: "logout", Description: "Disconnect from Tailscale and expire current node key"},
@@ -27,7 +27,7 @@ func init() {
 			{Name: "cert", Description: "Get TLS certs"},
 			{Name: "help", Description: "Print help message"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--accept-dns", Description: "Accept DNS configuration from the admin panel"},
 			{Name: "--accept-routes", Description: "Accept routes advertised by other Tailscale nodes"},
 			{Name: "--advertise-exit-node", Description: "Offer to be an exit node for internet traffic for the tailnet"},

@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "supabase",
 		Description: "Supabase CLI",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "completion", Description: "Generate the autocompletion script for the specified shell"},
 			{Name: "bash", Description: "Generate the autocompletion script for bash"},
 			{Name: "fish", Description: "Generate the autocompletion script for fish"},
@@ -53,7 +53,7 @@ func init() {
 			{Name: "stop", Description: "Stop all local Supabase containers"},
 			{Name: "help", Description: "Help about any command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--no-descriptions", Description: "Disable completion descriptions"},
 			{Name: "--file", Description: "Saves schema diff to a file"},
 			{Name: "--schema", Description: "List of schema to include"},

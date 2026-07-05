@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "lerna",
 		Description: "Branch",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "*", Description: "Select all packages"},
 			{Name: "changed", Description: "Check which packages have changed since the last release"},
 			{Name: "run", Description: "Run an npm script in each package that contains that script"},
@@ -20,7 +20,7 @@ func init() {
 			{Name: "clean", Description: "Remove the node_modules directory from all packages"},
 			{Name: "create", Description: "Create a new lerna-managed package"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--npm-client", Description: "The executable to run the script with"},
 			{Name: "--concurrency", Description: "Set a max buffer length for each underlying process call"},
 			{Name: "--no-progress", Description: "Disable progress bars. This is always the case in a CI environment"},

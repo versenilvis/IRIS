@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "fisher",
 		Description: "[Prompt] - 🌊 The ultimate Fish prompt",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "install", Description: "Install plugin"},
 			{Name: "remove", Description: "Remove plugins"},
 			{Name: "installed plugins", Description: "The plugin you want to remove"},
@@ -16,7 +16,7 @@ func init() {
 			{Name: "list", Description: "List plugins"},
 			{Name: "RegEx", Description: "Search in list with regular expression"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for fisher"},
 			{Name: "--version", Description: "Show fisher version"},
 		},

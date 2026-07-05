@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "nmap",
 		Description: "Network exploration tool and security / port scanner",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-iR", Description: "Choose random targets"},
 			{Name: "--exclude", Description: "Excluide hosts/networks"},
 			{Name: "--excludefile", Description: "Exclude list from file"},

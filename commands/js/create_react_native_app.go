@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "create-react-native-app",
 		Description: "Creates a new React Native project",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--template", Description: "The path inside of a GitHub repo where the example lives"},
 			{Name: "--yes", Description: "Use the default options for creating a project"},
 			{Name: "--no-install", Description: "Skip installing npm packages or CocoaPods"},

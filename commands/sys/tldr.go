@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "tldr",
 		Description: "Tldr page",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Display help for command"},
 			{Name: "-s", Description: "Search all pages for the query"},
 			{Name: "--linux", Description: "Show command page for Linux"},

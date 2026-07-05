@@ -1,14 +1,14 @@
 package view
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "vimr",
 		Description: "VimR - Neovim GUI for macOS in Swift",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Show help"},
 			{Name: "--dry-run", Description: "Just print the 'open' command"},
 			{Name: "--cwd", Description: "Set the working directory"},

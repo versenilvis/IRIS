@@ -1,14 +1,14 @@
 package rust
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "taplo",
 		Description: "Set color values for the output",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "config", Description: "Operations with the Taplo config file"},
 			{Name: "default", Description: "Print the default `.taplo.toml` configuration file"},
 			{Name: "help", Description: "Print this message or the help of the given subcommand(s)"},
@@ -22,7 +22,7 @@ func init() {
 			{Name: "stdio", Description: "Run the language server over the standard input and output"},
 			{Name: "tcp", Description: "Run the language server and listen on a TCP address"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--colors", Description: "Set color values for the output"},
 			{Name: "--verbose", Description: "Enable verbose logging format"},
 			{Name: "--log-spans", Description: "Enable logging spans"},

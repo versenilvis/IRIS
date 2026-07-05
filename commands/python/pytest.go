@@ -1,14 +1,14 @@
 package python
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "pytest",
 		Description: "Control assertion debugging tools.",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--assert", Description: "Remove all cache contents at start of test run"},
 			{Name: "--cache-show", Description: "Per-test capturing method"},
 			{Name: "--code-highlight", Description: "Whether code should be highlighted (only if --color is also enabled)"},

@@ -1,14 +1,14 @@
 package python
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "jupyter",
 		Description: "Set log level to logging.DEBUG (maximize logging output)",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "bundlerextension", Description: "Work with Jupyter bundler extensions"},
 			{Name: "enable", Description: "Enable a bundler extension"},
 			{Name: "disable", Description: "Disable a bundler extension"},
@@ -27,7 +27,7 @@ func init() {
 			{Name: "troubleshoot", Description: "Log for troubleshooting"},
 			{Name: "trust", Description: "Manage trust"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--debug", Description: "Set log level to logging.DEBUG (maximize logging output)"},
 			{Name: "-h", Description: "Show this message"},
 			{Name: "--log-level", Description: "Set the log level by value or name"},

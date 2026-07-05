@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "dtm",
 		Description: "Plugin",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "apply", Description: "Create or update DevOps tools according to DevStream configuration file"},
 			{Name: "completion", Description: "Generate the autocompletion script for dtm for the specified shell"},
 			{Name: "bash", Description: "Generate autocompletion script for bash"},
@@ -30,7 +30,7 @@ func init() {
 			{Name: "version", Description: "Print the version number of DevStream"},
 			{Name: "help", Description: "Help about any command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--config-file", Description: "Config file"},
 			{Name: "--plugin-dir", Description: "Plugins directory"},
 			{Name: "--yes", Description: "Apply directly without confirmation"},

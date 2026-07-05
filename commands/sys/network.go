@@ -1,15 +1,15 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "curl",
 		Description: "transfer data via URL",
-		Generator:   core.FileGenerator(),
-		Options: []core.Option{
+		Generator:   spec.FileGenerator(),
+		Options: []spec.Option{
 			{Name: "-X", Description: "request method (GET/POST/PUT/DELETE)"},
 			{Name: "-H", Description: "request header"},
 			{Name: "-d", Description: "request body data"},
@@ -35,11 +35,11 @@ func init() {
 		},
 	})
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "wget",
 		Description: "non-interactive downloader",
-		Generator:   core.FileGenerator(),
-		Options: []core.Option{
+		Generator:   spec.FileGenerator(),
+		Options: []spec.Option{
 			{Name: "-O", Description: "output filename"},
 			{Name: "-q", Description: "quiet"},
 			{Name: "-v", Description: "verbose"},
@@ -56,10 +56,10 @@ func init() {
 		},
 	})
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "nc",
 		Description: "netcat - TCP/UDP tool",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-l", Description: "listen mode"},
 			{Name: "-p", Description: "local port"},
 			{Name: "-z", Description: "port scan mode"},
@@ -70,10 +70,10 @@ func init() {
 		},
 	})
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ping",
 		Description: "test network connectivity",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-c", Description: "packet count"},
 			{Name: "-i", Description: "interval"},
 			{Name: "-t", Description: "TTL"},
@@ -82,10 +82,10 @@ func init() {
 		},
 	})
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "dig",
 		Description: "DNS lookup",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "+short", Description: "short output"},
 			{Name: "+noall", Description: "no output flags"},
 			{Name: "+answer", Description: "answer section only"},
@@ -94,30 +94,30 @@ func init() {
 		},
 	})
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "nslookup",
 		Description: "query DNS",
 	})
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ifconfig",
 		Description: "configure network interface",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-a", Description: "all interfaces"},
 		},
 	})
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ip",
 		Description: "show/manage network",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "addr", Description: "address management"},
 			{Name: "link", Description: "network device management"},
 			{Name: "route", Description: "routing table management"},
 			{Name: "neigh", Description: "ARP table"},
 			{Name: "rule", Description: "routing policy"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-4", Description: "IPv4 only"},
 			{Name: "-6", Description: "IPv6 only"},
 			{Name: "-br", Description: "brief output"},
@@ -125,10 +125,10 @@ func init() {
 		},
 	})
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "netstat",
 		Description: "network statistics",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-t", Description: "TCP connections"},
 			{Name: "-u", Description: "UDP connections"},
 			{Name: "-l", Description: "listening only"},
@@ -139,10 +139,10 @@ func init() {
 		},
 	})
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ss",
 		Description: "socket statistics",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-t", Description: "TCP"},
 			{Name: "-u", Description: "UDP"},
 			{Name: "-l", Description: "listening"},

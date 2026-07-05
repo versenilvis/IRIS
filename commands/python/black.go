@@ -1,14 +1,14 @@
 package python
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "black",
 		Description: "Version",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--code", Description: "Format the code passed in as a string"},
 			{Name: "--line-length", Description: "How many characters per line to allow"},
 			{Name: "--target-version", Description: "Python versions that should be supported"},

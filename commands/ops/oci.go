@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "oci",
 		Description: "Oracle Cloud Infrastructure CLI",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "compute", Description: "Manage Compute resources like instances and images"},
 			{Name: "instance", Description: "Manage Compute instances"},
 			{Name: "launch", Description: "Launch a new compute instance"},
@@ -35,7 +35,7 @@ func init() {
 			{Name: "alarm", Description: "Manage monitoring alarms"},
 			{Name: "budget", Description: "Manage Budgets and Cost Controls"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--availability-domain", Description: "The availability domain of the instance"},
 			{Name: "--compartment-id", Description: "The OCID of the compartment"},
 			{Name: "--shape", Description: "The shape of the instance"},

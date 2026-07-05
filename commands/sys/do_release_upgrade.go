@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "do-release-upgrade",
 		Description: "Upgrade Ubuntu to latest release",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Show help message and exit"},
 			{Name: "-d", Description: "If using the latest supported release, upgrade to the development release"},
 			{Name: "-p", Description: "Try upgrading to the latest release using the upgrader from Ubuntu-proposed"},

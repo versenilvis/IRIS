@@ -1,16 +1,16 @@
 package fs
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "chmod",
 		Description: "change file permissions",
 		MaxArgs:     2, // 1 option + 1 file
-		Subcommands: []core.Subcommand{},
-		Options: []core.Option{
+		Subcommands: []spec.Subcommand{},
+		Options: []spec.Option{
 			{Name: "-R", Description: "apply recursively to directories"},
 			{Name: "--recursive", Description: "apply recursively to directories"},
 			{Name: "-v", Description: "verbose: show each file processed"},
@@ -31,8 +31,8 @@ func init() {
 
 // modeGenerator suggests common chmod mode strings as the first argument,
 // then falls back to file suggestions for subsequent arguments
-func modeGenerator() core.GeneratorFunc {
-	filegen := core.FileGenerator(".sh", ".py", ".bin", ".run")
+func modeGenerator() spec.GeneratorFunc {
+	filegen := spec.FileGenerator(".sh", ".py", ".bin", ".run")
 
 	commonModes := []struct {
 		mode string
@@ -63,7 +63,7 @@ func modeGenerator() core.GeneratorFunc {
 		{"664", "rw-rw-r-- (group can read+write)"},
 	}
 
-	return func(tokens []string, prefix string, partial string) []core.Suggestion {
+	return func(tokens []string, prefix string, partial string) []spec.Suggestion {
 		argCount := 0
 		for i := 1; i < len(tokens); i++ {
 			t := tokens[i]
@@ -73,10 +73,10 @@ func modeGenerator() core.GeneratorFunc {
 		}
 
 		if argCount == 0 {
-			var results []core.Suggestion
+			var results []spec.Suggestion
 			for _, m := range commonModes {
-				if partial == "" || core.HasPrefixCI(m.mode, partial) {
-					results = append(results, core.Suggestion{
+				if partial == "" || spec.HasPrefixCI(m.mode, partial) {
+					results = append(results, spec.Suggestion{
 						Cmd:  m.mode,
 						Desc: m.desc,
 					})

@@ -1,14 +1,14 @@
 package jvm
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "jmeter",
 		Description: "Apache JMeter - 100% Java Load Testing Tool",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-v", Description: "Print the JMeter version information and exit"},
 			{Name: "-h", Description: "Print usage information and exit"},
 			{Name: "-p", Description: "The jmeter property file to use"},

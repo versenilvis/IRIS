@@ -1,14 +1,14 @@
 package text
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "dos2unix",
 		Description: "DOS to Unix file format converter",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Show help for dos2unix"},
 			{Name: "--allow-chown", Description: "Allow file ownership change in old file mode"},
 			{Name: "-ascii", Description: "Convert only line breaks. This is the default conversion mode"},

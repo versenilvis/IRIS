@@ -1,14 +1,14 @@
 package fs
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "eza",
 		Description: "A modern replacement for ls",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-?", Description: "Show list of command-line options"},
 			{Name: "-v", Description: "Show version of eza"},
 			{Name: "-1", Description: "Display one entry per line"},

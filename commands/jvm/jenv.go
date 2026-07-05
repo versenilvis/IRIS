@@ -1,14 +1,14 @@
 package jvm
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "jenv",
 		Description: "Executable file",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "commands", Description: "List all available JEnv commands"},
 			{Name: "help", Description: "Parses and displays help contents from a command's source file"},
 			{Name: "info", Description: "Show information about which command will be executed"},
@@ -39,7 +39,7 @@ func init() {
 			{Name: "versions", Description: "Lists all Java versions found in `$JENV_ROOT/versions/*'"},
 			{Name: "whence", Description: "List all Java versions that contain the given executable"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--usage", Description: "Show information about which command will be executed"},
 			{Name: "--unset", Description: "Remove local jEnv settings"},
 			{Name: "--short", Description: "Show only files without path"},

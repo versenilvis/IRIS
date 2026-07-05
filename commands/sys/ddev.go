@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ddev",
 		Description: "DDEV-Local local development environment",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "auth", Description: "A collection of authentication commands"},
 			{Name: "ssh", Description: "Add ssh key authentication to the ddev-ssh-auth container"},
 			{Name: "clean", Description: "Removes items ddev has created"},
@@ -54,7 +54,7 @@ func init() {
 			{Name: "version", Description: "Print ddev version and component versions"},
 			{Name: "help", Description: "Help about any command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--ssh-key-path", Description: "Full path to ssh key directory"},
 			{Name: "--all", Description: "Clean all ddev projects"},
 			{Name: "--dry-run", Description: "Run the clean command without deleting"},

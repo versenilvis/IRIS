@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "cordova",
 		Description: "Print out the version of your cordova-cli install",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "create", Description: "Create a project"},
 			{Name: "help", Description: "Get help for a command"},
 			{Name: "telemetry", Description: "Turn telemetry collection on or off"},
@@ -35,7 +35,7 @@ func init() {
 			{Name: "serve", Description: "Run project with a local webserver (including prepare)"},
 			{Name: "port", Description: "Port to use for local web server"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-d", Description: "Print out the version of your cordova-cli install"},
 			{Name: "--no-update-notifier", Description: "Will disable updates check"},
 			{Name: "--nohooks", Description: "Suppress executing hooks (taking RegExp hook patterns as parameters)"},

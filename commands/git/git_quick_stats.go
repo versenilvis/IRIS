@@ -1,14 +1,14 @@
 package git
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "git-quick-stats",
 		Description: "Show help for git-quick-stats",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for git-quick-stats"},
 			{Name: "--suggest-reviewers", Description: "Show the best people to contact to review code"},
 			{Name: "--detailed-git-stats", Description: "Give a detailed list of git stats"},

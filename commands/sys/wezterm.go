@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "wezterm",
 		Description: "Wez",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "start", Description: "Start the GUI, optionally running an alternative program"},
 			{Name: "ssh", Description: "Establish an ssh session"},
 			{Name: "serial", Description: "Open a serial port"},
@@ -27,7 +27,7 @@ func init() {
 			{Name: "replay", Description: "Replay an asciicast terminal session"},
 			{Name: "shell-completion", Description: "Generate shell completion information"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--cwd", Description: "Specify the current working directory for the initially spawned program"},
 			{Name: "--class", Description: "Override the position for the initial window launched by this process"},
 			{Name: "--no-auto-connect", Description: "Print help information"},

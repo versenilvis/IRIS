@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "defaults",
 		Description: "Global domain",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "read", Description: "Shows defaults"},
 			{Name: "write", Description: "Writes key for domain"},
 			{Name: "delete", Description: "Deletes domain or key in domain"},
@@ -19,7 +19,7 @@ func init() {
 			{Name: "help", Description: "Show help text"},
 			{Name: "read-type", Description: "Shows the type for the given domain, key"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-globalDomain", Description: "Global domain"},
 			{Name: "-app", Description: "Application name"},
 			{Name: "-string", Description: "Command line interface to a user's defaults"},

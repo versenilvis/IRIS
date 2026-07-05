@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "leaf",
 		Description: "Create and interact with your leaf projects",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "completion", Description: "Dump the shell completion script"},
 			{Name: "create", Description: "[init] Create a new Leaf PHP project"},
 			{Name: "project name", Description: "Name of the project"},
@@ -27,7 +27,7 @@ func init() {
 			{Name: "uninstall", Description: "Uninstall a package"},
 			{Name: "update", Description: "Update leaf cli to the latest version"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Do not output any message"},
 			{Name: "-V", Description: "Display this application version"},
 			{Name: "--ansi", Description: "Force ANSI output"},

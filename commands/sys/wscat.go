@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "wscat",
 		Description: "Communicate over websocket",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-c", Description: "Connect to a WebSocket server"},
 			{Name: "-V", Description: "Output the version number"},
 			{Name: "--auth", Description: "Add basic HTTP authentication header (--connect only)"},

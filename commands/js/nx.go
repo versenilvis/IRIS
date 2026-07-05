@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "nx",
 		Description: "All projects",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "init", Description: "Adds nx.json file and installs nx if not installed already"},
 			{Name: "daemon", Description: "Prints information about the Nx Daemon process or starts a daemon process"},
 			{Name: "graph", Description: "Graph dependencies within workspace"},
@@ -31,7 +31,7 @@ func init() {
 			{Name: "show", Description: "Show information about the workspace (e.g., list of projects)"},
 			{Name: "object", Description: "What to show (e.g., projects)"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--all", Description: "All projects"},
 			{Name: "--base", Description: "Base of the current branch (usually main)"},
 			{Name: "--commitPrefix", Description: "Automatically create a git commit after each migration runs"},

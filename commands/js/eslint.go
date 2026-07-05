@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "eslint",
 		Description: "Pluggable JavaScript linter",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--no-eslintrc", Description: "Disable use of configuration from .eslintrc.*"},
 			{Name: "-c", Description: "Use this configuration, overriding .eslintrc.* config options if present"},
 			{Name: "--env", Description: "Specify environments"},

@@ -1,17 +1,17 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "tsx",
 		Description: "Run TypeScript file using tsx",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "watch", Description: "Run the script and watch for changes"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for tsx"},
 			{Name: "--no-cache", Description: "Disable caching"},
 			{Name: "--clear-screen", Description: "Disable clearing the screen on rerun"},

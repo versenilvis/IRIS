@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "htop",
 		Description: "Improved top (interactive process viewer)",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for htop"},
 			{Name: "--no-color", Description: "Use a monochrome color scheme"},
 			{Name: "--delay", Description: "Delay between updates, in tenths of sec"},

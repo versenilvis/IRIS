@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "knex",
 		Description: "SQL query builder for JavaScript",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "init", Description: "Create a fresh knexfile"},
 			{Name: "migrate:make", Description: "Create a named migration file"},
 			{Name: "migrate:latest", Description: "Run all migrations that have not yet been run"},
@@ -22,7 +22,7 @@ func init() {
 			{Name: "seed:run", Description: "Run seed files"},
 			{Name: "help", Description: "Display help for command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--version", Description: "Output the version number"},
 			{Name: "--debug", Description: "Run with debugging"},
 			{Name: "--knexfile", Description: "Specify the knexfile path"},

@@ -1,18 +1,18 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "netlify",
 		Description: "Print debugging information",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "help", Description: "List available sub-commands"},
 			{Name: "subcommand", Description: "The command to display help for"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--debug", Description: "Print debugging information"},
 			{Name: "--httpProxy", Description: "Proxy server address to route requests through"},
 			{Name: "-f", Description: "Delete without prompting (useful for CI)"},

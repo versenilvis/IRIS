@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "pry",
 		Description: "Interactive Ruby",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-e", Description: "A line of code to execute in context before the session starts"},
 			{Name: "--no-pager", Description: "Disable pager for long output"},
 			{Name: "--no-history", Description: "Disable history loading"},

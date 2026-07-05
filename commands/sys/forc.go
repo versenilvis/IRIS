@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "forc",
 		Description: "Fuel Orchestrator",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "addr2line", Description: "Show location and context of an opcode address in its source file"},
 			{Name: "build", Description: "Compile the current or target project"},
 			{Name: "check", Description: "Check the current or target project and all of its dependencies for errors"},
@@ -40,7 +40,7 @@ func init() {
 			{Name: "submit", Description: "A `forc` plugin for interacting with a Fuel node"},
 			{Name: "deploy", Description: "Build output file options"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-S", Description: "Where to search for the project root"},
 			{Name: "-g", Description: "Source file mapping in JSON format"},
 			{Name: "-c", Description: "How many lines of context to show"},

@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "watchman",
 		Description: "A file watching service",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "clock", Description: "Returns the current clock value for a watched root"},
 			{Name: "path", Description: "The path to directory"},
 			{Name: "find", Description: "Finds all files that match the optional list of patterns under the specified dir"},
@@ -32,7 +32,7 @@ func init() {
 			{Name: "watch-list", Description: "Returns a list of watched dirs"},
 			{Name: "watch-project", Description: "Requests that the project containing the requested dir is watched for changes"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for watchman"},
 			{Name: "--inetd", Description: "Spawning from an inetd style supervisor"},
 			{Name: "-S", Description: "Don't use the site or system spawner"},

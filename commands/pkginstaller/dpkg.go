@@ -1,14 +1,14 @@
 package pkginstaller
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "dpkg",
 		Description: "Debian package management system",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "query", Description: "Query the dpkg database"},
 			{Name: "install", Description: "Install or upgrade packages"},
 			{Name: "remove", Description: "Remove packages"},
@@ -20,7 +20,7 @@ func init() {
 			{Name: "check", Description: "Check the dependencies of packages"},
 			{Name: "compare-versions", Description: "Compare package versions"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-l", Description: "List packages matching a pattern"},
 			{Name: "-s", Description: "Display the status of available packages"},
 			{Name: "-L", Description: "List files in a package"},

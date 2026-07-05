@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "create-nx-workspace",
 		Description: "The name of the workspace",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--name", Description: "Workspace name (e.g., org name)"},
 			{Name: "--preset", Description: "Empty [an empty workspace with a layout that works best for building apps]"},
 			{Name: "--appName", Description: "The name of the application created by some presets"},

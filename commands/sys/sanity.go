@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "sanity",
 		Description: "Displays help information about Sanity",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "help", Description: "Displays help information about Sanity"},
 			{Name: "build", Description: "Builds the current Sanity configuration to a static bundle"},
 			{Name: "codemod", Description: "Runs a code modification script"},
@@ -48,7 +48,7 @@ func init() {
 			{Name: "invite", Description: "Invite a new user to the project"},
 			{Name: "versions", Description: "Shows the installed versions of Sanity CLI and core components"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--source-maps", Description: "Enable source maps for built bundles (increases size of bundle)"},
 			{Name: "--no-minify", Description: "Skip minifying built JavaScript (speeds up build, increases size of bundle)"},
 			{Name: "-y", Description: "Use unattended mode, accepting defaults and using only flags for choices"},

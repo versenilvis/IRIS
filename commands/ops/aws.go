@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "aws",
 		Description: "Use a specific profile from your credential file",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "account", Description: "Operations for Amazon Web Services Account Management"},
 			{Name: "amplifybackend", Description: "AWS Amplify Admin API"},
 			{Name: "apigatewayv2", Description: "Amazon API Gateway V2"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "trustedadvisor", Description: "TrustedAdvisor Public API"},
 			{Name: "runtime.sagemaker", Description: "The Amazon SageMaker runtime API"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--profile", Description: "Use a specific profile from your credential file"},
 		},
 	})

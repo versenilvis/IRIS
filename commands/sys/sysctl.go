@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "sysctl",
 		Description: "Variable name",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-A", Description: "List all the currently available non-opaque values"},
 			{Name: "-b", Description: "Force the value of the variable(s) to be output in raw, binary format"},
 			{Name: "-d", Description: "Print the description of the variable instead of its value"},

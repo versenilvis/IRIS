@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "amplify",
 		Description: "Environment",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "push", Description: "Provisions cloud resources with the latest local developments"},
 			{Name: "delete", Description: "Deletes all of the resources tied to the project from the cloud"},
 			{Name: "add", Description: "Adds a resource for an Amplify category in your local backend"},
@@ -28,7 +28,7 @@ func init() {
 			{Name: "get", Description: "Displays the environment details"},
 			{Name: "import", Description: "Imports an environment"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-y", Description: "Answer all question as 'Yes'"},
 			{Name: "-v", Description: "Deletes all of the resources tied to the project from the cloud"},
 			{Name: "--restore", Description: "Overwrite your local changes"},

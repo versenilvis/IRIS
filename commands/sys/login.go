@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "login",
 		Description: "Begin session on the system",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-p", Description: "Preserve environment"},
 			{Name: "-r", Description: "Perform autologin protocol for rlogin"},
 			{Name: "-h", Description: "Specify host"},

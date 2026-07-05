@@ -1,14 +1,14 @@
 package cc
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "xcodebuild",
 		Description: "Build Xcode projects",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-usage", Description: "Print brief usage"},
 			{Name: "-help", Description: "Print complete usage"},
 			{Name: "-verbose", Description: "Provide additional status output"},

@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "asdf",
 		Description: "Plugin name",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--urls", Description: "Show git urls"},
 			{Name: "--refs", Description: "Show git refs"},
 			{Name: "--all", Description: "Update all plugins to latest commit on default branch"},

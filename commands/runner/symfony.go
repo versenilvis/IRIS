@@ -1,14 +1,14 @@
 package runner
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "symfony",
 		Description: "Symfony Binary",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "cloud:clear-cache", Description: "Clear the CLI cache"},
 			{Name: "cloud:docs", Description: "Open the online documentation"},
 			{Name: "cloud:multi", Description: "Execute a command on multiple projects"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "cloud:environment:url", Description: "Get the public URLs of an environment"},
 			{Name: "cloud:environment:xdebug", Description: "Open a tunnel to Xdebug on the environment"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Show help"},
 			{Name: "-q", Description: "Do not output any message"},
 			{Name: "--no-ansi", Description: "Disable ANSI output"},

@@ -1,14 +1,14 @@
 package runner
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "composer",
 		Description: "Composer Command",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Display this help message"},
 			{Name: "-q", Description: "Do not output any message"},
 			{Name: "-V", Description: "Display this application version"},

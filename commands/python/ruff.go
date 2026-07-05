@@ -1,17 +1,17 @@
 package python
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ruff",
 		Description: "Enable verbose logging",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "graph", Description: "Generate a map of Python file dependencies or dependents"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-v", Description: "Enable verbose logging"},
 			{Name: "-q", Description: "Print diagnostics, but nothing else"},
 			{Name: "-s", Description: "Path to the `pyproject.toml` or `ruff.toml` file to use for configuration"},

@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "gpg",
 		Description: "Encryption and signing tool",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--homedir", Description: "Set the name of the home directory"},
 			{Name: "--options", Description: "Read options from file"},
 			{Name: "-a", Description: "Create ASCII armored output"},

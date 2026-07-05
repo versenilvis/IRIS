@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "hasura",
 		Description: ".env filename to load ENV vars from",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "actions", Description: "Manage Hasura actions"},
 			{Name: "codegen", Description: "Generate code for actions"},
 			{Name: "create", Description: "Create a Hasura action"},
@@ -41,7 +41,7 @@ func init() {
 			{Name: "update-cli", Description: "Update the CLI to latest or a specific version"},
 			{Name: "version", Description: "Print the CLI version"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--envfile", Description: ".env filename to load ENV vars from"},
 			{Name: "-h", Description: "Help for hasura"},
 			{Name: "--log-level", Description: "Log level"},

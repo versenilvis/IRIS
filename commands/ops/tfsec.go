@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "tfsec",
 		Description: "Terraform workspaces",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--concise-output", Description: "Reduce the amount of output and no statistics"},
 			{Name: "--config-file", Description: "Config file to use during run"},
 			{Name: "--custom-check-dir", Description: "Explicitly the custom checks dir location"},

@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "nvm",
 		Description: "Node version",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "uninstall", Description: "Uninstall a version"},
 			{Name: "use", Description: "Modify PATH to use <version>. Uses .nvmrc if available and version is omitted"},
 			{Name: "exec", Description: "Run <command> on <version>. Uses .nvmrc if available and version is omitted"},
@@ -25,7 +25,7 @@ func init() {
 			{Name: "dir", Description: "Display path to the cache directory for nvm"},
 			{Name: "clear", Description: "Empty cache directory for nvm"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--no-colors", Description: "Suppress colored output"},
 			{Name: "--no-alias", Description: "Suppress `nvm alias` output"},
 			{Name: "--silent", Description: "Silences stdout/stderr output"},

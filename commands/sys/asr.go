@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "asr",
 		Description: "Can be a disk image, /dev entry, or volume mountpoint",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "help", Description: "Displays asr usage information"},
 			{Name: "version", Description: "Displays asr version"},
 			{Name: "restore", Description: "Restores a disk image or volume to another volume"},
@@ -17,7 +17,7 @@ func init() {
 			{Name: "interface", Description: "The network interface to be used for multicasting"},
 			{Name: "configuration", Description: "Configuration file in standard property list format"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--source", Description: "Can be a disk image, /dev entry, or volume mountpoint"},
 			{Name: "--target", Description: "Can be a /dev entry, or volume mountpoint"},
 			{Name: "--file", Description: "When performing a multicast restore, --file can be specified instead of --target"},

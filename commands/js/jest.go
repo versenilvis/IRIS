@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "jest",
 		Description: "A delightful JavaScript Testing Framework with a focus on simplicity",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--bail", Description: "Whether to use the cache"},
 			{Name: "--no-cache", Description: "Whether to use the cache"},
 			{Name: "--changedFilesWithAncestor", Description: "Runs tests related to the changes since the provided branch or commit hash"},

@@ -1,18 +1,18 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "newman",
 		Description: "Newman is a command-line collection runner for Postman",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "run", Description: "Initiate a Postman Collection run from a given URL or path"},
 			{Name: "help", Description: "Display help for command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-e", Description: "Specify a URL or path to a Postman Environment"},
 			{Name: "-g", Description: "Specify a URL or path to a file containing Postman Globals"},
 			{Name: "-r", Description: "Specify the reporters to use for this run"},

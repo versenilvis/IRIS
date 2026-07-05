@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "meroxa",
 		Description: "The Meroxa CLI",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "accounts", Description: "Manage Meroxa Accounts"},
 			{Name: "ls", Description: "List Meroxa Accounts"},
 			{Name: "set", Description: "Set active account"},
@@ -42,7 +42,7 @@ func init() {
 			{Name: "version", Description: "Display the Meroxa CLI version"},
 			{Name: "help", Description: "Help about any command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--no-headers", Description: "Display output without headers"},
 			{Name: "--docker-hub-access-token", Description: "DockerHub access token to use to build and deploy the app"},
 			{Name: "--docker-hub-username", Description: "DockerHub username to use to build and deploy the app"},

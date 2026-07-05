@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "julia",
 		Description: "The Julia Programming Language",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-v", Description: "Display version information"},
 			{Name: "-h", Description: "Print help message for julia (--help-hidden for more)"},
 			{Name: "--help-hidden", Description: "Uncommon options not shown by `-h`"},

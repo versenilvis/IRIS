@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "airflow",
 		Description: "Subcommand",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "celery", Description: "Celery components"},
 			{Name: "broker_api", Description: "Broker API"},
 			{Name: "flower_conf", Description: "Configuration file for flower"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "db", Description: "Database operations"},
 			{Name: "migration_wait_timeout", Description: "Timeout to wait for db to migrate"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Show this help message and exit"},
 			{Name: "-A", Description: "Broker API"},
 			{Name: "-D", Description: "Daemonize instead of running in the foreground"},

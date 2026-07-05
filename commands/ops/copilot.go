@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "copilot",
 		Description: "Name of the application",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "init", Description: "Create a new ECS or App Runner application"},
 			{Name: "docs", Description: "Open the copilot docs"},
 			{Name: "ls", Description: "Lists all the applications in your account"},
@@ -32,7 +32,7 @@ func init() {
 			{Name: "update", Description: "Deploys a pipeline for the services in your workspace"},
 			{Name: "help", Description: "Help about any command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--app", Description: "Name of the application"},
 			{Name: "--name", Description: "Name of the environment"},
 			{Name: "--help", Description: "Help for command"},

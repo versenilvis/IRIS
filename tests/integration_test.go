@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 	_ "github.com/versenilvis/iris/commands"
 )
 
@@ -35,7 +35,7 @@ func TestIntegration_ZoxideMultiWord(t *testing.T) {
 	t.Run("z matches multi-word folder without quotes", func(t *testing.T) {
 		// Simulating user typing "z My Awe"
 		input := "z My Awe"
-		results := core.Lookup(input)
+		results := spec.Lookup(input)
 		
 		found := false
 		for _, r := range results {

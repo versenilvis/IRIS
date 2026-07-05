@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "tsh",
 		Description: "Remote host login",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "version", Description: "Print the version"},
 			{Name: "ssh", Description: "Run shell or execute a command on a remote SSH node"},
 			{Name: "user@hostname", Description: "Address of remote machine to log into"},
@@ -36,7 +36,7 @@ func init() {
 			{Name: "add", Description: "Add a new MFA device"},
 			{Name: "rm", Description: "Remove a MFA device"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-l", Description: "Remote host login"},
 			{Name: "--proxy", Description: "SSH proxy address"},
 			{Name: "--user", Description: "SSH proxy user"},

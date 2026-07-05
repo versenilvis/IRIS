@@ -3,33 +3,33 @@ package root
 import (
 	"strings"
 
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 	"github.com/versenilvis/iris/config"
 	"github.com/versenilvis/iris/integration"
 	"github.com/versenilvis/iris/logger"
 )
 
 // MergeResults collects and dedupes suggestions for a query and mode
-func MergeResults(query string, mode string) []core.Suggestion {
+func MergeResults(query string, mode string) []spec.Suggestion {
 	maxSugg := config.Get().UI.MaxSuggestions
 	seen := make(map[string]bool)
-	deduped := []core.Suggestion{}
+	deduped := []spec.Suggestion{}
 
 	// always call lookup to scan aliases and get spec suggestions
 	logger.Debugf("Merge Calling Lookup for '%s'", query)
-	cmdResults := core.Lookup(query)
+	cmdResults := spec.Lookup(query)
 
 	// search history if in history mode
 	var histResults []integration.HistResult
 	if mode == "history" {
-		aliases := core.GetAliasesCopy()
+		aliases := spec.GetAliasesCopy()
 		histResults, _ = integration.SearchHistory(query, aliases)
 	}
 
 	normalizedQuery := strings.TrimSpace(query)
 
 	// add suggestion helper to deduplicate
-	addSuggestion := func(s core.Suggestion) {
+	addSuggestion := func(s spec.Suggestion) {
 		normalizedCmd := strings.TrimSpace(s.Cmd)
 		if normalizedCmd == "" {
 			return
@@ -47,7 +47,7 @@ func MergeResults(query string, mode string) []core.Suggestion {
 	if mode == "history" {
 		// history mode: history first, then spec/alias
 		for _, h := range histResults {
-			addSuggestion(core.Suggestion{
+			addSuggestion(spec.Suggestion{
 				Cmd:  h.Cmd,
 				Desc: "history",
 				Icon: "history",

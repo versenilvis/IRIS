@@ -1,15 +1,15 @@
 package fs
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "rm",
 		Description: "remove files or directories",
-		Generator:   core.FileGenerator(),
-		Options: []core.Option{
+		Generator:   spec.FileGenerator(),
+		Options: []spec.Option{
 			{Name: "-r", Description: "recursive"},
 			{Name: "-f", Description: "force"},
 			{Name: "-i", Description: "interactive"},

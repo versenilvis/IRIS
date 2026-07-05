@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "babel",
 		Description: "A comma-separated list of preset names",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-f", Description: "A comma-separated list of preset names"},
 			{Name: "--plugins", Description: "A comma-separated list of plugin names"},
 			{Name: "--config-file", Description: "Path to a .babelrc file to use"},

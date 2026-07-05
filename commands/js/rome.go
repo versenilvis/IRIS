@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "rome",
 		Description: "Rome CLI",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "check", Description: "Run the linter on a set of files"},
 			{Name: "ci", Description: "Run the linter and formatter check on a set of files"},
 			{Name: "format", Description: "Run the formatter on a set of files"},
@@ -20,7 +20,7 @@ func init() {
 			{Name: "version", Description: "Shows the Rome version information and quit"},
 			{Name: "help", Description: "Prints help message"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--colors", Description: "Set the formatting mode for markup"},
 			{Name: "--use-server", Description: "Connect to a running instance of the Rome daemon server"},
 			{Name: "--version", Description: "Show the Rome version information and quit"},

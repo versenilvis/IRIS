@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "fzf-tmux",
 		Description: "Opens a fuzzy finder in a tmux pane",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-x", Description: "Enables extended-search mode"},
 			{Name: "-e", Description: "Enables Exact-match"},
 			{Name: "--algo", Description: "Fuzzy matching algorithm"},

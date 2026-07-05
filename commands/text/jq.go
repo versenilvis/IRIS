@@ -1,14 +1,14 @@
 package text
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "jq",
 		Description: "Output the jq version and exit with zero",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--version", Description: "Output the jq version and exit with zero"},
 			{Name: "--seq", Description: "Parse the input in streaming fashion, outputting arrays of path and leaf values"},
 			{Name: "--slurp", Description: "Use a tab for each indentation level instead of two spaces"},

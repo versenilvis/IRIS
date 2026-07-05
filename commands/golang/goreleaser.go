@@ -1,14 +1,14 @@
 package golang
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "goreleaser",
 		Description: "Deliver Go binaries as fast and easily as possible",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "b", Description: "Builds the current project"},
 			{Name: "c", Description: "Checks if configuration is valid"},
 			{Name: "completion", Description: "Generate the autocompletion script for the specified shell"},
@@ -22,7 +22,7 @@ func init() {
 			{Name: "r", Description: "Releases the current project"},
 			{Name: "help", Description: "Help about any command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--clean", Description: "Remove the dist folder before building"},
 			{Name: "--config", Description: "Load configuration from file"},
 			{Name: "--deprecated", Description: "Force print the deprecation message - tests only"},

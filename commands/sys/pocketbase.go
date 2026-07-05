@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "pocketbase",
 		Description: "PocketBase CLI",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "help", Description: "Help about any command"},
 			{Name: "migrate", Description: "Executes DB migration scripts"},
 			{Name: "folder", Description: "Migrations folder"},
@@ -21,7 +21,7 @@ func init() {
 			{Name: "string", Description: "API HTTP server address"},
 			{Name: "strings", Description: "CORS allowed domain origins list"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--http", Description: "API HTTP server address"},
 			{Name: "--https", Description: "API HTTPS server address (auto TLS via Let's Encrypt)"},
 			{Name: "--origins", Description: "CORS allowed domain origins list (default [*])"},

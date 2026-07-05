@@ -1,17 +1,17 @@
 package runner
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "laravel",
 		Description: "The output format (txt, xml, json, or md)",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "new", Description: "Create a new Laravel application"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--format", Description: "The output format (txt, xml, json, or md)"},
 			{Name: "--raw", Description: "To output raw command list"},
 			{Name: "--dev", Description: "Initialize a Git repository"},

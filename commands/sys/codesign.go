@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "codesign",
 		Description: "Create and manipulate code signatures",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--all-architectures", Description: "Display information about the code at the path(s) given"},
 			{Name: "-D", Description: "Constructs and prints the hosting chain of a running program"},
 			{Name: "-i", Description: "Indicates the granularity of code signing. Pagesize must be a power of two"},

@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "forge",
 		Description: "A command line interface for managing Atlassian-hosted apps",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "autocomplete", Description: "Configures autocomplete for the Forge CLI"},
 			{Name: "create", Description: "Create an app"},
 			{Name: "deploy", Description: "Deploy your app to an environment"},
@@ -31,7 +31,7 @@ func init() {
 			{Name: "webtrigger", Description: "Get a web trigger URL"},
 			{Name: "whoami", Description: "Display the account information of the logged in user"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--verbose", Description: "Enable verbose mode"},
 			{Name: "-h", Description: "Display help for command"},
 			{Name: "-t", Description: "Specify the template to use"},

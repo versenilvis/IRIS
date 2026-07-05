@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "whois",
 		Description: "Query a database for information about a domain registrant",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-a", Description: "Use the American Registry for Internet Numbers (ARIN) database"},
 			{Name: "-A", Description: "Use the Asia/Pacific Network Information Center (APNIC) database"},
 			{Name: "-b", Description: "Use the Network Abuse Clearinghouse database"},

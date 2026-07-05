@@ -1,14 +1,14 @@
 package runner
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "dbt",
 		Description: "CLI for dbt - Data Build Tool",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "build", Description: "Run models, test tests, snapshot snapshots, and seed seeds"},
 			{Name: "directory", Description: "Directory containing profiles.yml"},
 			{Name: "name", Description: "Name of profile to use when running dbt project"},
@@ -45,7 +45,7 @@ func init() {
 			{Name: "ls", Description: "Lists resources defined in a dbt project"},
 			{Name: "parse", Description: "Parse dbt project and write detailed timing information"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--full-refresh", Description: "Treat incremental models as table models"},
 			{Name: "-x", Description: "Exit immediately if a single model fails to build"},
 			{Name: "--profiles-dir", Description: "Set the profiles directory"},

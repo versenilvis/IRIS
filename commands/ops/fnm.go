@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "fnm",
 		Description: "Fast and simple Node.js version manager",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "install", Description: "Install a new Node.js version"},
 			{Name: "uninstall", Description: "Uninstall a Node.js version"},
 			{Name: "use", Description: "Change Node.js version"},
@@ -24,7 +24,7 @@ func init() {
 			{Name: "env", Description: "Print and set up required environment variables for fnm"},
 			{Name: "help", Description: "Prints the help page or the help of the given subcommand(s)"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--lts", Description: "Install latest LTS"},
 			{Name: "--install-if-missing", Description: "Install the version if it isn't installed yet"},
 			{Name: "--help", Description: "Prints help information"},

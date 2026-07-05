@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "railway",
 		Description: "CLI for managing Railway Apps",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "add", Description: "Add a plugin to your project"},
 			{Name: "completion", Description: "Generate shell-completions"},
 			{Name: "shell", Description: "The shell to generate completions for"},
@@ -45,7 +45,7 @@ func init() {
 			{Name: "version", Description: "Get the version of railway's CLI"},
 			{Name: "whoami", Description: "Get the logged in user"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-e", Description: "Environment to delete from"},
 			{Name: "--browserless", Description: "Login without opening a browser"},
 			{Name: "-n", Description: "Output a specific number of lines"},
