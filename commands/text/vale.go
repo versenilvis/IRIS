@@ -1,19 +1,19 @@
 package text
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "vale",
 		Description: "A syntax-aware linter for prose built with speed and extensibility in mind",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "ls-config", Description: "Print the current configuration to stdout"},
 			{Name: "ls-metrics", Description: "Print the given file's internal metrics to stdout"},
 			{Name: "file", Description: "The path to a file you want to analyze"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for vale"},
 			{Name: "--version", Description: "Print the current version"},
 			{Name: "--ignore-syntax", Description: "Lint all files line-by-line"},

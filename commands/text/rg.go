@@ -1,15 +1,15 @@
 package text
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "rg",
 		Description: "ripgrep (fast search)",
-		Generator:   core.FileGenerator(),
-		Options: []core.Option{
+		Generator:   spec.FileGenerator(),
+		Options: []spec.Option{
 			{Name: "-i", Description: "case insensitive"},
 			{Name: "-s", Description: "case sensitive"},
 			{Name: "-n", Description: "show line numbers"},
@@ -52,11 +52,11 @@ func init() {
 		},
 	})
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "fd",
 		Description: "fast find alternative",
-		Generator:   core.FileGenerator("/"),
-		Options: []core.Option{
+		Generator:   spec.FileGenerator("/"),
+		Options: []spec.Option{
 			{Name: "-t", Description: "type (f/d/l/x/e/s)"},
 			{Name: "-e", Description: "file extension"},
 			{Name: "-H", Description: "include hidden"},

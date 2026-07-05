@@ -1,14 +1,14 @@
 package text
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "shred",
 		Description: "Overwrite a file to hide its contents, and optionally delete it",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--force", Description: "Change permissions to allow writing if necessary"},
 			{Name: "--iterations", Description: "Overwrite N times instead of the default (3)"},
 			{Name: "--random-source", Description: "Get random bytes from FILE"},

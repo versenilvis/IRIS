@@ -1,15 +1,15 @@
 package text
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "find",
 		Description: "search for files",
-		Generator:   core.FileGenerator("/"),
-		Options: []core.Option{
+		Generator:   spec.FileGenerator("/"),
+		Options: []spec.Option{
 			{Name: "-name", Description: "match by name"},
 			{Name: "-iname", Description: "match by name (case insensitive)"},
 			{Name: "-type", Description: "match by type (f=file, d=dir, l=link)"},

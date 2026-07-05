@@ -1,14 +1,14 @@
 package text
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "split",
 		Description: "Use suffix_length letters to form the suffix of the file name",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-a", Description: "Use suffix_length letters to form the suffix of the file name"},
 			{Name: "-b", Description: "N[K|k|M|m|G|g]"},
 			{Name: "-d", Description: "Use a numeric suffix instead of a alphabetic suffix"},

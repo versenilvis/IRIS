@@ -1,14 +1,14 @@
 package text
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "typos",
 		Description: "Source code spelling correction",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-c", Description: "Custom config file"},
 			{Name: "--isolated", Description: "Ignore implicit configuration files"},
 			{Name: "--diff", Description: "Print a diff of what would change"},

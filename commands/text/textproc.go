@@ -1,16 +1,16 @@
 package text
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
 	// awk
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "awk",
 		Description: "pattern-directed scanning",
-		Generator:   core.FileGenerator(),
-		Options: []core.Option{
+		Generator:   spec.FileGenerator(),
+		Options: []spec.Option{
 			{Name: "-F", Description: "field separator"},
 			{Name: "-v", Description: "assign variable"},
 			{Name: "-f", Description: "read program from file"},
@@ -21,11 +21,11 @@ func init() {
 	})
 
 	// gawk is also common
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "gawk",
 		Description: "GNU awk",
-		Generator:   core.FileGenerator(),
-		Options: []core.Option{
+		Generator:   spec.FileGenerator(),
+		Options: []spec.Option{
 			{Name: "-F", Description: "field separator"},
 			{Name: "-v", Description: "assign variable"},
 			{Name: "-f", Description: "read program from file"},
@@ -36,11 +36,11 @@ func init() {
 	})
 
 	// sed
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "sed",
 		Description: "stream editor",
-		Generator:   core.FileGenerator(),
-		Options: []core.Option{
+		Generator:   spec.FileGenerator(),
+		Options: []spec.Option{
 			{Name: "-e", Description: "add expression"},
 			{Name: "-f", Description: "read script from file"},
 			{Name: "-i", Description: "in-place edit"},
@@ -53,10 +53,10 @@ func init() {
 	})
 
 	// xargs
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "xargs",
 		Description: "build and run commands from stdin",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-I", Description: "replace string (e.g. -I{})"},
 			{Name: "-n", Description: "max args per command"},
 			{Name: "-P", Description: "parallel jobs"},
@@ -70,10 +70,10 @@ func init() {
 	})
 
 	// tr
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "tr",
 		Description: "translate or delete characters",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-d", Description: "delete characters"},
 			{Name: "-s", Description: "squeeze repeated chars"},
 			{Name: "-c", Description: "complement set"},
@@ -81,11 +81,11 @@ func init() {
 	})
 
 	// sort
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "sort",
 		Description: "sort lines of text",
-		Generator:   core.FileGenerator(),
-		Options: []core.Option{
+		Generator:   spec.FileGenerator(),
+		Options: []spec.Option{
 			{Name: "-n", Description: "numeric sort"},
 			{Name: "-r", Description: "reverse sort"},
 			{Name: "-k", Description: "sort by key field"},
@@ -100,11 +100,11 @@ func init() {
 	})
 
 	// uniq
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "uniq",
 		Description: "filter adjacent duplicate lines",
-		Generator:   core.FileGenerator(),
-		Options: []core.Option{
+		Generator:   spec.FileGenerator(),
+		Options: []spec.Option{
 			{Name: "-c", Description: "prefix count"},
 			{Name: "-d", Description: "only duplicates"},
 			{Name: "-u", Description: "only unique"},
@@ -115,11 +115,11 @@ func init() {
 	})
 
 	// cut
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "cut",
 		Description: "extract columns from lines",
-		Generator:   core.FileGenerator(),
-		Options: []core.Option{
+		Generator:   spec.FileGenerator(),
+		Options: []spec.Option{
 			{Name: "-d", Description: "delimiter"},
 			{Name: "-f", Description: "field numbers (e.g. 1,3 or 1-3)"},
 			{Name: "-c", Description: "character positions"},
@@ -128,11 +128,11 @@ func init() {
 	})
 
 	// tee
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "tee",
 		Description: "read stdin, write to stdout and files",
-		Generator:   core.FileGenerator(),
-		Options: []core.Option{
+		Generator:   spec.FileGenerator(),
+		Options: []spec.Option{
 			{Name: "-a", Description: "append to files"},
 			{Name: "-i", Description: "ignore interrupts"},
 		},

@@ -1,14 +1,14 @@
 package text
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "shasum",
 		Description: "Print or Check SHA Checksums",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-a", Description: "Select SHA algorithm"},
 			{Name: "-b", Description: "Read in binary mode"},
 			{Name: "-c", Description: "Read SHA sums from the FILEs and check them"},

@@ -1,14 +1,14 @@
 package text
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "pandoc",
 		Description: "A universal document converter",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-f", Description: "Specify input format"},
 			{Name: "-t", Description: "Specify output format"},
 			{Name: "-o", Description: "Write output to FILE instead of stdout"},

@@ -1,15 +1,15 @@
 package text
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "grep",
 		Description: "search text in files",
-		Generator:   core.FileGenerator(),
-		Options: []core.Option{
+		Generator:   spec.FileGenerator(),
+		Options: []spec.Option{
 			{Name: "-r", Description: "recursive"},
 			{Name: "-R", Description: "recursive + follow symlinks"},
 			{Name: "-i", Description: "ignore case"},
@@ -38,11 +38,11 @@ func init() {
 	})
 
 	// egrep and fgrep aliases
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "egrep",
 		Description: "grep with extended regex",
-		Generator:   core.FileGenerator(),
-		Options: []core.Option{
+		Generator:   spec.FileGenerator(),
+		Options: []spec.Option{
 			{Name: "-r", Description: "recursive"},
 			{Name: "-i", Description: "ignore case"},
 			{Name: "-n", Description: "show line numbers"},

@@ -1,14 +1,14 @@
 package text
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "diff",
 		Description: "Compare files line by line",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-i", Description: "Ignore case differences in file contents"},
 			{Name: "--ignore-file-name-case", Description: "Ignore case when comparing file names"},
 			{Name: "--no-ignore-file-name-case", Description: "Consider case when comparing file names"},
