@@ -1,11 +1,11 @@
 package cc
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	cOptions := []core.Option{
+	cOptions := []spec.Option{
 		{Name: "-o", Description: "output file"},
 		{Name: "-c", Description: "compile only (no link)"},
 		{Name: "-g", Description: "debug symbols"},
@@ -35,45 +35,45 @@ func init() {
 		{Name: "--version", Description: "print version"},
 	}
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "gcc",
 		Description: "GNU C compiler",
-		Generator:   core.FileGenerator(".c", ".h"),
+		Generator:   spec.FileGenerator(".c", ".h"),
 		Options:     cOptions,
 	})
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "g++",
 		Description: "GNU C++ compiler",
-		Generator:   core.FileGenerator(".cpp", ".cc", ".cxx", ".h", ".hpp"),
+		Generator:   spec.FileGenerator(".cpp", ".cc", ".cxx", ".h", ".hpp"),
 		Options:     cOptions,
 	})
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "cc",
 		Description: "C compiler (alias)",
-		Generator:   core.FileGenerator(".c", ".h"),
+		Generator:   spec.FileGenerator(".c", ".h"),
 		Options:     cOptions,
 	})
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "c++",
 		Description: "C++ compiler (alias)",
-		Generator:   core.FileGenerator(".cpp", ".cc", ".cxx", ".h", ".hpp"),
+		Generator:   spec.FileGenerator(".cpp", ".cc", ".cxx", ".h", ".hpp"),
 		Options:     cOptions,
 	})
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "clang",
 		Description: "LLVM C compiler",
-		Generator:   core.FileGenerator(".c", ".h"),
+		Generator:   spec.FileGenerator(".c", ".h"),
 		Options:     cOptions,
 	})
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "clang++",
 		Description: "LLVM C++ compiler",
-		Generator:   core.FileGenerator(".cpp", ".cc", ".cxx", ".h", ".hpp"),
+		Generator:   spec.FileGenerator(".cpp", ".cc", ".cxx", ".h", ".hpp"),
 		Options:     cOptions,
 	})
 }

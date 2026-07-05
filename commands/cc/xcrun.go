@@ -1,17 +1,17 @@
 package cc
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "xcrun",
 		Description: "SceneKit CLI utilities",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "scntool", Description: "SceneKit CLI utilities"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--convert", Description: "File to convert"},
 			{Name: "--format", Description: "Format to convert to"},
 			{Name: "--output", Description: "Path to the output file"},
