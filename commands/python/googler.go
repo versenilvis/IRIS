@@ -1,14 +1,14 @@
 package python
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "googler",
 		Description: "Google from the command-line",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Show this help message and exit"},
 			{Name: "-s", Description: "Start at the Nth result"},
 			{Name: "-n", Description: "Show N results"},

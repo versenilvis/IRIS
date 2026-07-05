@@ -1,14 +1,14 @@
 package python
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "mypy",
 		Description: "Mypy is a static type checker for Python",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--module", Description: "Asks mypy to type check the provided module"},
 			{Name: "--package", Description: "Asks mypy to type check the provided package"},
 			{Name: "--command", Description: "Asks mypy to type check the provided string as a program"},

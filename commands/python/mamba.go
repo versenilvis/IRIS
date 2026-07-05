@@ -1,14 +1,14 @@
 package python
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "mamba",
 		Description: "Mamba is a fast, robust, and cross-platform package manager",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "activate", Description: "Activate an environment"},
 			{Name: "deactivate", Description: "Deactivate an environment"},
 			{Name: "clean", Description: "Remove unused packages and caches"},
@@ -37,7 +37,7 @@ func init() {
 			{Name: "xtl", Description: "List packages that require xtl package"},
 			{Name: "env", Description: "Manage environments"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-n", Description: "Name of environment"},
 			{Name: "-p", Description: "Full path to environment location (i.e. prefix)"},
 			{Name: "--file", Description: "Use locally built packages. Identical to '-c local'"},
