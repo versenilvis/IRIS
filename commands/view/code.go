@@ -1,14 +1,14 @@
 package view
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "code",
 		Description: "Read from stdin (e.g.",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-d", Description: "Compare two files with each other"},
 			{Name: "-m", Description: "Add folder(s) to the last active window"},
 			{Name: "-g", Description: "Open a file at the path on the specified line and character position"},

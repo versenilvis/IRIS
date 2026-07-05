@@ -1,21 +1,21 @@
 package view
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "micro",
 		Description: "True/false",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "remove", Description: "Remove plugin(s)"},
 			{Name: "update", Description: "Update plugin(s) (if no argument is given, updates all plugins)"},
 			{Name: "search", Description: "Search for a plugin"},
 			{Name: "list", Description: "List installed plugins"},
 			{Name: "available", Description: "List available plugins"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--plugin", Description: "Manage plugins"},
 			{Name: "--clean", Description: "Cleans the configuration directory"},
 			{Name: "--config-dir", Description: "Specify a custom location for the configuration directory"},

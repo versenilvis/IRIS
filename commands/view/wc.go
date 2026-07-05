@@ -1,15 +1,15 @@
 package view
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "wc",
 		Description: "word, line, character count",
-		Generator:   core.FileGenerator(),
-		Options: []core.Option{
+		Generator:   spec.FileGenerator(),
+		Options: []spec.Option{
 			{Name: "-l", Description: "count lines"},
 			{Name: "-w", Description: "count words"},
 			{Name: "-c", Description: "count bytes"},

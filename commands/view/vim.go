@@ -1,14 +1,14 @@
 package view
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "vim",
 		Description: "Vi IMproved, a programmer",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-v", Description: "Vi mode (like 'vi')"},
 			{Name: "-e", Description: "Ex mode (like 'ex')"},
 			{Name: "-E", Description: "Improved Ex mode"},
