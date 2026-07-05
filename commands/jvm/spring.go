@@ -1,14 +1,14 @@
 package jvm
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "spring",
 		Description: "Initialize a new project using Spring Initializr",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "init", Description: "Initialize a new project using Spring Initializr"},
 			{Name: "gradle-build", Description: "Generate a Gradle build file"},
 			{Name: "gradle-project", Description: "Generate a Gradle based project archive using the Groovy DSL"},
@@ -19,7 +19,7 @@ func init() {
 			{Name: "shell", Description: "Start a nested shell"},
 			{Name: "help", Description: "Show help for other commands"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-a", Description: "Project coordinates"},
 			{Name: "-b", Description: "Spring Boot version"},
 			{Name: "--build", Description: "Build system to use"},

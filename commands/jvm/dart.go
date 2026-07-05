@@ -1,14 +1,14 @@
 package jvm
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "dart",
 		Description: "The Dart file containing the main function",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "analyze", Description: "Analyze Dart code in a directory"},
 			{Name: "directory", Description: "Dart project directory to analyze"},
 			{Name: "compile", Description: "Compile Dart to various formats"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "non-nullable", Description: "Non-nullable by default. (no-op - on by default)"},
 			{Name: "triple-shift", Description: "Triple-shift operator"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--offline", Description: "Use cached packages instead of accessing the network"},
 			{Name: "--no-offline", Description: "Do not use cached packages instead of accessing the network"},
 			{Name: "-n", Description: "Report what dependencies would change but don't change any"},

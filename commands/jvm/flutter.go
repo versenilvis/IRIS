@@ -1,14 +1,14 @@
 package jvm
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "flutter",
 		Description: "Available emulators",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "analyze", Description: "Analyze the project's Dart code"},
 			{Name: "assemble", Description: "Assemble and build Flutter resources"},
 			{Name: "attach", Description: "Attach to a running app"},
@@ -55,7 +55,7 @@ func init() {
 			{Name: "file path", Description: "A file path for a symbolized stack trace to be written to"},
 			{Name: "test", Description: "Run Flutter unit tests for the current project"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Print this usage information"},
 			{Name: "-v", Description: "Target device id or name (prefixes allowed)"},
 			{Name: "--version", Description: "Reports the version of this tool"},

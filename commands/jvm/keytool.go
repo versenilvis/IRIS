@@ -1,14 +1,14 @@
 package jvm
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "keytool",
 		Description: "Show help message",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Show help message"},
 			{Name: "-v", Description: "Verbose output"},
 			{Name: "-alias", Description: "Alias name of the entry to process"},
