@@ -1,21 +1,21 @@
 package pkginstaller
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "pkgutil",
 		Description: "Query and manipulate for macOS Installer packages and receipts",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "package-id", Description: "The package ID to list the files of"},
 			{Name: "path", Description: "The path to update ACLs on"},
 			{Name: "group-id", Description: "The group ID to list the packages of"},
 			{Name: "pkg-path", Description: "The path to the flat package to expand"},
 			{Name: "dir-path", Description: "The path to the directory to expand the package into"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--packages", Description: "List all installed package IDs on the specified --volume"},
 			{Name: "--pkgs-plist", Description: "List all of the files installed under the package-id"},
 			{Name: "--export-plist", Description: "The package ID to export the plist of"},

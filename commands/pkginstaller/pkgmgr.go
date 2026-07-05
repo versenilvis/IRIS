@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
-func installedPackageGenerator(pm string) core.GeneratorFunc {
-	return func(tokens []string, _ string, _ string) []core.Suggestion {
+func installedPackageGenerator(pm string) spec.GeneratorFunc {
+	return func(tokens []string, _ string, _ string) []spec.Suggestion {
 		ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 		defer cancel()
 
@@ -33,13 +33,13 @@ func installedPackageGenerator(pm string) core.GeneratorFunc {
 			return nil
 		}
 
-		var results []core.Suggestion
+		var results []spec.Suggestion
 		for line := range strings.SplitSeq(string(out), "\n") {
 			line = strings.TrimSpace(line)
 			if line == "" {
 				continue
 			}
-			results = append(results, core.Suggestion{Cmd: line, Desc: "installed"})
+			results = append(results, spec.Suggestion{Cmd: line, Desc: "installed"})
 		}
 		return results
 	}
@@ -47,10 +47,10 @@ func installedPackageGenerator(pm string) core.GeneratorFunc {
 
 func init() {
 	// pacman
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "pacman",
 		Description: "Arch package manager",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-S", Description: "install package"},
 			{Name: "-Syu", Description: "full system upgrade"},
 			{Name: "-Sy", Description: "sync database"},
@@ -77,10 +77,10 @@ func init() {
 	})
 
 	// yay
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "yay",
 		Description: "AUR helper (pacman wrapper)",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-S", Description: "install package (AUR + repos)"},
 			{Name: "-Syu", Description: "full system upgrade + AUR"},
 			{Name: "-Ss", Description: "search AUR + repos"},
@@ -103,10 +103,10 @@ func init() {
 	})
 
 	// paru
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "paru",
 		Description: "AUR helper (feature-rich)",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-S", Description: "install package"},
 			{Name: "-Syu", Description: "full upgrade"},
 			{Name: "-Ss", Description: "search"},
@@ -122,10 +122,10 @@ func init() {
 	})
 
 	// apt
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "apt",
 		Description: "Debian/Ubuntu package manager",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "install", Description: "install packages"},
 			{Name: "remove", Description: "remove packages", Generator: installedPackageGenerator("apt")},
 			{Name: "purge", Description: "remove + config files", Generator: installedPackageGenerator("apt")},
@@ -136,7 +136,7 @@ func init() {
 			{Name: "dist-upgrade", Description: "smart upgrade"},
 			{Name: "search", Description: "search packages"},
 			{Name: "show", Description: "show package info"},
-			{Name: "list", Description: "list packages", Options: []core.Option{
+			{Name: "list", Description: "list packages", Options: []spec.Option{
 				{Name: "--installed", Description: "installed only"},
 				{Name: "--upgradable", Description: "upgradable only"},
 			}},
@@ -146,7 +146,7 @@ func init() {
 			{Name: "depends", Description: "show dependencies"},
 			{Name: "rdepends", Description: "show reverse dependencies"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-y", Description: "yes to all"},
 			{Name: "--no-install-recommends", Description: "skip recommends"},
 			{Name: "--dry-run", Description: "simulate"},
@@ -156,10 +156,10 @@ func init() {
 	})
 
 	// apt-get
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "apt-get",
 		Description: "Debian/Ubuntu package manager (low-level)",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "install", Description: "install packages"},
 			{Name: "remove", Description: "remove packages", Generator: installedPackageGenerator("apt")},
 			{Name: "purge", Description: "remove + configs", Generator: installedPackageGenerator("apt")},
@@ -172,7 +172,7 @@ func init() {
 			{Name: "download", Description: "download only"},
 			{Name: "source", Description: "get source package"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-y", Description: "yes to all"},
 			{Name: "--no-install-recommends", Description: "skip recommends"},
 			{Name: "-q", Description: "quiet"},
@@ -182,10 +182,10 @@ func init() {
 	})
 
 	// dnf (Fedora/RHEL)
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "dnf",
 		Description: "Fedora/RHEL package manager",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "install", Description: "install packages"},
 			{Name: "remove", Description: "remove packages", Generator: installedPackageGenerator("dnf")},
 			{Name: "update", Description: "update packages"},
@@ -194,7 +194,7 @@ func init() {
 			{Name: "info", Description: "show package info"},
 			{Name: "list", Description: "list packages"},
 			{Name: "autoremove", Description: "remove unneeded"},
-			{Name: "clean", Description: "clean cache", Subcommands: []core.Subcommand{
+			{Name: "clean", Description: "clean cache", Subcommands: []spec.Subcommand{
 				{Name: "all", Description: "clean all"},
 				{Name: "packages", Description: "clean packages"},
 				{Name: "metadata", Description: "clean metadata"},
@@ -203,7 +203,7 @@ func init() {
 			{Name: "history", Description: "transaction history"},
 			{Name: "group", Description: "manage package groups"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-y", Description: "yes to all"},
 			{Name: "-q", Description: "quiet"},
 			{Name: "--best", Description: "install best"},
@@ -213,10 +213,10 @@ func init() {
 	})
 
 	// yum (RHEL/CentOS legacy)
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "yum",
 		Description: "RHEL/CentOS package manager (legacy)",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "install", Description: "install packages"},
 			{Name: "remove", Description: "remove packages", Generator: installedPackageGenerator("yum")},
 			{Name: "update", Description: "update packages"},
@@ -226,17 +226,17 @@ func init() {
 			{Name: "clean", Description: "clean cache"},
 			{Name: "repolist", Description: "list repos"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-y", Description: "yes to all"},
 			{Name: "-q", Description: "quiet"},
 		},
 	})
 
 	// brew (macOS / Linux Homebrew)
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "brew",
 		Description: "Homebrew package manager",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "install", Description: "install formula/cask"},
 			{Name: "uninstall", Description: "remove formula", Generator: installedPackageGenerator("brew")},
 			{Name: "reinstall", Description: "reinstall formula", Generator: installedPackageGenerator("brew")},
@@ -250,13 +250,13 @@ func init() {
 			{Name: "cleanup", Description: "remove old versions"},
 			{Name: "tap", Description: "add tap repo"},
 			{Name: "untap", Description: "remove tap"},
-			{Name: "services", Description: "manage services", Subcommands: []core.Subcommand{
+			{Name: "services", Description: "manage services", Subcommands: []spec.Subcommand{
 				{Name: "start", Description: "start service"},
 				{Name: "stop", Description: "stop service"},
 				{Name: "restart", Description: "restart service"},
 				{Name: "list", Description: "list services"},
 			}},
-			{Name: "cask", Description: "manage GUI apps", Subcommands: []core.Subcommand{
+			{Name: "cask", Description: "manage GUI apps", Subcommands: []spec.Subcommand{
 				{Name: "install", Description: "install cask"},
 				{Name: "uninstall", Description: "remove cask"},
 				{Name: "list", Description: "list casks"},
@@ -266,7 +266,7 @@ func init() {
 			{Name: "link", Description: "create symlinks", Generator: installedPackageGenerator("brew")},
 			{Name: "unlink", Description: "remove symlinks", Generator: installedPackageGenerator("brew")},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--cask", Description: "target GUI app"},
 			{Name: "--formula", Description: "target formula"},
 			{Name: "--force", Description: "force operation"},
@@ -276,10 +276,10 @@ func init() {
 	})
 
 	// snap
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "snap",
 		Description: "snap package manager",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "install", Description: "install snap"},
 			{Name: "remove", Description: "remove snap"},
 			{Name: "refresh", Description: "update snaps"},
@@ -293,7 +293,7 @@ func init() {
 			{Name: "enable", Description: "enable snap"},
 			{Name: "disable", Description: "disable snap"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--classic", Description: "classic confinement"},
 			{Name: "--beta", Description: "beta channel"},
 			{Name: "--edge", Description: "edge channel"},
@@ -302,10 +302,10 @@ func init() {
 	})
 
 	// flatpak
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "flatpak",
 		Description: "flatpak package manager",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "install", Description: "install application"},
 			{Name: "uninstall", Description: "remove application"},
 			{Name: "update", Description: "update applications"},
@@ -318,7 +318,7 @@ func init() {
 			{Name: "remote-list", Description: "list remotes"},
 			{Name: "repair", Description: "repair installation"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--user", Description: "user installation"},
 			{Name: "--system", Description: "system installation"},
 			{Name: "-y", Description: "non-interactive"},
