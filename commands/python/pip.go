@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
-func pipPackageGenerator(tokens []string, _ string, _ string) []core.Suggestion {
+func pipPackageGenerator(tokens []string, _ string, _ string) []spec.Suggestion {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -24,7 +24,7 @@ func pipPackageGenerator(tokens []string, _ string, _ string) []core.Suggestion 
 		}
 	}
 
-	var results []core.Suggestion
+	var results []spec.Suggestion
 	for line := range strings.SplitSeq(string(out), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
@@ -37,17 +37,17 @@ func pipPackageGenerator(tokens []string, _ string, _ string) []core.Suggestion 
 		if len(parts) == 2 {
 			desc = "v" + parts[1]
 		}
-		results = append(results, core.Suggestion{Cmd: name, Desc: desc})
+		results = append(results, spec.Suggestion{Cmd: name, Desc: desc})
 	}
 	return results
 }
 
-func makePipSpec(name string) *core.Spec {
-	return &core.Spec{
+func makePipSpec(name string) *spec.Spec {
+	return &spec.Spec{
 		Name:        name,
 		Description: "python packages",
-		Subcommands: []core.Subcommand{
-			{Name: "install", Description: "install package", Options: []core.Option{
+		Subcommands: []spec.Subcommand{
+			{Name: "install", Description: "install package", Options: []spec.Option{
 				{Name: "-r", Description: "from requirements file"},
 				{Name: "-U", Description: "upgrade"},
 				{Name: "--user", Description: "install for user only"},
@@ -55,11 +55,11 @@ func makePipSpec(name string) *core.Spec {
 				{Name: "--index-url", Description: "custom package index"},
 				{Name: "--no-deps", Description: "skip dependencies"},
 			}},
-			{Name: "uninstall", Description: "remove package", Generator: pipPackageGenerator, Options: []core.Option{
+			{Name: "uninstall", Description: "remove package", Generator: pipPackageGenerator, Options: []spec.Option{
 				{Name: "-y", Description: "yes to all prompts"},
 			}},
 			{Name: "freeze", Description: "list installed packages"},
-			{Name: "list", Description: "list installed", Options: []core.Option{
+			{Name: "list", Description: "list installed", Options: []spec.Option{
 				{Name: "--outdated", Description: "show outdated"},
 				{Name: "--format", Description: "output format"},
 			}},
@@ -76,6 +76,6 @@ func makePipSpec(name string) *core.Spec {
 }
 
 func init() {
-	core.Register(makePipSpec("pip"))
-	core.Register(makePipSpec("pip3"))
+	spec.Register(makePipSpec("pip"))
+	spec.Register(makePipSpec("pip3"))
 }

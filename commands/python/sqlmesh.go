@@ -1,14 +1,14 @@
 package python
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "sqlmesh",
 		Description: "SQLMesh command line tool",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "init", Description: "Create a new SQLMesh repository"},
 			{Name: "render", Description: "Render a model's query, optionally expanding referenced models"},
 			{Name: "evaluate", Description: "Evaluate a model and return a dataframe with a default limit of 1000"},
@@ -26,7 +26,7 @@ func init() {
 			{Name: "rollback", Description: "Rollback SQLMesh to the previous migration"},
 			{Name: "create_external_models", Description: "Create a schema file containing external model schemas"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--paths", Description: "Paths to SQLMesh project files"},
 			{Name: "--config", Description: "Path to config file"},
 			{Name: "--gateway", Description: "The name of the gateway"},

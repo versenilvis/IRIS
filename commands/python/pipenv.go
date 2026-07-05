@@ -1,14 +1,14 @@
 package python
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "pipenv",
 		Description: "Python package manager",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "clean", Description: "Uninstalls all packages not specified in Pipfile.lock"},
 			{Name: "graph", Description: "Displays currently-installed dependency graph information"},
 			{Name: "install", Description: "Initializes a package manager or installs all packages from Pipfile"},
@@ -23,7 +23,7 @@ func init() {
 			{Name: "uninstall", Description: "Uninstalls a provided package and removes it from Pipfile"},
 			{Name: "update", Description: "Runs lock, then sync"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--unused", Description: "Given a code path, show potentially unused dependencies"},
 			{Name: "--db", Description: "Ignore specified vulnerability during PyUp Safety checks"},
 			{Name: "--output", Description: "Translates to --json, --full-report or --bare from PyUp Safety check"},

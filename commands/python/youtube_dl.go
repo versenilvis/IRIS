@@ -1,14 +1,14 @@
 package python
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "youtube-dl",
 		Description: "Clipboard",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Print the help text and exit"},
 			{Name: "--version", Description: "Print program version and exit"},
 			{Name: "-U", Description: "Display the current browser identification"},

@@ -1,14 +1,14 @@
 package python
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "pre-commit",
 		Description: "Show help message and exit",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "autoupdate", Description: "Auto-update pre-commit config to the latest repos' versions"},
 			{Name: "clean", Description: "Clean out pre-commit files"},
 			{Name: "gc", Description: "Clean unused cached repos"},
@@ -23,7 +23,7 @@ func init() {
 			{Name: "uninstall", Description: "Uninstall the pre-commit script"},
 			{Name: "help", Description: "Show help for a specific command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Show help message and exit"},
 			{Name: "--color", Description: "Whether to use color in output. Defaults to `auto`"},
 			{Name: "--config", Description: "Path to alternate config file"},

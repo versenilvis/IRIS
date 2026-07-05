@@ -1,14 +1,14 @@
 package python
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "pipx",
 		Description: "Installed package",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "install", Description: "Install a package"},
 			{Name: "package_spec", Description: "Package name or pip installation spec"},
 			{Name: "inject", Description: "Installs packages to an existing pipx-managed virtual environment"},
@@ -24,7 +24,7 @@ func init() {
 			{Name: "environment", Description: "Print a list of variables used in pipx.constants"},
 			{Name: "completions", Description: "Print instructions on enabling shell completions for pipx"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--include-deps", Description: "Include apps of dependent packages"},
 			{Name: "--force", Description: "Modify existing virtual environment and files in PIPX_BIN_DIR"},
 			{Name: "--suffix", Description: "Optional suffix for virtual environment and executable names"},

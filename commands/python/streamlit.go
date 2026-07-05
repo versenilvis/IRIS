@@ -1,14 +1,14 @@
 package python
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "streamlit",
 		Description: "Streamlit",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "activate", Description: "Activate Streamlit by entering your email"},
 			{Name: "cache", Description: "Manage the Streamlit cache"},
 			{Name: "clear", Description: "Clear st.cache, st.memo, and st.singleton caches"},
@@ -21,7 +21,7 @@ func init() {
 			{Name: "file", Description: "The Python script to run"},
 			{Name: "version", Description: "Print Streamlit's version number"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--log_level", Description: "Set the log level"},
 			{Name: "--help", Description: "Show a help message and exit"},
 			{Name: "--version", Description: "Show the version and exit"},

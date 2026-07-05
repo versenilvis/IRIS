@@ -1,14 +1,14 @@
 package python
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "conda",
 		Description: "Name of environment",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "activate", Description: "Activate an environment"},
 			{Name: "deactivate", Description: "Deactivate an environment"},
 			{Name: "clean", Description: "Remove unused packages and caches"},
@@ -32,7 +32,7 @@ func init() {
 			{Name: "upgrade", Description: "Alias for conda update"},
 			{Name: "files", Description: "Package files to convert"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-n", Description: "Name of environment"},
 			{Name: "-p", Description: "Full path to environment location (i.e. prefix)"},
 			{Name: "--dev", Description: "Use locally built packages. Identical to '-c local'"},

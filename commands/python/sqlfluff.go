@@ -1,14 +1,14 @@
 package python
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "sqlfluff",
 		Description: "A dialect-flexible and configurable SQL linter",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "lint", Description: "Lint SQL files via passing a list of files or using stdin"},
 			{Name: "templater", Description: "Name of templater to use, eg. raw"},
 			{Name: "dialect", Description: "Name of dialect, eg. ANSI"},
@@ -20,7 +20,7 @@ func init() {
 			{Name: "version", Description: "Show the version of sqlfluff"},
 			{Name: "rules", Description: "Show the current rules in use"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--version", Description: "Show the version and exit"},
 			{Name: "--help", Description: "Show help for sqlfluff"},
 			{Name: "--nocolor", Description: "No color - output will be without ANSI color codes"},

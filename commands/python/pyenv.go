@@ -1,14 +1,14 @@
 package python
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "pyenv",
 		Description: "Pyenv",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "commands", Description: "Lists all available pyenv commands"},
 			{Name: "local", Description: "Sets a local application-specific Python version"},
 			{Name: "global", Description: "Sets the global version of Python to be used in all shells"},
@@ -18,7 +18,7 @@ func init() {
 			{Name: "rehash", Description: "Performs a deployment (default)"},
 			{Name: "whence", Description: "Lists all Python versions with the given command installed"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Output usage information"},
 			{Name: "--unset", Description: "Sets the global version of Python to be used in all shells"},
 			{Name: "-l", Description: "List all available versions"},
