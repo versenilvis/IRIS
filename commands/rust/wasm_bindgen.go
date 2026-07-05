@@ -1,14 +1,14 @@
 package rust
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "wasm-bindgen",
 		Description: "Generate bindings between WebAssembly and JavaScript",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for wasm-bindgen"},
 			{Name: "--version", Description: "Show version for wasm-bindgen"},
 			{Name: "--out-dir", Description: "Output directory"},

@@ -1,18 +1,18 @@
 package rust
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "wasm-pack",
 		Description: "Build an npm package",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "help", Description: "Prints this message or the help of the given subcommand(s)"},
 			{Name: "test", Description: "Run tests for WebAssembly module"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for wasm-pack or for the given subcommand(s)"},
 			{Name: "--quiet", Description: "Suppress output from stdout"},
 			{Name: "--version", Description: "Show version for wasm-pack"},

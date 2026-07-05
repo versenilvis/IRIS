@@ -1,14 +1,14 @@
 package rust
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "dprint",
 		Description: "Prints the help of the given subcommand(s)",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "init", Description: "Initializes a configuration file in the current directory"},
 			{Name: "fmt", Description: "Formats the source files and writes the result to the file system"},
 			{Name: "check", Description: "Checks for any files that haven't been formatted"},
@@ -19,7 +19,7 @@ func init() {
 			{Name: "clear-cache", Description: "Deletes the plugin cache directory"},
 			{Name: "license", Description: "Outputs the software license"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--excludes", Description: "A pluggable and configurable code formatting platform written in Rust"},
 			{Name: "--diff", Description: "Outputs a check-like diff of every formatted file"},
 			{Name: "--stdin", Description: "Checks for any files that haven't been formatted"},

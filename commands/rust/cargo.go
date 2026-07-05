@@ -1,16 +1,16 @@
 package rust
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "cargo",
 		Description: "rust toolchain",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "build", Description: "compile project",
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "--release", Description: "optimized build"},
 				},
 			},

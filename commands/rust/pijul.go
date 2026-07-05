@@ -1,14 +1,14 @@
 package rust
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "pijul",
 		Description: "Adds a path to the tree",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "add", Description: "Adds a path to the tree"},
 			{Name: "PATHS", Description: "Paths to add to the internal tree"},
 			{Name: "apply", Description: "Applies changes to a channel"},
@@ -42,7 +42,7 @@ func init() {
 			{Name: "unrecord", Description: "Unrecords a list of changes"},
 			{Name: "CHANGE_ID", Description: "The hash of a change (unambiguous prefixes are accepted)"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-f", Description: "Print help information"},
 			{Name: "-r", Description: "Applies changes to a channel"},
 			{Name: "--channel", Description: "Apply change to this channel"},

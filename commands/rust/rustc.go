@@ -1,15 +1,15 @@
 package rust
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "rustc",
 		Description: "Rust compiler",
-		Generator:   core.FileGenerator(".rs"),
-		Options: []core.Option{
+		Generator:   spec.FileGenerator(".rs"),
+		Options: []spec.Option{
 			{Name: "-o", Description: "output file"},
 			{Name: "--edition", Description: "Rust edition (2015/2018/2021/2024)"},
 			{Name: "--crate-type", Description: "crate type (bin/lib/dylib/cdylib/rlib)"},

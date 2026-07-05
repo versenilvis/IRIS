@@ -1,14 +1,14 @@
 package rust
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "zellij",
 		Description: "Change where zellij looks for the configuration file",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-c", Description: "Change where zellij looks for the configuration file"},
 			{Name: "--config-dir", Description: "Change where zellij looks for the configuration directory"},
 			{Name: "-d", Description: "Specify emitting additional debug information"},
