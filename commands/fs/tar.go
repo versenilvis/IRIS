@@ -1,14 +1,14 @@
 package fs
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "tar",
 		Description: "Use archive file or device ARCHIVE",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "A", Description: "Append archive to the end of another archive"},
 			{Name: "c", Description: "Create a new archive"},
 			{Name: "b", Description: "Set record size to BLOCKSx512 bytes"},
@@ -41,7 +41,7 @@ func init() {
 			{Name: "bad-dumpdir", Description: "\\"},
 			{Name: "?", Description: "Display a short option summary and exit"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--force-local", Description: "Archive file is local even if it has a colon"},
 			{Name: "--rmt-command", Description: "Use  COMMAND instead of rmt when accessing remote archives"},
 			{Name: "--rsh-command", Description: "Use  COMMAND instead of rsh when accessing remote archives"},

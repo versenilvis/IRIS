@@ -1,14 +1,14 @@
 package fs
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "rmdir",
 		Description: "Remove directories",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-p", Description: "Remove each directory of path"},
 		},
 	})

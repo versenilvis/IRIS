@@ -1,14 +1,14 @@
 package fs
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "fold",
 		Description: "Fold long lines for finite width output device",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-b", Description: "File(s) to fold"},
 		},
 	})

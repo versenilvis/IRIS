@@ -1,14 +1,14 @@
 package fs
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "lsd",
 		Description: "An ls command with a lot of pretty colors and some other stuff",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-1", Description: "Display one entry per line"},
 			{Name: "-A", Description: "Do not list implied . and"},
 			{Name: "-a", Description: "Do not ignore entries starting with"},
