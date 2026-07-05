@@ -1,14 +1,14 @@
 package view
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "more",
 		Description: "Opposite of less",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-d", Description: "Do not pause after any line containing a ^L (form feed)"},
 			{Name: "-f", Description: "Count logical lines, rather than screen lines"},
 			{Name: "-p", Description: "Instead, clear the whole screen and then display the text"},

@@ -1,14 +1,14 @@
 package view
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "lvim",
 		Description: "Hyperextensible Vim-based text editor",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--cmd", Description: "Execute <cmd> before any config"},
 			{Name: "-c", Description: "Execute <cmd> after config and first file"},
 			{Name: "-b", Description: "Binary mode"},

@@ -1,14 +1,14 @@
 package view
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "rich",
 		Description: "Defined by terminal, appearance may differ",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-p", Description: "Print console markup. See https://rich.readthedocs.io/en/latest/markup.html"},
 			{Name: "-u", Description: "Display a horizontal rule"},
 			{Name: "-j", Description: "Display as JSON"},

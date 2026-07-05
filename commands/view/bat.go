@@ -1,14 +1,14 @@
 package view
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "bat",
 		Description: "A cat(1) clone with syntax highlighting and Git integration",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-A", Description: "Show non-printable characters"},
 			{Name: "-p", Description: "Show plain style, no decorations"},
 			{Name: "-l", Description: "Explicitly set the language for syntax highlighting"},

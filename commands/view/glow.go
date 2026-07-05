@@ -1,19 +1,19 @@
 package view
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "glow",
 		Description: "Render markdown on the CLI, with pizzazz!",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "config", Description: "Edit the glow config file"},
 			{Name: "help", Description: "Help about any command"},
 			{Name: "stash", Description: "Manage your stash of markdown files"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-a", Description: "Show system files and directories (TUI-mode only)"},
 			{Name: "--config", Description: "Config file"},
 			{Name: "-h", Description: "Help for glow"},

@@ -1,13 +1,13 @@
 package view
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "stat",
 		Description: "display file status",
-		Generator:   core.FileGenerator(),
+		Generator:   spec.FileGenerator(),
 	})
 }
