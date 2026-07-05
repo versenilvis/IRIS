@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "locust",
 		Description: "Show program",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-v", Description: "Show program's version number and exit"},
 			{Name: "-h", Description: "Show this help message and exit"},
 			{Name: "-f", Description: "Show program's version number and exit"},

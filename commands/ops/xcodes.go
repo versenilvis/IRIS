@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "xcodes",
 		Description: "Manage the Xcode versions installed on your Mac",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "download", Description: "Download a specific version of Xcode"},
 			{Name: "version", Description: "The version to install"},
 			{Name: "install", Description: "Download and install a specific version of Xcode"},
@@ -20,7 +20,7 @@ func init() {
 			{Name: "update", Description: "Update the list of available versions of Xcode"},
 			{Name: "signout", Description: "Clears the stored username and password"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--latest", Description: "Update and then install the latest non-prerelease version available"},
 			{Name: "--latest-prerelease", Description: "The path to an aria2 executable. Searches $PATH by default"},
 			{Name: "--no-aria2", Description: "Don't use aria2 to download Xcode, even if it's available"},

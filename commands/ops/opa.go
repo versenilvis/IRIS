@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "opa",
 		Description: "Open Policy Agent (OPA)",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "bench", Description: "Benchmark a Rego query"},
 			{Name: "build", Description: "Build an OPA bundle"},
 			{Name: "check", Description: "Check Rego source files"},
@@ -29,7 +29,7 @@ func init() {
 			{Name: "version", Description: "Print the version of OPA"},
 			{Name: "help", Description: "Help about any command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--benchmem", Description: "Report memory allocations with benchmark results"},
 			{Name: "--bundle", Description: "Set bundle file(s) or directory path(s). This flag can be repeated"},
 			{Name: "--count", Description: "Number of times to repeat each benchmark"},

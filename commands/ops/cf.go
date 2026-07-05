@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "cf",
 		Description: "Cloudfoundry cli",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "app", Description: "Display health and status for app"},
 			{Name: "APP_NAME", Description: "The app you want to get health and status for"},
 			{Name: "ssh", Description: "Display health and status for app"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "unbind-route-service", Description: "Unbind a service instance from an HTTP route"},
 			{Name: "create-user-provided-service", Description: "Make a user-provided service instance available to CF apps"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--guid", Description: "Display health and status for app"},
 			{Name: "-v", Description: "Verbose output"},
 			{Name: "-a", Description: "API endpoint (e.g. https://api.example.com)"},

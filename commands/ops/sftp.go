@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "sftp",
 		Description: "OpenSSH secure file transfer",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for sftp"},
 			{Name: "-4", Description: "Forces scp to use IPv4 addresses only"},
 			{Name: "-6", Description: "Forces scp to use IPv6 addresses only"},

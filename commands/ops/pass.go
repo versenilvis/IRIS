@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "pass",
 		Description: "Pass - stores, retrieves, generates, and synchronizes passwords securely",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "init", Description: "Initialize new password storage and use gpg-id for encryption"},
 			{Name: "gpg-id", Description: "The gpg-id you want to use to encrypt your password store"},
 			{Name: "insert", Description: "Insert a new password into the password store called pass-name"},
@@ -28,7 +28,7 @@ func init() {
 			{Name: "find", Description: "List names of passwords inside the tree that match pass-names"},
 			{Name: "show", Description: "Decrypt and print a password"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--clip", Description: "Copy the password to the clipboard"},
 			{Name: "--qrcode", Description: "Display a QRcode of the password"},
 			{Name: "--help", Description: "Show help for pass"},

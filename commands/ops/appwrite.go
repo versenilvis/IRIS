@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "appwrite",
 		Description: "Appwrite - Open-Source End-to-End Backend Server",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "login", Description: "The login command allows you to authenticate and manage a user account"},
 			{Name: "project", Description: "Initialise your Appwrite project"},
 			{Name: "function", Description: "Initialise your Appwrite cloud function"},
@@ -48,7 +48,7 @@ func init() {
 			{Name: "updatePhoneVerification", Description: "Update the user phone verification status by its unique ID"},
 			{Name: "client", Description: "The client command allows you to configure your CLI"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--databaseId", Description: "Database ID"},
 			{Name: "--all", Description: "Flag to initialize all databases"},
 			{Name: "--functionId", Description: "Function ID"},

@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ssh-keygen",
 		Description: "Generates, manages and converts authentication keys for ssh",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-A", Description: "When saving a private key, this option specifies the number of KDF"},
 			{Name: "-B", Description: "Show the bubblebabble digest of specified private or public key file"},
 			{Name: "-b", Description: "Specifies the number of bits in the key to create"},

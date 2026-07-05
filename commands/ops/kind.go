@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "kind",
 		Description: "Cluster",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "Build", Description: "Build one of [node-image]"},
 			{Name: "node-image", Description: "Builds a node image"},
 			{Name: "architecture", Description: "Architecture to build for, defaults to the host architecture"},
@@ -34,7 +34,7 @@ func init() {
 			{Name: "image-archive", Description: "Loads docker images from archive into all or specified nodes by name"},
 			{Name: "version", Description: "Prints the kind CLI version"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--arch", Description: "Architecture to build for, defaults to the host architecture"},
 			{Name: "--base-image", Description: "Base image to use for the node image"},
 			{Name: "--image", Description: "Name:tag of the resulting image to be built"},

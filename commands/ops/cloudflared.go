@@ -1,19 +1,19 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "cloudflared",
 		Description: "Specify the hostname of your application",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "install", Description: "Install cloudflared as an user launch agent"},
 			{Name: "uninstall", Description: "Uninstall the cloudflared launch agent"},
 			{Name: "help", Description: "Shows a list of commands or help for one command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--hostname", Description: "Specify the hostname of your application"},
 			{Name: "--destination", Description: "Specify the destination address of your SSH server"},
 			{Name: "--url", Description: "Specify the host:port to forward data to Cloudflare edge"},

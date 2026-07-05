@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "psql",
 		Description: "Psql is a terminal-based front-end to PostgreSQL",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-a", Description: "Put all query output into file filename. This is equivalent to the command \\\\o"},
 			{Name: "-p", Description: "Print the psql version and exit"},
 			{Name: "-w", Description: "Show help about psql and exit"},

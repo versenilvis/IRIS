@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "direnv",
 		Description: "Help for direnv",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "allow", Description: "Grants direnv to load the given .envrc"},
 			{Name: "deny", Description: "Revokes the authorization of a given .envrc"},
 			{Name: "exec", Description: "Executes a command after loading the first .envrc found in DIR"},

@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "kubectx",
 		Description: "Switch between Kubernetes-contexts",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for kubectx"},
 			{Name: "--current", Description: "Show current context"},
 			{Name: "--unset", Description: "Unset the current context"},

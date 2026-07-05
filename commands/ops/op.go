@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "op",
 		Description: "Official 1Password CLI",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "account", Description: "Manage your locally configured 1Password accounts"},
 			{Name: "add", Description: "Add an account to sign in to for the first time"},
 			{Name: "get", Description: "Get details about your account"},
@@ -42,7 +42,7 @@ func init() {
 			{Name: "update", Description: "Check for and download updates"},
 			{Name: "whoami", Description: "Get information about a signed-in account"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--address", Description: "The sign-in address for your account"},
 			{Name: "--email", Description: "The email address associated with your account"},
 			{Name: "--raw", Description: "Only return the session token"},

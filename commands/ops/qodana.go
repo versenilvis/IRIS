@@ -1,20 +1,20 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "qodana",
 		Description: "Run Qodana as fast as possible, with minimum effort required",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "init", Description: "Configure project for Qodana"},
 			{Name: "scan", Description: "Scan a project with Qodana"},
 			{Name: "show", Description: "Show Qodana report"},
 			{Name: "view", Description: "View SARIF files in CLI"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Show help page for command"},
 			{Name: "-v", Description: "Version for Qodana"},
 			{Name: "-i", Description: "Scan a project with Qodana"},

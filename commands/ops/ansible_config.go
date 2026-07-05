@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ansible-config",
 		Description: "View ansible configuration",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "list", Description: "List and output available configs"},
 			{Name: "CONFIG_FILE", Description: "Path to configuration file"},
 			{Name: "TYPE", Description: "Plugin type"},
@@ -18,7 +18,7 @@ func init() {
 			{Name: "init", Description: "Initializes a new config file (to stdout)"},
 			{Name: "FORMAT", Description: "Output format"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help and exit"},
 			{Name: "--verbose", Description: "Verbose mode (-vvv for more, -vvvv to enable connection debugging)"},
 			{Name: "-v", Description: "Verbose mode (-vvv for more, -vvvv to enable connection debugging)"},

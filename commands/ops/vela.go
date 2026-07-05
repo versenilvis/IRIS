@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "vela",
 		Description: "Show the reference doc for component, trait or workflow types",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "show", Description: "Show the reference doc for component, trait or workflow types"},
 			{Name: "env", Description: "Manage environments for vela applications to run"},
 			{Name: "delete", Description: "Delete an environment"},
@@ -56,7 +56,7 @@ func init() {
 			{Name: "export", Description: "Export deploy manifests from appfile or application"},
 			{Name: "version", Description: "Prints the version"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-e", Description: "Specify environment name for application"},
 			{Name: "--help", Description: "Help for show command"},
 			{Name: "-n", Description: "Specify the Kubernetes namespace to use"},

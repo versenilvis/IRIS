@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "robot",
 		Description: "Tag",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Print usage instructions"},
 			{Name: "--rpa", Description: "Parse only files with this extension when executing a directory"},
 			{Name: "-N", Description: "Set a name of the top level suite"},

@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "fastly",
 		Description: "A CLI for interacting with the Fastly platform",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "acl", Description: "Manipulate Fastly ACLs (Access Control Lists)"},
 			{Name: "create", Description: "Create a new ACL attached to the specified service version"},
 			{Name: "delete", Description: "Delete an ACL from the specified service version"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "splunk", Description: "Manipulate Fastly service version Splunk logging endpoints"},
 			{Name: "sumologic", Description: "Manipulate Fastly service version Sumologic logging endpoints"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--name", Description: "'latest', 'active', or the number of a specific version"},
 			{Name: "--autoclone", Description: "If the selected service version is not editable, clone it and use the clone"},
 			{Name: "--service-id", Description: "Service ID (falls back to FASTLY_SERVICE_ID, then fastly.toml)"},

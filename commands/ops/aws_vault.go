@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "aws-vault",
 		Description: "Add credentials to the secure keystore",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-f", Description: "Force-remove the profile without a prompt"},
 			{Name: "--profiles", Description: "Show only the profile names"},
 			{Name: "--sessions", Description: "Show only the session names"},

@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "osqueryi",
 		Description: "Your OS as a high-performance relational database",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--flagfile", Description: "Line-delimited file of additional flags"},
 			{Name: "--D", Description: "Run as a daemon process"},
 			{Name: "--S", Description: "Run as a shell process"},

@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "cosign",
 		Description: "Provides utilities for attaching artifacts to other artifacts in a registry",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "attach", Description: "Provides utilities for attaching artifacts to other artifacts in a registry"},
 			{Name: "attestation", Description: "Attach attestation to the supplied container image"},
 			{Name: "sbom", Description: "Attach sbom to the supplied container image"},
@@ -38,7 +38,7 @@ func init() {
 			{Name: "version", Description: "Prints the version"},
 			{Name: "help", Description: "Help about any command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--output-file", Description: "Log output to a file"},
 			{Name: "--timeout", Description: "Timeout for commands"},
 			{Name: "--verbose", Description: "Log debug output"},

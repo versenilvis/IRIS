@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "vercel",
 		Description: "CLI Interface for Vercel.com",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "deploy", Description: "Performs a deployment (default)"},
 			{Name: "dev", Description: "Start a local development server"},
 			{Name: "env", Description: "Manages the Environment Variables for your current Project"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "old name", Description: "Old name of the secret to rename"},
 			{Name: "new name", Description: "New name of the secret"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Output usage information"},
 			{Name: "-v", Description: "Output the version number"},
 			{Name: "-V", Description: "Set the platform version to deploy to"},

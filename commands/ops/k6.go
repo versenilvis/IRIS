@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "k6",
 		Description: "Create an archive",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "archive", Description: "Create an archive"},
 			{Name: "cloud", Description: "Run a test on the cloud"},
 			{Name: "completion", Description: "Generate the autocompletion script for the specified shell"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "max", Description: "Max available virtual users"},
 			{Name: "stats", Description: "Show test metrics"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--address", Description: "Address of the API server"},
 			{Name: "--batch", Description: "Max parallel batch reqs (default 20)"},
 			{Name: "--batch-per-host", Description: "Max parallel batch reqs per host (default 6)"},

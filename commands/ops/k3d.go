@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "k3d",
 		Description: "Little helper to run k3s in Docker",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "cluster", Description: "Manage k3s clusters"},
 			{Name: "create", Description: "Create a new k3s cluster"},
 			{Name: "cluster name", Description: "Name of the cluster to create"},
@@ -53,7 +53,7 @@ func init() {
 			{Name: "Registry Name", Description: "Name of the registry"},
 			{Name: "version", Description: "Show k3d and default k3s version"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-a", Description: "Number of agents to create"},
 			{Name: "--agents-memory", Description: "Memory limit imposed on the agents nodes"},
 			{Name: "--api-port", Description: "Specify the Kubernetes API server port exposed on the LoadBalancer"},

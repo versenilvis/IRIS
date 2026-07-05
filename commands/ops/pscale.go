@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "pscale",
 		Description: "The client ID for the PlanetScale CLI application",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "audit-log", Description: "List audit logs"},
 			{Name: "list", Description: "List all audit logs of an organization"},
 			{Name: "auth", Description: "Login and logout via the PlanetScale API"},
@@ -45,7 +45,7 @@ func init() {
 			{Name: "shell", Description: "Open a MySQL shell instance to a database and branch"},
 			{Name: "signup", Description: "Signup for a new PlanetScale account"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--client-id", Description: "The client ID for the PlanetScale CLI application"},
 			{Name: "--client-secret", Description: "The client ID for the PlanetScale CLI application"},
 			{Name: "--database", Description: "The database this project is using"},

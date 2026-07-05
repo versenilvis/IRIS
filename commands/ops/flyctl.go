@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "flyctl",
 		Description: "Command line tool for Fly.io services",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "ping", Description: "Ping the Fly agent"},
 			{Name: "restart", Description: "Restart the Fly agent"},
 			{Name: "daemon-start", Description: "Run the Fly agent in the foreground"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "docs", Description: "View Fly documentation"},
 			{Name: "doctor", Description: "The DOCTOR command allows you to debug your Fly environment"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--generate-name", Description: "Generate a name for the app"},
 			{Name: "--name", Description: "The app name to use"},
 			{Name: "--network", Description: "Specify custom network id"},

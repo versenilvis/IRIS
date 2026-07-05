@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "mongosh",
 		Description: "Default Connection String; Equivalent to running mongosh without any commands",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-v", Description: "View your current mongosh version"},
 			{Name: "--shell", Description: "Returns information on the options and use of the MongoDB Shell"},
 			{Name: "--authenticationDatabase", Description: "This option is available only in MongoDB Enterprise"},

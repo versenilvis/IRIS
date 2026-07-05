@@ -1,17 +1,17 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "pod",
 		Description: "CocoaPods, the Cocoa library package manager",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "name", Description: "The name of the podspec file within the Git Repository"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--project-directory", Description: "The path to the root of the project directory"},
 			{Name: "--allow-root", Description: "Allows CocoaPods to run as root"},
 			{Name: "--all", Description: "Remove all the cached pods without asking"},

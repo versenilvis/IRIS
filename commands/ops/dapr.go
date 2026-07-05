@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "dapr",
 		Description: "Distributed Application Runtime CLI",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "build-info", Description: "Print build info of Dapr CLI and runtime"},
 			{Name: "completion", Description: "Generates shell completion scripts"},
 			{Name: "bash", Description: "Generates bash completion scripts"},
@@ -32,7 +32,7 @@ func init() {
 			{Name: "version", Description: "Print the Dapr runtime and CLI version"},
 			{Name: "help", Description: "Help about any command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--api-token-secret", Description: "The secret to use for the API token"},
 			{Name: "--app-id", Description: "The app id to annotate"},
 			{Name: "--app-max-concurrency", Description: "The maximum number of concurrent requests to allow"},

@@ -1,20 +1,20 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "terragrunt",
 		Description: "Workspace",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "show", Description: "Display the current workspace"},
 			{Name: "list", Description: "List the workspace"},
 			{Name: "delete", Description: "Delete the specified workspace"},
 			{Name: "select", Description: "Change the current working workspace"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-lock", Description: "Lock the state file when locking is supported. Defaults to true"},
 			{Name: "-force", Description: "Delete the workspace even if its state is not empty. Defaults to false"},
 			{Name: "-lock-timeout", Description: "Duration to retry a state lock. Default 0s"},

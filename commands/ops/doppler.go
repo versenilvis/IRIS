@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "doppler",
 		Description: "The official CLI for Doppler Secret Operations Platform",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "activity", Description: "Get workplace activity logs"},
 			{Name: "get", Description: "Get workplace activity log"},
 			{Name: "changelog", Description: "View the CLI's changelog"},
@@ -53,7 +53,7 @@ func init() {
 			{Name: "settings", Description: "Get workplace settings"},
 			{Name: "setup", Description: "Setup the Doppler CLI for managing secrets"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Config (e.g. dev)"},
 			{Name: "--fallback-only", Description: "Disable modifying the fallback file. secrets can still be read from the file"},
 			{Name: "--format", Description: "Do not exit if unable to write the fallback file"},

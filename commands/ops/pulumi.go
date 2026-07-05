@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "pulumi",
 		Description: "The name of the stack to operate on. Defaults to the current stack",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "about", Description: "Print information about the Pulumi environment"},
 			{Name: "cancel", Description: "Cancel a stack’s currently running update, if any"},
 			{Name: "config", Description: "Manage configuration"},
@@ -59,7 +59,7 @@ func init() {
 			{Name: "watch", Description: "[PREVIEW] Continuously update the resources in a stack"},
 			{Name: "whoami", Description: "Displays the username of the currently logged in user"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-s", Description: "The name of the stack to operate on. Defaults to the current stack"},
 			{Name: "-y", Description: "Skip confirmation prompts, and proceed with cancellation anyway"},
 			{Name: "-j", Description: "Emit output as JSON"},

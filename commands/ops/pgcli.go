@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "pgcli",
 		Description: "Host address of the postgres database",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Host address of the postgres database"},
 			{Name: "-p", Description: "Port number at which the postgres instance is listening"},
 			{Name: "-U", Description: "Username to connect to the postgres database"},

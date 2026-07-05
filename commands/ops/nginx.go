@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "nginx",
 		Description: "Nginx (pronounced",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-c", Description: "Use an alternative configuration file"},
 			{Name: "-e", Description: "Set global configuration directives"},
 			{Name: "-p", Description: "Set the prefix path.  The default value is %%PREFIX%%"},

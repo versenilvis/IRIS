@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
-func sshHostGenerator(tokens []string, _ string, _ string) []core.Suggestion {
+func sshHostGenerator(tokens []string, _ string, _ string) []spec.Suggestion {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil
@@ -21,7 +21,7 @@ func sshHostGenerator(tokens []string, _ string, _ string) []core.Suggestion {
 	}
 
 	seen := make(map[string]bool)
-	var results []core.Suggestion
+	var results []spec.Suggestion
 
 	for _, path := range paths {
 		f, err := os.Open(path)
@@ -45,7 +45,7 @@ func sshHostGenerator(tokens []string, _ string, _ string) []core.Suggestion {
 					continue
 				}
 				seen[host] = true
-				results = append(results, core.Suggestion{Cmd: host, Desc: "ssh host"})
+				results = append(results, spec.Suggestion{Cmd: host, Desc: "ssh host"})
 			}
 		}
 		_ = scanner.Err()
@@ -56,7 +56,7 @@ func sshHostGenerator(tokens []string, _ string, _ string) []core.Suggestion {
 }
 
 func init() {
-	sshOptions := []core.Option{
+	sshOptions := []spec.Option{
 		{Name: "-p", Description: "port"},
 		{Name: "-i", Description: "identity file"},
 		{Name: "-L", Description: "local port forward"},
@@ -69,18 +69,18 @@ func init() {
 		{Name: "-X", Description: "x11 forwarding"},
 	}
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ssh",
 		Description: "secure shell",
 		Generator:   sshHostGenerator,
 		Options:     sshOptions,
 	})
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "scp",
 		Description: "secure copy",
 		Generator:   sshHostGenerator,
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-r", Description: "recursive"},
 			{Name: "-p", Description: "port"},
 			{Name: "-i", Description: "identity file"},
@@ -88,11 +88,11 @@ func init() {
 		},
 	})
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "rsync",
 		Description: "remote sync",
 		Generator:   sshHostGenerator,
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-av", Description: "archive + verbose"},
 			{Name: "-z", Description: "compress"},
 			{Name: "--delete", Description: "delete extraneous"},

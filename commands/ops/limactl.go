@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "limactl",
 		Description: "Lima: Linux virtual machines, with a focus on running containers",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "completion", Description: "Generate the autocompletion script for the specified shell"},
 			{Name: "copy", Description: "Copy files between host and guest"},
 			{Name: "delete", Description: "Delete an instance of Lima"},
@@ -22,7 +22,7 @@ func init() {
 			{Name: "stop", Description: "Stop an instance"},
 			{Name: "validate", Description: "Validate YAML files"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Debug mode"},
 			{Name: "--no-descriptions", Description: "Disable completion descriptions"},
 			{Name: "-r", Description: "Copy directories recursively"},

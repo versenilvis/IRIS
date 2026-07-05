@@ -1,18 +1,18 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "deployctl",
 		Description: "Command line tool for Deno Deploy",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "deploy", Description: "Deploy a script with static files to Deno Deploy"},
 			{Name: "upgrade", Description: "Upgrade deployctl"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--exclude", Description: "Exclude files that match this pattern"},
 			{Name: "--include", Description: "Only upload files that match this pattern"},
 			{Name: "--no-static", Description: "Don't include the files in the CWD as static files"},

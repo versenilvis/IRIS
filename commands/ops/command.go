@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "command",
 		Description: "Run an external command",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-v", Description: "Print the location of the command"},
 		},
 	})

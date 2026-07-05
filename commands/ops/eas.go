@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "eas",
 		Description: "Log in with your Expo account",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "account:login", Description: "Log in with your Expo account"},
 			{Name: "account:logout", Description: "Log out"},
 			{Name: "account:view", Description: "Show the username you are logged in as"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "webhook:delete", Description: "Delete a webhook"},
 			{Name: "ID", Description: "ID of the webhook to delete"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-r", Description: "Refresh cache (ignores displaying instructions)"},
 			{Name: "--json", Description: "Enable JSON output, non-JSON messages will be printed to stderr"},
 			{Name: "--non-interactive", Description: "Run the command in non-interactive mode"},

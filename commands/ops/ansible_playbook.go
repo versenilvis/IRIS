@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ansible-playbook",
 		Description: "Runs Ansible playbooks, executing the defined tasks on the targeted hosts",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--ask-vault-pass", Description: "Ask for vault password"},
 			{Name: "--flush-cache", Description: "Clears the fact cache for every host in inventory"},
 			{Name: "--force-handlers", Description: "Run handlers even if a task fails"},

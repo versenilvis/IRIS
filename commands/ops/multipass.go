@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "multipass",
 		Description: "Displays help on commandline options",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "alias", Description: "Create an alias"},
 			{Name: "definition", Description: "Alias definition in the form <instance>:<command>"},
 			{Name: "aliases", Description: "List available aliases"},
@@ -41,7 +41,7 @@ func init() {
 			{Name: "unalias", Description: "Remove an alias"},
 			{Name: "version", Description: "Show version details"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Displays help on commandline options"},
 			{Name: "--help-all", Description: "Displays help including Qt specific options"},
 			{Name: "-v", Description: "Increase logging verbosity. Repeat the 'v' in the short"},

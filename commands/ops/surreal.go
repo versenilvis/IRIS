@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "surreal",
 		Description: "Database authentication password to use when connecting [default: root]",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "help", Description: "Print this message or the help of the given subcommand(s)"},
 			{Name: "start", Description: "Start the database server"},
 			{Name: "path", Description: "Database path used for storing data [env: DB_PATH=] [default: memory]"},
@@ -27,7 +27,7 @@ func init() {
 			{Name: "version", Description: "Output the command-line tool version information"},
 			{Name: "sql", Description: "Start an SQL REPL in your terminal with pipe support"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--pass", Description: "Database authentication password to use when connecting [default: root]"},
 			{Name: "--user", Description: "Database authentication username to use when connecting [default: root]"},
 			{Name: "--conn", Description: "Remote database server url to connect to [default: https://cloud.surrealdb.com]"},

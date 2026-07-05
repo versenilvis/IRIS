@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "atlas",
 		Description: "CLI tool to manage MongoDB Atlas",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "config", Description: "Manage your profile to store access settings for your MongoDB deployment"},
 			{Name: "init", Description: "Configure a profile to store access settings for your MongoDB deployment"},
 			{Name: "set", Description: "Configure specific properties of a profile"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "backup", Description: "Manage cloud backups for your project"},
 			{Name: "snapshot", Description: "Manage cloud backup snapshots for your project"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--gov", Description: "Create a default profile for atlas for gov"},
 			{Name: "--output", Description: "Return a specific profile"},
 			{Name: "--force", Description: "Manage the CLI's authentication state"},

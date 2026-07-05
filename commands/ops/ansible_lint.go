@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ansible-lint",
 		Description: "Ansible static code analysis",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-f", Description: "Ansible static code analysis"},
 			{Name: "--help", Description: "Show help for ansible-lint"},
 			{Name: "--list-rules", Description: "List all the rules"},

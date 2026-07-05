@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "trivy",
 		Description: "Skip updating built-in policies [$TRIVY_SKIP_POLICY_UPDATE]",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "image", Description: "Scan an image"},
 			{Name: "filesystem", Description: "Scan local filesystem for language-specific dependencies and config files"},
 			{Name: "rootfs", Description: "Scan rootfs"},
@@ -27,7 +27,7 @@ func init() {
 			{Name: "help", Description: "Shows a list of commands or help for one command"},
 			{Name: "version", Description: "Print the version"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--skip-policy-update", Description: "Skip updating built-in policies [$TRIVY_SKIP_POLICY_UPDATE]"},
 			{Name: "--removed-pkgs", Description: "Input file path instead of image name [$TRIVY_INPUT]"},
 			{Name: "--config-policy", Description: "Clear image caches without scanning [$TRIVY_CLEAR_CACHE]"},

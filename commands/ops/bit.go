@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "bit",
 		Description: "Bit documentation: https://bit.dev/docs",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "init", Description: "Create or reinitialize an empty workspace"},
 			{Name: "new", Description: "Create a new workspace from a template"},
 			{Name: "config", Description: "Global config management"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "component-names", Description: "Names or IDs of the components to link"},
 			{Name: "component-issues", Description: "List available component-issues"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--bare", Description: "Initialize an empty bit bare scope"},
 			{Name: "--shared", Description: "Add group write permissions to a scope"},
 			{Name: "--standalone", Description: "Do not nest component store within .git"},

@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "gh",
 		Description: "Current branch",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "alias", Description: "Create command shortcuts"},
 			{Name: "delete", Description: "Delete an alias"},
 			{Name: "list", Description: "List available aliases"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "key-file", Description: "Path to the public key file"},
 			{Name: "key-id", Description: "ID of the key to delete"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-c", Description: "Name of the codespace"},
 			{Name: "--clone", Description: "Clone the fork {true|false}"},
 			{Name: "-y", Description: "Skip the confirmation prompt"},

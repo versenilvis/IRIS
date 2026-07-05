@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "minikube",
 		Description: "Format to print stdout in",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "start", Description: "Starts a local Kubernetes cluster"},
 			{Name: "status", Description: "Gets the status of a local Kubernetes cluster"},
 			{Name: "stop", Description: "Stops a running local Kubernetes cluster"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "completion", Description: "Generate command completion for a shell"},
 			{Name: "bash", Description: "Bash completion"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--output", Description: "Format to print stdout in"},
 			{Name: "--shell", Description: "Force environment to be configured for a specified shell"},
 			{Name: "--unset", Description: "Unset variables instead of setting them"},

@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "rbenv",
 		Description: "List all available rbenv commands",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "commands", Description: "List all available rbenv commands"},
 			{Name: "global", Description: "Set or show the global Ruby version"},
 			{Name: "install", Description: "Install a Ruby version using ruby-build"},
@@ -20,7 +20,7 @@ func init() {
 			{Name: "whence", Description: "List all Ruby versions that contain the given executable"},
 			{Name: "which", Description: "Display the full path to an executable"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--unset", Description: "List all available rbenv commands"},
 			{Name: "--sh", Description: "Set or show the global Ruby version"},
 			{Name: "--version", Description: "Show version of ruby-build"},

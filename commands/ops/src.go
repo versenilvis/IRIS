@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "src",
 		Description: "Interact with Sourcegraph from the command line",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "apply", Description: "Apply batch"},
 			{Name: "exec", Description: "Execute batch"},
 			{Name: "new", Description: "New batch"},
@@ -24,7 +24,7 @@ func init() {
 			{Name: "members", Description: "List organization members"},
 			{Name: "tag", Description: "Tag user"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-display", Description: "Log GraphQL requests and responses to stdout"},
 			{Name: "-explain-json", Description: "Explain the JSON output schema and exit"},
 			{Name: "-get-curl", Description: "Skip validation of TLD certificates against trusted chains"},

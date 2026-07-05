@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "serverless",
 		Description: "AWS profile to use with the command",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "deploy", Description: "Deploy a Serverless service"},
 			{Name: "info", Description: "Display information about the service"},
 			{Name: "invoke", Description: "Invoke a deployed function"},
@@ -30,7 +30,7 @@ func init() {
 			{Name: "param", Description: "Get/list value of dashboard service output"},
 			{Name: "slstats", Description: "Enable or disable stats"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--aws-profile", Description: "AWS profile to use with the command"},
 			{Name: "--function", Description: "Name of the function"},
 			{Name: "--region", Description: "Region of the service"},

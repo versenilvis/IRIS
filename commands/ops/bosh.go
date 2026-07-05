@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "bosh",
 		Description: "Deployment",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "add-blob", Description: "Add blob"},
 			{Name: "unignore", Description: "Unignore an instance"},
 			{Name: "update-cloud-config", Description: "Update current cloud config"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "log-in", Description: "Login"},
 			{Name: "log-out", Description: "Log out"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--version", Description: "Show CLI version"},
 			{Name: "--config", Description: "Config file path (default: ~/.bosh/config)"},
 			{Name: "-e", Description: "Director environment name or URL"},
