@@ -1,14 +1,14 @@
 package fs
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "df",
 		Description: "Display free disk space",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-a", Description: "Show all mount points"},
 			{Name: "-b", Description: "Use 512-byte blocks (default)"},
 			{Name: "-g", Description: "Use 1073741824-byte (1-Gbyte) blocks"},

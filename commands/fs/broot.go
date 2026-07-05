@@ -1,14 +1,14 @@
 package fs
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "broot",
 		Description: "Show the last modified date of files and directories",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--dates", Description: "Show the last modified date of files and directories"},
 			{Name: "--no-dates", Description: "Don't show the last modified date"},
 			{Name: "--only-folders", Description: "Only show folders"},

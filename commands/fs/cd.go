@@ -3,17 +3,17 @@ package fs
 import (
 	"strings"
 
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "cd",
 		Description: "change directory",
 		MaxArgs:     0,
-		Generator: func(tokens []string, prefix string, partial string) []core.Suggestion {
+		Generator: func(tokens []string, prefix string, partial string) []spec.Suggestion {
 			fullQuery := strings.Join(tokens[1:], " ")
-			return core.FileGenerator("/")(tokens, prefix, fullQuery)
+			return spec.FileGenerator("/")(tokens, prefix, fullQuery)
 		},
 	})
 }

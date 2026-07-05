@@ -1,15 +1,15 @@
 package fs
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "mv",
 		Description: "move (rename) files",
-		Generator:   core.FileGenerator(),
-		Options: []core.Option{
+		Generator:   spec.FileGenerator(),
+		Options: []spec.Option{
 			{Name: "-i", Description: "interactive"},
 			{Name: "-f", Description: "force (overwrite)"},
 			{Name: "-n", Description: "no clobber (don't overwrite)"},

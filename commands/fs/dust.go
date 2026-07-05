@@ -1,14 +1,14 @@
 package fs
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "dust",
 		Description: "Like du but more intuitive",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for dust"},
 			{Name: "--version", Description: "Print version information"},
 			{Name: "--no-percent-bars", Description: "No percent bars or percentages will be displayed"},

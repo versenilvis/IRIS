@@ -1,14 +1,14 @@
 package fs
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "rclone",
 		Description: "Only list directories",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "about", Description: "Get quota information from the remote"},
 			{Name: "authorize", Description: "Remote authorization"},
 			{Name: "backend", Description: "Run a backend specific command"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "size", Description: "Prints the total size and number of objects in remote:path"},
 			{Name: "sync", Description: "Make source and dest identical, modifying destination only"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--dirs-only", Description: "Only list directories"},
 			{Name: "--files-only", Description: "Only list files"},
 			{Name: "--recursive", Description: "Recurse into the listing"},

@@ -12,17 +12,17 @@ import (
 	"strings"
 
 	"github.com/versenilvis/fuzzy"
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "z",
 		Description: "jump to directory",
 		MaxArgs:     0,
 		Generator:   ZoxideGenerator(),
 	})
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "zi",
 		Description: "jump to directory interactively",
 		MaxArgs:     0,
@@ -30,12 +30,12 @@ func init() {
 	})
 }
 
-func ZoxideGenerator() core.GeneratorFunc {
-	return func(tokens []string, prefix string, partial string) []core.Suggestion {
+func ZoxideGenerator() spec.GeneratorFunc {
+	return func(tokens []string, prefix string, partial string) []spec.Suggestion {
 		fullQuery := strings.Join(tokens[1:], " ")
-		localSuggestions := core.FileGenerator("/")(tokens, prefix, fullQuery)
+		localSuggestions := spec.FileGenerator("/")(tokens, prefix, fullQuery)
 
-		var zoxideSuggestions []core.Suggestion
+		var zoxideSuggestions []spec.Suggestion
 		cmd := exec.CommandContext(context.Background(), "zoxide", "query", "-l")
 		out, err := cmd.Output()
 		if err == nil {
@@ -55,7 +55,7 @@ func ZoxideGenerator() core.GeneratorFunc {
 				for i := 0; i < limit; i++ {
 					path := dirs[i]
 					display := strings.Replace(path, home, "~", 1)
-					zoxideSuggestions = append(zoxideSuggestions, core.Suggestion{
+					zoxideSuggestions = append(zoxideSuggestions, spec.Suggestion{
 						Cmd:  path,
 						Desc: display,
 					})
@@ -66,7 +66,7 @@ func ZoxideGenerator() core.GeneratorFunc {
 				for _, m := range matches {
 					path := m.Str
 					display := strings.Replace(path, home, "~", 1)
-					zoxideSuggestions = append(zoxideSuggestions, core.Suggestion{
+					zoxideSuggestions = append(zoxideSuggestions, spec.Suggestion{
 						Cmd:  path,
 						Desc: display,
 					})
@@ -74,7 +74,7 @@ func ZoxideGenerator() core.GeneratorFunc {
 			}
 		}
 
-		var finalResults []core.Suggestion
+		var finalResults []spec.Suggestion
 		seen := make(map[string]bool)
 
 		finalResults = append(finalResults, localSuggestions...)

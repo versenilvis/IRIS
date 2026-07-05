@@ -1,14 +1,14 @@
 package fs
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "tree",
 		Description: "Display directories as trees (with optional color/HTML output)",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-a", Description: "All files are listed"},
 			{Name: "-d", Description: "List directories only"},
 			{Name: "-l", Description: "Follow symbolic links like directories"},

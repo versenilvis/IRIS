@@ -1,14 +1,14 @@
 package fs
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "paper",
 		Description: "The Paper CLI",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "bench", Description: "Benchmark a Paper query"},
 			{Name: "build", Description: "Build an Paper bundle"},
 			{Name: "check", Description: "Check Paper source files"},
@@ -29,7 +29,7 @@ func init() {
 			{Name: "version", Description: "Print the version of Paper"},
 			{Name: "help", Description: "Help about any command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--benchmem", Description: "Report memory allocations with benchmark results"},
 			{Name: "--bundle", Description: "Set bundle file(s) or directory path(s). This flag can be repeated"},
 			{Name: "--count", Description: "Number of times to repeat each benchmark"},
