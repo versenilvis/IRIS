@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ansible-galaxy",
 		Description: "The Galaxy API server URL",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "collection", Description: "Operate on collections"},
 			{Name: "download", Description: "Download collections"},
 			{Name: "init", Description: "Initialize collections"},
@@ -30,7 +30,7 @@ func init() {
 			{Name: "info", Description: "Role information"},
 			{Name: "install", Description: "Install roles"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--server", Description: "The Galaxy API server URL"},
 			{Name: "--token", Description: "Ignore SSL certificate validation errors"},
 			{Name: "--clear-response-cache", Description: "Clear the existing server response cache"},

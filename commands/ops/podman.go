@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "podman",
 		Description: "Build an image using instructions from Containerfiles",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "events", Description: "Show podman system events"},
 			{Name: "info", Description: "Display podman system information"},
 			{Name: "inspect", Description: "Display the configuration of object denoted by ID"},
@@ -46,7 +46,7 @@ func init() {
 			{Name: "pod", Description: "Manage pods"},
 			{Name: "untag", Description: "Remove a name from a local image"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--add-host", Description: "Add a custom host-to-IP mapping (host:ip)"},
 			{Name: "--build-arg", Description: "Set build-time variables"},
 			{Name: "--cache-from", Description: "Images to consider as cache sources"},

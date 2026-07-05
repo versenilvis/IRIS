@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
-func dockerContainerGenerator(tokens []string, _ string, _ string) []core.Suggestion {
-	cwd := core.GetCWD()
+func dockerContainerGenerator(tokens []string, _ string, _ string) []spec.Suggestion {
+	cwd := spec.GetCWD()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -21,19 +21,19 @@ func dockerContainerGenerator(tokens []string, _ string, _ string) []core.Sugges
 		return nil
 	}
 
-	var results []core.Suggestion
+	var results []spec.Suggestion
 	for line := range strings.SplitSeq(string(out), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
-		results = append(results, core.Suggestion{Cmd: line, Desc: "container"})
+		results = append(results, spec.Suggestion{Cmd: line, Desc: "container"})
 	}
 	return results
 }
 
-func dockerRunningContainerGenerator(tokens []string, _ string, _ string) []core.Suggestion {
-	cwd := core.GetCWD()
+func dockerRunningContainerGenerator(tokens []string, _ string, _ string) []spec.Suggestion {
+	cwd := spec.GetCWD()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -44,19 +44,19 @@ func dockerRunningContainerGenerator(tokens []string, _ string, _ string) []core
 		return nil
 	}
 
-	var results []core.Suggestion
+	var results []spec.Suggestion
 	for line := range strings.SplitSeq(string(out), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
-		results = append(results, core.Suggestion{Cmd: line, Desc: "running"})
+		results = append(results, spec.Suggestion{Cmd: line, Desc: "running"})
 	}
 	return results
 }
 
-func dockerImageGenerator(tokens []string, _ string, _ string) []core.Suggestion {
-	cwd := core.GetCWD()
+func dockerImageGenerator(tokens []string, _ string, _ string) []spec.Suggestion {
+	cwd := spec.GetCWD()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -68,27 +68,27 @@ func dockerImageGenerator(tokens []string, _ string, _ string) []core.Suggestion
 	}
 
 	seen := make(map[string]bool)
-	var results []core.Suggestion
+	var results []spec.Suggestion
 	for line := range strings.SplitSeq(string(out), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || line == "<none>:<none>" || seen[line] {
 			continue
 		}
 		seen[line] = true
-		results = append(results, core.Suggestion{Cmd: line, Desc: "image"})
+		results = append(results, spec.Suggestion{Cmd: line, Desc: "image"})
 	}
 	return results
 }
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "docker",
 		Description: "container engine",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{
 				Name:        "ps",
 				Description: "list containers",
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "-a", Description: "show all"},
 					{Name: "-q", Description: "only show IDs"},
 					{Name: "--format", Description: "format output"},
@@ -98,8 +98,8 @@ func init() {
 			{
 				Name:        "build",
 				Description: "build image",
-				Generator:   core.FileGenerator(".dockerfile", ".Dockerfile"),
-				Options: []core.Option{
+				Generator:   spec.FileGenerator(".dockerfile", ".Dockerfile"),
+				Options: []spec.Option{
 					{Name: "-t", Description: "tag name"},
 					{Name: "-f", Description: "dockerfile path"},
 					{Name: "--no-cache", Description: "no build cache"},
@@ -111,7 +111,7 @@ func init() {
 				Name:        "run",
 				Description: "run container",
 				Generator:   dockerImageGenerator,
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "-d", Description: "detached mode"},
 					{Name: "-p", Description: "port mapping"},
 					{Name: "-v", Description: "volume mount"},
@@ -136,7 +136,7 @@ func init() {
 				Name:        "exec",
 				Description: "exec in container",
 				Generator:   dockerRunningContainerGenerator,
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "-it", Description: "interactive tty"},
 					{Name: "-e", Description: "set env variable"},
 					{Name: "-u", Description: "run as user"},
@@ -161,7 +161,7 @@ func init() {
 				Name:        "rm",
 				Description: "remove container",
 				Generator:   dockerContainerGenerator,
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "-f", Description: "force remove"},
 					{Name: "-v", Description: "remove volumes"},
 				},
@@ -170,14 +170,14 @@ func init() {
 				Name:        "rmi",
 				Description: "remove image",
 				Generator:   dockerImageGenerator,
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "-f", Description: "force remove"},
 				},
 			},
 			{
 				Name:        "images",
 				Description: "list images",
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "-a", Description: "show all"},
 					{Name: "-q", Description: "only IDs"},
 					{Name: "--format", Description: "format output"},
@@ -187,7 +187,7 @@ func init() {
 				Name:        "logs",
 				Description: "view logs",
 				Generator:   dockerContainerGenerator,
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "-f", Description: "follow output"},
 					{Name: "--tail", Description: "last n lines"},
 					{Name: "--since", Description: "since timestamp"},
@@ -197,7 +197,7 @@ func init() {
 			{
 				Name:        "inspect",
 				Description: "show low-level info",
-				Generator: func(tokens []string, prefix string, partial string) []core.Suggestion {
+				Generator: func(tokens []string, prefix string, partial string) []spec.Suggestion {
 					containers := dockerContainerGenerator(tokens, prefix, partial)
 					images := dockerImageGenerator(tokens, prefix, partial)
 					return append(containers, images...)
@@ -206,20 +206,20 @@ func init() {
 			{
 				Name:        "compose",
 				Description: "multi-container",
-				Subcommands: []core.Subcommand{
-					{Name: "up", Description: "start services", Options: []core.Option{{Name: "-d", Description: "detached"}, {Name: "--build", Description: "rebuild images"}}},
-					{Name: "down", Description: "stop services", Options: []core.Option{{Name: "-v", Description: "remove volumes"}}},
+				Subcommands: []spec.Subcommand{
+					{Name: "up", Description: "start services", Options: []spec.Option{{Name: "-d", Description: "detached"}, {Name: "--build", Description: "rebuild images"}}},
+					{Name: "down", Description: "stop services", Options: []spec.Option{{Name: "-v", Description: "remove volumes"}}},
 					{Name: "build", Description: "build services"},
-					{Name: "logs", Description: "view logs", Options: []core.Option{{Name: "-f", Description: "follow"}}},
+					{Name: "logs", Description: "view logs", Options: []spec.Option{{Name: "-f", Description: "follow"}}},
 					{Name: "ps", Description: "list services"},
 					{Name: "exec", Description: "execute command"},
 					{Name: "restart", Description: "restart services"},
 					{Name: "pull", Description: "pull images"},
 					{Name: "stop", Description: "stop services"},
 					{Name: "start", Description: "start services"},
-					{Name: "config", Description: "validate config", Generator: core.FileGenerator(".yml", ".yaml")},
+					{Name: "config", Description: "validate config", Generator: spec.FileGenerator(".yml", ".yaml")},
 				},
-				Options: []core.Option{
+				Options: []spec.Option{
 					{Name: "-f", Description: "compose file"},
 					{Name: "--project-name", Description: "project name"},
 				},
@@ -227,7 +227,7 @@ func init() {
 			{
 				Name:        "network",
 				Description: "manage networks",
-				Subcommands: []core.Subcommand{
+				Subcommands: []spec.Subcommand{
 					{Name: "ls", Description: "list networks"},
 					{Name: "create", Description: "create network"},
 					{Name: "rm", Description: "remove network"},
@@ -238,7 +238,7 @@ func init() {
 			{
 				Name:        "volume",
 				Description: "manage volumes",
-				Subcommands: []core.Subcommand{
+				Subcommands: []spec.Subcommand{
 					{Name: "ls", Description: "list volumes"},
 					{Name: "create", Description: "create volume"},
 					{Name: "rm", Description: "remove volume"},
@@ -249,8 +249,8 @@ func init() {
 			{
 				Name:        "system",
 				Description: "manage docker system",
-				Subcommands: []core.Subcommand{
-					{Name: "prune", Description: "remove unused data", Options: []core.Option{{Name: "-a", Description: "remove all unused"}, {Name: "--volumes", Description: "include volumes"}}},
+				Subcommands: []spec.Subcommand{
+					{Name: "prune", Description: "remove unused data", Options: []spec.Option{{Name: "-a", Description: "remove all unused"}, {Name: "--volumes", Description: "include volumes"}}},
 					{Name: "df", Description: "show disk usage"},
 					{Name: "info", Description: "system info"},
 				},
@@ -258,20 +258,20 @@ func init() {
 		},
 	})
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "docker-compose",
 		Description: "multi-container (legacy)",
-		Subcommands: []core.Subcommand{
-			{Name: "up", Description: "start services", Options: []core.Option{{Name: "-d", Description: "detached"}, {Name: "--build", Description: "rebuild"}}},
-			{Name: "down", Description: "stop services", Options: []core.Option{{Name: "-v", Description: "remove volumes"}}},
+		Subcommands: []spec.Subcommand{
+			{Name: "up", Description: "start services", Options: []spec.Option{{Name: "-d", Description: "detached"}, {Name: "--build", Description: "rebuild"}}},
+			{Name: "down", Description: "stop services", Options: []spec.Option{{Name: "-v", Description: "remove volumes"}}},
 			{Name: "build", Description: "build services"},
-			{Name: "logs", Description: "view logs", Options: []core.Option{{Name: "-f", Description: "follow"}}},
+			{Name: "logs", Description: "view logs", Options: []spec.Option{{Name: "-f", Description: "follow"}}},
 			{Name: "ps", Description: "list services"},
 			{Name: "exec", Description: "execute command"},
 			{Name: "restart", Description: "restart services"},
 			{Name: "pull", Description: "pull images"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-f", Description: "compose file"},
 		},
 	})

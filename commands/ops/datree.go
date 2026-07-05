@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "datree",
 		Description: "Help for",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "completion", Description: "Generate completion script for bash,zsh,fish,powershell"},
 			{Name: "config", Description: "Internal configuration management for datree config file"},
 			{Name: "get", Description: "Get configuration value"},
@@ -18,7 +18,7 @@ func init() {
 			{Name: "test", Description: "Test kustomization files"},
 			{Name: "version", Description: "Print the version number"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Help for 'test'"},
 			{Name: "--ignore-missing-schemas", Description: "Ignore missing schemas when executing schema validation step"},
 			{Name: "--no-record", Description: "Do not send policy checks metadata to the backend"},

@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "volta",
 		Description: "Enables verbose diagnostics",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "fetch", Description: "Fetches a tool to the local machine"},
 			{Name: "install", Description: "Installs a tool in your toolchain"},
 			{Name: "uninstall", Description: "Uninstalls a tool from your toolchain"},
@@ -21,7 +21,7 @@ func init() {
 			{Name: "run", Description: "Run a command with custom Node, npm, and/or Yarn versions"},
 			{Name: "help", Description: "Prints this message or the help of the given subcommand(s)"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--verbose", Description: "Enables verbose diagnostics"},
 			{Name: "--quiet", Description: "Prevents unnecessary output"},
 			{Name: "-h", Description: "Prints help information"},

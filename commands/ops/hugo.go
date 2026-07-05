@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "hugo",
 		Description: "The world's fastest framework for building websites",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "check", Description: "Contains some verification checks"},
 			{Name: "ulimit", Description: "Check system ulimit settings"},
 			{Name: "config", Description: "Print the site configuration"},
@@ -48,7 +48,7 @@ func init() {
 			{Name: "server", Description: "A high performance webserver"},
 			{Name: "version", Description: "Print the version number of Hugo"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Config file (default is path/config.yaml|json|toml)"},
 			{Name: "--configDir", Description: "Config dir (default 'config')"},
 			{Name: "--debug", Description: "Debug output (default false)"},

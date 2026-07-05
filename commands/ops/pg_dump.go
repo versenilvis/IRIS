@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "pg_dump",
 		Description: "Dumps a database as a text file or to other formats",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for pg_dump"},
 			{Name: "--file", Description: "Output file or directory name"},
 			{Name: "--format", Description: "Output file format"},

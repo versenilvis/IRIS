@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ampx",
 		Description: "CLI for Amplify Gen 2",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "sandbox", Description: "Deploy to your personal cloud sandbox"},
 			{Name: "delete", Description: "Delete your personal cloud sandbox"},
 			{Name: "secret", Description: "Manage backend secrets for your personal cloud sandbox"},
@@ -23,7 +23,7 @@ func init() {
 			{Name: "info", Description: "Generate system information for troubleshooting"},
 			{Name: "pipeline-deploy", Description: "Deploy Amplify project in a CI/CD pipeline"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--dir-to-watch", Description: "Directory to watch for file changes"},
 			{Name: "--exclude", Description: "Paths or glob patterns to ignore"},
 			{Name: "--identifier", Description: "Name to distinguish between sandbox environments"},

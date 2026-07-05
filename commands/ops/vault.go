@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "vault",
 		Description: "Display help",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "read", Description: "Reads data from Vault at the given path"},
 			{Name: "write", Description: "Writes data from Vault at the given path"},
 			{Name: "delete", Description: "Deletes secrets and configuration from Vault at the given path"},
@@ -38,7 +38,7 @@ func init() {
 			{Name: "ssh", Description: "Establishes an SSH connection with the target machine"},
 			{Name: "version-history", Description: "Prints the version history of the target Vault server"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Display help"},
 			{Name: "-address", Description: "Key to unlock a namespace API lock. The default is (not set)"},
 			{Name: "-wrap-ttl", Description: "Exit the vault server if the vault core is shutdown. The default is false"},

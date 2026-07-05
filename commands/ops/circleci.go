@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "circleci",
 		Description: "CircleCI CLI",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "completion", Description: "Generate shell completion scripts"},
 			{Name: "bash", Description: "Generate bash completion scripts"},
 			{Name: "zsh", Description: "Generate zsh completion scripts"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "runner", Description: "Operate on runners"},
 			{Name: "instance", Description: "Operate on runner instances"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--private", Description: "Show metadata of an orb"},
 			{Name: "-u", Description: "Include uncertified orbs"},
 			{Name: "--input", Description: "Path to input file, i.e. ./.circleci/config.yml"},

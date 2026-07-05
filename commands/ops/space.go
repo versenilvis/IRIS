@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "space",
 		Description: "Deta Space CLI for mananging Deta Space projects",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "completion", Description: "Generate the autocompletion script for the specified shell"},
 			{Name: "bash", Description: "Generate the autocompletion script for bash"},
 			{Name: "fish", Description: "Generate the autocompletion script for fish"},
@@ -25,7 +25,7 @@ func init() {
 			{Name: "upgrade", Description: "Upgrade Space CLI version"},
 			{Name: "help", Description: "Help about any command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--no-descriptions", Description: "Disable completion descriptions"},
 			{Name: "--dir", Description: "Src of project to link"},
 			{Name: "--id", Description: "Project id of project to link"},

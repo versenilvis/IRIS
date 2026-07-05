@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "mongocli",
 		Description: "CLI tool to manage your MongoDB Cloud",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "config", Description: "Configure a profile to store access settings for your MongoDB deployment"},
 			{Name: "set", Description: "Configure specific properties of a profile"},
 			{Name: "ls", Description: "List available profiles"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "disable", Description: "Disable the application-managed slow operation threshold for your project"},
 			{Name: "log", Description: "Download host logs for your project"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--output", Description: "Return a specific profile"},
 			{Name: "--force", Description: "MongoDB Atlas operations"},
 			{Name: "--accessListIp", Description: "IP address to be allowed to access the deployment"},

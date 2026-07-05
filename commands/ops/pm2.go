@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "pm2",
 		Description: "Outputs the version number",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "start", Description: "Starts and daemonizes an app"},
 			{Name: "trigger", Description: "Deploy your json"},
 			{Name: "deploy", Description: "Deploy your json"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "describe", Description: "Describe all parameters of a process id"},
 			{Name: "desc", Description: "(alias) Describe all parameters of a process id"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-V", Description: "Outputs the version number"},
 			{Name: "-v", Description: "Gets version"},
 			{Name: "-s", Description: "Hides all messages"},

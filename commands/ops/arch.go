@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "arch",
 		Description: "32-bit intel",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-arch", Description: "Print architecture type or run select architecture"},
 			{Name: "-32", Description: "Add the native 32-bit architecture to the list of architectures"},
 			{Name: "-64", Description: "Add the native 64-bit architecture to the list of architectures"},

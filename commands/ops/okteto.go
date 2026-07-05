@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "okteto",
 		Description: "Context",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "analytics", Description: "Enable / Disable analytics"},
 			{Name: "build", Description: "Build (and optionally push) a Docker image"},
 			{Name: "completion", Description: "Generate the autocompletion script for the specified shell"},
@@ -43,7 +43,7 @@ func init() {
 			{Name: "version", Description: "View the version of the okteto binary"},
 			{Name: "help", Description: "Help about any command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--loglevel", Description: "Amount of information outputted (debug, info, warn, error)"},
 			{Name: "--output", Description: "Output format (tty, plain, json)"},
 			{Name: "--disable", Description: "Disable analytics"},

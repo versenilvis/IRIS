@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "lpass",
 		Description: "Command line interface for LastPass",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "login", Description: "Log in to LastPass"},
 			{Name: "USERNAME", Description: "LastPass account username (email address)"},
 			{Name: "logout", Description: "Log out of LastPass"},
@@ -47,7 +47,7 @@ func init() {
 			{Name: "limit", Description: "Manipulate LastPass Shared Folder access"},
 			{Name: "sites", Description: "LastPass sites to manipulate"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--trust", Description: "Subsequent logins will not require multifactor authentication"},
 			{Name: "--plaintext-key", Description: "Save decryption key to the hard disk in plaintext"},
 			{Name: "--force", Description: "Skip user confirmation"},

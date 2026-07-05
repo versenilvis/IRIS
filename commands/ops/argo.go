@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "argo",
 		Description: "If True, Use the HTTP client. Defaults to the ARGO_HTTP1 environment variable",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "archive", Description: "Manage the workflow archive"},
 			{Name: "delete", Description: "Delete a workflow in the archive"},
 			{Name: "get", Description: "Get a workflow in the archive"},
@@ -41,7 +41,7 @@ func init() {
 			{Name: "wait", Description: "Waits for workflows to complete"},
 			{Name: "watch", Description: "Watch a workflow until it completes"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--argo-base-href", Description: "If True, Use the HTTP client. Defaults to the ARGO_HTTP1 environment variable"},
 			{Name: "--argo-server", Description: "Username to impersonate for the operation"},
 			{Name: "--as-group", Description: "UID to impersonate for the operation"},

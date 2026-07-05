@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "sqlite3",
 		Description: "A command line interface for SQLite version 3",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-append", Description: "Append the database to the end of the file"},
 			{Name: "-ascii", Description: "Set output mode to 'ascii'"},
 			{Name: "-bail", Description: "Stop after hitting an error"},

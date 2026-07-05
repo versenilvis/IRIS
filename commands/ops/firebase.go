@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "firebase",
 		Description: "ProjectAlias",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "appdistribution:distribute", Description: "Upload a distribution"},
 			{Name: "apps:android:sha:create", Description: "Add a SHA certificate hash for a given app id"},
 			{Name: "apps:android:sha:delete", Description: "Delete a SHA certificate hash for a given app id"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "login:use", Description: "Set the default account to use for this project directory"},
 			{Name: "logout", Description: "Log the CLI out of Firebase"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--app", Description: "The app id of your Firebase app"},
 			{Name: "--release-notes", Description: "Release notes to include with this distribution"},
 			{Name: "--release-notes-file", Description: "Path to file with release notes to include with this distribution"},

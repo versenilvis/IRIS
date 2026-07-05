@@ -1,24 +1,24 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "stripe",
 		Description: "Stripe CLI - build, test, and manage your Stripe integrations right from your terminal",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "login", Description: "Connects to your Stripe account"},
 			{Name: "logout", Description: "Disconnects your Stripe account"},
-			{Name: "config", Description: "Manage Stripe CLI configuration", Subcommands: []core.Subcommand{
+			{Name: "config", Description: "Manage Stripe CLI configuration", Subcommands: []spec.Subcommand{
 				{Name: "list", Description: "List all configured options"},
 				{Name: "set", Description: "Set a value for the specified configuration option"},
 				{Name: "unset", Description: "Remove a key-value pair from the config file"},
 			}},
 			{Name: "completion", Description: "Generates shell autocompletions"},
 			{Name: "status", Description: "Displays Stripe's system status and service availability"},
-			{Name: "open", Description: "Opens Stripe dashboard pages in your web browser", Subcommands: []core.Subcommand{
+			{Name: "open", Description: "Opens Stripe dashboard pages in your web browser", Subcommands: []spec.Subcommand{
 				{Name: "login", Description: "Open the login page"},
 				{Name: "dashboard", Description: "Open the dashboard"},
 				{Name: "api", Description: "Open API reference docs"},
@@ -27,7 +27,7 @@ func init() {
 				{Name: "settings", Description: "Open account settings"},
 			}},
 			{Name: "listen", Description: "Receives webhook events from Stripe locally"},
-			{Name: "trigger", Description: "Trigger webhook events", Subcommands: []core.Subcommand{
+			{Name: "trigger", Description: "Trigger webhook events", Subcommands: []spec.Subcommand{
 				{Name: "account.updated", Description: "Occurs whenever an account status or property has changed"},
 				{Name: "account.external_account.created", Description: "Occurs whenever an external account is created"},
 				{Name: "account.external_account.deleted", Description: "Occurs whenever an external account is deleted"},
@@ -53,14 +53,14 @@ func init() {
 				{Name: "customer.discount.created", Description: "Occurs whenever a coupon is attached to a customer"},
 				{Name: "customer.discount.deleted", Description: "Occurs whenever a coupon is removed from a customer"},
 			}},
-			{Name: "logs", Description: "Interact with Stripe request logs", Subcommands: []core.Subcommand{
+			{Name: "logs", Description: "Interact with Stripe request logs", Subcommands: []spec.Subcommand{
 				{Name: "tail", Description: "Stream request logs from Stripe"},
 			}},
 			{Name: "get", Description: "Make a GET request to the Stripe API"},
 			{Name: "post", Description: "Make a POST request to the Stripe API"},
 			{Name: "delete", Description: "Make a DELETE request to the Stripe API"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--api-key", Description: "Sets your API key to use for the command"},
 			{Name: "--color", Description: "Enables or disables color output"},
 			{Name: "--config", Description: "Sets your config file"},

@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "doctl",
 		Description: "The official DigitalOcean command line interface (CLI)",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "help", Description: "Display help about commands"},
 			{Name: "get", Description: "Retrieve account profile details"},
 			{Name: "ratelimit", Description: "Retrieve your API usage and the remaining quota"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "db", Description: "Display commands for managing individual databases within a cluster"},
 			{Name: "maintenance-window", Description: "Display commands for scheduling automatic maintenance on your database cluster"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Help for doctl"},
 			{Name: "-v", Description: "Enable verbose output"},
 			{Name: "-o", Description: "Desired output format"},

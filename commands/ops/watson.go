@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "watson",
 		Description: "A wonderful CLI to track your time",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "add", Description: "Add time to a project with tag(s) that was not tracked live"},
 			{Name: "DATETIME", Description: "The start time. Ex: 2022-03-04 12:00:00"},
 			{Name: "aggregate", Description: "Display a report of the time spent on each project aggregated by day"},
@@ -30,7 +30,7 @@ func init() {
 			{Name: "sync", Description: "Get the frames from the server and push the new ones"},
 			{Name: "tags", Description: "Display the list of all the tags"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--from", Description: "Date and time of start of tracked activity"},
 			{Name: "--to", Description: "Date and time of end of tracked activity"},
 			{Name: "--confirm-new-project", Description: "Confirm creation of new tag"},

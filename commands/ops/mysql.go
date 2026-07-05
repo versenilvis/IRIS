@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "mysql",
 		Description: "Mysql is a terminal-based front-end to MySQL",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--auto-rehash", Description: "Enable automatic rehashing"},
 			{Name: "--auto-vertical-output", Description: "Enable automatic vertical result set display"},
 			{Name: "--batch", Description: "Do not use history file"},

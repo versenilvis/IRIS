@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "sfdx",
 		Description: "Analyze (lint) Aura component code",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "force:lightning:lint", Description: "Analyze (lint) Aura component code"},
 			{Name: "fig-completion", Description: "Generate a Fig completion spec"},
 			{Name: "commands", Description: "List all the commands"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "force:limits:recordcounts:display", Description: "Display record counts for the specified standard and custom objects"},
 			{Name: "force:org:display", Description: "Get the description for the current or target org"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--json", Description: "Format output as json"},
 			{Name: "--loglevel", Description: "Logging level for this command invocation"},
 			{Name: "-i", Description: "Pattern used to ignore some folders"},

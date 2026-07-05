@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ansible-doc",
 		Description: "Displays information on modules installed in Ansible libraries",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--metadata-dump", Description: "For internal testing only Dump json metadata for all plugins"},
 			{Name: "--playbook-dir", Description: "Sets the relative path for many features including roles/ group_vars/ etc"},
 			{Name: "--version", Description: "Show plugin names and their source files without summaries (implies --list)"},

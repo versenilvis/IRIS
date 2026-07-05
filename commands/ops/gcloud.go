@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "gcloud",
 		Description: "Manage Google Cloud Platform resources and developer workflow",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "access-context-manager", Description: "Manage Access Context Manager resources"},
 			{Name: "active-directory", Description: "Manage Managed Microsoft AD resources"},
 			{Name: "ai-platform", Description: "Manage AI Platform jobs and models"},

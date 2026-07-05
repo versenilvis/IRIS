@@ -1,19 +1,19 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "k9s",
 		Description: "Kubernetes namespace",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "help", Description: "Help about any command"},
 			{Name: "info", Description: "Print configuration info"},
 			{Name: "version", Description: "Print version/build info"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Help for info"},
 			{Name: "-s", Description: "Prints K9s version info in short format"},
 			{Name: "-A", Description: "Launch K9s in all namespaces"},

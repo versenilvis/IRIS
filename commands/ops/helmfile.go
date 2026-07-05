@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "helmfile",
 		Description: "Deploy helm charts",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "apply", Description: "Apply all resources from state file only when there are changes"},
 			{Name: "build", Description: "Build all resources from state file"},
 			{Name: "cache", Description: "Cache management"},
@@ -25,7 +25,7 @@ func init() {
 			{Name: "test", Description: "Test charts from state file (helm test)"},
 			{Name: "version", Description: "Print the CLI version"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Do not exit with an error code if the provided selector has no matching releases"},
 			{Name: "--allow-no-matching-release", Description: "Show help for helmfile"},
 			{Name: "--chart", Description: "Output with color"},

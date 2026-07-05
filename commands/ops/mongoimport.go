@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "mongoimport",
 		Description: "Import data from a JSON, CSV, or TSV file into a MongoDB instance",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Returns information on the options and use of mongoimport"},
 			{Name: "--verbose", Description: "Runs mongoimport in a quiet mode that attempts to limit the amount of output"},
 			{Name: "--version", Description: "Returns the mongoimport release number"},

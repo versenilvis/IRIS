@@ -1,14 +1,14 @@
 package ops
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "coda",
 		Description: "Coda CLI - interact with Coda docs and tables",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "init", Description: "Initialize an empty project with the recommended settings and dependencies"},
 			{Name: "execute", Description: "Execute the formula and print the output to the terminal"},
 			{Name: "formula", Description: "Formula name to execute"},
@@ -25,7 +25,7 @@ func init() {
 			{Name: "option", Description: "Currently the only supported option is 'timerStrategy'"},
 			{Name: "value", Description: "Value to set for the option"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--dynamicUrl", Description: "The URL to sync from"},
 			{Name: "--name", Description: "The desired Pack name"},
 			{Name: "--description", Description: "The Pack description"},
