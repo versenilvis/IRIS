@@ -1,15 +1,15 @@
 package jvm
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "javac",
 		Description: "Java compiler",
-		Generator:   core.FileGenerator(".java"),
-		Options: []core.Option{
+		Generator:   spec.FileGenerator(".java"),
+		Options: []spec.Option{
 			{Name: "-d", Description: "output directory"},
 			{Name: "-cp", Description: "class path"},
 			{Name: "-classpath", Description: "class path (long form)"},
@@ -24,11 +24,11 @@ func init() {
 		},
 	})
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "java",
 		Description: "Java runtime",
-		Generator:   core.FileGenerator(".jar", ".class"),
-		Options: []core.Option{
+		Generator:   spec.FileGenerator(".jar", ".class"),
+		Options: []spec.Option{
 			{Name: "-jar", Description: "run jar file"},
 			{Name: "-cp", Description: "class path"},
 			{Name: "-Xmx", Description: "max heap size (e.g. -Xmx512m)"},
@@ -41,11 +41,11 @@ func init() {
 		},
 	})
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "kotlinc",
 		Description: "Kotlin compiler",
-		Generator:   core.FileGenerator(".kt", ".kts"),
-		Options: []core.Option{
+		Generator:   spec.FileGenerator(".kt", ".kts"),
+		Options: []spec.Option{
 			{Name: "-d", Description: "output dir or jar"},
 			{Name: "-cp", Description: "class path"},
 			{Name: "-include-runtime", Description: "include runtime in jar"},

@@ -1,14 +1,14 @@
 package jvm
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "mvn",
 		Description: "Maven - a Java based project management and comprehension tool",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--also-make", Description: "Also build projects required by project list"},
 			{Name: "--also-make-dependents", Description: "Also build projects that depend on projects in the project list"},
 			{Name: "--batch-mode", Description: "Run in non-interactive (batch)"},

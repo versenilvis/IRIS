@@ -1,14 +1,14 @@
 package jvm
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "fvm",
 		Description: "Print this usage information",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "config", Description: "Set configuration for FVM"},
 			{Name: "path", Description: "Path to the Flutter versions cache"},
 			{Name: "dart", Description: "Proxies Dart commands"},
@@ -28,7 +28,7 @@ func init() {
 			{Name: "spawn", Description: "Spawn a Flutter SDK version command"},
 			{Name: "use", Description: "Sets a Flutter SDK version to be used in a project"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Print this usage information"},
 			{Name: "--verbose", Description: "Print verbose output"},
 			{Name: "--version", Description: "Current FVM version"},

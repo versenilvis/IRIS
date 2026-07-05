@@ -1,14 +1,14 @@
 package jvm
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "kdoctor",
 		Description: "Report a version of KDoctor",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--version", Description: "Report a version of KDoctor"},
 			{Name: "--verbose", Description: "Report an extended information"},
 			{Name: "--all", Description: "Run extra diagnostics"},

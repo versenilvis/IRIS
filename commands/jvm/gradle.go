@@ -1,14 +1,14 @@
 package jvm
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "gradle",
 		Description: "Log all warnings",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "build", Description: "Compute all outputs"},
 			{Name: "run", Description: "Run applications"},
 			{Name: "check", Description: "Run all checks"},
@@ -21,7 +21,7 @@ func init() {
 			{Name: "init", Description: "Create new Gradle builds, with new or existing projects"},
 			{Name: "test", Description: "Run a test task"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-?", Description: "Shows a help message with all available CLI options"},
 			{Name: "-v", Description: "Prints Gradle, Groovy, Ant, JVM, and operating system version information"},
 			{Name: "-S", Description: "Print out the full (very verbose) stacktrace for any exceptions"},
