@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "hyper",
 		Description: "Hyper is an Electron-based terminal",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "install", Description: "Install a plugin"},
 			{Name: "docs", Description: "Open the npm page of a plugin"},
 			{Name: "help", Description: "Display help"},

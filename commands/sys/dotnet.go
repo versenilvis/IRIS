@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "dotnet",
 		Description: "The dotnet cli",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--version", Description: "Prints out a list of the installed .NET SDKs"},
 			{Name: "-?", Description: "Prints out a list of available commands"},
 			{Name: "-d", Description: "Enables diagnostic output"},

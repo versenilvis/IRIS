@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "vultr-cli",
 		Description: "Bare Metal ID",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "account", Description: "Retrieve information about your account"},
 			{Name: "apps", Description: "Display all available applications"},
 			{Name: "list", Description: "List applications"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "script", Description: "Startup script commands"},
 			{Name: "snapshot", Description: "Snapshot commands"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--os", Description: "ID of the operating system that will be installed on the server"},
 			{Name: "--persistent_pxe", Description: "Enable persistent_pxe"},
 			{Name: "--plan", Description: "ID of the plan that the server will subscribe to"},

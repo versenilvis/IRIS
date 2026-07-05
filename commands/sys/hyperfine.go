@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "hyperfine",
 		Description: "A command-line benchmarking tool",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--warmup", Description: "Perform warmupruns (number) before the actual benchmarking starts"},
 			{Name: "--min-runs", Description: "Perform at least NUM runs for each command"},
 			{Name: "--max-runs", Description: "Perform at most NUM runs for each command. Default: no limit"},

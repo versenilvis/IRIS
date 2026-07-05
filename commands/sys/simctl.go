@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "simctl",
 		Description: "Add photos, live photos, videos, or contacts to the library of a device",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "addmedia", Description: "Add photos, live photos, videos, or contacts to the library of a device"},
 			{Name: "boot", Description: "Boot a device or device pair"},
 			{Name: "clone", Description: "Clone an existing device"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "terminate", Description: "Terminate an application by identifier on a device"},
 			{Name: "ui", Description: "Get or Set UI options"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--arch", Description: "Clone an existing device"},
 			{Name: "-b", Description: "Do NOT show the resulting archive in a Finder window upon completion"},
 			{Name: "-X", Description: "Specify a duration (in seconds) to wait for the log collection before timeout"},

@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "id",
 		Description: "Display the full name of the user",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-A", Description: "Display the full name of the user"},
 			{Name: "-G", Description: "Display the MAC label of the current process"},
 			{Name: "-P", Description: "Display the id as a password file entry"},

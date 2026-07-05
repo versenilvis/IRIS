@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "fastlane",
 		Description: "Helps you with your initial fastlane setup",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "init", Description: "Helps you with your initial fastlane setup"},
 			{Name: "swift", Description: "Fastlane configuration written in Swift (Beta). Swift setup is still in beta"},
 			{Name: "appleID", Description: "Your Apple ID"},
@@ -34,7 +34,7 @@ func init() {
 			{Name: "update_fastlane", Description: "Update fastlane to the latest release"},
 			{Name: "update_plugins", Description: "Update all plugin dependencies"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-u", Description: "Only iOS projects Your Apple ID"},
 			{Name: "-f", Description: "Overwrite the existing README.md in the ./fastlane folder"},
 			{Name: "-c", Description: "Add custom command(s) for which tab auto complete should be enabled too"},

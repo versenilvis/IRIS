@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "cci",
 		Description: "CumulusCI command line interface",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "flow", Description: "Commands for finding and running flows for a project"},
 			{Name: "doc", Description: "Exports RST format documentation for all flows"},
 			{Name: "info", Description: "Displays information for a flow"},
@@ -49,7 +49,7 @@ func init() {
 			{Name: "project", Description: "Commands for interacting with project repository configurations"},
 			{Name: "init", Description: "Initialize a new project for use with the cumulusci toolbelt"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--project", Description: "Include project-specific flows only"},
 			{Name: "--help", Description: "Help for flow doc"},
 			{Name: "--plain", Description: "Print the table using plain ascii"},

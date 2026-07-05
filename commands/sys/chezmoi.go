@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "chezmoi",
 		Description: "Attribute modifier",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "manage", Description: "Add an existing file, directory, or symlink to the source state"},
 			{Name: "apply", Description: "Update the destination directory to match the target state"},
 			{Name: "archive", Description: "Generate a tar archive of the target state"},
@@ -53,7 +53,7 @@ func init() {
 			{Name: "help", Description: "Help about any command"},
 			{Name: "generate", Description: "Generate a file for use with chezmoi"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--autotemplate", Description: "Generate the template when adding files as templates"},
 			{Name: "--create", Description: "Add files that should exist, irrespective of their contents"},
 			{Name: "--encrypt", Description: "Encrypt files"},

@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ag",
 		Description: "Recursively search for PATTERN in PATH. Like grep or ack, but faster",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--ackmate", Description: "Set thread affinity (if platform supports it)"},
 			{Name: "--noaffinity", Description: "Don't set thread affinity (if platform supports it)"},
 			{Name: "-a", Description: "Print lines after match"},

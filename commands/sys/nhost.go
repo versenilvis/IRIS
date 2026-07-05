@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "nhost",
 		Description: "Nhost",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "deploy", Description: "Deploy local migrations and metadata changes to Nhost production"},
 			{Name: "dev", Description: "Start Nhost project for local development"},
 			{Name: "down", Description: "Stop and remove local Nhost backend started by `nhost dev`"},
@@ -20,7 +20,7 @@ func init() {
 			{Name: "login", Description: "Login to your Nhost account"},
 			{Name: "logout", Description: "Logout from your Nhost account"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--email", Description: "Email address"},
 		},
 	})

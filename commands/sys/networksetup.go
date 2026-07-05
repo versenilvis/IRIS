@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "networksetup",
 		Description: "Configuration tool for network settings in macOS",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "computername", Description: "The new name for your computer on the network"},
 			{Name: "ip", Description: "The IP address to set for the network service"},
 			{Name: "subnet", Description: "The subnet mask to apply"},
@@ -49,7 +49,7 @@ func init() {
 			{Name: "pppoeName", Description: "Optional name for the PPPoE service"},
 			{Name: "location", Description: "The name for the new location"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-listnetworkserviceorder", Description: "Displays a list of all the network services on the server's hardware ports"},
 			{Name: "-listallhardwareports", Description: "Displays ethernet (or Wi-Fi) address for hardwareport or device specified"},
 			{Name: "-getcomputername", Description: "Displays the computer name"},

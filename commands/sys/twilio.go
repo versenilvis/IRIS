@@ -1,18 +1,18 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "twilio",
 		Description: "Level of logging messages",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "list", Description: "List Twilio CLI configurations"},
 			{Name: "set", Description: "Update Twilio CLI configurations"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-l", Description: "Level of logging messages"},
 			{Name: "-o", Description: "Format of command output"},
 			{Name: "--silent", Description: "Manage Twilio CLI configurations"},

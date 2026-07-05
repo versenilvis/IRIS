@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "shell-config",
 		Description: "Display help for command",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "install", Description: "Install MacOS setup with Multi-Selection"},
 			{Name: "shell", Description: "Setup a shell configuration with a robust set of tools and architecture"},
 			{Name: "update", Description: "Update the CLI to the latest version"},
@@ -20,7 +20,7 @@ func init() {
 			{Name: "delete", Description: "Delete external shell"},
 			{Name: "help", Description: "Display help for command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Display help for command"},
 			{Name: "-t", Description: "Select update version"},
 			{Name: "-m", Description: "Daemon check for update notification. When specified is true"},

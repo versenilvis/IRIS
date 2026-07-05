@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "man",
 		Description: "Format and display manual pages",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-C", Description: "Specify the configuration file to use"},
 			{Name: "-M", Description: "Specify the list of directories to search (colon separated)"},
 			{Name: "-P", Description: "Specify the pager program"},

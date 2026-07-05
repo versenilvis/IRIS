@@ -1,20 +1,20 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "mkdocs",
 		Description: "Project documentation with Markdown",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "build", Description: "Build the MkDocs documentation"},
 			{Name: "gh-deploy", Description: "Deploy your documentation to GitHub Pages"},
 			{Name: "new", Description: "Create a new MkDocs project"},
 			{Name: "serve", Description: "Run the builtin development server"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Provide a specific MkDocs config"},
 			{Name: "-s", Description: "Enable strict mode. This will cause MkDocs to abort the build on any warnings"},
 			{Name: "-t", Description: "The theme to use when building your documentation"},

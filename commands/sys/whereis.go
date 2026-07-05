@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "whereis",
 		Description: "Locate the binary, source, and manual page files for a command",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-b", Description: "Search only for binaries"},
 			{Name: "-m", Description: "Search only for manual sections"},
 			{Name: "-s", Description: "Search only for sources"},

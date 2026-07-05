@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "pmset",
 		Description: "Display sleep timer (value in minutes, or 0 to disable)",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "live", Description: "Display the settings currently in use. (default if no argument given)"},
 			{Name: "custom", Description: "Display custom settings for all power sources"},
 			{Name: "cap", Description: "Display which power management features the machine supports"},
@@ -31,7 +31,7 @@ func init() {
 			{Name: "schedule", Description: "For setting up one-time power events"},
 			{Name: "repeat", Description: "For setting up daily/weekly power on and power off events"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-g", Description: "GETTING"},
 			{Name: "-a", Description: "Settings for all"},
 			{Name: "-b", Description: "Settings for battery"},

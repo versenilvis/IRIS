@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "wp",
 		Description: "Path to the WordPress files",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "cache", Description: "Adds, removes, fetches, and flushes the WP Object Cache object"},
 			{Name: "add", Description: "Adds a value to the object cache"},
 			{Name: "key", Description: "Cache key"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "unapprove", Description: "Unapproves a comment"},
 			{Name: "unspam", Description: "Unmarks a comment as spam"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--path", Description: "Path to the WordPress files"},
 			{Name: "--url", Description: "Perform operation against a remote WordPress installation over HTTP"},
 			{Name: "--user", Description: "Set the WordPress user"},

@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "mkinitcpio",
 		Description: "Create an initial ramdisk environment",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for mkinitcpio"},
 			{Name: "--version", Description: "Display version information"},
 			{Name: "--addhooks", Description: "Add additional hooks to the image"},

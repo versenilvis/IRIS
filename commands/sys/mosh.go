@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "mosh",
 		Description: "Address of remote machine to log into",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for mosh"},
 			{Name: "--client", Description: "Local echo options"},
 			{Name: "-4", Description: "Use IPv4 only"},

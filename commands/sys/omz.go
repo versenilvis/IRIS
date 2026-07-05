@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "omz",
 		Description: "Oh My Zsh",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "help", Description: "Print the help message"},
 			{Name: "changelog", Description: "Print the changelog"},
 			{Name: "plugin", Description: "Manage plugins"},

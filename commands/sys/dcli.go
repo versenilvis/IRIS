@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "dcli",
 		Description: "Display help for command",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "sync", Description: "Manually synchronize the local vault with Dashlane"},
 			{Name: "read", Description: "Retrieve a secret from the local vault via its path"},
 			{Name: "path", Description: "Path to the secret (dl://<title>/<field> or dl://<id>/<field>)"},
@@ -38,7 +38,7 @@ func init() {
 			{Name: "backup", Description: "Backup your local vault (will use the current directory by default)"},
 			{Name: "logout", Description: "Logout and clean your local database and OS keychain"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-i", Description: "Input file of a template to inject the credential into"},
 			{Name: "-o", Description: "Output file to write the injected template to"},
 			{Name: "--print", Description: "Prints just the OTP code, instead of copying it to the clipboard"},

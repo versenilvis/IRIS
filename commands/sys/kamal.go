@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "kamal",
 		Description: "Skip image build and push",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "boot", Description: "Boot new accessory service on host (use NAME=all to boot all accessories)"},
 			{Name: "upload", Description: "Upload accessory files to host"},
 			{Name: "directories", Description: "Create accessory directories on host"},
@@ -21,7 +21,7 @@ func init() {
 			{Name: "status", Description: "Show status of accessory on host"},
 			{Name: "remove", Description: "Remove accessory container, image and data directory from host"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-P", Description: "Skip image build and push"},
 			{Name: "--since", Description: "Number of lines to show from each server"},
 			{Name: "--grep", Description: "Show lines with grep match only (use this to fetch specific requests by id)"},

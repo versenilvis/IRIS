@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "spotify",
 		Description: "CLI to use Spotify from the terminal",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "play", Description: "Resume playback where Spotify last left off"},
 			{Name: "song name", Description: "The name of the song to start playing"},
 			{Name: "album", Description: "Find an album by name and play it"},
@@ -37,7 +37,7 @@ func init() {
 			{Name: "shuffle", Description: "Toggle shuffle playback mode"},
 			{Name: "repeat", Description: "Toggle repeat playback mode"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for spotify"},
 		},
 	})

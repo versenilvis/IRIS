@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "date",
 		Description: "Display or set date and time",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-d", Description: "Set the kernel's value for daylight saving time"},
 			{Name: "-f", Description: "The format with which to parse the new date value"},
 			{Name: "-j", Description: "Don't try to set the date"},

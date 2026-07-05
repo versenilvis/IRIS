@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "degit",
 		Description: "Straightforward project scaffolding",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Print help"},
 			{Name: "-f", Description: "Overwrite existing files"},
 			{Name: "-c", Description: "Use a cache"},

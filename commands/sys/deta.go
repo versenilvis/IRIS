@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "deta",
 		Description: "Runtime",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "login", Description: "Trigger the login process for the Deta CLI"},
 			{Name: "version", Description: "Print the Deta version"},
 			{Name: "upgrade", Description: "Upgrade Deta CLI version"},
@@ -41,7 +41,7 @@ func init() {
 			{Name: "expression", Description: "The cron expression to be set"},
 			{Name: "remove", Description: "Remove a schedule from a Deta Micro"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Show help for login"},
 			{Name: "-v", Description: "Upgrade CLI to specific version"},
 			{Name: "-n", Description: "Create a micro with Node (node14.x) runtime"},

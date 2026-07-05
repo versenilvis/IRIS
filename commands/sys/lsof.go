@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "lsof",
 		Description: "List open files",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-?", Description: "Help"},
 			{Name: "-a", Description: "Apply AND to the selections (defaults to OR)"},
 			{Name: "-b", Description: "Avoid kernel blocks"},

@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "kool",
 		Description: "Script",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "create", Description: "Create a new project using a preset"},
 			{Name: "preset", Description: "Preset that will be used to create the project"},
 			{Name: "folder", Description: "Folder where the project will be created"},
@@ -30,7 +30,7 @@ func init() {
 			{Name: "status", Description: "Show the status of all service containers"},
 			{Name: "stop", Description: "Stop and destroy running service containers"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--verbose", Description: "Increases output verbosity"},
 			{Name: "--help", Description: "Help for create"},
 			{Name: "--container", Description: "Container target"},

@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "nextflow",
 		Description: "Session ID",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "clean", Description: "Clean up project cache and work directories (Default: last run)"},
 			{Name: "clone", Description: "Clone a project into a folder"},
 			{Name: "config", Description: "Print a project configuration"},
@@ -27,7 +27,7 @@ func init() {
 			{Name: "self-update", Description: "Update nextflow runtime to the latest available version"},
 			{Name: "view", Description: "View project script file(s)"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-after", Description: "Clean up runs executed after the specified one"},
 			{Name: "-before", Description: "Clean up runs executed before the specified one"},
 			{Name: "-but", Description: "Clean up all runs except the specified one"},

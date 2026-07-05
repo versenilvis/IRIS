@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "lsblk",
 		Description: "List block devices",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for lsblk"},
 			{Name: "--version", Description: "Show version for lsblk"},
 			{Name: "--all", Description: "Also list empty devices and RAM disk devices"},

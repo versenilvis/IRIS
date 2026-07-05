@@ -1,17 +1,17 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "screen",
 		Description: "Screen manager with VT100/ANSI terminal emulation",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "name", Description: "Name of the screen session"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-d", Description: "Does not start screen, but detaches the elsewhere running screen session"},
 			{Name: "-r", Description: "Reattach a session and if necessary detach it first"},
 			{Name: "-R", Description: "Reattach a session and if necessary detach or even create it first"},

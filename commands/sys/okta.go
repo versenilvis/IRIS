@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "okta",
 		Description: "The Okta CLI is the easiest way to get started with Okta!",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "register", Description: "Sign up for a new Okta account"},
 			{Name: "login", Description: "Authorizes the Okta CLI tool"},
 			{Name: "apps", Description: "Manage Okta apps"},
@@ -21,7 +21,7 @@ func init() {
 			{Name: "help", Description: "Displays help information about the specified command"},
 			{Name: "generate-completion", Description: "Generate bash/zsh completion script for Okta"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--company", Description: "Company/organization used when registering a new Okta account"},
 			{Name: "--email", Description: "Email used when registering a new Okta account"},
 			{Name: "--first-name", Description: "First name used when registering a new Okta account"},

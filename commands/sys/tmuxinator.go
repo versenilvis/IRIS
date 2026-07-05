@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "tmuxinator",
 		Description: "Project",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "commands", Description: "Lists commands available in tmuxinator"},
 			{Name: "completions", Description: "Used for shell completion"},
 			{Name: "copy", Description: "Copy an existing project to a new project and open it in your editor"},
@@ -33,7 +33,7 @@ func init() {
 			{Name: "stop", Description: "Stop a tmux session using a project's tmuxinator config"},
 			{Name: "version", Description: "Display installed tmuxinator version"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-a", Description: "Attach to tmux session after creation"},
 			{Name: "-n", Description: "Give the session a different name"},
 			{Name: "-p", Description: "Path to project config file"},

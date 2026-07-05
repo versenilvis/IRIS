@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "asciinema",
 		Description: "Terminal session recorder",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "rec", Description: "Start a recording"},
 			{Name: "play", Description: "Replay recorded asciicast in a terminal"},
 			{Name: "seconds", Description: "Can be fractional"},
@@ -17,7 +17,7 @@ func init() {
 			{Name: "upload", Description: "Upload recorded asciicast to asciinema.org site"},
 			{Name: "auth", Description: "Link and manage your install ID with your asciinema.org user account"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--version", Description: "Output version information and exit"},
 			{Name: "-h", Description: "Output help message and exit"},
 			{Name: "--stdin", Description: "Enable stdin (keyboard) recording"},

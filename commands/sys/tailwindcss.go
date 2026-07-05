@@ -1,18 +1,18 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "tailwindcss",
 		Description: "Display usage information",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "init", Description: "Creates Tailwind config file. Default: tailwind.config.js"},
 			{Name: "build", Description: "Build CSS file"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Display usage information"},
 			{Name: "-i", Description: "Specify input file"},
 			{Name: "-o", Description: "Specify output file"},

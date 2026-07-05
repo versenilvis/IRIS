@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "gum",
 		Description: "Background Color",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "choose", Description: "Choose an option from a list of choices"},
 			{Name: "confirm", Description: "Ask a user to confirm an action"},
 			{Name: "prompt", Description: "Prompt to display"},
@@ -27,7 +27,7 @@ func init() {
 			{Name: "pager", Description: "Scroll through a file"},
 			{Name: "content", Description: "Display content to scroll"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--background", Description: "Background Color"},
 			{Name: "--foreground", Description: "Foreground Color"},
 			{Name: "--border", Description: "Border Style"},

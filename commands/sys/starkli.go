@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "starkli",
 		Description: "Starkli, a ⚡ blazing ⚡ fast ⚡ CLI tool for Starknet powered by 🦀 starknet-rs 🦀",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "account", Description: "Account management commands"},
 			{Name: "fetch", Description: "Fetch account config from an already deployed account contract"},
 			{Name: "ADDRESS", Description: "Contract address"},
@@ -59,7 +59,7 @@ func init() {
 			{Name: "transaction", Description: "Get Starknet transaction by hash"},
 			{Name: "transaction-receipt", Description: "Get transaction receipt by hash"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--rpc", Description: "Starknet JSON-RPC endpoint"},
 			{Name: "--network", Description: "Starknet network"},
 			{Name: "--force", Description: "Overwrite the file if it already exists"},

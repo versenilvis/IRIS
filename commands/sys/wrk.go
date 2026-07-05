@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "wrk",
 		Description: "Wrk - a HTTP benchmarking tool",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-c", Description: "Connections to keep open"},
 			{Name: "-d", Description: "Duration of test"},
 			{Name: "-t", Description: "Number of threads"},

@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "bundle",
 		Description: "Gem",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "install", Description: "Install the gems specified by the Gemfile or Gemfile.lock"},
 			{Name: "update", Description: "Update dependencies to their latest versions"},
 			{Name: "exec", Description: "Execute a command in the context of the bundle"},
@@ -26,7 +26,7 @@ func init() {
 			{Name: "clean", Description: "Clean up unused gems in your Bundler directory"},
 			{Name: "doctor", Description: "Display warnings about common problems"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--binstubs", Description: "Create binstubs in dir"},
 			{Name: "--clean", Description: "Remove unused gems after install"},
 			{Name: "--deployment", Description: "For Production and CI use"},

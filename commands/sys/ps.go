@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
-func processGenerator(tokens []string, _ string, _ string) []core.Suggestion {
+func processGenerator(tokens []string, _ string, _ string) []spec.Suggestion {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -21,7 +21,7 @@ func processGenerator(tokens []string, _ string, _ string) []core.Suggestion {
 	}
 
 	seen := make(map[string]bool)
-	var results []core.Suggestion
+	var results []spec.Suggestion
 	for line := range strings.SplitSeq(string(out), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
@@ -40,17 +40,17 @@ func processGenerator(tokens []string, _ string, _ string) []core.Suggestion {
 		// suggest both PID and process name
 		if !seen[pid] {
 			seen[pid] = true
-			results = append(results, core.Suggestion{Cmd: pid, Desc: name})
+			results = append(results, spec.Suggestion{Cmd: pid, Desc: name})
 		}
 	}
 	return results
 }
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ps",
 		Description: "report processes",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-e", Description: "all processes"},
 			{Name: "-f", Description: "full format"},
 			{Name: "-u", Description: "by user"},
@@ -61,11 +61,11 @@ func init() {
 		},
 	})
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "kill",
 		Description: "send signal to process",
 		Generator:   processGenerator,
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-9", Description: "SIGKILL (force)"},
 			{Name: "-15", Description: "SIGTERM (graceful)"},
 			{Name: "-2", Description: "SIGINT"},
@@ -74,11 +74,11 @@ func init() {
 		},
 	})
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "killall",
 		Description: "kill by process name",
 		Generator:   processGenerator,
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-9", Description: "SIGKILL"},
 			{Name: "-s", Description: "specify signal"},
 			{Name: "-u", Description: "only for user"},
@@ -86,20 +86,20 @@ func init() {
 		},
 	})
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "pkill",
 		Description: "kill by pattern",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-9", Description: "SIGKILL"},
 			{Name: "-f", Description: "match full command"},
 			{Name: "-u", Description: "match by user"},
 		},
 	})
 
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "pgrep",
 		Description: "find process by pattern",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-l", Description: "list name and PID"},
 			{Name: "-f", Description: "match full command"},
 			{Name: "-u", Description: "match by user"},

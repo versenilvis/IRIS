@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "oh-my-posh",
 		Description: "The config file to use",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "init", Description: "Initialize oh-my-posh for your shell"},
 			{Name: "get", Description: "Get oh-my-posh values"},
 			{Name: "shell", Description: "Get the current shell, example usage: 'oh-my-posh get shell'"},
@@ -27,7 +27,7 @@ func init() {
 			{Name: "NUM", Description: "The number of stacks"},
 			{Name: "version", Description: "Display the oh-my-posh version, example usage: 'oh-my-posh version'"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--config", Description: "The config file to use"},
 			{Name: "--format", Description: "The file format to use"},
 			{Name: "--print", Description: "Print the init script"},

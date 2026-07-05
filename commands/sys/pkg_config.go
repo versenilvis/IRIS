@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "pkg-config",
 		Description: "Return metainformation about installed libraries",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--mod-version", Description: "Display the version information of the libraries specified on the command line"},
 			{Name: "--version", Description: "Display the version of pkg-config and terminates"},
 			{Name: "--atleast-pkgconfig-version", Description: "Require at least the given version of pkg-config"},

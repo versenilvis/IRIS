@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "btop",
 		Description: "Beautifuler htop (interactive process viewer)",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Shows help for btop"},
 			{Name: "--low-color", Description: "Disables truecolor, converts 24-bit colors to 256-color"},
 			{Name: "--tty_on", Description: "Forces ON tty mode, max 16 colors and tty friendly graph symbol"},

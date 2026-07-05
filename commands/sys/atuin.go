@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "atuin",
 		Description: "Magical shell history",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "history", Description: "Manipulate shell history"},
 			{Name: "start", Description: "Begins a new command in the history"},
 			{Name: "end", Description: "Finishes a new command in the history (adds time, exit code)"},
@@ -28,7 +28,7 @@ func init() {
 			{Name: "uuid", Description: "Generate a UUID"},
 			{Name: "gen-completions", Description: "Generate shell completions"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--exit", Description: "List all items in history"},
 			{Name: "--cwd", Description: "Show only the text of the command"},
 			{Name: "--format", Description: "Get the last command ran"},

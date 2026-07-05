@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "dscl",
 		Description: "Prompt for password",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "read", Description: "Prints a directory"},
 			{Name: "readall", Description: "Prints all the records of a given type"},
 			{Name: "readpl", Description: "Prints the contents of plist_path"},
@@ -24,7 +24,7 @@ func init() {
 			{Name: "passwd", Description: "Changes the password of a user"},
 			{Name: "new password", Description: "New password of the user"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-p", Description: "Prompt for password"},
 			{Name: "-u", Description: "Authenticate as user"},
 			{Name: "-P", Description: "Authenticate with password"},

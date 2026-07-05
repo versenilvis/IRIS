@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "gltfjsx",
 		Description: "GLTF to JSX converter",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-t", Description: "Add Typescript definitions"},
 			{Name: "-v", Description: "Verbose output w/ names and empty groups"},
 			{Name: "-m", Description: "Include metadata (as userData)"},

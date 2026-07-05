@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "prisma",
 		Description: "Display this help message",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "init", Description: "Setup Prisma for your app"},
 			{Name: "generate", Description: "Generate artifacts (e.g. Prisma Client)"},
 			{Name: "studio", Description: "Open Prisma Studio"},
@@ -19,7 +19,7 @@ func init() {
 			{Name: "db", Description: "Manage your database schema and lifecycle (Preview)"},
 			{Name: "version", Description: "Print current version of Prisma components"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Display this help message"},
 			{Name: "--schema", Description: "Custom path to your Prisma schema"},
 			{Name: "--skip-seed", Description: "Skip triggering seed"},

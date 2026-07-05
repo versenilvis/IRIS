@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "trap",
 		Description: "Prints all defined signal handlers",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--print", Description: "Prints all defined signal handlers"},
 			{Name: "--help", Description: "Displays help about using this command"},
 		},

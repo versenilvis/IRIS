@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "sam",
 		Description: "Host of locally emulated Lambda container",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "init", Description: "Init an AWS SAM application"},
 			{Name: "text", Description: "Template name"},
 			{Name: "validate", Description: "Validate an AWS SAM template"},
@@ -27,7 +27,7 @@ func init() {
 			{Name: "pipeline", Description: "Manage the continuous delivery of the application"},
 			{Name: "bootstrap", Description: "Generates the required AWS resources to connect your CI/CD system"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--config-env", Description: "Host of locally emulated Lambda container"},
 			{Name: "--container-host-interface", Description: "Additional arguments to be passed to the debugger"},
 			{Name: "--debugger-path", Description: "Host path to a debugger to mount into the Lambda container"},

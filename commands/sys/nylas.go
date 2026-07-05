@@ -1,14 +1,14 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "nylas",
 		Description: "A command line interface for Nylas",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "api", Description: "Access the Nylas API endpoints"},
 			{Name: "a", Description: "A API commands"},
 			{Name: "accounts", Description: "Accounts commands"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "send-rsvp", Description: "Send-Rsvp API commands"},
 			{Name: "threads", Description: "Threads API commands"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--display_columns", Description: "Return All Accounts"},
 			{Name: "--body", Description: "Request body (or use < to redirect a JSON file)"},
 			{Name: "--limit", Description: "This is usage"},

@@ -1,21 +1,21 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "tuist",
 		Description: "Build the project in the current directory",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "build", Description: "Build the project in the current directory"},
 			{Name: "warm", Description: "Warms the local and remote cache"},
 			{Name: "print-hashes", Description: "Print the hashes of the cacheable frameworks in the given project"},
 			{Name: "template", Description: "Name of template you want to use"},
 			{Name: "list", Description: "Lists available scaffold templates"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--build-output-path", Description: "Build the project to a specific device, example usage: 'tuist build --device \\"},
 			{Name: "--os", Description: "Build the project to a specific OS, example usage: 'tuist build --os 14.0':"},
 			{Name: "--path", Description: "The path to the directory that contains the project whose targets will be cached"},

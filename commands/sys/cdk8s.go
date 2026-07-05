@@ -1,21 +1,21 @@
 package sys
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "cdk8s",
 		Description: "CDK for K8s",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "init", Description: "Create a new, empty CDK8S project"},
 			{Name: "type", Description: "Select language you are using"},
 			{Name: "import", Description: "Import a CRD schema to generate generate resources"},
 			{Name: "spec", Description: "Path to the CRD schema"},
 			{Name: "synth", Description: "Synthesizes Kubernetes manifests for all charts in your app"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--language", Description: "Output programming language"},
 			{Name: "--class-prefix", Description: "A prefix to add to all generated class names"},
 			{Name: "--no-class-prefix", Description: "Does not add a prefix to generated class names"},
