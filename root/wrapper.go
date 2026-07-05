@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/creack/pty"
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 	"github.com/versenilvis/iris/config"
 	"github.com/versenilvis/iris/integration"
 	"github.com/versenilvis/iris/integration/shell"
@@ -118,7 +118,7 @@ func runWrapper() {
 	defer func() { _ = ptmx.Close() }()
 
 	_ = pty.InheritSize(os.Stdin, ptmx)
-	core.ShellPID = c.Process.Pid
+	spec.ShellPID = c.Process.Pid
 
 	logger.Infof("PTY child shell started: shell=%s, path=%s, pid=%d", shellName, adapter.GetShellPath(), c.Process.Pid)
 
@@ -216,9 +216,9 @@ func runWrapper() {
 	pendingUpdate = startBackgroundUpdateCheck()
 	updatePrinted := false
 
-	shellPGID, err := unix.Getpgid(core.ShellPID)
+	shellPGID, err := unix.Getpgid(spec.ShellPID)
 	if err != nil {
-		shellPGID = core.ShellPID
+		shellPGID = spec.ShellPID
 	}
 	var isCommandActive atomic.Bool
 	isExecuting := func() bool {
@@ -561,7 +561,7 @@ func runWrapper() {
 							results := MergeResults("", currentMode)
 							if len(results) > 0 {
 								limit := min(len(results), 100)
-								var historyList []core.Suggestion
+								var historyList []spec.Suggestion
 
 								if inputSlice[i+2] == 'A' {
 									for j := limit - 1; j >= 0; j-- {
@@ -888,7 +888,7 @@ func runWrapper() {
 							var target string
 							var ok bool
 							if isSpaceAlias {
-								target, ok = core.GetAlias(naiveBuffer)
+								target, ok = spec.GetAlias(naiveBuffer)
 							}
 							bufferMu.Unlock()
 

@@ -1,4 +1,4 @@
-package core
+package spec
 
 type GeneratorFunc func(tokens []string, prefix string, partial string) []Suggestion
 

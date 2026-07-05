@@ -9,7 +9,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/charmbracelet/lipgloss"
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 	"github.com/versenilvis/iris/config"
 	"github.com/versenilvis/iris/logger"
 	"golang.org/x/term"
@@ -161,7 +161,7 @@ func SetTheme(t Theme) {
 type Overlay struct {
 	mu            sync.Mutex
 	Visible       bool
-	Items         []core.Suggestion
+	Items         []spec.Suggestion
 	Cursor        int
 	StartIdx      int
 	LastGhostLen  int
@@ -183,7 +183,7 @@ func NewOverlay() *Overlay {
 	return &Overlay{Visible: false, Cursor: 0, StartIdx: 0}
 }
 
-func (o *Overlay) UpdateItems(items []core.Suggestion) {
+func (o *Overlay) UpdateItems(items []spec.Suggestion) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	o.Items = items
@@ -247,7 +247,7 @@ func (o *Overlay) ResetCursor() {
 	o.Cursor = 0
 }
 
-func (o *Overlay) SetQueryAndItems(query string, items []core.Suggestion) {
+func (o *Overlay) SetQueryAndItems(query string, items []spec.Suggestion) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	o.TypedQuery = query
@@ -291,7 +291,7 @@ func (o *Overlay) MoveCursor(dir string) (moved bool, selectedCmd string) {
 	return true, o.Items[o.Cursor].Cmd
 }
 
-func (o *Overlay) SetHistoryList(items []core.Suggestion, startAtBottom bool) string {
+func (o *Overlay) SetHistoryList(items []spec.Suggestion, startAtBottom bool) string {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	o.TypedQuery = ""

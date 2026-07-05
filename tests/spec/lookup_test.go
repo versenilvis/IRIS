@@ -5,23 +5,23 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func TestLookup(t *testing.T) {
 	// Setup Registry
-	core.Registry = make(map[string]*core.Spec)
-	core.Register(&core.Spec{
+	spec.Registry = make(map[string]*spec.Spec)
+	spec.Register(&spec.Spec{
 		Name: "git",
-		Subcommands: []core.Subcommand{
-			{Name: "commit", Options: []core.Option{{Name: "--message"}}, MaxArgs: 1},
-			{Name: "remote", Subcommands: []core.Subcommand{{Name: "add"}}},
+		Subcommands: []spec.Subcommand{
+			{Name: "commit", Options: []spec.Option{{Name: "--message"}}, MaxArgs: 1},
+			{Name: "remote", Subcommands: []spec.Subcommand{{Name: "add"}}},
 		},
-		Options: []core.Option{{Name: "--verbose"}},
+		Options: []spec.Option{{Name: "--verbose"}},
 	})
 
 	// Setup Aliases
-	core.ShellAliases = map[string]string{
+	spec.ShellAliases = map[string]string{
 		"gca": "git commit -a",
 		"ta":  "tmux a -t",
 	}
@@ -44,7 +44,7 @@ func TestLookup(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			results := core.Lookup(tt.input)
+			results := spec.Lookup(tt.input)
 			if len(results) < tt.minResults {
 				t.Errorf("Lookup(%q) got %d results; want at least %d", tt.input, len(results), tt.minResults)
 			}
@@ -65,15 +65,15 @@ func TestLookup(t *testing.T) {
 }
 
 func TestLookupConcurrent(t *testing.T) {
-	core.Registry = make(map[string]*core.Spec)
-	core.Register(&core.Spec{
+	spec.Registry = make(map[string]*spec.Spec)
+	spec.Register(&spec.Spec{
 		Name: "git",
-		Subcommands: []core.Subcommand{
-			{Name: "commit", Options: []core.Option{{Name: "--message"}}, MaxArgs: 1},
+		Subcommands: []spec.Subcommand{
+			{Name: "commit", Options: []spec.Option{{Name: "--message"}}, MaxArgs: 1},
 		},
 	})
 
-	core.ShellAliases = map[string]string{
+	spec.ShellAliases = map[string]string{
 		"gca": "git commit -a",
 	}
 
@@ -86,8 +86,8 @@ func TestLookupConcurrent(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for range iterations {
-				_ = core.Lookup("gca")
-				_ = core.Lookup("git ")
+				_ = spec.Lookup("gca")
+				_ = spec.Lookup("git ")
 			}
 		}()
 	}

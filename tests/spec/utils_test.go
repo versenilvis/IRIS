@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func TestTokenize(t *testing.T) {
@@ -24,7 +24,7 @@ func TestTokenize(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := core.Tokenize(tt.input)
+			got := spec.Tokenize(tt.input)
 			if !reflect.DeepEqual(got, tt.expected) {
 				t.Errorf("Tokenize(%q) = %v; want %v", tt.input, got, tt.expected)
 			}
@@ -47,7 +47,7 @@ func TestHasPrefix(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := core.HasPrefix(tt.s, tt.prefix); got != tt.want {
+			if got := spec.HasPrefix(tt.s, tt.prefix); got != tt.want {
 				t.Errorf("HasPrefix(%q, %q) = %v; want %v", tt.s, tt.prefix, got, tt.want)
 			}
 		})
