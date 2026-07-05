@@ -15,7 +15,7 @@
 <div align="center">
   <!-- <img width="800" height="450" alt="output" src="https://github.com/user-attachments/assets/fd586c5b-89b6-4f6a-af9c-29248db5edc3" />-->
   <!-- <img width="1280" height="720" alt="output" src="https://github.com/user-attachments/assets/a1003bda-7722-4185-9514-f1bf83fbb504" /> -->
-  <img width="1920" height="1080" alt="showcase" src="https://github.com/user-attachments/assets/dc2434c2-4f59-4432-b77f-78e65c4d412e" />
+  <img width="1920" height="1080" alt="Ghostty terminal showcase" src="https://github.com/user-attachments/assets/dc2434c2-4f59-4432-b77f-78e65c4d412e" />
   👻 <i>Ghostty terminal</i>
 </div>
 
