@@ -109,7 +109,7 @@ func main() {
 				continue
 			}
 
-			blocks := strings.Split(string(content), "core.Register(")
+			blocks := strings.Split(string(content), "spec.Register(")
 			for i := 1; i < len(blocks); i++ {
 				block := blocks[i]
 				nameMatch := nameRe.FindStringSubmatch(block)
@@ -171,8 +171,8 @@ func main() {
 
 	var sb strings.Builder
 	sb.WriteString("# Iris commands\n\n")
-	sb.WriteString("This directory contains all modular CLI command specifications and autocompletion definitions supported by **Iris**. Every command is defined as a `core.Spec` registered via package `init()` functions and grouped into category subdirectories.\n\n")
-	sb.WriteString("The **[`core/`](./core)** subdirectory is the primary engine package. It implements the underlying command registry (`core.Registry`), data structures (`Spec`, `Arg`, `Flag`), dynamic generators, and autocompletion matching logic. The top-level **[`all.go`](./all.go)** file anonymously imports all category subpackages to trigger their initialization and register all available commands at startup.\n\n")
+	sb.WriteString("This directory contains all modular CLI command specifications and autocompletion definitions supported by **Iris**. Every command is defined as a `spec.Spec` registered via package `init()` functions and grouped into category subdirectories.\n\n")
+	sb.WriteString("The top-level **[`spec/`](../spec)** package is the primary engine package. It implements the underlying command registry (`spec.Registry`), data structures (`Spec`, `Arg`, `Flag`), dynamic generators, and autocompletion matching logic. The **[`all.go`](./all.go)** file anonymously imports all category subpackages to trigger their initialization and register all available commands at startup.\n\n")
 	sb.WriteString("## Overview\n\n")
 	fmt.Fprintf(&sb, "Currently, Iris natively supports **%d** top-level CLI commands across **%d** categories:\n\n", totalCommands, len(sections))
 
