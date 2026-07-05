@@ -6,15 +6,15 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "just",
 		Description: "command runner",
 		MaxArgs:     1,
-		Generator: func(tokens []string, prefix string, partial string) []core.Suggestion {
+		Generator: func(tokens []string, prefix string, partial string) []spec.Suggestion {
 			file, err := os.Open("justfile")
 			if err != nil {
 				// try uppercase
@@ -25,7 +25,7 @@ func init() {
 			}
 			defer func() { _ = file.Close() }()
 
-			var suggestions []core.Suggestion
+			var suggestions []spec.Suggestion
 			seen := make(map[string]bool)
 			scanner := bufio.NewScanner(file)
 			// matching recipes like `build:`
@@ -61,7 +61,7 @@ func init() {
 						desc = lastComment
 					}
 
-					suggestions = append(suggestions, core.Suggestion{
+					suggestions = append(suggestions, spec.Suggestion{
 						Cmd:  cmd,
 						Desc: desc,
 					})

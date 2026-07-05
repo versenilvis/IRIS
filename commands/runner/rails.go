@@ -1,14 +1,14 @@
 package runner
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "rails",
 		Description: "Create a new rails application",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-skip-namespace", Description: "Skip namespace (affects only isolated applications)"},
 			{Name: "-r", Description: "Path to the Ruby binary of your choice"},
 			{Name: "-m", Description: "Path to some application template (can be a filesystem path or URL)"},
