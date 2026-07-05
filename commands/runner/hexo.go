@@ -1,14 +1,14 @@
 package runner
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "hexo",
 		Description: "Draft for",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "config", Description: "Get or set configurations"},
 			{Name: "help", Description: "Displays a help for each command"},
 			{Name: "command", Description: "The command to display help for"},
@@ -35,7 +35,7 @@ func init() {
 			{Name: "list", Description: "List all routes"},
 			{Name: "version", Description: "Display version information"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--no-clone", Description: "Copy files instead of cloning from GitHub"},
 			{Name: "--no-install", Description: "Skip npm install"},
 			{Name: "-p", Description: "Post path. Customize the path of the post"},

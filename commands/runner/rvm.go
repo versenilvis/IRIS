@@ -1,14 +1,14 @@
 package runner
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "rvm",
 		Description: "Show version of rvm",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "use", Description: "Setup current shell to use a specific ruby version"},
 			{Name: "reset", Description: "Remove default and current settings, exit the shell"},
 			{Name: "info", Description: "Show information about the current ruby environment"},
@@ -23,7 +23,7 @@ func init() {
 			{Name: "uninstall", Description: "Uninstall one or many ruby versions, leaves their sources"},
 			{Name: "remove", Description: "Remove one or many ruby versions, including their sources"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--version", Description: "Show version of rvm"},
 			{Name: "--default", Description: "When used with ruby selection, sets a default ruby for new shells"},
 			{Name: "--debug", Description: "Enable debug mode"},

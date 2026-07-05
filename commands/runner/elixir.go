@@ -1,14 +1,14 @@
 package runner
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "elixir",
 		Description: "Elixir Language",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-e", Description: "Evaluates the given command"},
 			{Name: "-h", Description: "Prints this message and exits"},
 			{Name: "-r", Description: "Requires the given files/patterns"},

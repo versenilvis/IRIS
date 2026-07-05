@@ -1,14 +1,14 @@
 package runner
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "gem",
 		Description: "Use HTTP proxy for remote operations",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "help", Description: "Help about any command"},
 			{Name: "install", Description: "Install a gem into the local repository"},
 			{Name: "PLATFORM", Description: "The platform of gem"},
@@ -60,7 +60,7 @@ func init() {
 			{Name: "GEM", Description: "Name of gem"},
 			{Name: "uninstall", Description: "Uninstall gems from the local repository"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-p", Description: "Use HTTP proxy for remote operations"},
 			{Name: "--no-http-proxy", Description: "Do not use HTTP proxy for remote operations"},
 			{Name: "-l", Description: "Restrict operations to the LOCAL domain"},

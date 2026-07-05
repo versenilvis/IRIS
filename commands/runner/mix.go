@@ -1,20 +1,20 @@
 package runner
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "mix",
 		Description: "Build tool for Elixir",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "new", Description: "Creates a new Elixir project at the given path"},
 			{Name: "run", Description: "Starts the current application and runs code"},
 			{Name: "code", Description: "String containing code to execute"},
 			{Name: "file|pattern", Description: "The file|pattern to execute"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Output usage information"},
 			{Name: "--app", Description: "Name the OTP application for the project"},
 			{Name: "--modules", Description: "Name the modules in the generated code skeleton"},

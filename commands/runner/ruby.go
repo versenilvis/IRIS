@@ -1,14 +1,14 @@
 package runner
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ruby",
 		Description: "Interpreted object-oriented scripting language",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--copyright", Description: "Prints the copyright notice"},
 			{Name: "--version", Description: "Prints the version of Ruby interpreter"},
 			{Name: "-0", Description: "Specifies the input record separator ($/) as an octal number"},

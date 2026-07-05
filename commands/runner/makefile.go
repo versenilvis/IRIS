@@ -5,14 +5,14 @@ import (
 	"os"
 	"regexp"
 
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "make",
 		Description: "build automation",
-		Generator: func(tokens []string, prefix string, partial string) []core.Suggestion {
+		Generator: func(tokens []string, prefix string, partial string) []spec.Suggestion {
 			// Read the Makefile
 			file, err := os.Open("Makefile")
 			if err != nil {
@@ -21,7 +21,7 @@ func init() {
 			}
 			defer func() { _ = file.Close() }()
 
-			var suggestions []core.Suggestion
+			var suggestions []spec.Suggestion
 			seen := make(map[string]bool)
 			scanner := bufio.NewScanner(file)
 			// Matches targets like `build:`, `  run :`, etc.
@@ -42,7 +42,7 @@ func init() {
 					if prefix != "" {
 						cmd = prefix + " " + target
 					}
-					suggestions = append(suggestions, core.Suggestion{
+					suggestions = append(suggestions, spec.Suggestion{
 						Cmd:  cmd,
 						Desc: "make target",
 					})

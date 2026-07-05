@@ -1,14 +1,14 @@
 package runner
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "phpunit",
 		Description: "Generate code coverage report in Clover XML format,",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--coverage-clover", Description: "Generate code coverage report in Clover XML format,"},
 			{Name: "--coverage-crap4j", Description: "Generate code coverage report in Crap4J XML format"},
 			{Name: "--coverage-html", Description: "Generate code coverage report in HTML format"},

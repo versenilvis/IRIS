@@ -1,14 +1,14 @@
 package runner
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "valet",
 		Description: "Do not output any message",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "diagnose", Description: "Output diagnostics to aid in debugging Valet"},
 			{Name: "fetch-share-url", Description: "Get the URL to the current share tunnel (for Expose or ngrok)"},
 			{Name: "forget", Description: "Remove the current working (or specified) directory from Valet's list of paths"},
@@ -46,7 +46,7 @@ func init() {
 			{Name: "share-tool", Description: "Get the name of the current share tool (Expose or ngrok)"},
 			{Name: "status", Description: "Output the status of Valet and its installed services and config"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Do not output any message"},
 			{Name: "-V", Description: "Display this application version"},
 			{Name: "--ansi", Description: "Force (or disable --no-ansi) ANSI output"},

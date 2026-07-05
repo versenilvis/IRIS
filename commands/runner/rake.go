@@ -1,14 +1,14 @@
 package runner
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "rake",
 		Description: "A ruby build program with capabilities similar to make",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-n", Description: "Do a dry run without executing actions"},
 			{Name: "-h", Description: "Display this help message"},
 			{Name: "-I", Description: "Include LIBDIR in the search path for required modules"},
