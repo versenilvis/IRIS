@@ -1,14 +1,14 @@
 package golang
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "goctl",
 		Description: "A cli tool to generate go-zero code",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "api", Description: "Generate api related files"},
 			{Name: "dart", Description: "Generate dart files for provided api in api file"},
 			{Name: "doc", Description: "Generate doc files"},
@@ -50,7 +50,7 @@ func init() {
 			{Name: "upgrade", Description: "Upgrade goctl to latest version"},
 			{Name: "help", Description: "Help about any command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--api", Description: "The api file"},
 			{Name: "--dir", Description: "The target dir"},
 			{Name: "--hostname", Description: "Hostname of the server"},
