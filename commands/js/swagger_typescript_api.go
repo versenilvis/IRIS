@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "swagger-typescript-api",
 		Description: "Generate api via swagger scheme",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--output", Description: "Output path of generated templates"},
 			{Name: "--modular", Description: "Http client type"},
 			{Name: "--clean-output", Description: "Clean output folder before generate template"},

@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "oxlint",
 		Description: "All lints (except nursery)",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-c", Description: "Path to Oxlint JSON configuration file"},
 			{Name: "--tsconfig", Description: "Specify the file to use as your .eslintignore"},
 			{Name: "--ignore-pattern", Description: "Specify file patterns to ignore (in addition to those in .eslintignore)"},

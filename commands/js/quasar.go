@@ -1,21 +1,21 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "quasar",
 		Description: "Quasar Framework CLI",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "create", Description: "Create a new Quasar project"},
 			{Name: "project-name", Description: "Name of the project"},
 			{Name: "info", Description: "Gather environment information for issue reporting"},
 			{Name: "upgrade", Description: "Upgrade Quasar Framework packages"},
 			{Name: "serve", Description: "Start development server"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Output usage information"},
 			{Name: "--kit", Description: "Use specific starter kit"},
 			{Name: "--branch", Description: "Use specific branch of the starter kit"},

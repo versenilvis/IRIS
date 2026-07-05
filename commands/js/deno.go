@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "deno",
 		Description: "A modern JavaScript and TypeScript runtime",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "bench", Description: "Run benchmarks"},
 			{Name: "bundle", Description: "Bundle module and dependencies into single file"},
 			{Name: "cache", Description: "Cache the dependencies"},
@@ -34,7 +34,7 @@ func init() {
 			{Name: "vendor", Description: "Vendor remote modules into a local directory"},
 			{Name: "help", Description: "Print this message or the help of the given subcommand(s)"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--import-map", Description: "Load import map file"},
 			{Name: "-c", Description: "Specify the configuration file"},
 			{Name: "--no-check", Description: "Skip type-checking modules"},

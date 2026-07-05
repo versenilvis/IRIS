@@ -1,17 +1,17 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "create-completion-spec",
 		Description: "Setup fig folder and create spec with the given name",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "help", Description: "Display help for command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--here", Description: "Set if the spec should be created in the current folder"},
 			{Name: "-h", Description: "Display help for command"},
 		},

@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "electron",
 		Description: "Build cross platform desktop apps with JavaScript, HTML and CSS",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-i", Description: "Open a REPL to the main process"},
 			{Name: "-r", Description: "Module to preload"},
 			{Name: "-v", Description: "Print the version"},

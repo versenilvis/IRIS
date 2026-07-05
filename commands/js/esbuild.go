@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "esbuild",
 		Description: "An extremely fast JavaScript bundler",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--bundle", Description: "Bundle all dependencies into the output files"},
 			{Name: "--define", Description: "Replace variable names with a literal value, eg. --define:DEBUG=true"},
 			{Name: "--external", Description: "Exclude modules from the build"},

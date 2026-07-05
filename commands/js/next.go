@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "next",
 		Description: "A port number on which to start the application",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "build", Description: "Create an optimized production build of your application"},
 			{Name: "dev", Description: "Start the application in development mode"},
 			{Name: "start", Description: "Start the application in production mode"},
@@ -18,7 +18,7 @@ func init() {
 			{Name: "enable", Description: "Enable Next.js' telemetry collection"},
 			{Name: "disable", Description: "Disable Next.js' telemetry collection"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-p", Description: "A port number on which to start the application"},
 			{Name: "-H", Description: "Hostname on which to start the application"},
 			{Name: "-h", Description: "Output usage information"},

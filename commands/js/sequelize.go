@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "sequelize",
 		Description: "The environment to run the command in",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--env", Description: "The environment to run the command in"},
 			{Name: "--config", Description: "The path to the config file"},
 			{Name: "--options-path", Description: "The path to a JSON file with additional options"},

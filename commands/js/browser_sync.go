@@ -1,21 +1,21 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "browser-sync",
 		Description: "Keep multiple browsers & devices in sync when building websites",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "start", Description: "Start Browsersync"},
 			{Name: "init", Description: "Create a configuration file"},
 			{Name: "reload", Description: "Send a reload event over HTTP protocol"},
 			{Name: "recipe", Description: "Generate the files for a recipe"},
 			{Name: "ls", Description: "List recipes"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--version", Description: "Show version number"},
 			{Name: "--help", Description: "Show help"},
 			{Name: "-s", Description: "Run a Local server (uses your cwd as the web root)"},

@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "truffle",
 		Description: "Execute build pipeline (if configuration present)",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "build", Description: "Execute build pipeline (if configuration present)"},
 			{Name: "compile", Description: "Compile contract source files"},
 			{Name: "config", Description: "Set user-level configuration options"},
@@ -41,7 +41,7 @@ func init() {
 			{Name: "box_name", Description: "Name of the Truffle Box. (required)"},
 			{Name: "test", Description: "Run JavaScript and Solidity tests"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--list", Description: "Compile all contracts instead of only the contracts changed since last compile"},
 			{Name: "--quiet", Description: "Suppress all compilation output"},
 			{Name: "--enable-analytics", Description: "Enable Truffle to send usage data to Google Analytics"},

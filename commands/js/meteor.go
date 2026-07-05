@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "meteor",
 		Description: "Run the meteor command-line tool",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "help", Description: "Get help on meteor command line usage"},
 			{Name: "command", Description: "Built-in command"},
 			{Name: "list", Description: "Lists the packages that you have explicitly added to your project"},
@@ -32,7 +32,7 @@ func init() {
 			{Name: "members", Description: "Manage members of an organization"},
 			{Name: "publish-for-arch", Description: "Publish a package for the same architecture that you are currently on"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--port", Description: "Port to listen on (instead of the default 3000)"},
 			{Name: "--inspect", Description: "Simulate production mode. Minify and bundle CSS and JS files"},
 			{Name: "--raw-logs", Description: "Run without parsing logs from stdout and stderr"},

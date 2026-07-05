@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ncu",
 		Description: "Clear the default cache, or the cache file specified by --cacheFile",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--cache", Description: "Clear the default cache, or the cache file specified by --cacheFile"},
 			{Name: "--cacheExpiration", Description: "Cache expiration in minutes. Only works with --cache. (default: 10)"},
 			{Name: "--cacheFile", Description: "Force color in terminal"},

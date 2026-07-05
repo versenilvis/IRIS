@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "astro",
 		Description: "Add an integration",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "add", Description: "Add an integration"},
 			{Name: "build", Description: "Build your project and write it to disk"},
 			{Name: "check", Description: "Check your project for errors"},
@@ -21,7 +21,7 @@ func init() {
 			{Name: "disable", Description: "Disable anonymous data collection"},
 			{Name: "reset", Description: "Reset anonymous data collection settings"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--yes", Description: "Accept all prompts"},
 			{Name: "--drafts", Description: "Include Markdown draft pages in the build"},
 			{Name: "--watch", Description: "Watch Astro files for changes and re-run checks"},

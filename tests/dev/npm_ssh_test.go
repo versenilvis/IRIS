@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	_ "github.com/versenilvis/iris/commands"
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 	"github.com/versenilvis/iris/commands/js"
 )
 
@@ -33,7 +33,7 @@ func TestNpmScriptGenerator(t *testing.T) {
 		defer os.Remove(filepath.Join(tmp, "package.json"))
 
 		// ensure CWD is tmp
-		core.ShellPID = 0
+		spec.ShellPID = 0
 		_ = os.Chdir(tmp)
 
 		results := js.NpmScriptGenerator(nil, "", "")
@@ -154,7 +154,7 @@ Host !forbidden wildcard-test
 }
 
 // sshHostGeneratorFromPath is a helper that reads a specific ssh config path
-func sshHostGeneratorFromPath(configPath string) []core.Suggestion {
+func sshHostGeneratorFromPath(configPath string) []spec.Suggestion {
 	import_bufio := func() {
 		// using bufio in the same style as ssh.go
 	}
@@ -167,7 +167,7 @@ func sshHostGeneratorFromPath(configPath string) []core.Suggestion {
 	defer func() { _ = f.Close() }()
 
 	seen := make(map[string]bool)
-	var results []core.Suggestion
+	var results []spec.Suggestion
 
 	scanner := strings.NewReader("")
 	_ = scanner
@@ -187,7 +187,7 @@ func sshHostGeneratorFromPath(configPath string) []core.Suggestion {
 				continue
 			}
 			seen[host] = true
-			results = append(results, core.Suggestion{Cmd: host, Desc: "ssh host"})
+			results = append(results, spec.Suggestion{Cmd: host, Desc: "ssh host"})
 		}
 	}
 	return results

@@ -1,19 +1,19 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "pnpm",
 		Description: "fast node packages",
-		Subcommands: []core.Subcommand{
-			{Name: "install", Description: "install packages", Options: []core.Option{
+		Subcommands: []spec.Subcommand{
+			{Name: "install", Description: "install packages", Options: []spec.Option{
 				{Name: "--frozen-lockfile", Description: "no lockfile update"},
 				{Name: "--prod", Description: "production only"},
 			}},
-			{Name: "add", Description: "add package", Options: []core.Option{
+			{Name: "add", Description: "add package", Options: []spec.Option{
 				{Name: "-D", Description: "save as devDependency"},
 				{Name: "-g", Description: "install globally"},
 				{Name: "-E", Description: "exact version"},
@@ -23,11 +23,11 @@ func init() {
 			{Name: "build", Description: "build project"},
 			{Name: "dev", Description: "start dev server"},
 			{Name: "test", Description: "run tests"},
-			{Name: "update", Description: "update packages", Options: []core.Option{
+			{Name: "update", Description: "update packages", Options: []spec.Option{
 				{Name: "--latest", Description: "update to latest"},
 				{Name: "-i", Description: "interactive"},
 			}},
-			{Name: "store", Description: "manage store", Subcommands: []core.Subcommand{
+			{Name: "store", Description: "manage store", Subcommands: []spec.Subcommand{
 				{Name: "prune", Description: "remove unreferenced"},
 				{Name: "status", Description: "check store"},
 				{Name: "path", Description: "print store path"},
@@ -40,7 +40,7 @@ func init() {
 			{Name: "init", Description: "create package.json"},
 			{Name: "publish", Description: "publish package"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--filter", Description: "filter by package"},
 			{Name: "-r", Description: "recursive"},
 			{Name: "--workspace-root", Description: "run in workspace root"},

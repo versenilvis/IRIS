@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ng",
 		Description: "Project name",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "new", Description: "Create a new Angular app"},
 			{Name: "generate", Description: "Generate new files"},
 			{Name: "application", Description: "Generates a new application"},
@@ -18,7 +18,7 @@ func init() {
 			{Name: "class", Description: "Generates a class"},
 			{Name: "version", Description: "View your Angular CLI version (update for Angular 14+)"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--project", Description: "Project name"},
 			{Name: "--create-application", Description: "Create a default application?"},
 			{Name: "--style", Description: "Generate a new component"},

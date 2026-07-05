@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "hardhat",
 		Description: "Ethereum development environment",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "accounts", Description: "Prints the list of accounts"},
 			{Name: "check", Description: "Check whatever you need"},
 			{Name: "clean", Description: "Clears the cache and deletes all artifacts"},
@@ -20,7 +20,7 @@ func init() {
 			{Name: "run", Description: "Runs a user-defined script after compiling the project"},
 			{Name: "test", Description: "Runs mocha tests"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--emoji", Description: "Use emoji in messages"},
 			{Name: "--max-memory", Description: "The maximum amount of memory that Hardhat can use"},
 			{Name: "--help", Description: "Shows the help text or task's help if name is provided"},

@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "redwood",
 		Description: "Script",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "side", Description: "Which side(s) to build"},
 			{Name: "api", Description: "Build the api server"},
 			{Name: "web", Description: "Build the web server"},
@@ -45,7 +45,7 @@ func init() {
 			{Name: "deploy", Description: "Setup auth configuration for a provider"},
 			{Name: "up", Description: "Executes outstanding data migrations"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--forward", Description: "String of one or more Webpack Dev Server config options"},
 			{Name: "--side", Description: "Show help for command"},
 			{Name: "--build", Description: "Build (web) and Start (api) command for Render deploy"},

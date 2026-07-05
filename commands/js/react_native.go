@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "react-native",
 		Description: "Attempt to fix all diagnosed issues",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--fix", Description: "Attempt to fix all diagnosed issues"},
 			{Name: "--contributor", Description: "Output usage information"},
 			{Name: "--entry-file", Description: "Path to the root JS file, either absolute or relative to JS root"},

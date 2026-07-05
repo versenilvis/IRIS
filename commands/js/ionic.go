@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "ionic",
 		Description: "Target engine (e.g. browser, cordova)",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "completion", Description: "Enables tab-completion for Ionic CLI commands"},
 			{Name: "id", Description: "The Appflow ID of the app to link (e.g. a1b2c3d4)"},
 			{Name: "email", Description: "Your email address"},
@@ -45,7 +45,7 @@ func init() {
 			{Name: "action", Description: "Add, remove, or update a platform; ls, check, or save all project platforms"},
 			{Name: "plugin", Description: "The name of the plugin (corresponds to add and remove)"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--engine", Description: "Target engine (e.g. browser, cordova)"},
 			{Name: "--platform", Description: "Target platform on chosen engine (e.g. ios, android)"},
 			{Name: "--prod", Description: "Flag to use the production configuration"},

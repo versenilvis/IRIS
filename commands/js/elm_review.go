@@ -1,20 +1,20 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "elm-review",
 		Description: "Prints a single JSON object",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "init", Description: "Initialize Elm Review in this directory"},
 			{Name: "suppress", Description: "Generate suppression files for rules that report many errors"},
 			{Name: "new-package", Description: "Creates an new project aimed to contain rules and to be published later"},
 			{Name: "new-rule", Description: "Adds a new rule to your review configuration or review package"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for elm-review init"},
 			{Name: "--config", Description: "Specify the path to the elm compiler"},
 			{Name: "--check-after-tests", Description: "Checks whether there are uncommitted suppression files"},

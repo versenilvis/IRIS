@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "node",
 		Description: "Run the node interpreter",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-e", Description: "Evaluate script"},
 			{Name: "--watch", Description: "Watch input files"},
 			{Name: "--watch-path", Description: "Specify a watch directory or file"},

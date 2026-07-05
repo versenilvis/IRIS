@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "create-next-app",
 		Description: "Output the version number",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-V", Description: "Output the version number"},
 			{Name: "--ts", Description: "Initialize as a TypeScript project"},
 			{Name: "--use-npm", Description: "Explicitly tell the CLI to bootstrap the app using npm"},

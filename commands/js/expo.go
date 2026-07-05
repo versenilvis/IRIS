@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "expo",
 		Description: "Tools for creating, running, and deploying Universal Expo and React Native apps",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-h", Description: "Output usage information"},
 			{Name: "-V", Description: "Output the version number"},
 			{Name: "-u", Description: "Username"},

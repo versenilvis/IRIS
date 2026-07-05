@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "blitz",
 		Description: "Show help for command",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "build", Description: "Creates a production build"},
 			{Name: "codegen", Description: "Generates Routes Manifest"},
 			{Name: "console", Description: "Run the Blitz console REPL"},
@@ -28,7 +28,7 @@ func init() {
 			{Name: "autocomplete", Description: "Display autocomplete installation instructions"},
 			{Name: "shell", Description: "Shell type"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for command"},
 			{Name: "-p", Description: "Set port number"},
 			{Name: "-H", Description: "Set server hostname"},

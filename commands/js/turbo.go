@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "turbo",
 		Description: "Print the version",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "bin", Description: "Get the path to the turbo binary"},
 			{Name: "link", Description: "Link your local directory to a Vercel organization and enable remote caching"},
 			{Name: "login", Description: "Login to your Vercel account"},
@@ -20,7 +20,7 @@ func init() {
 			{Name: "full", Description: "Show all output"},
 			{Name: "none", Description: "Hide process output"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--version", Description: "Print the version"},
 			{Name: "--help", Description: "Print a help message"},
 			{Name: "--no-gitignore", Description: "Do not create or modify .gitignore"},

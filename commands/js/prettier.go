@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "prettier",
 		Description: "Run Prettier from the command line",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-c", Description: "Check if your files are formatted"},
 			{Name: "-l", Description: "Print the names of files that are different from Prettier's formatting"},
 			{Name: "-w", Description: "Edit files in-place"},

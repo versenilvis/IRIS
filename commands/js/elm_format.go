@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "elm-format",
 		Description: "Format your code in the Elm idiomatic way",
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for elm-format"},
 			{Name: "--output", Description: "Write output to FILE instead of overwriting the given source file"},
 			{Name: "--yes", Description: "Reply 'yes' to all automated prompts"},

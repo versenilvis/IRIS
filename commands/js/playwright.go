@@ -1,20 +1,20 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "playwright",
 		Description: "Display help for command",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "test", Description: "Run tests with Playwright Test"},
 			{Name: "tests", Description: "Test files to run"},
 			{Name: "install", Description: "Running without arguments will install default browsers"},
 			{Name: "browsers", Description: "Browser to install"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--help", Description: "Display help for command"},
 			{Name: "-g", Description: "Run the test with the title"},
 			{Name: "--headed", Description: "Run tests in headed browsers"},

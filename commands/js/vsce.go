@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "vsce",
 		Description: "The Visual Studio Code Extension Manager",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "ls", Description: "Lists all the files that will be published"},
 			{Name: "package", Description: "Packages an extension"},
 			{Name: "publish", Description: "Publishes an extension"},
@@ -22,7 +22,7 @@ func init() {
 			{Name: "search", Description: "Search extension gallery"},
 			{Name: "help", Description: "Display help for command"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--yarn", Description: "Use yarn instead of npm (default inferred from presence of yarn.lock or .yarnrc)"},
 			{Name: "--no-yarn", Description: "Use npm instead of yarn (default inferred from lack of yarn.lock or .yarnrc)"},
 			{Name: "--packagedDependencies", Description: "Select packages that should be published only (includes dependencies)"},

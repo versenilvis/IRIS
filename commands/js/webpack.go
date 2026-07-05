@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "webpack",
 		Description: "Run webpack (default command, can be omitted)",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "build", Description: "Run webpack (default command, can be omitted)"},
 			{Name: "configtest", Description: "Validate a webpack configuration"},
 			{Name: "config-path", Description: "Path to the webpack configuration file"},
@@ -20,7 +20,7 @@ func init() {
 			{Name: "serve", Description: "Run the webpack development server"},
 			{Name: "watch", Description: "Run webpack and watch for file changes"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "--config", Description: "Provide path to a webpack configuration file e.g. ./webpack.config.js"},
 			{Name: "--config-name", Description: "Name of the configuration to use"},
 			{Name: "--merge", Description: "Merge two or more configurations using 'webpack-merge'"},

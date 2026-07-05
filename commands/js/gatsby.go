@@ -1,14 +1,14 @@
 package js
 
 import (
-	"github.com/versenilvis/iris/commands/core"
+	"github.com/versenilvis/iris/spec"
 )
 
 func init() {
-	core.Register(&core.Spec{
+	spec.Register(&spec.Spec{
 		Name:        "gatsby",
 		Description: "Set host. Defaults to localhost",
-		Subcommands: []core.Subcommand{
+		Subcommands: []spec.Subcommand{
 			{Name: "develop", Description: "Start the Gatsby development server"},
 			{Name: "build", Description: "Compile your application and make it ready for deployment"},
 			{Name: "serve", Description: "Serve the production build of your site for testing"},
@@ -18,7 +18,7 @@ func init() {
 			{Name: "docs", Description: "Documentation about using and creating plugins"},
 			{Name: "repl", Description: "Gatsby will prompt you to type in commands and explore"},
 		},
-		Options: []core.Option{
+		Options: []spec.Option{
 			{Name: "-H", Description: "Set host. Defaults to localhost"},
 			{Name: "-p", Description: "Set port. Defaults to env.PORT or 8000"},
 			{Name: "-o", Description: "Open the site in your (default) browser for you"},
