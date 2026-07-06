@@ -19,6 +19,43 @@ func TestDefaultConfigAndState(t *testing.T) {
 	if cfg.UI.MaxSuggestions != 100 {
 		t.Errorf("expected suggestions 100, got %d", cfg.UI.MaxSuggestions)
 	}
+	if cfg.AI.Enabled {
+		t.Errorf("expected AI to be disabled by default")
+	}
+	if cfg.AI.Provider != "" {
+		t.Errorf("expected default provider to be empty, got %q", cfg.AI.Provider)
+	}
+	if cfg.AI.Providers != nil {
+		t.Errorf("expected default providers map to be nil, got %v", cfg.AI.Providers)
+	}
+
+	// test manual provider registration
+	cfg.AI.Provider = "custom"
+	cfg.AI.Providers = map[string]config.ProviderConfig{
+		"custom": {
+			InheritedFrom: "openai",
+			Endpoint:      "https://custom-api.com/v1",
+			APIKey:        "test-key",
+			Model:         "test-model",
+			TimeoutMS:     1000,
+		},
+	}
+	p, ok := cfg.AI.GetActiveProvider()
+	if !ok {
+		t.Fatalf("expected custom provider to exist")
+	}
+	if p.InheritedFrom != "openai" {
+		t.Errorf("expected inherited_from openai, got %q", p.InheritedFrom)
+	}
+	if p.GetAPIKey() != "test-key" {
+		t.Errorf("expected api key test-key, got %q", p.GetAPIKey())
+	}
+	if cfg.AI.SuggestOnEmpty.DebounceMS != 800 {
+		t.Errorf("expected debounce 800, got %d", cfg.AI.SuggestOnEmpty.DebounceMS)
+	}
+	if cfg.AI.SuggestOnEmpty.MinIntervalMS != 5000 {
+		t.Errorf("expected min interval 5000, got %d", cfg.AI.SuggestOnEmpty.MinIntervalMS)
+	}
 
 	state := config.DefaultState()
 	if state.LastMode != "spec" {
@@ -60,6 +97,26 @@ func TestValidationAndEnvironmentOverrides(t *testing.T) {
 	_ = os.Setenv("XDG_CONFIG_HOME", tmpDir)
 	defer func() { _ = os.Unsetenv("XDG_CONFIG_HOME") }()
 
+	configDir := filepath.Join(tmpDir, "iris")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatalf("failed to create config dir: %v", err)
+	}
+	configPath := filepath.Join(configDir, "config.toml")
+	tomlContent := `
+[ai]
+enabled = true
+provider = "groq"
+
+[ai.providers.groq]
+inherited_from = "openai"
+endpoint = "https://api.groq.com/openai/v1"
+api_key_env = "GROQ_API_KEY"
+model = "qwen-2.5-coder-32b"
+`
+	if err := os.WriteFile(configPath, []byte(tomlContent), 0644); err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
+
 	_ = os.Setenv("IRIS_CORE_DEBUG", "true")
 	_ = os.Setenv("IRIS_CORE_SHELL", "fish")
 	_ = os.Setenv("IRIS_CORE_MODE", "history")
@@ -69,6 +126,8 @@ func TestValidationAndEnvironmentOverrides(t *testing.T) {
 	_ = os.Setenv("IRIS_UPDATER_CHANNEL", "nightly")
 	_ = os.Setenv("IRIS_UPDATER_INTERVAL", "12h")
 	_ = os.Setenv("IRIS_UPDATER_CHECK_ON_STARTUP", "false")
+	_ = os.Setenv("IRIS_AI_PROVIDER", "ollama")
+	_ = os.Setenv("GROQ_API_KEY", "gsk_test_123")
 
 	defer func() {
 		_ = os.Unsetenv("IRIS_CORE_DEBUG")
@@ -80,6 +139,8 @@ func TestValidationAndEnvironmentOverrides(t *testing.T) {
 		_ = os.Unsetenv("IRIS_UPDATER_CHANNEL")
 		_ = os.Unsetenv("IRIS_UPDATER_INTERVAL")
 		_ = os.Unsetenv("IRIS_UPDATER_CHECK_ON_STARTUP")
+		_ = os.Unsetenv("IRIS_AI_PROVIDER")
+		_ = os.Unsetenv("GROQ_API_KEY")
 	}()
 
 	cfg, err := config.Load()
@@ -113,6 +174,13 @@ func TestValidationAndEnvironmentOverrides(t *testing.T) {
 	}
 	if cfg.Updater.CheckOnStartup {
 		t.Errorf("expected check on startup to be false")
+	}
+	if cfg.AI.Provider != "ollama" {
+		t.Errorf("expected provider ollama from env, got %q", cfg.AI.Provider)
+	}
+	groqCfg := cfg.AI.Providers["groq"]
+	if groqCfg.GetAPIKey() != "gsk_test_123" {
+		t.Errorf("expected groq api key gsk_test_123 from env, got %q", groqCfg.GetAPIKey())
 	}
 
 	_ = os.Setenv("IRIS_CORE_MODE", "invalid")

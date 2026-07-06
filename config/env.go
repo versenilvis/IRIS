@@ -46,4 +46,12 @@ func applyEnv(cfg *Config) {
 			cfg.Updater.CheckOnStartup = b
 		}
 	}
+	if val := os.Getenv("IRIS_AI_ENABLED"); val != "" {
+		if b, err := strconv.ParseBool(val); err == nil {
+			cfg.AI.Enabled = b
+		}
+	}
+	if val := os.Getenv("IRIS_AI_PROVIDER"); val != "" {
+		cfg.AI.Provider = val
+	}
 }
