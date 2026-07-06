@@ -34,9 +34,11 @@ type Option struct {
 
 // Suggestion represents an item in the suggestion menu
 type Suggestion struct {
-	Cmd  string
-	Desc string
-	Icon string
+	Cmd        string
+	Desc       string
+	Icon       string
+	Source     string // "history", "spec", "ai"
+	Confidence int    // 0-100
 }
 
 var Registry = map[string]*Spec{}

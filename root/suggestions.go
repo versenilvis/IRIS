@@ -38,6 +38,12 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 		if normalizedCmd == normalizedQuery {
 			return
 		}
+		if s.Source == "" {
+			s.Source = "spec"
+			if s.Confidence == 0 {
+				s.Confidence = 50
+			}
+		}
 		if !seen[s.Cmd] {
 			seen[s.Cmd] = true
 			deduped = append(deduped, s)
@@ -48,9 +54,11 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 		// history mode: history first, then spec/alias
 		for _, h := range histResults {
 			addSuggestion(spec.Suggestion{
-				Cmd:  h.Cmd,
-				Desc: "history",
-				Icon: "history",
+				Cmd:        h.Cmd,
+				Desc:       "history",
+				Icon:       "history",
+				Source:     "history",
+				Confidence: 70,
 			})
 		}
 		for _, s := range cmdResults {
