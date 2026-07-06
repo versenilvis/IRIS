@@ -2,8 +2,6 @@ package ai
 
 import (
 	"context"
-	"os/exec"
-	"strings"
 	"sync"
 	"time"
 )
@@ -62,40 +60,4 @@ func (c *ProviderCache) Clear() {
 	c.mu.Lock()
 	c.entries = make(map[string]cacheEntry)
 	c.mu.Unlock()
-}
-
-type DockerExecProvider struct{}
-
-func (p DockerExecProvider) Name() string {
-	return "docker-exec"
-}
-
-func (p DockerExecProvider) Matches(buf string) bool {
-	return strings.HasPrefix(buf, "docker exec")
-}
-
-func (p DockerExecProvider) Gather(ctx context.Context) (string, error) {
-	out, err := exec.CommandContext(ctx, "docker", "ps", "--format", "{{.Names}}\t{{.Image}}").Output()
-	if err != nil {
-		return "", err
-	}
-	return string(out), nil
-}
-
-type GitCommitProvider struct{}
-
-func (p GitCommitProvider) Name() string {
-	return "git-commit"
-}
-
-func (p GitCommitProvider) Matches(buf string) bool {
-	return strings.HasPrefix(buf, "git commit")
-}
-
-func (p GitCommitProvider) Gather(ctx context.Context) (string, error) {
-	out, err := exec.CommandContext(ctx, "git", "status", "-s").Output()
-	if err != nil {
-		return "", err
-	}
-	return string(out), nil
 }

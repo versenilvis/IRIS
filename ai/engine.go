@@ -22,12 +22,9 @@ func NewAIEngine(h AIHandler) *AIEngine {
 		h = defaultAIHandler
 	}
 	return &AIEngine{
-		handler: h,
-		cache:   NewProviderCache(4 * time.Second),
-		providers: []ContextProvider{
-			DockerExecProvider{},
-			GitCommitProvider{},
-		},
+		handler:   h,
+		cache:     NewProviderCache(4 * time.Second),
+		providers: []ContextProvider{},
 	}
 }
 
@@ -98,26 +95,6 @@ func defaultAIHandler(ctx context.Context, buf string, env EnvSnapshot, dynamicC
 		quote := string(buf[len("git commit -m ")])
 		return &spec.Suggestion{
 			Cmd:        "git commit -m " + string(quote) + msg + string(quote),
-			Desc:       "ai suggestion",
-			Icon:       "ai",
-			Source:     string(SourceAI),
-			Confidence: 85,
-		}, nil
-	}
-
-	if strings.HasPrefix(buf, "docker exec") {
-		container := "my-container"
-		if dynamicCtx != "" {
-			lines := strings.Split(strings.TrimSpace(dynamicCtx), "\n")
-			if len(lines) > 0 {
-				fields := strings.Fields(lines[0])
-				if len(fields) > 0 {
-					container = fields[0]
-				}
-			}
-		}
-		return &spec.Suggestion{
-			Cmd:        "docker exec -it " + container + " bash",
 			Desc:       "ai suggestion",
 			Icon:       "ai",
 			Source:     string(SourceAI),
