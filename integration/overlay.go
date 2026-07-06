@@ -339,20 +339,90 @@ func fixedWidth(s string, width int) string {
 	return sb.String()
 }
 
-func (o *Overlay) RenderGhostText(buffer string, userNavigated bool) string {
+func truncateToWidth(s string, maxW int) string {
+	if maxW <= 0 {
+		return ""
+	}
+	if lipgloss.Width(s) <= maxW {
+		return s
+	}
+	if maxW == 1 {
+		return "…"
+	}
+	runes := []rune(s)
+	var sb strings.Builder
+	w := 0
+	for _, r := range runes {
+		rw := lipgloss.Width(string(r))
+		if w+rw > maxW-1 { // leave 1 column for '…'
+			break
+		}
+		sb.WriteRune(r)
+		w += rw
+	}
+	sb.WriteRune('…')
+	return sb.String()
+}
+
+func (o *Overlay) GetGhostText(buffer string, cursorAtEnd bool) string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+
+	if !o.Visible || len(o.Items) == 0 || !cursorAtEnd || buffer == "" {
+		return ""
+	}
+
+	var topCmd string
+	if o.Cursor >= 0 && o.Cursor < len(o.Items) {
+		topCmd = o.Items[o.Cursor].Cmd
+	} else {
+		topCmd = o.Items[0].Cmd
+	}
+
+	if strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(buffer)) {
+		return topCmd[len(buffer):]
+	}
+	return ""
+}
+
+func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd bool) string {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
 	if !o.Visible || len(o.Items) == 0 {
+		if o.LastGhostLen > 0 {
+			padLen := o.LastGhostLen + 4
+			o.LastGhostLen = 0
+			return "\0337" + strings.Repeat(" ", padLen) + "\0338"
+		}
 		return ""
 	}
 
 	var s strings.Builder
 	ghostText := ""
-	if !userNavigated && buffer != "" {
-		topCmd := o.Items[0].Cmd
+	if cursorAtEnd && buffer != "" {
+		var topCmd string
+		if o.Cursor >= 0 && o.Cursor < len(o.Items) {
+			topCmd = o.Items[o.Cursor].Cmd
+		} else {
+			topCmd = o.Items[0].Cmd
+		}
 		if strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(buffer)) {
 			ghostText = topCmd[len(buffer):]
+		}
+	}
+
+	if ghostText != "" {
+		width, _, err := term.GetSize(int(os.Stdout.Fd()))
+		if err != nil || width <= 0 {
+			width = 120
+		}
+		cursorCol := o.PromptLen + lipgloss.Width(buffer)
+		availableCols := width - cursorCol
+		if availableCols <= 0 {
+			ghostText = ""
+		} else if lipgloss.Width(ghostText) > availableCols {
+			ghostText = truncateToWidth(ghostText, availableCols)
 		}
 	}
 

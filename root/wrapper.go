@@ -428,7 +428,7 @@ func runWrapper() {
 
 		overlay.SetUserNavigated(navCopy)
 		if !disableGhostText.Load() {
-			b.WriteString(overlay.RenderGhostText(bufCopy, navCopy))
+			b.WriteString(overlay.RenderGhostText(bufCopy, navCopy, offsetCopy == 0))
 		}
 		currentCmd := overlay.GetCurrentCmd()
 		logger.Debugf("RenderOverlay nav: %v, typedQuery: '%s', currentCmd: '%s'", navCopy, overlay.GetTypedQuery(), currentCmd)
@@ -520,31 +520,27 @@ func runWrapper() {
 							intercepted = true
 							userNavigated.Store(true)
 
-							if l := overlay.ClearGhostLen(); l > 0 {
-								var gs strings.Builder
-								gs.WriteString("\0337")
-								gs.WriteString(strings.Repeat(" ", l+10))
-								gs.WriteString("\0338")
-								writeStdout([]byte(gs.String()))
-							}
-
 							arrowDir := "down"
 							if inputSlice[i+2] == 'A' {
 								arrowDir = "up"
 							}
-							moved, selected := overlay.MoveCursor(arrowDir)
+							moved, _ := overlay.MoveCursor(arrowDir)
 							if !moved {
 								i += 2
 								continue
 							}
 
 							bufferMu.Lock()
-							naiveBuffer = selected
-							cursorOffset = 0
+							bufCopy := naiveBuffer
+							offsetCopy := cursorOffset
 							bufferMu.Unlock()
 
-							writeStdout([]byte(overlay.Render()))
-							_, _ = ptmx.Write(append([]byte{0x15}, selected...))
+							var b strings.Builder
+							if !disableGhostText.Load() {
+								b.WriteString(overlay.RenderGhostText(bufCopy, true, offsetCopy == 0))
+							}
+							b.WriteString(overlay.Render())
+							writeStdout([]byte(b.String()))
 
 							i += 2
 							continue
@@ -587,17 +583,13 @@ func runWrapper() {
 							}
 							i += 2
 							continue
-						} else if overlay.IsVisible() && !disableGhostText.Load() && inputSlice[i+2] == 'C' { // right arrow
+						} else if !disableGhostText.Load() && inputSlice[i+2] == 'C' { // right arrow
 							bufferMu.Lock()
-							topCmd := overlay.GetTopCmd()
-							hasMatch := strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(naiveBuffer))
-							var ghostText string
-							if hasMatch {
-								ghostText = topCmd[len(naiveBuffer):]
-							}
+							atEnd := (cursorOffset == 0)
+							ghostText := overlay.GetGhostText(naiveBuffer, atEnd)
 							bufferMu.Unlock()
 
-							if hasMatch && len(ghostText) > 0 {
+							if len(ghostText) > 0 {
 								intercepted = true
 								logger.Debugf("Intercepted Right Arrow (accepted ghost text: %q)", ghostText)
 								bufferMu.Lock()
