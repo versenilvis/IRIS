@@ -2,11 +2,13 @@ package root
 
 import (
 	"strings"
+	"sync"
 
-	"github.com/versenilvis/iris/spec"
+	"github.com/versenilvis/iris/ai"
 	"github.com/versenilvis/iris/config"
 	"github.com/versenilvis/iris/integration"
 	"github.com/versenilvis/iris/logger"
+	"github.com/versenilvis/iris/spec"
 )
 
 // MergeResults collects and dedupes suggestions for a query and mode
@@ -71,8 +73,43 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 		}
 	}
 
+	if aiSugg := GetCurrentAISuggestion(); aiSugg != nil {
+		if strings.HasPrefix(strings.ToLower(aiSugg.Cmd), strings.ToLower(normalizedQuery)) {
+			addSuggestion(*aiSugg)
+		}
+	}
+
 	if len(deduped) > maxSugg {
 		deduped = deduped[:maxSugg]
 	}
 	return deduped
+}
+
+var (
+	aiEngine     *ai.AIEngine
+	aiEngineOnce sync.Once
+)
+
+func GetAIEngine() *ai.AIEngine {
+	aiEngineOnce.Do(func() {
+		aiEngine = ai.NewAIEngine(nil)
+	})
+	return aiEngine
+}
+
+var (
+	currentAISugg *spec.Suggestion
+	aiSuggMu      sync.RWMutex
+)
+
+func SetCurrentAISuggestion(sugg *spec.Suggestion) {
+	aiSuggMu.Lock()
+	defer aiSuggMu.Unlock()
+	currentAISugg = sugg
+}
+
+func GetCurrentAISuggestion() *spec.Suggestion {
+	aiSuggMu.RLock()
+	defer aiSuggMu.RUnlock()
+	return currentAISugg
 }

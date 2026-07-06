@@ -2,10 +2,10 @@ package ai
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
+	"github.com/versenilvis/iris/config"
 	"github.com/versenilvis/iris/spec"
 )
 
@@ -79,28 +79,17 @@ func ShouldOverwrite(originalBuf string, currentBuf string, newSugg *spec.Sugges
 }
 
 func defaultAIHandler(ctx context.Context, buf string, env EnvSnapshot, dynamicCtx string) (*spec.Suggestion, error) {
-	select {
-	case <-time.After(100 * time.Millisecond):
-	case <-ctx.Done():
-		return nil, ctx.Err()
+	cfg := config.Get()
+	if !cfg.AI.Enabled {
+		return nil, nil
 	}
-
-	if strings.HasPrefix(buf, "git commit -m \"") || strings.HasPrefix(buf, "git commit -m '") {
-		msg := "feat: update codebase"
-		if dynamicCtx != "" {
-			msg = "feat: " + strings.TrimSpace(dynamicCtx)
-		} else if env.GitStatus != "" {
-			msg = "chore: update " + strings.TrimSpace(env.GitStatus)
-		}
-		quote := string(buf[len("git commit -m ")])
-		return &spec.Suggestion{
-			Cmd:        "git commit -m " + string(quote) + msg + string(quote),
-			Desc:       "ai suggestion",
-			Icon:       "ai",
-			Source:     string(SourceAI),
-			Confidence: 85,
-		}, nil
+	pCfg, ok := cfg.AI.GetActiveProvider()
+	if !ok {
+		return nil, nil
 	}
-
-	return nil, fmt.Errorf("no ai suggestion available")
+	client, err := NewClient(pCfg)
+	if err != nil {
+		return nil, err
+	}
+	return client.Suggest(ctx, buf, env, dynamicCtx)
 }

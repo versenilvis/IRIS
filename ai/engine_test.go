@@ -2,10 +2,14 @@ package ai_test
 
 import (
 	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/versenilvis/iris/ai"
+	"github.com/versenilvis/iris/config"
 	"github.com/versenilvis/iris/spec"
 )
 
@@ -30,6 +34,30 @@ func TestEnvSnapshot_Hash(t *testing.T) {
 }
 
 func TestAIEngine_Suggest_Success(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		res := map[string]any{
+			"choices": []map[string]any{
+				{"message": map[string]string{"role": "assistant", "content": "git commit -m \"feat: update main.go\""}},
+			},
+		}
+		_ = json.NewEncoder(w).Encode(res)
+	}))
+	defer server.Close()
+
+	cfg := config.Get()
+	origAI := cfg.AI
+	defer func() { cfg.AI = origAI }()
+
+	cfg.AI.Enabled = true
+	cfg.AI.Provider = "test-provider"
+	cfg.AI.Providers = map[string]config.ProviderConfig{
+		"test-provider": {
+			InheritedFrom: "openai",
+			Endpoint:      server.URL,
+			Model:         "test-model",
+		},
+	}
+
 	engine := ai.NewAIEngine(nil)
 	ctx := context.Background()
 	snap := ai.EnvSnapshot{GitStatus: "modified main.go"}
