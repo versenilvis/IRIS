@@ -258,6 +258,49 @@ func (o *Overlay) SetQueryAndItems(query string, items []spec.Suggestion) {
 	o.StartIdx = 0
 }
 
+func (o *Overlay) InjectAISuggestion(sugg spec.Suggestion) bool {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+
+	if o.TypedQuery == "" {
+		return false
+	}
+
+	var currentConf int
+	if len(o.Items) > 0 {
+		currentConf = o.Items[0].Confidence
+		if currentConf == 0 {
+			if o.Items[0].Source == "history" {
+				currentConf = 70
+			} else {
+				currentConf = 50
+			}
+		}
+	}
+
+	if !strings.HasPrefix(strings.ToLower(sugg.Cmd), strings.ToLower(o.TypedQuery)) {
+		return false
+	}
+	if sugg.Confidence <= currentConf && len(o.Items) > 0 {
+		return false
+	}
+
+	if len(o.Items) == 0 {
+		o.Items = []spec.Suggestion{sugg}
+	} else if strings.EqualFold(o.Items[0].Cmd, sugg.Cmd) {
+		o.Items[0] = sugg
+	} else {
+		o.Items = append([]spec.Suggestion{sugg}, o.Items...)
+		if len(o.Items) > 100 {
+			o.Items = o.Items[:100]
+		}
+	}
+	o.Visible = true
+	o.Cursor = 0
+	o.StartIdx = 0
+	return true
+}
+
 func (o *Overlay) ClearGhostLen() int {
 	o.mu.Lock()
 	defer o.mu.Unlock()

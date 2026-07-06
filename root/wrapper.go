@@ -17,11 +17,12 @@ import (
 	"time"
 
 	"github.com/creack/pty"
-	"github.com/versenilvis/iris/spec"
+	"github.com/versenilvis/iris/ai"
 	"github.com/versenilvis/iris/config"
 	"github.com/versenilvis/iris/integration"
 	"github.com/versenilvis/iris/integration/shell"
 	"github.com/versenilvis/iris/logger"
+	"github.com/versenilvis/iris/spec"
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 )
@@ -377,6 +378,9 @@ func runWrapper() {
 
 	var renderTimer *time.Timer
 	var renderMu sync.Mutex
+	var aiTimer *time.Timer
+	var aiCancel context.CancelFunc
+	var aiMu sync.Mutex
 
 	renderMenuNow = func() {
 		if isExecuting() {
@@ -399,6 +403,41 @@ func runWrapper() {
 		if offsetCopy > 0 && offsetCopy <= len(runes) {
 			bufCopy = string(runes[:len(runes)-offsetCopy])
 		}
+
+		aiMu.Lock()
+		if aiTimer != nil {
+			aiTimer.Stop()
+		}
+		if aiCancel != nil {
+			aiCancel()
+			aiCancel = nil
+		}
+		if config.Get().AI.Enabled && bufCopy != "" && !navCopy && offsetCopy == 0 {
+			queryTarget := bufCopy
+			aiTimer = time.AfterFunc(300*time.Millisecond, func() {
+				aiMu.Lock()
+				ctx, cancel := context.WithCancel(context.Background())
+				aiCancel = cancel
+				aiMu.Unlock()
+
+				cwd, _ := os.Getwd()
+				env := ai.EnvSnapshot{
+					Cwd:          cwd,
+					LastCmd:      "",
+					LastExitCode: 0,
+					GitStatus:    "",
+				}
+				sugg, err := GetAIEngine().Suggest(ctx, queryTarget, env, "")
+				if err != nil || sugg == nil || ctx.Err() != nil {
+					return
+				}
+				SetCurrentAISuggestion(sugg)
+				if overlay.InjectAISuggestion(*sugg) {
+					renderOverlay()
+				}
+			})
+		}
+		aiMu.Unlock()
 
 		var b strings.Builder
 		if !navCopy {
