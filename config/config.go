@@ -57,11 +57,21 @@ type UpdaterConfig struct {
 	CheckInterval  Duration `toml:"check-interval"`
 }
 
+type SuggestOnEmptyConfig struct {
+	Enabled bool `toml:"enabled"`
+}
+
+type AIConfig struct {
+	Enabled        bool                 `toml:"enabled"`
+	SuggestOnEmpty SuggestOnEmptyConfig `toml:"suggest-on-empty"`
+}
+
 type Config struct {
 	Core    CoreConfig    `toml:"core"`
 	UI      UIConfig      `toml:"ui"`
 	Git     GitConfig     `toml:"git"`
 	Updater UpdaterConfig `toml:"updater"`
+	AI      AIConfig      `toml:"ai"`
 }
 
 var (
