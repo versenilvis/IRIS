@@ -63,9 +63,9 @@ func (c *OpenAIClient) Suggest(ctx context.Context, buf string, env EnvSnapshot,
 		endpoint = strings.TrimRight(endpoint, "/") + "/chat/completions"
 	}
 
-	systemPrompt := "You are a concise shell command completion assistant. Provide ONLY the completed shell command line. Do not explain, do not use markdown formatting, do not wrap in backticks or quotes."
-	userPrompt := fmt.Sprintf("Complete this shell command line: %s\nContext:\nCwd: %s\nLastCmd: %s\nLastExitCode: %d\nGitStatus: %s\nDynamicContext: %s",
-		buf, env.Cwd, env.LastCmd, env.LastExitCode, env.GitStatus, dynamicCtx)
+	systemPrompt := "You are a concise shell command completion assistant. Provide ONLY the completed shell command line. Do not explain, do not use markdown formatting, and do not wrap the command in code blocks or backticks. Always ensure valid shell syntax: if an argument contains spaces or parentheses (such as git commit messages), you MUST wrap that argument in double quotes \"...\"."
+	userPrompt := fmt.Sprintf("Complete this shell command line: %s\nContext:\nCwd: %s\nLastCmd: %s\nLastExitCode: %d\nGitStatus: %s\nRecentCmds: %v\nDynamicContext: %s",
+		buf, env.Cwd, env.LastCmd, env.LastExitCode, env.GitStatus, env.RecentCmds, dynamicCtx)
 
 	messages := []chatMessage{
 		{Role: "system", Content: systemPrompt},
@@ -131,7 +131,7 @@ func (c *OpenAIClient) Suggest(ctx context.Context, buf string, env EnvSnapshot,
 	}
 
 	rawContent := chatRes.Choices[0].Message.Content
-	cleaned := CleanSuggestion(rawContent)
+	cleaned := NormalizeSuggestion(buf, rawContent)
 	if cleaned == "" || cleaned == strings.TrimSpace(buf) {
 		return nil, nil
 	}
