@@ -422,6 +422,7 @@ func runWrapper() {
 				debounceMS = 500
 			}
 			aiTimer = time.AfterFunc(time.Duration(debounceMS)*time.Millisecond, func() {
+				// Require at least 3 characters to trigger AI completion to save API quota and avoid 6000 TPM limit (Groq api docs)
 				if len(strings.TrimSpace(queryTarget)) < 3 {
 					return
 				}
@@ -434,6 +435,7 @@ func runWrapper() {
 				var recentCmds []string
 				var lastCmd string
 				if hist, err := integration.SearchHistory("", nil); err == nil {
+					// Limit to 3 recent commands to keep prompt concise and reduce token consumption
 					for i := 0; i < len(hist) && i < 3; i++ {
 						recentCmds = append(recentCmds, hist[i].Cmd)
 					}

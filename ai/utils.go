@@ -110,6 +110,7 @@ func ExtractScriptsAndTargets(sb *strings.Builder, dir string, prefix string) {
 		_ = scanner.Err()
 		if len(targets) > 0 {
 			sort.Strings(targets)
+			// Cap at 10 targets to keep AI prompt short and avoid exceeding 6000 TPM limit (basedd on Groq api docs because Im using it now)
 			if len(targets) > 10 {
 				targets = append(targets[:10], "... (truncated)")
 			}
@@ -148,6 +149,7 @@ func ExtractScriptsAndTargets(sb *strings.Builder, dir string, prefix string) {
 		_ = scanner.Err()
 		if len(recipes) > 0 {
 			sort.Strings(recipes)
+			// Cap at 10 recipes to keep AI prompt short and avoid exceeding 6000 TPM limit
 			if len(recipes) > 10 {
 				recipes = append(recipes[:10], "... (truncated)")
 			}
