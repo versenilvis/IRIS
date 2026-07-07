@@ -1,10 +1,14 @@
 package ai
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -139,6 +143,58 @@ func (p *universalProvider) Gather(ctx context.Context) (string, error) {
 
 	var sb strings.Builder
 
+	appendScriptsAndTargets := func(dir string, prefix string) {
+		if data, err := os.ReadFile(filepath.Join(dir, "package.json")); err == nil {
+			var pkg struct {
+				Scripts map[string]string `json:"scripts"`
+			}
+			if err := json.Unmarshal(data, &pkg); err == nil && len(pkg.Scripts) > 0 {
+				var scriptNames []string
+				for name, cmd := range pkg.Scripts {
+					scriptNames = append(scriptNames, fmt.Sprintf("%s: %s", name, cmd))
+				}
+				sort.Strings(scriptNames)
+				if len(scriptNames) > 20 {
+					scriptNames = append(scriptNames[:20], "... (truncated)")
+				}
+				label := "package.json"
+				if prefix != "" {
+					label = prefix + "/package.json"
+				}
+				sb.WriteString(fmt.Sprintf("Available %s scripts:\n%s\n\n", label, strings.Join(scriptNames, "\n")))
+			}
+		}
+		if file, err := os.Open(filepath.Join(dir, "Makefile")); err == nil {
+			defer func() { _ = file.Close() }()
+			var targets []string
+			seen := make(map[string]bool)
+			scanner := bufio.NewScanner(file)
+			for scanner.Scan() {
+				line := scanner.Text()
+				if idx := strings.Index(line, ":"); idx > 0 && !strings.HasPrefix(line, "\t") && !strings.HasPrefix(line, " ") {
+					target := strings.TrimSpace(line[:idx])
+					if target != "" && target != ".PHONY" && !strings.Contains(target, " ") && !seen[target] && !strings.HasPrefix(target, ".") {
+						seen[target] = true
+						targets = append(targets, target)
+					}
+				}
+			}
+			if len(targets) > 0 {
+				sort.Strings(targets)
+				if len(targets) > 20 {
+					targets = append(targets[:20], "... (truncated)")
+				}
+				label := "Makefile"
+				if prefix != "" {
+					label = prefix + "/Makefile"
+				}
+				sb.WriteString(fmt.Sprintf("Available %s targets:\n%s\n\n", label, strings.Join(targets, ", ")))
+			}
+		}
+	}
+
+	appendScriptsAndTargets(p.cwd, "")
+
 	if entries, err := os.ReadDir(p.cwd); err == nil {
 		var names []string
 		for i, e := range entries {
@@ -149,6 +205,9 @@ func (p *universalProvider) Gather(ctx context.Context) (string, error) {
 			name := e.Name()
 			if e.IsDir() {
 				name += "/"
+				if !strings.HasPrefix(e.Name(), ".") && e.Name() != "node_modules" && i < 15 {
+					appendScriptsAndTargets(filepath.Join(p.cwd, e.Name()), e.Name())
+				}
 			}
 			names = append(names, name)
 		}
