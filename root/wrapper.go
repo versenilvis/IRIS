@@ -434,7 +434,7 @@ func runWrapper() {
 				var recentCmds []string
 				var lastCmd string
 				if hist, err := integration.SearchHistory("", nil); err == nil {
-					for i := 0; i < len(hist) && i < 10; i++ {
+					for i := 0; i < len(hist) && i < 3; i++ {
 						recentCmds = append(recentCmds, hist[i].Cmd)
 					}
 					if len(recentCmds) > 0 {

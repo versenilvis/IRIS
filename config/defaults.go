@@ -30,7 +30,7 @@ func DefaultConfig() *Config {
 			Enabled:       false,
 			Provider:      "",
 			DebounceMS:    500,
-			MinIntervalMS: 3000,
+			MinIntervalMS: 1000,
 			Providers:     nil,
 			SuggestOnEmpty: SuggestOnEmptyConfig{
 				Enabled:       false,
