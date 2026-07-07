@@ -60,15 +60,18 @@ func (e *AIEngine) Suggest(ctx context.Context, buf string, env EnvSnapshot, dyn
 		return nil, ctx.Err()
 	}
 	trimmed := strings.TrimSpace(buf)
+	// Ignore queries under 3 characters since short commands do not need AI completion and waste token quota
 	if len(trimmed) < 3 {
 		return nil, nil
 	}
 
 	e.mu.Lock()
+	// Pause network requests during cooldown window when provider returns HTTP 429
 	if !e.rateLimitUntil.IsZero() && time.Now().Before(e.rateLimitUntil) {
 		e.mu.Unlock()
 		return nil, nil
 	}
+	// Reuse suggestion from cache for 30 seconds if query matches prefix
 	if e.lastSuggestion != nil && time.Since(e.lastSuggestion.time) < 30*time.Second {
 		lastQ := e.lastSuggestion.query
 		lastCmd := e.lastSuggestion.sugg.Cmd
@@ -81,6 +84,7 @@ func (e *AIEngine) Suggest(ctx context.Context, buf string, env EnvSnapshot, dyn
 
 	minIntervalMS := config.Get().AI.MinIntervalMS
 	if minIntervalMS <= 0 {
+		// Default to 1000ms minimum interval to prevent request spam while maintaining responsive UI
 		minIntervalMS = 1000
 	}
 	if !e.lastCallTime.IsZero() && time.Since(e.lastCallTime) < time.Duration(minIntervalMS)*time.Millisecond {
@@ -101,6 +105,7 @@ func (e *AIEngine) Suggest(ctx context.Context, buf string, env EnvSnapshot, dyn
 		errStr := strings.ToLower(err.Error())
 		if strings.Contains(errStr, "429") || strings.Contains(errStr, "rate limit") || strings.Contains(errStr, "too many requests") {
 			e.mu.Lock()
+			// Set 20 second backoff cooldown to allow Groq token bucket to reset
 			e.rateLimitUntil = time.Now().Add(20 * time.Second)
 			e.mu.Unlock()
 			logger.Warnf("AI provider rate limited (HTTP 429). Cooldown for 20s. Error: %v", err)
