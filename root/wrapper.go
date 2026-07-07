@@ -423,7 +423,7 @@ func runWrapper() {
 				aiCancel = cancel
 				aiMu.Unlock()
 
-				cwd, _ := os.Getwd()
+				cwd := spec.GetCWD()
 				var recentCmds []string
 				var lastCmd string
 				if hist, err := integration.SearchHistory("", nil); err == nil {
