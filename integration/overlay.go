@@ -398,10 +398,9 @@ func truncateToWidth(s string, maxW int) string {
 	if maxW == 1 {
 		return "…"
 	}
-	runes := []rune(s)
 	var sb strings.Builder
 	w := 0
-	for _, r := range runes {
+	for _, r := range s {
 		rw := lipgloss.Width(string(r))
 		if w+rw > maxW-1 { // leave 1 column for '…'
 			break
