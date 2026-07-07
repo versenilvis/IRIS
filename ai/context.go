@@ -15,47 +15,45 @@ type ContextSuggester interface {
 
 type RuleBasedSuggester struct{}
 
+type EmptyLineRule struct {
+	Name    string
+	Match   func(env EnvSnapshot) bool
+	Suggest func(env EnvSnapshot) *spec.Suggestion
+}
+
+var DefaultEmptyLineRules = []EmptyLineRule{
+	{Name: "merge_in_progress", Match: func(e EnvSnapshot) bool { return e.GitMergeInProgress },
+		Suggest: func(e EnvSnapshot) *spec.Suggestion {
+			return &spec.Suggestion{Cmd: "git commit", Desc: "finish merge", Icon: "git", Source: string(SourceSpec), Confidence: 85}
+		}},
+	{Name: "rebase_in_progress", Match: func(e EnvSnapshot) bool { return e.GitRebaseInProgress },
+		Suggest: func(e EnvSnapshot) *spec.Suggestion {
+			return &spec.Suggestion{Cmd: "git rebase --continue", Desc: "continue rebase", Icon: "git", Source: string(SourceSpec), Confidence: 85}
+		}},
+	{Name: "retry_failed", Match: func(e EnvSnapshot) bool { return e.LastExitCode != 0 && e.LastCmd != "" },
+		Suggest: func(e EnvSnapshot) *spec.Suggestion {
+			return &spec.Suggestion{Cmd: e.LastCmd, Desc: "retry failed command", Icon: "retry", Source: string(SourceSpec), Confidence: 80}
+		}},
+	{Name: "git_status_diff", Match: func(e EnvSnapshot) bool { return strings.TrimSpace(e.LastCmd) == "git status" },
+		Suggest: func(e EnvSnapshot) *spec.Suggestion {
+			return &spec.Suggestion{Cmd: "git diff", Desc: "view modifications", Icon: "git", Source: string(SourceSpec), Confidence: 75}
+		}},
+	{Name: "git_dirty_status", Match: func(e EnvSnapshot) bool { return e.GitStatus != "" },
+		Suggest: func(e EnvSnapshot) *spec.Suggestion {
+			return &spec.Suggestion{Cmd: "git status", Desc: "check repository state", Icon: "git", Source: string(SourceSpec), Confidence: 70}
+		}},
+	{Name: "npm_run_dev", Match: func(e EnvSnapshot) bool { return strings.Contains(e.DirSignature, "package.json") },
+		Suggest: func(e EnvSnapshot) *spec.Suggestion {
+			return &spec.Suggestion{Cmd: "npm run dev", Desc: "start dev server", Icon: "npm", Source: string(SourceSpec), Confidence: 65}
+		}},
+}
+
 func (s RuleBasedSuggester) SuggestOnEmpty(ctx context.Context, env EnvSnapshot) (*spec.Suggestion, error) {
-	if env.LastExitCode != 0 && env.LastCmd != "" {
-		return &spec.Suggestion{
-			Cmd:        env.LastCmd,
-			Desc:       "retry failed command",
-			Icon:       "retry",
-			Source:     string(SourceSpec),
-			Confidence: 80,
-		}, nil
+	for _, rule := range DefaultEmptyLineRules {
+		if rule.Match(env) {
+			return rule.Suggest(env), nil
+		}
 	}
-
-	if strings.TrimSpace(env.LastCmd) == "git status" {
-		return &spec.Suggestion{
-			Cmd:        "git diff",
-			Desc:       "view modifications",
-			Icon:       "git",
-			Source:     string(SourceSpec),
-			Confidence: 75,
-		}, nil
-	}
-
-	if env.GitStatus != "" {
-		return &spec.Suggestion{
-			Cmd:        "git status",
-			Desc:       "check repository state",
-			Icon:       "git",
-			Source:     string(SourceSpec),
-			Confidence: 70,
-		}, nil
-	}
-
-	if strings.Contains(env.DirSignature, "package.json") {
-		return &spec.Suggestion{
-			Cmd:        "npm run dev",
-			Desc:       "start dev server",
-			Icon:       "npm",
-			Source:     string(SourceSpec),
-			Confidence: 65,
-		}, nil
-	}
-
 	return nil, nil
 }
 

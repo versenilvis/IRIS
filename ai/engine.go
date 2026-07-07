@@ -29,16 +29,16 @@ func NewAIEngine(h AIHandler) *AIEngine {
 }
 
 func (e *AIEngine) RegisterProvider(p ContextProvider) {
-	e.providers = append([]ContextProvider{p}, e.providers...)
+	e.providers = append(e.providers, p)
 }
 
-func (e *AIEngine) GatherDynamicContext(ctx context.Context, buf string) string {
+func (e *AIEngine) GatherDynamicContext(ctx context.Context, buf string, cwd string) string {
 	for _, p := range e.providers {
 		if p.Matches(buf) {
 			return e.cache.GetOrGather(ctx, p)
 		}
 	}
-	return ""
+	return e.cache.GetOrGather(ctx, &universalProvider{cwd: cwd, buf: buf})
 }
 
 func (e *AIEngine) Cache() *ProviderCache {
@@ -50,7 +50,7 @@ func (e *AIEngine) Suggest(ctx context.Context, buf string, env EnvSnapshot, dyn
 		return nil, ctx.Err()
 	}
 	if dynamicCtx == "" {
-		dynamicCtx = e.GatherDynamicContext(ctx, buf)
+		dynamicCtx = e.GatherDynamicContext(ctx, buf, env.Cwd)
 	}
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
@@ -62,7 +62,31 @@ func (e *AIEngine) Suggest(ctx context.Context, buf string, env EnvSnapshot, dyn
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
+	if sugg != nil {
+		sugg.Cmd = NormalizeSuggestion(buf, sugg.Cmd)
+	}
 	return sugg, nil
+}
+
+func NormalizeSuggestion(buf string, suggCmd string) string {
+	suggCmd = CleanSuggestion(suggCmd)
+
+	if strings.Contains(buf, "-m \"") || strings.Contains(buf, "-am \"") || strings.Contains(buf, "--message \"") {
+		if !strings.HasPrefix(strings.ToLower(suggCmd), strings.ToLower(buf)) {
+			for _, flag := range []string{"-m ", "-am ", "--message "} {
+				idx := strings.Index(suggCmd, flag)
+				if idx != -1 {
+					afterFlag := suggCmd[idx+len(flag):]
+					if !strings.HasPrefix(afterFlag, "\"") && !strings.HasPrefix(afterFlag, "'") {
+						suggCmd = suggCmd[:idx+len(flag)] + "\"" + afterFlag + "\""
+						break
+					}
+				}
+			}
+		}
+	}
+
+	return suggCmd
 }
 
 func ShouldOverwrite(originalBuf string, currentBuf string, newSugg *spec.Suggestion, currentConfidence int) bool {
