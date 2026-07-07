@@ -74,8 +74,24 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 	}
 
 	if aiSugg := GetCurrentAISuggestion(); aiSugg != nil {
-		if strings.HasPrefix(strings.ToLower(aiSugg.Cmd), strings.ToLower(normalizedQuery)) {
-			addSuggestion(*aiSugg)
+		normalizedCmd := strings.TrimSpace(aiSugg.Cmd)
+		if normalizedCmd != "" && normalizedCmd != normalizedQuery && strings.HasPrefix(strings.ToLower(normalizedCmd), strings.ToLower(normalizedQuery)) {
+			if !seen[aiSugg.Cmd] {
+				seen[aiSugg.Cmd] = true
+				if len(deduped) == 0 || aiSugg.Confidence > deduped[0].Confidence {
+					deduped = append([]spec.Suggestion{*aiSugg}, deduped...)
+				} else {
+					deduped = append(deduped, *aiSugg)
+				}
+			} else if len(deduped) > 0 && aiSugg.Confidence > deduped[0].Confidence {
+				for i, item := range deduped {
+					if item.Cmd == aiSugg.Cmd {
+						deduped = append(deduped[:i], deduped[i+1:]...)
+						deduped = append([]spec.Suggestion{*aiSugg}, deduped...)
+						break
+					}
+				}
+			}
 		}
 	}
 
@@ -93,6 +109,9 @@ var (
 func GetAIEngine() *ai.AIEngine {
 	aiEngineOnce.Do(func() {
 		aiEngine = ai.NewAIEngine(nil)
+		for _, p := range ai.DefaultProviders {
+			aiEngine.RegisterProvider(p)
+		}
 	})
 	return aiEngine
 }
