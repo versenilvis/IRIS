@@ -316,11 +316,13 @@ func runWrapper() {
 				cursorOffset = 0
 				bufferMu.Unlock()
 				writeStdout([]byte(overlay.ClearAndDisable()))
+				SetCurrentAISuggestion(nil)
 				continue
 			}
 
 			if query == "IRIS_CMD_STOP" {
 				isCommandActive.Store(false)
+				SetCurrentAISuggestion(nil)
 				// hook: after user executes a command, print the update notice exactly once per session
 				if !updatePrinted {
 					select {
@@ -349,6 +351,7 @@ func runWrapper() {
 				bufferMu.Unlock()
 				if !wasEmpty {
 					writeStdout([]byte(overlay.ClearAndDisable()))
+					SetCurrentAISuggestion(nil)
 				}
 				continue
 			}
@@ -421,12 +424,17 @@ func runWrapper() {
 				aiMu.Unlock()
 
 				cwd, _ := os.Getwd()
-				env := ai.EnvSnapshot{
-					Cwd:          cwd,
-					LastCmd:      "",
-					LastExitCode: 0,
-					GitStatus:    "",
+				var recentCmds []string
+				var lastCmd string
+				if hist, err := integration.SearchHistory("", nil); err == nil {
+					for i := 0; i < len(hist) && i < 10; i++ {
+						recentCmds = append(recentCmds, hist[i].Cmd)
+					}
+					if len(recentCmds) > 0 {
+						lastCmd = recentCmds[0]
+					}
 				}
+				env := ai.NewEnvSnapshot(cwd, lastCmd, 0, recentCmds)
 				sugg, err := GetAIEngine().Suggest(ctx, queryTarget, env, "")
 				if err != nil || sugg == nil || ctx.Err() != nil {
 					return
@@ -450,7 +458,7 @@ func runWrapper() {
 			logger.Debugf("Render results found: %d", len(results))
 
 			if len(results) == 0 || (len(results) == 1 && strings.TrimSpace(results[0].Cmd) == strings.TrimSpace(bufCopy) && !strings.HasSuffix(bufCopy, " ")) {
-				b.WriteString(overlay.ClearAndDisable())
+				b.WriteString(overlay.HideMenu(bufCopy))
 				writeStdout([]byte(b.String()))
 				return
 			}
@@ -754,6 +762,7 @@ func runWrapper() {
 						}
 					}
 					writeStdout([]byte(overlay.ClearAndDisable()))
+					SetCurrentAISuggestion(nil)
 					renderMu.Lock()
 					if renderTimer != nil {
 						renderTimer.Stop()
@@ -774,6 +783,7 @@ func runWrapper() {
 				} else if b == 0x03 || b == 0x15 { // ctrl+c, ctrl+u
 					intercepted = true
 					writeStdout([]byte(overlay.ClearAndDisable()))
+					SetCurrentAISuggestion(nil)
 					renderMu.Lock()
 					if renderTimer != nil {
 						renderTimer.Stop()
@@ -909,6 +919,7 @@ func runWrapper() {
 						activeModeMu.Unlock()
 						disableGhostText.Store(false)
 						writeStdout([]byte(overlay.ClearAndDisable()))
+						SetCurrentAISuggestion(nil)
 						userNavigated.Store(false)
 					default:
 						// track normal printable characters in the buffer for matching
