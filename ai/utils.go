@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -117,6 +118,44 @@ func ExtractScriptsAndTargets(sb *strings.Builder, dir string, prefix string) {
 				label = prefix + "/Makefile"
 			}
 			fmt.Fprintf(sb, "Available %s targets:\n%s\n\n", label, strings.Join(targets, ", "))
+		}
+	}
+	openJustfile := func() (*os.File, error) {
+		if f, err := os.Open(filepath.Join(dir, "justfile")); err == nil {
+			return f, nil
+		}
+		return os.Open(filepath.Join(dir, "Justfile"))
+	}
+	if file, err := openJustfile(); err == nil {
+		defer func() { _ = file.Close() }()
+		var recipes []string
+		seen := make(map[string]bool)
+		scanner := bufio.NewScanner(file)
+		recipeRegex := regexp.MustCompile(`^([a-zA-Z0-9_-]+):`)
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if line == "" || strings.HasPrefix(line, "#") || strings.HasPrefix(line, "[") {
+				continue
+			}
+			if matches := recipeRegex.FindStringSubmatch(line); len(matches) > 1 {
+				recipe := matches[1]
+				if !seen[recipe] {
+					seen[recipe] = true
+					recipes = append(recipes, recipe)
+				}
+			}
+		}
+		_ = scanner.Err()
+		if len(recipes) > 0 {
+			sort.Strings(recipes)
+			if len(recipes) > 20 {
+				recipes = append(recipes[:20], "... (truncated)")
+			}
+			label := "justfile"
+			if prefix != "" {
+				label = prefix + "/justfile"
+			}
+			fmt.Fprintf(sb, "Available %s recipes:\n%s\n\n", label, strings.Join(recipes, ", "))
 		}
 	}
 }

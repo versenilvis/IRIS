@@ -3,6 +3,7 @@ package runner
 import (
 	"bufio"
 	"os"
+	"path/filepath"
 	"regexp"
 
 	"github.com/versenilvis/iris/spec"
@@ -14,7 +15,8 @@ func init() {
 		Description: "build automation",
 		Generator: func(tokens []string, prefix string, partial string) []spec.Suggestion {
 			// Read the Makefile
-			file, err := os.Open("Makefile")
+			cwd := spec.GetCWD()
+			file, err := os.Open(filepath.Join(cwd, "Makefile"))
 			if err != nil {
 				// No Makefile, don't pretend we have one
 				return nil
@@ -48,6 +50,7 @@ func init() {
 					})
 				}
 			}
+			_ = scanner.Err()
 			return suggestions
 		},
 	})
