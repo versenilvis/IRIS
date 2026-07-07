@@ -8,6 +8,7 @@ import (
 
 	"github.com/versenilvis/iris/ai"
 	"github.com/versenilvis/iris/config"
+	"github.com/versenilvis/iris/root"
 )
 
 func main() {
@@ -32,25 +33,23 @@ func main() {
 	fmt.Printf("Model: %s\n", pCfg.Model)
 	fmt.Printf("API Key Present: %v (len %d)\n", pCfg.GetAPIKey() != "", len(pCfg.GetAPIKey()))
 
-	client, err := ai.NewClient(pCfg)
-	if err != nil {
-		fmt.Printf("Error creating AI client: %v\n", err)
-		os.Exit(1)
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	cwd, _ := os.Getwd()
 	env := ai.EnvSnapshot{
-		Cwd:          "/home/verse/dev/github/iris",
+		Cwd:          cwd,
 		LastCmd:      "git status",
 		LastExitCode: 0,
-		GitStatus:    "modified: ai/client.go, ai/engine.go",
 	}
+
+	engine := root.GetAIEngine()
+	dynCtx := engine.GatherDynamicContext(ctx, "git commit -m \"", cwd)
+	fmt.Printf("\n--- Dynamic Context Gathered by UniversalProvider ---\n%s\n-----------------------------------------------------\n", dynCtx)
 
 	fmt.Println("\nSending live test completion request to Groq for: \"git commit -m \" ...")
 	start := time.Now()
-	sugg, err := client.Suggest(ctx, "git commit -m \"", env, "")
+	sugg, err := engine.Suggest(ctx, "git commit -m \"", env, dynCtx)
 	duration := time.Since(start)
 
 	if err != nil {
