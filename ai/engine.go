@@ -2,16 +2,27 @@ package ai
 
 import (
 	"context"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/versenilvis/iris/config"
 	"github.com/versenilvis/iris/spec"
 )
 
+type suggestionCacheItem struct {
+	query string
+	sugg  *spec.Suggestion
+	time  time.Time
+}
+
 type AIEngine struct {
-	handler   AIHandler
-	cache     *ProviderCache
-	providers []ContextProvider
+	handler        AIHandler
+	cache          *ProviderCache
+	providers      []ContextProvider
+	lastCallTime   time.Time
+	lastSuggestion *suggestionCacheItem
+	mu             sync.Mutex
 }
 
 func NewAIEngine(h AIHandler) *AIEngine {
@@ -46,6 +57,33 @@ func (e *AIEngine) Suggest(ctx context.Context, buf string, env EnvSnapshot, dyn
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
+	trimmed := strings.TrimSpace(buf)
+	if len(trimmed) < 3 {
+		return nil, nil
+	}
+
+	e.mu.Lock()
+	if e.lastSuggestion != nil && time.Since(e.lastSuggestion.time) < 30*time.Second {
+		lastQ := e.lastSuggestion.query
+		lastCmd := e.lastSuggestion.sugg.Cmd
+		if buf == lastQ || (strings.HasPrefix(buf, lastQ) && strings.HasPrefix(strings.ToLower(lastCmd), strings.ToLower(buf))) || (strings.HasPrefix(lastQ, buf) && strings.HasPrefix(strings.ToLower(lastCmd), strings.ToLower(buf))) {
+			cached := *e.lastSuggestion.sugg
+			e.mu.Unlock()
+			return &cached, nil
+		}
+	}
+
+	minIntervalMS := config.Get().AI.MinIntervalMS
+	if minIntervalMS <= 0 {
+		minIntervalMS = 3000
+	}
+	if !e.lastCallTime.IsZero() && time.Since(e.lastCallTime) < time.Duration(minIntervalMS)*time.Millisecond {
+		e.mu.Unlock()
+		return nil, nil
+	}
+	e.lastCallTime = time.Now()
+	e.mu.Unlock()
+
 	if dynamicCtx == "" {
 		dynamicCtx = e.GatherDynamicContext(ctx, buf, env.Cwd)
 	}
@@ -61,6 +99,13 @@ func (e *AIEngine) Suggest(ctx context.Context, buf string, env EnvSnapshot, dyn
 	}
 	if sugg != nil {
 		sugg.Cmd = NormalizeSuggestion(buf, sugg.Cmd)
+		e.mu.Lock()
+		e.lastSuggestion = &suggestionCacheItem{
+			query: buf,
+			sugg:  sugg,
+			time:  time.Now(),
+		}
+		e.mu.Unlock()
 	}
 	return sugg, nil
 }

@@ -76,6 +76,8 @@ type ProviderConfig struct {
 type AIConfig struct {
 	Enabled        bool                      `toml:"enabled"`
 	Provider       string                    `toml:"provider"`
+	DebounceMS     int                       `toml:"debounce_ms"`
+	MinIntervalMS  int                       `toml:"min_interval_ms"`
 	Providers      map[string]ProviderConfig `toml:"providers"`
 	SuggestOnEmpty SuggestOnEmptyConfig      `toml:"suggest_on_empty"`
 }

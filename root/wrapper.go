@@ -417,7 +417,14 @@ func runWrapper() {
 		}
 		if config.Get().AI.Enabled && bufCopy != "" && !navCopy && offsetCopy == 0 {
 			queryTarget := bufCopy
-			aiTimer = time.AfterFunc(300*time.Millisecond, func() {
+			debounceMS := config.Get().AI.DebounceMS
+			if debounceMS <= 0 {
+				debounceMS = 500
+			}
+			aiTimer = time.AfterFunc(time.Duration(debounceMS)*time.Millisecond, func() {
+				if len(strings.TrimSpace(queryTarget)) < 3 {
+					return
+				}
 				aiMu.Lock()
 				ctx, cancel := context.WithCancel(context.Background())
 				aiCancel = cancel
