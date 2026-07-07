@@ -110,8 +110,8 @@ func ExtractScriptsAndTargets(sb *strings.Builder, dir string, prefix string) {
 		_ = scanner.Err()
 		if len(targets) > 0 {
 			sort.Strings(targets)
-			if len(targets) > 20 {
-				targets = append(targets[:20], "... (truncated)")
+			if len(targets) > 10 {
+				targets = append(targets[:10], "... (truncated)")
 			}
 			label := "Makefile"
 			if prefix != "" {
@@ -148,8 +148,8 @@ func ExtractScriptsAndTargets(sb *strings.Builder, dir string, prefix string) {
 		_ = scanner.Err()
 		if len(recipes) > 0 {
 			sort.Strings(recipes)
-			if len(recipes) > 20 {
-				recipes = append(recipes[:20], "... (truncated)")
+			if len(recipes) > 10 {
+				recipes = append(recipes[:10], "... (truncated)")
 			}
 			label := "justfile"
 			if prefix != "" {

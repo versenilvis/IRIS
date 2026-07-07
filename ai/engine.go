@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/versenilvis/iris/config"
+	"github.com/versenilvis/iris/logger"
 	"github.com/versenilvis/iris/spec"
 )
 
@@ -21,6 +22,7 @@ type AIEngine struct {
 	cache          *ProviderCache
 	providers      []ContextProvider
 	lastCallTime   time.Time
+	rateLimitUntil time.Time
 	lastSuggestion *suggestionCacheItem
 	mu             sync.Mutex
 }
@@ -63,6 +65,10 @@ func (e *AIEngine) Suggest(ctx context.Context, buf string, env EnvSnapshot, dyn
 	}
 
 	e.mu.Lock()
+	if !e.rateLimitUntil.IsZero() && time.Now().Before(e.rateLimitUntil) {
+		e.mu.Unlock()
+		return nil, nil
+	}
 	if e.lastSuggestion != nil && time.Since(e.lastSuggestion.time) < 30*time.Second {
 		lastQ := e.lastSuggestion.query
 		lastCmd := e.lastSuggestion.sugg.Cmd
@@ -75,7 +81,7 @@ func (e *AIEngine) Suggest(ctx context.Context, buf string, env EnvSnapshot, dyn
 
 	minIntervalMS := config.Get().AI.MinIntervalMS
 	if minIntervalMS <= 0 {
-		minIntervalMS = 3000
+		minIntervalMS = 1000
 	}
 	if !e.lastCallTime.IsZero() && time.Since(e.lastCallTime) < time.Duration(minIntervalMS)*time.Millisecond {
 		e.mu.Unlock()
@@ -92,6 +98,15 @@ func (e *AIEngine) Suggest(ctx context.Context, buf string, env EnvSnapshot, dyn
 	}
 	sugg, err := e.handler(ctx, buf, env, dynamicCtx)
 	if err != nil {
+		errStr := strings.ToLower(err.Error())
+		if strings.Contains(errStr, "429") || strings.Contains(errStr, "rate limit") || strings.Contains(errStr, "too many requests") {
+			e.mu.Lock()
+			e.rateLimitUntil = time.Now().Add(20 * time.Second)
+			e.mu.Unlock()
+			logger.Warnf("AI provider rate limited (HTTP 429). Cooldown for 20s. Error: %v", err)
+		} else {
+			logger.Debugf("AI provider error for query '%s': %v", buf, err)
+		}
 		return nil, err
 	}
 	if ctx.Err() != nil {
