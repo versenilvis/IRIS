@@ -1,4 +1,4 @@
-package ai
+package tests
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/versenilvis/iris/ai"
 	"github.com/versenilvis/iris/config"
 )
 
@@ -27,7 +28,7 @@ func TestCleanSuggestion(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := CleanSuggestion(tt.input)
+		got := ai.CleanSuggestion(tt.input)
 		if got != tt.expected {
 			t.Errorf("CleanSuggestion(%q) = %q, want %q", tt.input, got, tt.expected)
 		}
@@ -62,9 +63,9 @@ func TestOpenAIClient_Suggest(t *testing.T) {
 			t.Errorf("expected extra temperature 0.5, got %v", reqMap["temperature"])
 		}
 
-		res := chatResponse{
-			Choices: []chatChoice{
-				{Message: chatMessage{Role: "assistant", Content: "```bash\nkubectl get pods -n kube-system\n```"}},
+		res := map[string]any{
+			"choices": []map[string]any{
+				{"message": map[string]any{"role": "assistant", "content": "```bash\nkubectl get pods -n kube-system\n```"}},
 			},
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -83,13 +84,13 @@ func TestOpenAIClient_Suggest(t *testing.T) {
 		},
 	}
 
-	client, err := NewClient(cfg)
+	client, err := ai.NewClient(cfg)
 	if err != nil {
 		t.Fatalf("failed to create client: %v", err)
 	}
 
 	ctx := context.Background()
-	env := EnvSnapshot{Cwd: "/home/user", LastCmd: "kubectl get", LastExitCode: 0}
+	env := ai.EnvSnapshot{Cwd: "/home/user", LastCmd: "kubectl get", LastExitCode: 0}
 	sugg, err := client.Suggest(ctx, "kubectl get p", env, "")
 	if err != nil {
 		t.Fatalf("suggest failed: %v", err)
@@ -118,9 +119,9 @@ func TestOpenAIClient_TimeoutAndCancel(t *testing.T) {
 		TimeoutMS:     50,
 	}
 
-	client := NewOpenAIClient(cfg)
+	client := ai.NewOpenAIClient(cfg)
 	ctx := context.Background()
-	env := EnvSnapshot{}
+	env := ai.EnvSnapshot{}
 
 	_, err := client.Suggest(ctx, "sleep", env, "")
 	if err == nil {

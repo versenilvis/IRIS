@@ -16,10 +16,6 @@ import (
 
 var sharedHTTPClient = &http.Client{}
 
-type Client interface {
-	Suggest(ctx context.Context, buf string, env EnvSnapshot, dynamicCtx string) (*spec.Suggestion, error)
-}
-
 func NewClient(cfg config.ProviderConfig) (Client, error) {
 	protocol := strings.ToLower(strings.TrimSpace(cfg.InheritedFrom))
 	switch protocol {
@@ -63,12 +59,10 @@ func (c *OpenAIClient) Suggest(ctx context.Context, buf string, env EnvSnapshot,
 		endpoint = strings.TrimRight(endpoint, "/") + "/chat/completions"
 	}
 
-	systemPrompt := "You are a concise shell command completion assistant. Provide ONLY the completed shell command line. Do not explain, do not use markdown formatting, and do not wrap the command in code blocks or backticks. Always ensure valid shell syntax: if an argument contains spaces or parentheses (such as git commit messages), you MUST wrap that argument in double quotes \"...\"."
-	userPrompt := fmt.Sprintf("Complete this shell command line: %s\nContext:\nCwd: %s\nLastCmd: %s\nLastExitCode: %d\nGitStatus: %s\nRecentCmds: %v\nDynamicContext: %s",
-		buf, env.Cwd, env.LastCmd, env.LastExitCode, env.GitStatus, env.RecentCmds, dynamicCtx)
+	userPrompt := BuildCompletionPrompt(buf, env, dynamicCtx)
 
 	messages := []chatMessage{
-		{Role: "system", Content: systemPrompt},
+		{Role: "system", Content: SystemPrompt},
 		{Role: "user", Content: userPrompt},
 	}
 
@@ -143,28 +137,4 @@ func (c *OpenAIClient) Suggest(ctx context.Context, buf string, env EnvSnapshot,
 		Source:     string(SourceAI),
 		Confidence: 85,
 	}, nil
-}
-
-func CleanSuggestion(raw string) string {
-	s := strings.TrimSpace(raw)
-	if strings.HasPrefix(s, "```") {
-		lines := strings.Split(s, "\n")
-		if len(lines) > 1 {
-			endIdx := len(lines)
-			if strings.HasPrefix(strings.TrimSpace(lines[len(lines)-1]), "```") {
-				endIdx = len(lines) - 1
-			}
-			s = strings.TrimSpace(strings.Join(lines[1:endIdx], "\n"))
-		}
-	}
-	if len(s) >= 2 && strings.HasPrefix(s, "`") && strings.HasSuffix(s, "`") && !strings.HasPrefix(s, "``") {
-		s = s[1 : len(s)-1]
-	}
-	if len(s) >= 2 && ((strings.HasPrefix(s, "\"") && strings.HasSuffix(s, "\"")) || (strings.HasPrefix(s, "'") && strings.HasSuffix(s, "'"))) {
-		inner := s[1 : len(s)-1]
-		if !strings.ContainsAny(inner, "\"'") {
-			s = inner
-		}
-	}
-	return strings.TrimSpace(s)
 }

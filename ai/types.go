@@ -50,6 +50,22 @@ func (e EnvSnapshot) Hash() string {
 	return hex.EncodeToString(sum[:8])
 }
 
+type ContextProvider interface {
+	Name() string
+	Matches(buf string) bool
+	Gather(ctx context.Context) (string, error)
+}
+
+type Client interface {
+	Suggest(ctx context.Context, buf string, env EnvSnapshot, dynamicCtx string) (*spec.Suggestion, error)
+}
+
 type Suggester interface {
 	Suggest(ctx context.Context, buf string, env EnvSnapshot, dynamicCtx string) (*spec.Suggestion, error)
 }
+
+type ContextSuggester interface {
+	SuggestOnEmpty(ctx context.Context, env EnvSnapshot) (*spec.Suggestion, error)
+}
+
+type AIHandler func(ctx context.Context, buf string, env EnvSnapshot, dynamicCtx string) (*spec.Suggestion, error)

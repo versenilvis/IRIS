@@ -98,8 +98,8 @@ func TestValidationAndEnvironmentOverrides(t *testing.T) {
 	defer func() { _ = os.Unsetenv("XDG_CONFIG_HOME") }()
 
 	configDir := filepath.Join(tmpDir, "iris")
-	if err := os.MkdirAll(configDir, 0755); err != nil {
-		t.Fatalf("failed to create config dir: %v", err)
+	if mkErr := os.MkdirAll(configDir, 0755); mkErr != nil {
+		t.Fatalf("failed to create config dir: %v", mkErr)
 	}
 	configPath := filepath.Join(configDir, "config.toml")
 	tomlContent := `
@@ -113,8 +113,8 @@ endpoint = "https://api.groq.com/openai/v1"
 api_key_env = "GROQ_API_KEY"
 model = "qwen-2.5-coder-32b"
 `
-	if err := os.WriteFile(configPath, []byte(tomlContent), 0644); err != nil {
-		t.Fatalf("failed to write config file: %v", err)
+	if wrErr := os.WriteFile(configPath, []byte(tomlContent), 0644); wrErr != nil {
+		t.Fatalf("failed to write config file: %v", wrErr)
 	}
 
 	_ = os.Setenv("IRIS_CORE_DEBUG", "true")

@@ -2,14 +2,11 @@ package ai
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/versenilvis/iris/config"
 	"github.com/versenilvis/iris/spec"
 )
-
-type AIHandler func(ctx context.Context, buf string, env EnvSnapshot, dynamicCtx string) (*spec.Suggestion, error)
 
 type AIEngine struct {
 	handler   AIHandler
@@ -66,40 +63,6 @@ func (e *AIEngine) Suggest(ctx context.Context, buf string, env EnvSnapshot, dyn
 		sugg.Cmd = NormalizeSuggestion(buf, sugg.Cmd)
 	}
 	return sugg, nil
-}
-
-func NormalizeSuggestion(buf string, suggCmd string) string {
-	suggCmd = CleanSuggestion(suggCmd)
-
-	if strings.Contains(buf, "-m \"") || strings.Contains(buf, "-am \"") || strings.Contains(buf, "--message \"") {
-		if !strings.HasPrefix(strings.ToLower(suggCmd), strings.ToLower(buf)) {
-			for _, flag := range []string{"-m ", "-am ", "--message "} {
-				idx := strings.Index(suggCmd, flag)
-				if idx != -1 {
-					afterFlag := suggCmd[idx+len(flag):]
-					if !strings.HasPrefix(afterFlag, "\"") && !strings.HasPrefix(afterFlag, "'") {
-						suggCmd = suggCmd[:idx+len(flag)] + "\"" + afterFlag + "\""
-						break
-					}
-				}
-			}
-		}
-	}
-
-	return suggCmd
-}
-
-func ShouldOverwrite(originalBuf string, currentBuf string, newSugg *spec.Suggestion, currentConfidence int) bool {
-	if newSugg == nil {
-		return false
-	}
-	if !strings.HasPrefix(currentBuf, originalBuf) {
-		return false
-	}
-	if !strings.HasPrefix(strings.ToLower(newSugg.Cmd), strings.ToLower(currentBuf)) {
-		return false
-	}
-	return newSugg.Confidence > currentConfidence
 }
 
 func defaultAIHandler(ctx context.Context, buf string, env EnvSnapshot, dynamicCtx string) (*spec.Suggestion, error) {

@@ -1,4 +1,4 @@
-package integration_test
+package tests
 
 import (
 	"strings"

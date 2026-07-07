@@ -1,74 +1,14 @@
 package ai
 
 import (
-	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sort"
 	"strings"
-	"sync"
 	"time"
 )
-
-type ContextProvider interface {
-	Name() string
-	Matches(buf string) bool
-	Gather(ctx context.Context) (string, error)
-}
-
-type cacheEntry struct {
-	data       string
-	expireTime time.Time
-}
-
-type ProviderCache struct {
-	mu      sync.Mutex
-	entries map[string]cacheEntry
-	ttl     time.Duration
-}
-
-func NewProviderCache(ttl time.Duration) *ProviderCache {
-	if ttl == 0 {
-		ttl = 4 * time.Second
-	}
-	return &ProviderCache{
-		entries: make(map[string]cacheEntry),
-		ttl:     ttl,
-	}
-}
-
-func (c *ProviderCache) GetOrGather(ctx context.Context, p ContextProvider) string {
-	c.mu.Lock()
-	entry, ok := c.entries[p.Name()]
-	if ok && time.Now().Before(entry.expireTime) {
-		c.mu.Unlock()
-		return entry.data
-	}
-	c.mu.Unlock()
-
-	data, err := p.Gather(ctx)
-	if err != nil || ctx.Err() != nil {
-		return ""
-	}
-
-	c.mu.Lock()
-	c.entries[p.Name()] = cacheEntry{
-		data:       data,
-		expireTime: time.Now().Add(c.ttl),
-	}
-	c.mu.Unlock()
-	return data
-}
-
-func (c *ProviderCache) Clear() {
-	c.mu.Lock()
-	c.entries = make(map[string]cacheEntry)
-	c.mu.Unlock()
-}
 
 type CommandContextProvider struct {
 	NameStr   string
@@ -105,21 +45,6 @@ func (p *CommandContextProvider) Gather(ctx context.Context) (string, error) {
 	return "", nil
 }
 
-var DefaultProviders = []*CommandContextProvider{
-	{NameStr: "docker_exec", Prefixes: []string{"docker exec", "docker logs", "docker stop", "docker restart", "docker rm"},
-		GatherCmd: []string{"docker", "ps", "--format", "{{.Names}}\t{{.Image}}"}, Label: "Running containers"},
-	{NameStr: "docker_compose", Prefixes: []string{"docker compose exec", "docker compose logs", "docker-compose exec", "docker-compose logs"},
-		GatherCmd: []string{"docker", "compose", "ps", "--format", "{{.Name}}\t{{.Service}}"}, Label: "Compose services"},
-	{NameStr: "kubectl_pods", Prefixes: []string{"kubectl exec", "kubectl logs", "kubectl describe pod", "kubectl delete pod"},
-		GatherCmd: []string{"kubectl", "get", "pods", "--no-headers"}, Label: "Pods"},
-	{NameStr: "git_branch", Prefixes: []string{"git checkout", "git switch", "git merge", "git rebase", "git branch -d", "git branch -D"},
-		GatherCmd: []string{"git", "branch", "-a", "--format=%(refname:short)"}, Label: "Branches"},
-	{NameStr: "kill_proc", Prefixes: []string{"kill ", "kill -9 "},
-		GatherCmd: []string{"ps", "-eo", "pid,comm,%cpu,%mem", "--sort=-%cpu"}, Label: "Top processes"},
-	{NameStr: "systemctl", Prefixes: []string{"systemctl restart", "systemctl stop", "systemctl status"},
-		GatherCmd: []string{"systemctl", "list-units", "--type=service", "--no-legend"}, Label: "Services"},
-}
-
 type universalProvider struct {
 	cwd string
 	buf string
@@ -143,57 +68,7 @@ func (p *universalProvider) Gather(ctx context.Context) (string, error) {
 
 	var sb strings.Builder
 
-	appendScriptsAndTargets := func(dir string, prefix string) {
-		if data, err := os.ReadFile(filepath.Join(dir, "package.json")); err == nil {
-			var pkg struct {
-				Scripts map[string]string `json:"scripts"`
-			}
-			if err := json.Unmarshal(data, &pkg); err == nil && len(pkg.Scripts) > 0 {
-				var scriptNames []string
-				for name, cmd := range pkg.Scripts {
-					scriptNames = append(scriptNames, fmt.Sprintf("%s: %s", name, cmd))
-				}
-				sort.Strings(scriptNames)
-				if len(scriptNames) > 20 {
-					scriptNames = append(scriptNames[:20], "... (truncated)")
-				}
-				label := "package.json"
-				if prefix != "" {
-					label = prefix + "/package.json"
-				}
-				sb.WriteString(fmt.Sprintf("Available %s scripts:\n%s\n\n", label, strings.Join(scriptNames, "\n")))
-			}
-		}
-		if file, err := os.Open(filepath.Join(dir, "Makefile")); err == nil {
-			defer func() { _ = file.Close() }()
-			var targets []string
-			seen := make(map[string]bool)
-			scanner := bufio.NewScanner(file)
-			for scanner.Scan() {
-				line := scanner.Text()
-				if idx := strings.Index(line, ":"); idx > 0 && !strings.HasPrefix(line, "\t") && !strings.HasPrefix(line, " ") {
-					target := strings.TrimSpace(line[:idx])
-					if target != "" && target != ".PHONY" && !strings.Contains(target, " ") && !seen[target] && !strings.HasPrefix(target, ".") {
-						seen[target] = true
-						targets = append(targets, target)
-					}
-				}
-			}
-			if len(targets) > 0 {
-				sort.Strings(targets)
-				if len(targets) > 20 {
-					targets = append(targets[:20], "... (truncated)")
-				}
-				label := "Makefile"
-				if prefix != "" {
-					label = prefix + "/Makefile"
-				}
-				sb.WriteString(fmt.Sprintf("Available %s targets:\n%s\n\n", label, strings.Join(targets, ", ")))
-			}
-		}
-	}
-
-	appendScriptsAndTargets(p.cwd, "")
+	ExtractScriptsAndTargets(&sb, p.cwd, "")
 
 	if entries, err := os.ReadDir(p.cwd); err == nil {
 		var names []string
@@ -206,13 +81,13 @@ func (p *universalProvider) Gather(ctx context.Context) (string, error) {
 			if e.IsDir() {
 				name += "/"
 				if !strings.HasPrefix(e.Name(), ".") && e.Name() != "node_modules" && i < 15 {
-					appendScriptsAndTargets(filepath.Join(p.cwd, e.Name()), e.Name())
+					ExtractScriptsAndTargets(&sb, filepath.Join(p.cwd, e.Name()), e.Name())
 				}
 			}
 			names = append(names, name)
 		}
 		if len(names) > 0 {
-			sb.WriteString(fmt.Sprintf("Files in Cwd: %s\n\n", strings.Join(names, ", ")))
+			fmt.Fprintf(&sb, "Files in Cwd: %s\n\n", strings.Join(names, ", "))
 		}
 	}
 
@@ -235,13 +110,13 @@ func (p *universalProvider) Gather(ctx context.Context) (string, error) {
 
 		sb.WriteString("Git Repository State:\n")
 		if statusStr != "" {
-			sb.WriteString(fmt.Sprintf("Status:\n%s\n\n", statusStr))
+			fmt.Fprintf(&sb, "Status:\n%s\n\n", statusStr)
 		}
 		if diffStr != "" {
-			sb.WriteString(fmt.Sprintf("Staged Diff:\n%s\n\n", diffStr))
+			fmt.Fprintf(&sb, "Staged Diff:\n%s\n\n", diffStr)
 		}
 		if logStr != "" {
-			sb.WriteString(fmt.Sprintf("User's recent commit messages (MUST follow this exact style, formatting, language, and casing conventions):\n%s\n", logStr))
+			fmt.Fprintf(&sb, "User's recent commit messages (MUST follow this exact style, formatting, language, and casing conventions):\n%s\n", logStr)
 		}
 	}
 
@@ -255,7 +130,7 @@ func (p *universalProvider) Gather(ctx context.Context) (string, error) {
 				helpStr = helpStr[:1200]
 			}
 			if helpStr != "" {
-				sb.WriteString(fmt.Sprintf("\nCommand help (%s --help):\n%s\n", fields[0], helpStr))
+				fmt.Fprintf(&sb, "\nCommand help (%s --help):\n%s\n", fields[0], helpStr)
 			}
 		}
 	}
