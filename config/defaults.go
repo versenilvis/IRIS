@@ -27,9 +27,11 @@ func DefaultConfig() *Config {
 			CheckInterval:  Duration(24 * time.Hour),
 		},
 		AI: AIConfig{
-			Enabled:  false,
-			Provider: "",
-			Providers: nil,
+			Enabled:       false,
+			Provider:      "",
+			DebounceMS:    500,
+			MinIntervalMS: 3000,
+			Providers:     nil,
 			SuggestOnEmpty: SuggestOnEmptyConfig{
 				Enabled:       false,
 				DebounceMS:    800,
