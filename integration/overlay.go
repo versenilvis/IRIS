@@ -265,6 +265,9 @@ func (o *Overlay) InjectAISuggestion(sugg spec.Suggestion) bool {
 	if o.TypedQuery == "" {
 		return false
 	}
+	if o.UserNavigated {
+		return false
+	}
 
 	var currentConf int
 	if len(o.Items) > 0 {
@@ -288,6 +291,9 @@ func (o *Overlay) InjectAISuggestion(sugg spec.Suggestion) bool {
 	if len(o.Items) == 0 {
 		o.Items = []spec.Suggestion{sugg}
 	} else if strings.EqualFold(o.Items[0].Cmd, sugg.Cmd) {
+		if o.Visible && o.Items[0].Confidence == sugg.Confidence {
+			return false
+		}
 		o.Items[0] = sugg
 	} else {
 		o.Items = append([]spec.Suggestion{sugg}, o.Items...)
@@ -787,6 +793,44 @@ func (o *Overlay) Clear() string {
 
 	var s strings.Builder
 	s.WriteString("\033[?7l")
+	s.WriteString("\0337")
+
+	for i := range maxItems + 2 {
+		s.WriteString("\0338")
+		fmt.Fprintf(&s, "\033[%dB", i+1)
+		s.WriteString("\r\033[2K")
+	}
+
+	s.WriteString("\0338")
+	s.WriteString("\033[?7h")
+	return s.String()
+}
+
+func (o *Overlay) HideMenu(query string) string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+
+	o.TypedQuery = query
+	if !o.Visible && len(o.Items) == 0 && o.LastGhostLen == 0 {
+		return ""
+	}
+
+	o.Visible = false
+	o.Items = nil
+	o.UserNavigated = false
+	o.Cursor = 0
+	o.StartIdx = 0
+
+	var s strings.Builder
+	s.WriteString("\033[?7l")
+
+	if o.LastGhostLen > 0 {
+		s.WriteString("\0337")
+		s.WriteString(strings.Repeat(" ", o.LastGhostLen+10))
+		s.WriteString("\0338")
+		o.LastGhostLen = 0
+	}
+
 	s.WriteString("\0337")
 
 	for i := range maxItems + 2 {

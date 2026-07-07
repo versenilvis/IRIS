@@ -105,3 +105,25 @@ func TestGhostText_Truncation(t *testing.T) {
 		t.Fatalf("Expected truncated ghost text with '…', got %q", out)
 	}
 }
+
+func TestHideMenu_PreservesTypedQueryForAI(t *testing.T) {
+	o := integration.NewOverlay()
+	o.HideMenu("git commit")
+
+	if o.GetTypedQuery() != "git commit" {
+		t.Fatalf("Expected TypedQuery to be preserved as 'git commit', got %q", o.GetTypedQuery())
+	}
+
+	aiSugg := spec.Suggestion{
+		Cmd:        "git commit -m 'fix: test'",
+		Desc:       "AI suggestion",
+		Source:     "ai",
+		Confidence: 85,
+	}
+	if !o.InjectAISuggestion(aiSugg) {
+		t.Fatalf("Expected InjectAISuggestion to succeed after HideMenu")
+	}
+	if !o.IsVisible() || len(o.Items) == 0 || o.Items[0].Cmd != aiSugg.Cmd {
+		t.Fatalf("Expected AI suggestion to be injected into Items[0] and Visible=true")
+	}
+}
