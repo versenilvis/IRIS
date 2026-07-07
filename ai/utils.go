@@ -106,6 +106,7 @@ func ExtractScriptsAndTargets(sb *strings.Builder, dir string, prefix string) {
 				}
 			}
 		}
+		_ = scanner.Err()
 		if len(targets) > 0 {
 			sort.Strings(targets)
 			if len(targets) > 20 {
