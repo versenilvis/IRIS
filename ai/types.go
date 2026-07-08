@@ -45,8 +45,26 @@ func NewEnvSnapshot(cwd string, lastCmd string, lastExitCode int, recentCmds []s
 }
 
 func (e EnvSnapshot) Hash() string {
-	raw := e.Cwd + "|" + e.LastCmd + "|" + strconv.Itoa(e.LastExitCode) + "|" + e.GitStatus + "|" + e.DirSignature + "|" + strings.Join(e.RecentCmds, ";") + "|" + strconv.FormatBool(e.GitMergeInProgress) + "|" + strconv.FormatBool(e.GitRebaseInProgress)
-	sum := sha256.Sum256([]byte(raw))
+	// Use length-prefixed encoding for each field to prevent hash collisions when values contain delimiter characters
+	var sb strings.Builder
+	enc := func(s string) {
+		sb.WriteString(strconv.Itoa(len(s)))
+		sb.WriteByte(':')
+		sb.WriteString(s)
+	}
+	enc(e.Cwd)
+	enc(e.LastCmd)
+	enc(strconv.Itoa(e.LastExitCode))
+	enc(e.GitStatus)
+	enc(e.DirSignature)
+	enc(strconv.Itoa(len(e.RecentCmds)))
+	for _, cmd := range e.RecentCmds {
+		enc(cmd)
+	}
+	enc(strconv.FormatBool(e.GitMergeInProgress))
+	enc(strconv.FormatBool(e.GitRebaseInProgress))
+
+	sum := sha256.Sum256([]byte(sb.String()))
 	return hex.EncodeToString(sum[:8])
 }
 

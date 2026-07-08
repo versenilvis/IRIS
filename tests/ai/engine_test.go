@@ -31,6 +31,13 @@ func TestEnvSnapshot_Hash(t *testing.T) {
 	if snap1.Hash() == snap2.Hash() {
 		t.Fatalf("expected different hash when field changes")
 	}
+
+	// Verify that fields containing delimiter characters do not collide
+	snapA := ai.EnvSnapshot{Cwd: "/home/user", LastCmd: "foo|bar"}
+	snapB := ai.EnvSnapshot{Cwd: "/home/user|foo", LastCmd: "bar"}
+	if snapA.Hash() == snapB.Hash() {
+		t.Fatalf("expected different hash for distinct snapshots containing delimiter characters")
+	}
 }
 
 func TestAIEngine_Suggest_Success(t *testing.T) {
