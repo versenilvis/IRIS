@@ -3,6 +3,7 @@ package tests
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -109,4 +110,25 @@ func TestProviderCache_Eviction(t *testing.T) {
 		gatherRet: "data",
 	}
 	cache.GetOrGather(ctx, pNext)
+}
+
+// Verify that CommandContextProvider caps gathered output to 1000 characters to protect token budget
+func TestCommandContextProvider_Truncation(t *testing.T) {
+	provider := &ai.CommandContextProvider{
+		NameStr:   "test-trunc",
+		Prefixes:  []string{"echo"},
+		GatherCmd: []string{"go", "env"},
+		Label:     "GoEnv",
+	}
+	ctx := context.Background()
+	res, err := provider.Gather(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(res, "GoEnv:\n") {
+		t.Fatalf("expected label prefix, got: %q", res)
+	}
+	if len(res) > 1100 {
+		t.Fatalf("expected gathered output to be truncated around 1000 characters, got len: %d", len(res))
+	}
 }
