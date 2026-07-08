@@ -76,7 +76,9 @@ func init() {
 					}
 				}
 			}
-			_ = scanner.Err()
+			if err := scanner.Err(); err != nil {
+				return nil
+			}
 			return suggestions
 		},
 	})
