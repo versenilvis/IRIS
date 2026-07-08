@@ -99,6 +99,10 @@ func ExtractScriptsAndTargets(sb *strings.Builder, dir string, prefix string) {
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
 			line := scanner.Text()
+			// Skip variable assignments because operators like := or colons in values trick the colon parser into misclassifying variables as build targets
+			if strings.Contains(line, "=") {
+				continue
+			}
 			if idx := strings.Index(line, ":"); idx > 0 && !strings.HasPrefix(line, "\t") && !strings.HasPrefix(line, " ") {
 				target := strings.TrimSpace(line[:idx])
 				if target != "" && target != ".PHONY" && !strings.Contains(target, " ") && !seen[target] && !strings.HasPrefix(target, ".") {
