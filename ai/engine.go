@@ -39,11 +39,19 @@ func NewAIEngine(h AIHandler) *AIEngine {
 }
 
 func (e *AIEngine) RegisterProvider(p ContextProvider) {
+	e.mu.Lock()
 	e.providers = append(e.providers, p)
+	e.mu.Unlock()
 }
 
 func (e *AIEngine) GatherDynamicContext(ctx context.Context, buf string, cwd string) string {
-	for _, p := range e.providers {
+	e.mu.Lock()
+	// Take a snapshot of providers under lock to allow safe concurrent registration without blocking long gathering tasks
+	providers := make([]ContextProvider, len(e.providers))
+	copy(providers, e.providers)
+	e.mu.Unlock()
+
+	for _, p := range providers {
 		if p.Matches(buf) {
 			return e.cache.GetOrGather(ctx, p)
 		}
