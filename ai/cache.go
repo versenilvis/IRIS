@@ -44,6 +44,17 @@ func (c *ProviderCache) GetOrGather(ctx context.Context, p ContextProvider) stri
 	}
 
 	c.mu.Lock()
+	if len(c.entries) >= 50 {
+		now := time.Now()
+		for k, v := range c.entries {
+			if now.After(v.expireTime) {
+				delete(c.entries, k)
+			}
+		}
+		if len(c.entries) >= 50 {
+			c.entries = make(map[string]cacheEntry)
+		}
+	}
 	c.entries[p.Name()] = cacheEntry{
 		data:       data,
 		expireTime: time.Now().Add(c.ttl),

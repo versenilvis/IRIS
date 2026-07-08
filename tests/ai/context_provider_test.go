@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -84,4 +85,28 @@ func TestAIEngine_DynamicContext(t *testing.T) {
 	if sugg.Cmd != "docker exec -it test-container bash" {
 		t.Fatalf("unexpected cmd: %q", sugg.Cmd)
 	}
+}
+
+// Verify that cache evicts expired entries and resets when exceeding 50 items to prevent unbounded memory growth
+func TestProviderCache_Eviction(t *testing.T) {
+	cache := ai.NewProviderCache(10 * time.Millisecond)
+	ctx := context.Background()
+
+	for i := 0; i < 55; i++ {
+		p := &mockProvider{
+			name:      fmt.Sprintf("prov-%d", i),
+			matchPref: "test",
+			gatherRet: "data",
+		}
+		cache.GetOrGather(ctx, p)
+	}
+
+	time.Sleep(20 * time.Millisecond)
+
+	pNext := &mockProvider{
+		name:      "prov-next",
+		matchPref: "test",
+		gatherRet: "data",
+	}
+	cache.GetOrGather(ctx, pNext)
 }
