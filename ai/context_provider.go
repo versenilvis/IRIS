@@ -40,6 +40,10 @@ func (p *CommandContextProvider) Gather(ctx context.Context) (string, error) {
 		return "", err
 	}
 	if s := strings.TrimSpace(string(out)); s != "" {
+		// Cap gathered command output to 1000 characters to keep prompt concise and avoid blowing up token budget
+		if len(s) > 1000 {
+			s = s[:1000] + "\n... (truncated)"
+		}
 		return p.Label + ":\n" + s, nil
 	}
 	return "", nil
