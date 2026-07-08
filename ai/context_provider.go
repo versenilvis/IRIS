@@ -45,14 +45,20 @@ func (p *CommandContextProvider) Gather(ctx context.Context) (string, error) {
 	return "", nil
 }
 
-var safeHelpCommands = map[string]bool{
-	"git": true, "docker": true, "kubectl": true, "cargo": true, "go": true,
-	"npm": true, "yarn": true, "pnpm": true, "bun": true, "just": true, "make": true,
-	"pip": true, "python": true, "python3": true, "node": true, "deno": true,
-	"tar": true, "zip": true, "unzip": true, "curl": true, "wget": true,
-	"ssh": true, "scp": true, "rsync": true, "podman": true, "terraform": true,
-	"tofu": true, "ansible": true, "helm": true, "gh": true, "aws": true,
-	"gcloud": true, "az": true, "nix": true,
+var allowedHelpCommands = map[string]bool{
+	"git": true, "docker": true, "kubectl": true, "npm": true, "yarn": true,
+	"pnpm": true, "cargo": true, "go": true, "systemctl": true, "helm": true,
+	"terraform": true, "aws": true, "gcloud": true, "az": true, "make": true,
+	"bun": true, "pip": true, "python": true, "python3": true, "node": true,
+	"deno": true, "tar": true, "curl": true, "wget": true, "ssh": true,
+	"podman": true, "tofu": true, "ansible": true, "gh": true, "nix": true,
+}
+
+func isAllowedForHelp(cmdName string) bool {
+	if strings.ContainsAny(cmdName, "/\\") {
+		return false
+	}
+	return allowedHelpCommands[cmdName]
 }
 
 type universalProvider struct {
@@ -131,19 +137,18 @@ func (p *universalProvider) Gather(ctx context.Context) (string, error) {
 	}
 
 	if fields := strings.Fields(p.buf); len(fields) > 0 {
-		cmdName := filepath.Base(fields[0])
-		// Restrict automatic --help execution to a hardcoded whitelist of known safe system commands without path separators to prevent arbitrary code execution
-		if safeHelpCommands[cmdName] && !strings.ContainsAny(fields[0], "/\\") {
+		cmdName := fields[0]
+		if isAllowedForHelp(cmdName) {
 			ctxHelp, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
 			defer cancel()
-			helpOut, err := exec.CommandContext(ctxHelp, fields[0], "--help").CombinedOutput()
+			helpOut, err := exec.CommandContext(ctxHelp, cmdName, "--help").CombinedOutput()
 			if err == nil {
 				helpStr := strings.TrimSpace(string(helpOut))
 				if len(helpStr) > 600 {
 					helpStr = helpStr[:600]
 				}
 				if helpStr != "" {
-					fmt.Fprintf(&sb, "\nCommand help (%s --help):\n%s\n", fields[0], helpStr)
+					fmt.Fprintf(&sb, "\nCommand help (%s --help):\n%s\n", cmdName, helpStr)
 				}
 			}
 		}
