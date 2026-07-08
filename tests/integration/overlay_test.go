@@ -11,22 +11,22 @@ import (
 func TestRenderGhostText_CursorAtEnd(t *testing.T) {
 	o := integration.NewOverlay()
 	items := []spec.Suggestion{
-		{Cmd: "git commit -m 'test'"},
+		{Cmd: "git checkout -b feature"},
 	}
 	o.UpdateItems(items)
 
 	// case 1: cursor at end of buffer -> should render ghost text suffix
-	out := o.RenderGhostText("git c", false, true)
-	if !strings.Contains(out, "ommit -m 'test'") {
-		t.Fatalf("Expected ghost text suffix 'ommit -m \"test\"', got: %q", out)
+	out := o.RenderGhostText("git check", false, true)
+	if !strings.Contains(out, "out -b feature") {
+		t.Fatalf("Expected ghost text suffix 'out -b feature', got: %q", out)
 	}
 	if o.LastGhostLen == 0 {
 		t.Fatalf("Expected LastGhostLen > 0, got %d", o.LastGhostLen)
 	}
 
 	// case 2: cursor moved left (cursorAtEnd == false) -> should clear ghost text
-	outClear := o.RenderGhostText("git c", false, false)
-	if strings.Contains(outClear, "ommit -m 'test'") {
+	outClear := o.RenderGhostText("git check", false, false)
+	if strings.Contains(outClear, "out -b feature") {
 		t.Fatalf("Expected ghost text to be hidden/cleared when cursor moved left, got: %q", outClear)
 	}
 	if o.LastGhostLen != 0 {
@@ -65,27 +65,27 @@ func TestGetGhostText(t *testing.T) {
 func TestGhostText_MenuSync(t *testing.T) {
 	o := integration.NewOverlay()
 	items := []spec.Suggestion{
-		{Cmd: "git commit -m 'first'"},
+		{Cmd: "git checkout -b first"},
 		{Cmd: "git checkout master"},
 	}
 	o.UpdateItems(items)
 
 	// default item 0
-	ghost0 := o.GetGhostText("git c", true)
-	if ghost0 != "ommit -m 'first'" {
-		t.Fatalf("Expected 'ommit -m 'first'', got %q", ghost0)
+	ghost0 := o.GetGhostText("git check", true)
+	if ghost0 != "out -b first" {
+		t.Fatalf("Expected 'out -b first', got %q", ghost0)
 	}
 
 	// move cursor down to item 1
 	o.MoveCursor("down")
-	ghost1 := o.GetGhostText("git c", true)
-	if ghost1 != "heckout master" {
-		t.Fatalf("Expected 'heckout master', got %q", ghost1)
+	ghost1 := o.GetGhostText("git check", true)
+	if ghost1 != "out master" {
+		t.Fatalf("Expected 'out master', got %q", ghost1)
 	}
 
-	out := o.RenderGhostText("git c", true, true)
-	if !strings.Contains(out, "heckout master") {
-		t.Fatalf("Expected RenderGhostText to render 'heckout master', got %q", out)
+	out := o.RenderGhostText("git check", true, true)
+	if !strings.Contains(out, "out master") {
+		t.Fatalf("Expected RenderGhostText to render 'out master', got %q", out)
 	}
 }
 
