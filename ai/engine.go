@@ -134,6 +134,9 @@ func (e *AIEngine) Suggest(ctx context.Context, buf string, env EnvSnapshot, dyn
 			time:  time.Now(),
 		}
 		e.mu.Unlock()
+		// Return a copy of the suggestion to prevent caller mutations from corrupting the cache
+		cached := *sugg
+		return &cached, nil
 	}
 	return sugg, nil
 }
