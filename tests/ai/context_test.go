@@ -2,6 +2,9 @@ package tests
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -97,5 +100,23 @@ func TestEmptyLinePredictor_TwoTier(t *testing.T) {
 	sugg3, _ := predictor.Predict(ctx, env2, true)
 	if sugg3 == nil || sugg3.Cmd != "ai-suggested-cmd" || atomic.LoadInt32(&mockAI.calls) != 1 {
 		t.Fatalf("expected cached ai result and 1 ai call (no increment), got calls: %d", mockAI.calls)
+	}
+}
+
+// Verify that Makefile target extraction ignores variable assignments containing operators like := or colons in values
+func TestExtractScriptsAndTargets_Makefile(t *testing.T) {
+	tmp := t.TempDir()
+	content := []byte("CFLAGS := -O2\nPREFIX ?= /usr/local\nPATH = /bin:/usr/bin\nall: build\nbuild:\n\techo build\n")
+	_ = os.WriteFile(filepath.Join(tmp, "Makefile"), content, 0644)
+
+	var sb strings.Builder
+	ai.ExtractScriptsAndTargets(&sb, tmp, "")
+	res := sb.String()
+
+	if !strings.Contains(res, "build") || !strings.Contains(res, "all") {
+		t.Fatalf("expected real targets build and all in result, got: %q", res)
+	}
+	if strings.Contains(res, "CFLAGS") || strings.Contains(res, "PREFIX") || strings.Contains(res, "PATH") {
+		t.Fatalf("expected variable assignments CFLAGS, PREFIX, PATH to be skipped, got: %q", res)
 	}
 }
