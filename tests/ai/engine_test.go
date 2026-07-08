@@ -113,3 +113,28 @@ func TestShouldOverwrite(t *testing.T) {
 		t.Fatalf("expected false when new confidence is lower")
 	}
 }
+
+// Verify that caller mutations on returned fresh suggestions do not corrupt the internal engine cache
+func TestAIEngine_Suggest_Immutability(t *testing.T) {
+	engine := ai.NewAIEngine(func(ctx context.Context, buf string, env ai.EnvSnapshot, dynamicCtx string) (*spec.Suggestion, error) {
+		return &spec.Suggestion{Cmd: "echo original", Confidence: 90}, nil
+	})
+	ctx := context.Background()
+
+	sugg1, err := engine.Suggest(ctx, "echo ", ai.EnvSnapshot{}, "")
+	if err != nil || sugg1 == nil {
+		t.Fatalf("expected suggestion, got err: %v, sugg: %v", err, sugg1)
+	}
+
+	// Mutate returned suggestion
+	sugg1.Cmd = "echo corrupted"
+
+	// Fetch from cache via prefix match
+	sugg2, err := engine.Suggest(ctx, "echo ", ai.EnvSnapshot{}, "")
+	if err != nil || sugg2 == nil {
+		t.Fatalf("expected cached suggestion, got err: %v, sugg: %v", err, sugg2)
+	}
+	if sugg2.Cmd != "echo original" {
+		t.Fatalf("expected cache to remain 'echo original', got corrupted cmd: %q", sugg2.Cmd)
+	}
+}
