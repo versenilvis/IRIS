@@ -430,6 +430,7 @@ func runWrapper() {
 				ctx, cancel := context.WithCancel(context.Background())
 				aiCancel = cancel
 				aiMu.Unlock()
+				defer cancel()
 
 				cwd := spec.GetCWD()
 				var recentCmds []string
