@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -131,4 +132,32 @@ func TestCommandContextProvider_Truncation(t *testing.T) {
 	if len(res) > 1100 {
 		t.Fatalf("expected gathered output to be truncated around 1000 characters, got len: %d", len(res))
 	}
+}
+
+// Verify that concurrent provider registration and context gathering do not cause data races
+func TestAIEngine_ConcurrentRegistrationAndGather(t *testing.T) {
+	engine := ai.NewAIEngine(nil)
+	ctx := context.Background()
+	var wg sync.WaitGroup
+
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			p := &mockProvider{
+				name:      fmt.Sprintf("conc-prov-%d", idx),
+				matchPref: "docker",
+				gatherRet: "conc-data",
+			}
+			engine.RegisterProvider(p)
+		}(i)
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			engine.GatherDynamicContext(ctx, "docker ps", "/tmp")
+		}()
+	}
+
+	wg.Wait()
 }
