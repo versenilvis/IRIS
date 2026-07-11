@@ -3,6 +3,7 @@ package runner
 import (
 	"bufio"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -15,10 +16,11 @@ func init() {
 		Description: "command runner",
 		MaxArgs:     1,
 		Generator: func(tokens []string, prefix string, partial string) []spec.Suggestion {
-			file, err := os.Open("justfile")
+			cwd := spec.GetCWD()
+			file, err := os.Open(filepath.Join(cwd, "justfile"))
 			if err != nil {
 				// try uppercase
-				file, err = os.Open("Justfile")
+				file, err = os.Open(filepath.Join(cwd, "Justfile"))
 				if err != nil {
 					return nil
 				}
@@ -73,6 +75,9 @@ func init() {
 						lastComment = ""
 					}
 				}
+			}
+			if err := scanner.Err(); err != nil {
+				return nil
 			}
 			return suggestions
 		},

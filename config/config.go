@@ -57,11 +57,55 @@ type UpdaterConfig struct {
 	CheckInterval  Duration `toml:"check-interval"`
 }
 
+type SuggestOnEmptyConfig struct {
+	Enabled       bool `toml:"enabled"`
+	DebounceMS    int  `toml:"debounce_ms"`
+	MinIntervalMS int  `toml:"min_interval_ms"`
+}
+
+type ProviderConfig struct {
+	InheritedFrom    string         `toml:"inherited_from"`
+	Endpoint         string         `toml:"endpoint"`
+	APIKey           string         `toml:"api_key"`
+	APIKeyEnv        string         `toml:"api_key_env"`
+	Model            string         `toml:"model"`
+	TimeoutMS        int            `toml:"timeout_ms"`
+	ExtraRequestBody map[string]any `toml:"extra_request_body"`
+}
+
+type AIConfig struct {
+	Enabled        bool                      `toml:"enabled"`
+	Provider       string                    `toml:"provider"`
+	DebounceMS     int                       `toml:"debounce_ms"`
+	MinIntervalMS  int                       `toml:"min_interval_ms"`
+	Providers      map[string]ProviderConfig `toml:"providers"`
+	SuggestOnEmpty SuggestOnEmptyConfig      `toml:"suggest_on_empty"`
+}
+
+func (c *AIConfig) GetActiveProvider() (ProviderConfig, bool) {
+	if c.Providers == nil {
+		return ProviderConfig{}, false
+	}
+	p, ok := c.Providers[c.Provider]
+	return p, ok
+}
+
+func (p *ProviderConfig) GetAPIKey() string {
+	if p.APIKey != "" {
+		return p.APIKey
+	}
+	if p.APIKeyEnv != "" {
+		return os.Getenv(p.APIKeyEnv)
+	}
+	return ""
+}
+
 type Config struct {
 	Core    CoreConfig    `toml:"core"`
 	UI      UIConfig      `toml:"ui"`
 	Git     GitConfig     `toml:"git"`
 	Updater UpdaterConfig `toml:"updater"`
+	AI      AIConfig      `toml:"ai"`
 }
 
 var (

@@ -258,6 +258,55 @@ func (o *Overlay) SetQueryAndItems(query string, items []spec.Suggestion) {
 	o.StartIdx = 0
 }
 
+func (o *Overlay) InjectAISuggestion(sugg spec.Suggestion) bool {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+
+	if o.TypedQuery == "" {
+		return false
+	}
+	if o.UserNavigated {
+		return false
+	}
+
+	var currentConf int
+	if len(o.Items) > 0 {
+		currentConf = o.Items[0].Confidence
+		if currentConf == 0 {
+			if o.Items[0].Source == "history" {
+				currentConf = 70
+			} else {
+				currentConf = 50
+			}
+		}
+	}
+
+	if !strings.HasPrefix(strings.ToLower(sugg.Cmd), strings.ToLower(o.TypedQuery)) {
+		return false
+	}
+	if sugg.Confidence <= currentConf && len(o.Items) > 0 {
+		return false
+	}
+
+	if len(o.Items) == 0 {
+		o.Items = []spec.Suggestion{sugg}
+	} else if strings.EqualFold(o.Items[0].Cmd, sugg.Cmd) {
+		if o.Visible && o.Items[0].Confidence == sugg.Confidence {
+			return false
+		}
+		o.Items[0] = sugg
+	} else {
+		o.Items = append([]spec.Suggestion{sugg}, o.Items...)
+		if len(o.Items) > 100 {
+			o.Items = o.Items[:100]
+		}
+	}
+	o.Visible = true
+	o.Cursor = 0
+	o.StartIdx = 0
+	return true
+}
+
 func (o *Overlay) ClearGhostLen() int {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -339,20 +388,89 @@ func fixedWidth(s string, width int) string {
 	return sb.String()
 }
 
-func (o *Overlay) RenderGhostText(buffer string, userNavigated bool) string {
+func truncateToWidth(s string, maxW int) string {
+	if maxW <= 0 {
+		return ""
+	}
+	if lipgloss.Width(s) <= maxW {
+		return s
+	}
+	if maxW == 1 {
+		return "…"
+	}
+	var sb strings.Builder
+	w := 0
+	for _, r := range s {
+		rw := lipgloss.Width(string(r))
+		if w+rw > maxW-1 { // leave 1 column for '…'
+			break
+		}
+		sb.WriteRune(r)
+		w += rw
+	}
+	sb.WriteRune('…')
+	return sb.String()
+}
+
+func (o *Overlay) GetGhostText(buffer string, cursorAtEnd bool) string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+
+	if !o.Visible || len(o.Items) == 0 || !cursorAtEnd || buffer == "" {
+		return ""
+	}
+
+	var topCmd string
+	if o.Cursor >= 0 && o.Cursor < len(o.Items) {
+		topCmd = o.Items[o.Cursor].Cmd
+	} else {
+		topCmd = o.Items[0].Cmd
+	}
+
+	if strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(buffer)) {
+		return topCmd[len(buffer):]
+	}
+	return ""
+}
+
+func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd bool) string {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
 	if !o.Visible || len(o.Items) == 0 {
+		if o.LastGhostLen > 0 {
+			padLen := o.LastGhostLen + 4
+			o.LastGhostLen = 0
+			return "\0337" + strings.Repeat(" ", padLen) + "\0338"
+		}
 		return ""
 	}
 
 	var s strings.Builder
 	ghostText := ""
-	if !userNavigated && buffer != "" {
-		topCmd := o.Items[0].Cmd
+	if cursorAtEnd && buffer != "" {
+		var topCmd string
+		if o.Cursor >= 0 && o.Cursor < len(o.Items) {
+			topCmd = o.Items[o.Cursor].Cmd
+		} else {
+			topCmd = o.Items[0].Cmd
+		}
 		if strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(buffer)) {
 			ghostText = topCmd[len(buffer):]
+		}
+	}
+
+	if ghostText != "" {
+		width, _, err := term.GetSize(int(os.Stdout.Fd()))
+		if err != nil || width <= 0 {
+			width = 120
+		}
+		cursorCol := o.PromptLen + lipgloss.Width(buffer)
+		availableCols := width - cursorCol
+		if availableCols <= 0 {
+			ghostText = ""
+		} else if lipgloss.Width(ghostText) > availableCols {
+			ghostText = truncateToWidth(ghostText, availableCols)
 		}
 	}
 
@@ -674,6 +792,44 @@ func (o *Overlay) Clear() string {
 
 	var s strings.Builder
 	s.WriteString("\033[?7l")
+	s.WriteString("\0337")
+
+	for i := range maxItems + 2 {
+		s.WriteString("\0338")
+		fmt.Fprintf(&s, "\033[%dB", i+1)
+		s.WriteString("\r\033[2K")
+	}
+
+	s.WriteString("\0338")
+	s.WriteString("\033[?7h")
+	return s.String()
+}
+
+func (o *Overlay) HideMenu(query string) string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+
+	o.TypedQuery = query
+	if !o.Visible && len(o.Items) == 0 && o.LastGhostLen == 0 {
+		return ""
+	}
+
+	o.Visible = false
+	o.Items = nil
+	o.UserNavigated = false
+	o.Cursor = 0
+	o.StartIdx = 0
+
+	var s strings.Builder
+	s.WriteString("\033[?7l")
+
+	if o.LastGhostLen > 0 {
+		s.WriteString("\0337")
+		s.WriteString(strings.Repeat(" ", o.LastGhostLen+10))
+		s.WriteString("\0338")
+		o.LastGhostLen = 0
+	}
+
 	s.WriteString("\0337")
 
 	for i := range maxItems + 2 {

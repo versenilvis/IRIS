@@ -26,6 +26,18 @@ func DefaultConfig() *Config {
 			Channel:        "stable",
 			CheckInterval:  Duration(24 * time.Hour),
 		},
+		AI: AIConfig{
+			Enabled:       false,
+			Provider:      "",
+			DebounceMS:    500,
+			MinIntervalMS: 1000,
+			Providers:     nil,
+			SuggestOnEmpty: SuggestOnEmptyConfig{
+				Enabled:       false,
+				DebounceMS:    800,
+				MinIntervalMS: 5000,
+			},
+		},
 	}
 }
 

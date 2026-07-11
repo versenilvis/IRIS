@@ -17,11 +17,12 @@ import (
 	"time"
 
 	"github.com/creack/pty"
-	"github.com/versenilvis/iris/spec"
+	"github.com/versenilvis/iris/ai"
 	"github.com/versenilvis/iris/config"
 	"github.com/versenilvis/iris/integration"
 	"github.com/versenilvis/iris/integration/shell"
 	"github.com/versenilvis/iris/logger"
+	"github.com/versenilvis/iris/spec"
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 )
@@ -315,11 +316,13 @@ func runWrapper() {
 				cursorOffset = 0
 				bufferMu.Unlock()
 				writeStdout([]byte(overlay.ClearAndDisable()))
+				SetCurrentAISuggestion(nil)
 				continue
 			}
 
 			if query == "IRIS_CMD_STOP" {
 				isCommandActive.Store(false)
+				SetCurrentAISuggestion(nil)
 				// hook: after user executes a command, print the update notice exactly once per session
 				if !updatePrinted {
 					select {
@@ -348,6 +351,7 @@ func runWrapper() {
 				bufferMu.Unlock()
 				if !wasEmpty {
 					writeStdout([]byte(overlay.ClearAndDisable()))
+					SetCurrentAISuggestion(nil)
 				}
 				continue
 			}
@@ -377,6 +381,9 @@ func runWrapper() {
 
 	var renderTimer *time.Timer
 	var renderMu sync.Mutex
+	var aiTimer *time.Timer
+	var aiCancel context.CancelFunc
+	var aiMu sync.Mutex
 
 	renderMenuNow = func() {
 		if isExecuting() {
@@ -400,6 +407,56 @@ func runWrapper() {
 			bufCopy = string(runes[:len(runes)-offsetCopy])
 		}
 
+		aiMu.Lock()
+		if aiTimer != nil {
+			aiTimer.Stop()
+		}
+		if aiCancel != nil {
+			aiCancel()
+			aiCancel = nil
+		}
+		if config.Get().AI.Enabled && bufCopy != "" && !navCopy && offsetCopy == 0 {
+			queryTarget := bufCopy
+			debounceMS := config.Get().AI.DebounceMS
+			if debounceMS <= 0 {
+				debounceMS = 500
+			}
+			aiTimer = time.AfterFunc(time.Duration(debounceMS)*time.Millisecond, func() {
+				// Require at least 3 characters to trigger AI completion to save API quota and avoid 6000 TPM limit (Groq api docs)
+				if len(strings.TrimSpace(queryTarget)) < 3 {
+					return
+				}
+				aiMu.Lock()
+				ctx, cancel := context.WithCancel(context.Background())
+				aiCancel = cancel
+				aiMu.Unlock()
+				defer cancel()
+
+				cwd := spec.GetCWD()
+				var recentCmds []string
+				var lastCmd string
+				if hist, err := integration.SearchHistory("", nil); err == nil {
+					// Limit to 3 recent commands to keep prompt concise and reduce token consumption
+					for i := 0; i < len(hist) && i < 3; i++ {
+						recentCmds = append(recentCmds, hist[i].Cmd)
+					}
+					if len(recentCmds) > 0 {
+						lastCmd = recentCmds[0]
+					}
+				}
+				env := ai.NewEnvSnapshot(cwd, lastCmd, 0, recentCmds)
+				sugg, err := GetAIEngine().Suggest(ctx, queryTarget, env, "")
+				if err != nil || sugg == nil || ctx.Err() != nil {
+					return
+				}
+				SetCurrentAISuggestion(sugg)
+				if overlay.InjectAISuggestion(*sugg) {
+					renderOverlay()
+				}
+			})
+		}
+		aiMu.Unlock()
+
 		var b strings.Builder
 		if !navCopy {
 			if bufCopy == "" && !overlay.IsVisible() {
@@ -411,7 +468,7 @@ func runWrapper() {
 			logger.Debugf("Render results found: %d", len(results))
 
 			if len(results) == 0 || (len(results) == 1 && strings.TrimSpace(results[0].Cmd) == strings.TrimSpace(bufCopy) && !strings.HasSuffix(bufCopy, " ")) {
-				b.WriteString(overlay.ClearAndDisable())
+				b.WriteString(overlay.HideMenu(bufCopy))
 				writeStdout([]byte(b.String()))
 				return
 			}
@@ -428,7 +485,7 @@ func runWrapper() {
 
 		overlay.SetUserNavigated(navCopy)
 		if !disableGhostText.Load() {
-			b.WriteString(overlay.RenderGhostText(bufCopy, navCopy))
+			b.WriteString(overlay.RenderGhostText(bufCopy, navCopy, offsetCopy == 0))
 		}
 		currentCmd := overlay.GetCurrentCmd()
 		logger.Debugf("RenderOverlay nav: %v, typedQuery: '%s', currentCmd: '%s'", navCopy, overlay.GetTypedQuery(), currentCmd)
@@ -520,31 +577,27 @@ func runWrapper() {
 							intercepted = true
 							userNavigated.Store(true)
 
-							if l := overlay.ClearGhostLen(); l > 0 {
-								var gs strings.Builder
-								gs.WriteString("\0337")
-								gs.WriteString(strings.Repeat(" ", l+10))
-								gs.WriteString("\0338")
-								writeStdout([]byte(gs.String()))
-							}
-
 							arrowDir := "down"
 							if inputSlice[i+2] == 'A' {
 								arrowDir = "up"
 							}
-							moved, selected := overlay.MoveCursor(arrowDir)
+							moved, _ := overlay.MoveCursor(arrowDir)
 							if !moved {
 								i += 2
 								continue
 							}
 
 							bufferMu.Lock()
-							naiveBuffer = selected
-							cursorOffset = 0
+							bufCopy := naiveBuffer
+							offsetCopy := cursorOffset
 							bufferMu.Unlock()
 
-							writeStdout([]byte(overlay.Render()))
-							_, _ = ptmx.Write(append([]byte{0x15}, selected...))
+							var b strings.Builder
+							if !disableGhostText.Load() {
+								b.WriteString(overlay.RenderGhostText(bufCopy, true, offsetCopy == 0))
+							}
+							b.WriteString(overlay.Render())
+							writeStdout([]byte(b.String()))
 
 							i += 2
 							continue
@@ -587,17 +640,13 @@ func runWrapper() {
 							}
 							i += 2
 							continue
-						} else if overlay.IsVisible() && !disableGhostText.Load() && inputSlice[i+2] == 'C' { // right arrow
+						} else if !disableGhostText.Load() && inputSlice[i+2] == 'C' { // right arrow
 							bufferMu.Lock()
-							topCmd := overlay.GetTopCmd()
-							hasMatch := strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(naiveBuffer))
-							var ghostText string
-							if hasMatch {
-								ghostText = topCmd[len(naiveBuffer):]
-							}
+							atEnd := (cursorOffset == 0)
+							ghostText := overlay.GetGhostText(naiveBuffer, atEnd)
 							bufferMu.Unlock()
 
-							if hasMatch && len(ghostText) > 0 {
+							if len(ghostText) > 0 {
 								intercepted = true
 								logger.Debugf("Intercepted Right Arrow (accepted ghost text: %q)", ghostText)
 								bufferMu.Lock()
@@ -723,6 +772,7 @@ func runWrapper() {
 						}
 					}
 					writeStdout([]byte(overlay.ClearAndDisable()))
+					SetCurrentAISuggestion(nil)
 					renderMu.Lock()
 					if renderTimer != nil {
 						renderTimer.Stop()
@@ -743,6 +793,7 @@ func runWrapper() {
 				} else if b == 0x03 || b == 0x15 { // ctrl+c, ctrl+u
 					intercepted = true
 					writeStdout([]byte(overlay.ClearAndDisable()))
+					SetCurrentAISuggestion(nil)
 					renderMu.Lock()
 					if renderTimer != nil {
 						renderTimer.Stop()
@@ -878,6 +929,7 @@ func runWrapper() {
 						activeModeMu.Unlock()
 						disableGhostText.Store(false)
 						writeStdout([]byte(overlay.ClearAndDisable()))
+						SetCurrentAISuggestion(nil)
 						userNavigated.Store(false)
 					default:
 						// track normal printable characters in the buffer for matching
