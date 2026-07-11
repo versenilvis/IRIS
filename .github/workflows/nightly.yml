@@ -47,7 +47,7 @@ jobs:
 
             GOOS=$GOOS GOARCH=$GOARCH go build \
               -ldflags="-s -w -X github.com/versenilvis/iris/root.Version=${{ steps.version.outputs.version }}" \
-              -trimpath -o "dist/iris" main.go
+              -trimpath -o "dist/iris" ./cmd/iris
 
             cd dist
             tar -czf "iris_${GOOS}_${GOARCH}.tar.gz" "iris"

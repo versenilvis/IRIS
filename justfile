@@ -3,12 +3,12 @@
 # build binary file
 [group('build')]
 build:
-    @go build -o iris main.go
+    @go build -o iris ./cmd/iris
     
 # build with optimized binary file
 [group('build')]
 optimized-build:
-    @GOAMD64=v4 go build -ldflags="-s -w" -trimpath -o iris main.go
+    @GOAMD64=v4 go build -ldflags="-s -w" -trimpath -o iris ./cmd/iris
 
 # run iris
 [group('dev')]
@@ -24,7 +24,7 @@ config-init:
 [group('dev')]
 [linux, macos]
 reload:
-    @go build -o iris main.go
+    @go build -o iris ./cmd/iris
     @if [ -f ~/.local/bin/iris ]; then rm -f ~/.local/bin/iris && cp ./iris ~/.local/bin/iris; fi
     @if [ -n "${IRIS_PID:-}" ]; then kill -USR1 $IRIS_PID 2>/dev/null || true; fi
     @if [ -z "${IRIS_FD:-}" ]; then ./iris; fi
@@ -90,7 +90,7 @@ debug-notify version="v1.99.0":
 # usage: just build-release v1.2.0
 [group('debug')]
 build-release version:
-    @GOAMD64=v3 go build -pgo=auto -ldflags="-s -w -X github.com/versenilvis/iris/root.Version={{version}}" -trimpath -o iris main.go
+    @GOAMD64=v3 go build -pgo=auto -ldflags="-s -w -X github.com/versenilvis/iris/root.Version={{version}}" -trimpath -o iris ./cmd/iris
 
 # test the install script locally
 # usage: just debug-install v1.0.0
@@ -119,7 +119,7 @@ debug-install version="v1.0.0":
     ARCHIVE_NAME="iris_${OS}_${ARCH}.tar.gz"
 
     echo "building iris ({{version}}, ${OS}_${ARCH})..."
-    go build -ldflags="-X github.com/versenilvis/iris/root.Version={{version}}" -o "$TMP/iris" main.go
+    go build -ldflags="-X github.com/versenilvis/iris/root.Version={{version}}" -o "$TMP/iris" ./cmd/iris
 
     echo "packaging archive ($ARCHIVE_NAME)..."
     tar -czf "$TMP/$ARCHIVE_NAME" -C "$TMP" iris

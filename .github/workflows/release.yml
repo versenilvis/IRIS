@@ -57,7 +57,7 @@ jobs:
             echo "Building $GOOS/$GOARCH..."
             GOOS=$GOOS GOARCH=$GOARCH go build \
               -ldflags="-s -w -X github.com/versenilvis/iris/root.Version=${{ github.ref_name }}" \
-              -trimpath -o "dist/$output_name" main.go
+              -trimpath -o "dist/$output_name" ./cmd/iris
             
             cd dist
             tar -czf "iris_${GOOS}_${GOARCH}.tar.gz" "$output_name"
@@ -70,15 +70,14 @@ jobs:
         run: |
           # Generate standard GitHub release notes
           GEN_NOTES=$(gh api repos/${{ github.repository }}/releases/generate-notes -f tag_name=${{ github.ref_name }} --jq .body)
-          
-          echo "RELEASE_BODY<<EOF" >> $GITHUB_ENV
-          echo "$GEN_NOTES" >> $GITHUB_ENV
-          echo "" >> $GITHUB_ENV
-          echo "## Installation" >> $GITHUB_ENV
-          echo "\`\`\`bash" >> $GITHUB_ENV
-          echo "curl -sS https://raw.githubusercontent.com/versenilvis/iris/main/scripts/install.sh | sh" >> $GITHUB_ENV
-          echo "\`\`\`" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          cat <<EOF > release_notes.md
+          $GEN_NOTES
+
+          ## Installation
+          \`\`\`bash
+          curl -sS https://raw.githubusercontent.com/versenilvis/iris/main/scripts/install.sh | sh
+          \`\`\`
+          EOF
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -87,7 +86,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           name: ${{ github.ref_name }}
-          body: ${{ env.RELEASE_BODY }}
+          body_path: release_notes.md
           files: dist/*.tar.gz
           generate_release_notes: false
         env:
