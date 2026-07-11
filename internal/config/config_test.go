@@ -90,8 +90,7 @@ func TestValidationAndEnvironmentOverrides(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	_ = os.Setenv("XDG_CONFIG_HOME", tmpDir)
-	defer func() { _ = os.Unsetenv("XDG_CONFIG_HOME") }()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 
 	configDir := filepath.Join(tmpDir, "iris")
 	if mkErr := os.MkdirAll(configDir, 0755); mkErr != nil {
@@ -113,31 +112,17 @@ model = "qwen-2.5-coder-32b"
 		t.Fatalf("failed to write config file: %v", wrErr)
 	}
 
-	_ = os.Setenv("IRIS_CORE_DEBUG", "true")
-	_ = os.Setenv("IRIS_CORE_SHELL", "fish")
-	_ = os.Setenv("IRIS_CORE_MODE", "history")
-	_ = os.Setenv("IRIS_UI_GHOST_TEXT", "false")
-	_ = os.Setenv("IRIS_UI_MAX_SUGGESTIONS", "250")
-	_ = os.Setenv("IRIS_UI_MAX_HEIGHT", "25")
-	_ = os.Setenv("IRIS_UPDATER_CHANNEL", "nightly")
-	_ = os.Setenv("IRIS_UPDATER_INTERVAL", "12h")
-	_ = os.Setenv("IRIS_UPDATER_CHECK_ON_STARTUP", "false")
-	_ = os.Setenv("IRIS_AI_PROVIDER", "ollama")
-	_ = os.Setenv("GROQ_API_KEY", "gsk_test_123")
-
-	defer func() {
-		_ = os.Unsetenv("IRIS_CORE_DEBUG")
-		_ = os.Unsetenv("IRIS_CORE_SHELL")
-		_ = os.Unsetenv("IRIS_CORE_MODE")
-		_ = os.Unsetenv("IRIS_UI_GHOST_TEXT")
-		_ = os.Unsetenv("IRIS_UI_MAX_SUGGESTIONS")
-		_ = os.Unsetenv("IRIS_UI_MAX_HEIGHT")
-		_ = os.Unsetenv("IRIS_UPDATER_CHANNEL")
-		_ = os.Unsetenv("IRIS_UPDATER_INTERVAL")
-		_ = os.Unsetenv("IRIS_UPDATER_CHECK_ON_STARTUP")
-		_ = os.Unsetenv("IRIS_AI_PROVIDER")
-		_ = os.Unsetenv("GROQ_API_KEY")
-	}()
+	t.Setenv("IRIS_CORE_DEBUG", "true")
+	t.Setenv("IRIS_CORE_SHELL", "fish")
+	t.Setenv("IRIS_CORE_MODE", "history")
+	t.Setenv("IRIS_UI_GHOST_TEXT", "false")
+	t.Setenv("IRIS_UI_MAX_SUGGESTIONS", "250")
+	t.Setenv("IRIS_UI_MAX_HEIGHT", "25")
+	t.Setenv("IRIS_UPDATER_CHANNEL", "nightly")
+	t.Setenv("IRIS_UPDATER_INTERVAL", "12h")
+	t.Setenv("IRIS_UPDATER_CHECK_ON_STARTUP", "false")
+	t.Setenv("IRIS_AI_PROVIDER", "ollama")
+	t.Setenv("GROQ_API_KEY", "gsk_test_123")
 
 	cfg, err := Load()
 	if err != nil {
@@ -179,7 +164,7 @@ model = "qwen-2.5-coder-32b"
 		t.Errorf("expected groq api key gsk_test_123 from env, got %q", groqCfg.GetAPIKey())
 	}
 
-	_ = os.Setenv("IRIS_CORE_MODE", "invalid")
+	t.Setenv("IRIS_CORE_MODE", "invalid")
 	_, err = Load()
 	if err == nil {
 		t.Errorf("expected validation error for invalid mode in env")
@@ -193,8 +178,7 @@ func TestLoadSave(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	_ = os.Setenv("XDG_CONFIG_HOME", tmpDir)
-	defer func() { _ = os.Unsetenv("XDG_CONFIG_HOME") }()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 
 	cfg, err := Load()
 	if err != nil {
@@ -229,12 +213,8 @@ func TestMigration(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	_ = os.Setenv("HOME", tmpDir)
-	_ = os.Setenv("XDG_DATA_HOME", filepath.Join(tmpDir, ".local", "share"))
-	defer func() {
-		_ = os.Unsetenv("HOME")
-		_ = os.Unsetenv("XDG_DATA_HOME")
-	}()
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("XDG_DATA_HOME", filepath.Join(tmpDir, ".local", "share"))
 
 	legacyDir := filepath.Join(tmpDir, ".iris")
 	if errMkdir := os.MkdirAll(legacyDir, 0755); errMkdir != nil {

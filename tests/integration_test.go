@@ -27,10 +27,7 @@ func TestIntegration_ZoxideMultiWord(t *testing.T) {
 	// Create mock zoxide binary
 	script := "#!/bin/sh\necho \"" + targetDir + "\""
 	_ = os.WriteFile(mockZoxide, []byte(script), 0755)
-	// Add mock bin to PATH
-	oldPath := os.Getenv("PATH")
-	_ = os.Setenv("PATH", mockBinDir+string(os.PathListSeparator)+oldPath)
-	defer func() { _ = os.Setenv("PATH", oldPath) }()
+	t.Setenv("PATH", mockBinDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	t.Run("z matches multi-word folder without quotes", func(t *testing.T) {
 		// Simulating user typing "z My Awe"
