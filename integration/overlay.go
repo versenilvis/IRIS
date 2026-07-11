@@ -7,11 +7,10 @@ import (
 	"strings"
 	"sync"
 	"unicode/utf8"
-
 	"github.com/charmbracelet/lipgloss"
+	"github.com/versenilvis/iris/internal/config"
+	"github.com/versenilvis/iris/internal/logger"
 	"github.com/versenilvis/iris/spec"
-	"github.com/versenilvis/iris/config"
-	"github.com/versenilvis/iris/logger"
 	"golang.org/x/term"
 )
 

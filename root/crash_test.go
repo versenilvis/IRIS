@@ -1,4 +1,4 @@
-package tests
+package root
 
 import (
 	"bytes"
@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/versenilvis/iris/root"
 )
 
 func TestWriteCrashLog(t *testing.T) {
@@ -27,7 +25,7 @@ func TestWriteCrashLog(t *testing.T) {
 	_ = os.Setenv("XDG_CACHE_HOME", filepath.Join(tmpDir, ".cache"))
 
 	testErr := "test panic message"
-	root.WriteCrashLog(testErr)
+	WriteCrashLog(testErr)
 
 	dir := filepath.Join(tmpDir, ".cache", "iris", "crashes")
 	files, err := os.ReadDir(dir)
@@ -73,25 +71,25 @@ func TestCrashLogCommand(t *testing.T) {
 	_ = os.Setenv("XDG_CACHE_HOME", filepath.Join(tmpDir, ".cache"))
 
 	var buf bytes.Buffer
-	root.CrashCmd.SetOut(&buf)
-	root.CrashCmd.SetArgs([]string{})
-	root.ClearLog = false
+	CrashCmd.SetOut(&buf)
+	CrashCmd.SetArgs([]string{})
+	ClearLog = false
 
-	root.CrashCmd.Run(root.CrashCmd, []string{})
+	CrashCmd.Run(CrashCmd, []string{})
 	if !strings.Contains(buf.String(), "no crash log found") {
 		t.Errorf("expected 'no crash log found', got: %q", buf.String())
 	}
 
-	root.WriteCrashLog("mock error")
+	WriteCrashLog("mock error")
 	buf.Reset()
-	root.CrashCmd.Run(root.CrashCmd, []string{})
+	CrashCmd.Run(CrashCmd, []string{})
 	if !strings.Contains(buf.String(), "crash_") || !strings.Contains(buf.String(), ".log") {
 		t.Errorf("expected crash log path, got: %q", buf.String())
 	}
 
 	buf.Reset()
-	root.ClearLog = true
-	root.CrashCmd.Run(root.CrashCmd, []string{})
+	ClearLog = true
+	CrashCmd.Run(CrashCmd, []string{})
 	if !strings.Contains(buf.String(), "crash log cleared") {
 		t.Errorf("expected 'crash log cleared', got: %q", buf.String())
 	}

@@ -7,7 +7,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/spf13/cobra"
-	"github.com/versenilvis/iris/config"
+	"github.com/versenilvis/iris/internal/config"
 )
 
 var ConfigCmd = &cobra.Command{

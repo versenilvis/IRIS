@@ -1,4 +1,4 @@
-package tests
+package ai
 
 import (
 	"context"
@@ -9,8 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/versenilvis/iris/ai"
-	"github.com/versenilvis/iris/config"
+	"github.com/versenilvis/iris/internal/config"
 )
 
 func TestCleanSuggestion(t *testing.T) {
@@ -28,7 +27,7 @@ func TestCleanSuggestion(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got := ai.CleanSuggestion(tt.input)
+		got := CleanSuggestion(tt.input)
 		if got != tt.expected {
 			t.Errorf("CleanSuggestion(%q) = %q, want %q", tt.input, got, tt.expected)
 		}
@@ -84,13 +83,13 @@ func TestOpenAIClient_Suggest(t *testing.T) {
 		},
 	}
 
-	client, err := ai.NewClient(cfg)
+	client, err := NewClient(cfg)
 	if err != nil {
 		t.Fatalf("failed to create client: %v", err)
 	}
 
 	ctx := context.Background()
-	env := ai.EnvSnapshot{Cwd: "/home/user", LastCmd: "kubectl get", LastExitCode: 0}
+	env := EnvSnapshot{Cwd: "/home/user", LastCmd: "kubectl get", LastExitCode: 0}
 	sugg, err := client.Suggest(ctx, "kubectl get p", env, "")
 	if err != nil {
 		t.Fatalf("suggest failed: %v", err)
@@ -119,9 +118,9 @@ func TestOpenAIClient_TimeoutAndCancel(t *testing.T) {
 		TimeoutMS:     50,
 	}
 
-	client := ai.NewOpenAIClient(cfg)
+	client := NewOpenAIClient(cfg)
 	ctx := context.Background()
-	env := ai.EnvSnapshot{}
+	env := EnvSnapshot{}
 
 	_, err := client.Suggest(ctx, "sleep", env, "")
 	if err == nil {

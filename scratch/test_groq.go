@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/versenilvis/iris/ai"
-	"github.com/versenilvis/iris/config"
+	"github.com/versenilvis/iris/internal/ai"
+	"github.com/versenilvis/iris/internal/config"
 	"github.com/versenilvis/iris/root"
 )
 
