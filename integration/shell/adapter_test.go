@@ -1,10 +1,8 @@
-package tests
+package shell
 
 import (
 	"reflect"
 	"testing"
-
-	"github.com/versenilvis/iris/integration/shell"
 )
 
 func TestScanPosixAliases(t *testing.T) {
@@ -22,7 +20,7 @@ alias l='ls' ll='ls -l'
 		"ll":  "ls -l",
 	}
 
-	got := shell.ParseAliases(input)
+	got := ParseAliases(input)
 	if !reflect.DeepEqual(got, expected) {
 		t.Errorf("ScanPosixAliases() = %v; want %v", got, expected)
 	}
@@ -43,7 +41,7 @@ func TestSplitAliasTokens(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := shell.SplitAliasTokens(tt.input)
+			got := SplitAliasTokens(tt.input)
 			if !reflect.DeepEqual(got, tt.expected) {
 				t.Errorf("SplitAliasTokens(%q) = %v; want %v", tt.input, got, tt.expected)
 			}

@@ -1,4 +1,4 @@
-package tests
+package ai
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/versenilvis/iris/ai"
 	"github.com/versenilvis/iris/spec"
 )
 
@@ -34,7 +33,7 @@ func (m *mockProvider) Gather(ctx context.Context) (string, error) {
 }
 
 func TestProviderCache_TTL(t *testing.T) {
-	cache := ai.NewProviderCache(50 * time.Millisecond)
+	cache := NewProviderCache(50 * time.Millisecond)
 	provider := &mockProvider{
 		name:      "test-prov",
 		matchPref: "test",
@@ -71,7 +70,7 @@ func TestAIEngine_DynamicContext(t *testing.T) {
 		gatherRet: "test-container\tnginx",
 	}
 
-	engine := ai.NewAIEngine(func(ctx context.Context, buf string, env ai.EnvSnapshot, dynamicCtx string) (*spec.Suggestion, error) {
+	engine := NewAIEngine(func(ctx context.Context, buf string, env EnvSnapshot, dynamicCtx string) (*spec.Suggestion, error) {
 		if dynamicCtx != "test-container\tnginx" {
 			t.Fatalf("expected dynamicCtx to be passed to handler, got: %q", dynamicCtx)
 		}
@@ -80,7 +79,7 @@ func TestAIEngine_DynamicContext(t *testing.T) {
 	engine.RegisterProvider(provider)
 
 	ctx := context.Background()
-	sugg, err := engine.Suggest(ctx, "docker exec ", ai.EnvSnapshot{}, "")
+	sugg, err := engine.Suggest(ctx, "docker exec ", EnvSnapshot{}, "")
 	if err != nil || sugg == nil {
 		t.Fatalf("expected suggestion, got err: %v, sugg: %+v", err, sugg)
 	}
@@ -91,7 +90,7 @@ func TestAIEngine_DynamicContext(t *testing.T) {
 
 // Verify that cache evicts expired entries and resets when exceeding 50 items to prevent unbounded memory growth
 func TestProviderCache_Eviction(t *testing.T) {
-	cache := ai.NewProviderCache(10 * time.Millisecond)
+	cache := NewProviderCache(10 * time.Millisecond)
 	ctx := context.Background()
 
 	for i := 0; i < 55; i++ {
@@ -115,7 +114,7 @@ func TestProviderCache_Eviction(t *testing.T) {
 
 // Verify that CommandContextProvider caps gathered output to 1000 characters to protect token budget
 func TestCommandContextProvider_Truncation(t *testing.T) {
-	provider := &ai.CommandContextProvider{
+	provider := &CommandContextProvider{
 		NameStr:   "test-trunc",
 		Prefixes:  []string{"echo"},
 		GatherCmd: []string{"go", "env"},
@@ -136,7 +135,7 @@ func TestCommandContextProvider_Truncation(t *testing.T) {
 
 // Verify that concurrent provider registration and context gathering do not cause data races
 func TestAIEngine_ConcurrentRegistrationAndGather(t *testing.T) {
-	engine := ai.NewAIEngine(nil)
+	engine := NewAIEngine(nil)
 	ctx := context.Background()
 	var wg sync.WaitGroup
 

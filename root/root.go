@@ -15,8 +15,8 @@ import (
 
 	"github.com/spf13/cobra"
 	_ "github.com/versenilvis/iris/commands"
-	"github.com/versenilvis/iris/config"
-	"github.com/versenilvis/iris/logger"
+	"github.com/versenilvis/iris/internal/config"
+	"github.com/versenilvis/iris/internal/logger"
 	"golang.org/x/term"
 )
 

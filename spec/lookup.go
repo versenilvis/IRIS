@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/versenilvis/iris/integration/shell"
-	"github.com/versenilvis/iris/logger"
+	"github.com/versenilvis/iris/internal/logger"
 )
 
 var (

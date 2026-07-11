@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/versenilvis/iris/config"
+	"github.com/versenilvis/iris/internal/config"
 )
 
 func init() {

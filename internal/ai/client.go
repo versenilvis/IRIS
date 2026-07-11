@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/versenilvis/iris/config"
+	"github.com/versenilvis/iris/internal/config"
 	"github.com/versenilvis/iris/spec"
 )
 

@@ -1,4 +1,4 @@
-package tests
+package root
 
 import (
 	"os"
@@ -6,8 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/versenilvis/iris/config"
-	"github.com/versenilvis/iris/root"
+	"github.com/versenilvis/iris/internal/config"
 )
 
 func TestIsNewer(t *testing.T) {
@@ -29,7 +28,7 @@ func TestIsNewer(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if got := root.IsNewer(tt.current, tt.latest); got != tt.want {
+		if got := IsNewer(tt.current, tt.latest); got != tt.want {
 			t.Errorf("IsNewer(%q, %q) = %v; want %v", tt.current, tt.latest, got, tt.want)
 		}
 	}

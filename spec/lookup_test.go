@@ -1,27 +1,25 @@
-package tests
+package spec
 
 import (
 	"strings"
 	"sync"
 	"testing"
-
-	"github.com/versenilvis/iris/spec"
 )
 
 func TestLookup(t *testing.T) {
 	// Setup Registry
-	spec.Registry = make(map[string]*spec.Spec)
-	spec.Register(&spec.Spec{
+	Registry = make(map[string]*Spec)
+	Register(&Spec{
 		Name: "git",
-		Subcommands: []spec.Subcommand{
-			{Name: "commit", Options: []spec.Option{{Name: "--message"}}, MaxArgs: 1},
-			{Name: "remote", Subcommands: []spec.Subcommand{{Name: "add"}}},
+		Subcommands: []Subcommand{
+			{Name: "commit", Options: []Option{{Name: "--message"}}, MaxArgs: 1},
+			{Name: "remote", Subcommands: []Subcommand{{Name: "add"}}},
 		},
-		Options: []spec.Option{{Name: "--verbose"}},
+		Options: []Option{{Name: "--verbose"}},
 	})
 
 	// Setup Aliases
-	spec.ShellAliases = map[string]string{
+	ShellAliases = map[string]string{
 		"gca": "git commit -a",
 		"ta":  "tmux a -t",
 	}
@@ -44,7 +42,7 @@ func TestLookup(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			results := spec.Lookup(tt.input)
+			results := Lookup(tt.input)
 			if len(results) < tt.minResults {
 				t.Errorf("Lookup(%q) got %d results; want at least %d", tt.input, len(results), tt.minResults)
 			}
@@ -65,15 +63,15 @@ func TestLookup(t *testing.T) {
 }
 
 func TestLookupConcurrent(t *testing.T) {
-	spec.Registry = make(map[string]*spec.Spec)
-	spec.Register(&spec.Spec{
+	Registry = make(map[string]*Spec)
+	Register(&Spec{
 		Name: "git",
-		Subcommands: []spec.Subcommand{
-			{Name: "commit", Options: []spec.Option{{Name: "--message"}}, MaxArgs: 1},
+		Subcommands: []Subcommand{
+			{Name: "commit", Options: []Option{{Name: "--message"}}, MaxArgs: 1},
 		},
 	})
 
-	spec.ShellAliases = map[string]string{
+	ShellAliases = map[string]string{
 		"gca": "git commit -a",
 	}
 
@@ -86,8 +84,8 @@ func TestLookupConcurrent(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for range iterations {
-				_ = spec.Lookup("gca")
-				_ = spec.Lookup("git ")
+				_ = Lookup("gca")
+				_ = Lookup("git ")
 			}
 		}()
 	}

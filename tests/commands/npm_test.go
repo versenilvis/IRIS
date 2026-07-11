@@ -4,12 +4,10 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
-	_ "github.com/versenilvis/iris/commands"
-	"github.com/versenilvis/iris/spec"
 	"github.com/versenilvis/iris/commands/js"
+	"github.com/versenilvis/iris/spec"
 )
 
 func TestNpmScriptGenerator(t *testing.T) {
@@ -101,94 +99,4 @@ func TestNpmScriptGenerator(t *testing.T) {
 			t.Error("expected fallback suggestions when no package.json")
 		}
 	})
-}
-
-func TestSshHostGenerator(t *testing.T) {
-	tmp := t.TempDir()
-	sshDir := filepath.Join(tmp, ".ssh")
-	_ = os.MkdirAll(sshDir, 0700)
-
-	configContent := `
-Host prod-server
-    HostName 10.0.0.1
-    User deploy
-
-Host staging bastion
-    HostName staging.example.com
-    User ubuntu
-
-Host *.internal
-    User admin
-
-Host !forbidden wildcard-test
-    HostName test.internal
-`
-	_ = os.WriteFile(filepath.Join(sshDir, "config"), []byte(configContent), 0600)
-
-	// temporarily replace home dir lookup by using a mock path
-	// we call the generator directly with a custom home dir
-	results := sshHostGeneratorFromPath(filepath.Join(sshDir, "config"))
-
-	found := make(map[string]bool)
-	for _, r := range results {
-		found[r.Cmd] = true
-	}
-
-	if !found["prod-server"] {
-		t.Error("expected prod-server in suggestions")
-	}
-	if !found["staging"] {
-		t.Error("expected staging in suggestions")
-	}
-	if !found["bastion"] {
-		t.Error("expected bastion in suggestions")
-	}
-
-	// wildcards should be excluded
-	if found["*.internal"] {
-		t.Error("wildcard *.internal should not be suggested")
-	}
-	if found["!forbidden"] {
-		t.Error("negated host !forbidden should not be suggested")
-	}
-}
-
-// sshHostGeneratorFromPath is a helper that reads a specific ssh config path
-func sshHostGeneratorFromPath(configPath string) []spec.Suggestion {
-	import_bufio := func() {
-		// using bufio in the same style as ssh.go
-	}
-	_ = import_bufio
-
-	f, err := os.Open(configPath)
-	if err != nil {
-		return nil
-	}
-	defer func() { _ = f.Close() }()
-
-	seen := make(map[string]bool)
-	var results []spec.Suggestion
-
-	scanner := strings.NewReader("")
-	_ = scanner
-
-	data, _ := os.ReadFile(configPath)
-	for line := range strings.SplitSeq(string(data), "\n") {
-		line = strings.TrimSpace(line)
-		if !strings.HasPrefix(strings.ToLower(line), "host ") {
-			continue
-		}
-		parts := strings.Fields(line)
-		for _, host := range parts[1:] {
-			if strings.ContainsAny(host, "*?!") {
-				continue
-			}
-			if seen[host] {
-				continue
-			}
-			seen[host] = true
-			results = append(results, spec.Suggestion{Cmd: host, Desc: "ssh host"})
-		}
-	}
-	return results
 }

@@ -1,12 +1,10 @@
-package tests
+package logger
 
 import (
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/versenilvis/iris/logger"
 )
 
 func TestLogger(t *testing.T) {
@@ -19,10 +17,10 @@ func TestLogger(t *testing.T) {
 	logFilePath := filepath.Join(tempDir, "test.log")
 
 	// test 1: default init sets level to info
-	logger.Init(logFilePath, false)
-	logger.Debugf("this debug msg should not be logged")
-	logger.Infof("this info msg should be logged")
-	logger.Close()
+	Init(logFilePath, false)
+	Debugf("this debug msg should not be logged")
+	Infof("this info msg should be logged")
+	Close()
 
 	data, err := os.ReadFile(logFilePath)
 	if err != nil {
@@ -45,9 +43,9 @@ func TestLogger(t *testing.T) {
 
 	// test 2: override init with debug = true
 	_ = os.Remove(logFilePath)
-	logger.Init(logFilePath, true)
-	logger.Debugf("this debug msg should now be logged")
-	logger.Close()
+	Init(logFilePath, true)
+	Debugf("this debug msg should now be logged")
+	Close()
 
 	data, err = os.ReadFile(logFilePath)
 	if err != nil {
@@ -70,9 +68,9 @@ func TestLogger(t *testing.T) {
 		t.Fatalf("failed to write large file: %v", err)
 	}
 
-	logger.Init(logFilePath, false)
-	logger.Infof("new log after rotation")
-	logger.Close()
+	Init(logFilePath, false)
+	Infof("new log after rotation")
+	Close()
 
 	// check if old file exists and is rotated
 	oldPath := logFilePath + ".old"

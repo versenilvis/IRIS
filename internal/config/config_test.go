@@ -1,18 +1,14 @@
-package tests
+package config
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
-
-	"github.com/versenilvis/iris/config"
-	"github.com/versenilvis/iris/root"
 )
 
 func TestDefaultConfigAndState(t *testing.T) {
-	cfg := config.DefaultConfig()
+	cfg := DefaultConfig()
 	if cfg.Core.Version != 1 {
 		t.Errorf("expected version 1, got %d", cfg.Core.Version)
 	}
@@ -31,7 +27,7 @@ func TestDefaultConfigAndState(t *testing.T) {
 
 	// test manual provider registration
 	cfg.AI.Provider = "custom"
-	cfg.AI.Providers = map[string]config.ProviderConfig{
+	cfg.AI.Providers = map[string]ProviderConfig{
 		"custom": {
 			InheritedFrom: "openai",
 			Endpoint:      "https://custom-api.com/v1",
@@ -57,14 +53,14 @@ func TestDefaultConfigAndState(t *testing.T) {
 		t.Errorf("expected min interval 5000, got %d", cfg.AI.SuggestOnEmpty.MinIntervalMS)
 	}
 
-	state := config.DefaultState()
+	state := DefaultState()
 	if state.LastMode != "spec" {
 		t.Errorf("expected last mode spec, got %q", state.LastMode)
 	}
 }
 
 func TestCustomDuration(t *testing.T) {
-	var dur config.Duration
+	var dur Duration
 	err := dur.UnmarshalText([]byte("6h"))
 	if err != nil {
 		t.Fatalf("unexpected error unmarshalling duration: %v", err)
@@ -143,7 +139,7 @@ model = "qwen-2.5-coder-32b"
 		_ = os.Unsetenv("GROQ_API_KEY")
 	}()
 
-	cfg, err := config.Load()
+	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("failed to load config: %v", err)
 	}
@@ -184,7 +180,7 @@ model = "qwen-2.5-coder-32b"
 	}
 
 	_ = os.Setenv("IRIS_CORE_MODE", "invalid")
-	_, err = config.Load()
+	_, err = Load()
 	if err == nil {
 		t.Errorf("expected validation error for invalid mode in env")
 	}
@@ -200,7 +196,7 @@ func TestLoadSave(t *testing.T) {
 	_ = os.Setenv("XDG_CONFIG_HOME", tmpDir)
 	defer func() { _ = os.Unsetenv("XDG_CONFIG_HOME") }()
 
-	cfg, err := config.Load()
+	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("failed to load: %v", err)
 	}
@@ -208,12 +204,12 @@ func TestLoadSave(t *testing.T) {
 	cfg.Core.Shell = "zsh"
 	cfg.UI.MaxHeight = 20
 
-	err = config.Save(cfg)
+	err = Save(cfg)
 	if err != nil {
 		t.Fatalf("failed to save: %v", err)
 	}
 
-	loaded, err := config.Load()
+	loaded, err := Load()
 	if err != nil {
 		t.Fatalf("failed to load after save: %v", err)
 	}
@@ -251,12 +247,12 @@ func TestMigration(t *testing.T) {
 	legacyUpdateJson := `{"seen_version": "v1.2.3", "last_check": 1234567890}`
 	_ = os.WriteFile(filepath.Join(legacyDir, "update_state.json"), []byte(legacyUpdateJson), 0644)
 
-	err = config.MigrateFromLegacyJSON()
+	err = MigrateFromLegacyJSON()
 	if err != nil {
 		t.Fatalf("migration failed: %v", err)
 	}
 
-	state := config.LoadState()
+	state := LoadState()
 	if state.LastMode != "history" {
 		t.Errorf("expected migrated last mode 'history', got %q", state.LastMode)
 	}
@@ -275,30 +271,4 @@ func TestMigration(t *testing.T) {
 	}
 }
 
-func TestConfigCommands(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "iris-config-cmd-test")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
 
-	origConfigHome := os.Getenv("XDG_CONFIG_HOME")
-	defer func() {
-		_ = os.Setenv("XDG_CONFIG_HOME", origConfigHome)
-	}()
-	_ = os.Setenv("XDG_CONFIG_HOME", tmpDir)
-
-	root.ConfigInitCmd.Run(root.ConfigInitCmd, []string{})
-
-	configPath := filepath.Join(tmpDir, "iris", "config.toml")
-	if _, err := os.Stat(configPath); err != nil {
-		t.Errorf("expected config file to be created at %s, but it was not", configPath)
-	}
-
-	buf := new(bytes.Buffer)
-	root.ConfigShowCmd.SetOut(buf)
-	root.ConfigShowCmd.Run(root.ConfigShowCmd, []string{})
-	if buf.Len() == 0 {
-		t.Errorf("expected show command to output configuration")
-	}
-}

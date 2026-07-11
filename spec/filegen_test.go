@@ -1,12 +1,10 @@
-package tests
+package spec
 
 import (
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/versenilvis/iris/spec"
 )
 
 func TestFileGenerator(t *testing.T) {
@@ -24,7 +22,7 @@ func TestFileGenerator(t *testing.T) {
 
 
 	t.Run("dirOnly shows only dirs", func(t *testing.T) {
-		gen := spec.FileGenerator("/")
+		gen := FileGenerator("/")
 		results := gen([]string{"cd", ""}, "cd ", "")
 		for _, r := range results {
 			if !strings.HasSuffix(r.Cmd, "/") {
@@ -35,7 +33,7 @@ func TestFileGenerator(t *testing.T) {
 
 
 	t.Run("Filter extension", func(t *testing.T) {
-		gen := spec.FileGenerator(".go")
+		gen := FileGenerator(".go")
 		results := gen([]string{"ls", ""}, "ls ", "")
 		foundMain := false
 		for _, r := range results {
@@ -53,7 +51,7 @@ func TestFileGenerator(t *testing.T) {
 
 
 	t.Run("Nested path", func(t *testing.T) {
-		gen := spec.FileGenerator()
+		gen := FileGenerator()
 		results := gen([]string{"ls", "src/u"}, "ls src/u", "src/u")
 		foundUtils := false
 		for _, r := range results {
@@ -68,7 +66,7 @@ func TestFileGenerator(t *testing.T) {
 
 
 	t.Run("Deep scan 1 level", func(t *testing.T) {
-		gen := spec.FileGenerator()
+		gen := FileGenerator()
 		results := gen([]string{"ls", "src/"}, "ls src/", "src/")
 		foundUtils := false
 		for _, r := range results {
@@ -85,7 +83,7 @@ func TestFileGenerator(t *testing.T) {
 
 
 	t.Run("Hidden files are skipped", func(t *testing.T) {
-		gen := spec.FileGenerator()
+		gen := FileGenerator()
 		results := gen([]string{"ls", ""}, "ls ", "")
 		for _, r := range results {
 			if strings.HasPrefix(r.Cmd, ".") {

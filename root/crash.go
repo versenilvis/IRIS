@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/versenilvis/iris/config"
+	"github.com/versenilvis/iris/internal/config"
 )
 
 // startRescueShell starts a fallback shell if the application crashes to keep the terminal open
