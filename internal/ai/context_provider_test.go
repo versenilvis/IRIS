@@ -90,10 +90,11 @@ func TestAIEngine_DynamicContext(t *testing.T) {
 
 // Verify that cache evicts expired entries and resets when exceeding 50 items to prevent unbounded memory growth
 func TestProviderCache_Eviction(t *testing.T) {
-	cache := NewProviderCache(10 * time.Millisecond)
+	cache := NewProviderCache(15 * time.Millisecond)
 	ctx := context.Background()
 
-	for i := 0; i < 55; i++ {
+	// 1. Fill cache to capacity (50 items) rapidly before any TTL expires
+	for i := 0; i < 50; i++ {
 		p := &mockProvider{
 			name:      fmt.Sprintf("prov-%d", i),
 			matchPref: "test",
@@ -102,14 +103,58 @@ func TestProviderCache_Eviction(t *testing.T) {
 		cache.GetOrGather(ctx, p)
 	}
 
-	time.Sleep(20 * time.Millisecond)
+	cache.mu.Lock()
+	if len(cache.entries) != 50 {
+		t.Fatalf("expected cache to hold exactly 50 entries, got %d", len(cache.entries))
+	}
+	cache.mu.Unlock()
 
+	// 2. Add the 51st item immediately when none are expired -> triggers map reset to bound memory
+	p51 := &mockProvider{
+		name:      "prov-50",
+		matchPref: "test",
+		gatherRet: "data",
+	}
+	cache.GetOrGather(ctx, p51)
+
+	cache.mu.Lock()
+	if len(cache.entries) != 1 {
+		t.Fatalf("expected cache reset when exceeding 50 unexpired items (expected len 1, got %d)", len(cache.entries))
+	}
+	if _, ok := cache.entries["prov-50"]; !ok {
+		t.Fatalf("expected 'prov-50' to exist after reset")
+	}
+	cache.mu.Unlock()
+
+	// 3. Fill up to 50 items again
+	for i := 51; i < 100; i++ {
+		p := &mockProvider{
+			name:      fmt.Sprintf("prov-%d", i),
+			matchPref: "test",
+			gatherRet: "data",
+		}
+		cache.GetOrGather(ctx, p)
+	}
+
+	// 4. Wait for all items to expire
+	time.Sleep(25 * time.Millisecond)
+
+	// 5. Add a new item when cache has 50 expired items -> should delete expired entries without complete map recreation
 	pNext := &mockProvider{
-		name:      "prov-next",
+		name:      "prov-100",
 		matchPref: "test",
 		gatherRet: "data",
 	}
 	cache.GetOrGather(ctx, pNext)
+
+	cache.mu.Lock()
+	if len(cache.entries) != 1 {
+		t.Fatalf("expected 50 expired items to be evicted before adding new entry (expected len 1, got %d)", len(cache.entries))
+	}
+	if _, ok := cache.entries["prov-100"]; !ok {
+		t.Fatalf("expected new entry 'prov-100' to exist after eviction")
+	}
+	cache.mu.Unlock()
 }
 
 // Verify that CommandContextProvider caps gathered output to 1000 characters to protect token budget
