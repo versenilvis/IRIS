@@ -14,11 +14,7 @@ func TestConfigCommands(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	origConfigHome := os.Getenv("XDG_CONFIG_HOME")
-	defer func() {
-		_ = os.Setenv("XDG_CONFIG_HOME", origConfigHome)
-	}()
-	_ = os.Setenv("XDG_CONFIG_HOME", tmpDir)
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 
 	ConfigInitCmd.Run(ConfigInitCmd, []string{})
 

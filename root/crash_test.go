@@ -15,14 +15,8 @@ func TestWriteCrashLog(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	origHome := os.Getenv("HOME")
-	origCache := os.Getenv("XDG_CACHE_HOME")
-	defer func() {
-		_ = os.Setenv("HOME", origHome)
-		_ = os.Setenv("XDG_CACHE_HOME", origCache)
-	}()
-	_ = os.Setenv("HOME", tmpDir)
-	_ = os.Setenv("XDG_CACHE_HOME", filepath.Join(tmpDir, ".cache"))
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("XDG_CACHE_HOME", filepath.Join(tmpDir, ".cache"))
 
 	testErr := "test panic message"
 	WriteCrashLog(testErr)
@@ -61,14 +55,8 @@ func TestCrashLogCommand(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	origHome := os.Getenv("HOME")
-	origCache := os.Getenv("XDG_CACHE_HOME")
-	defer func() {
-		_ = os.Setenv("HOME", origHome)
-		_ = os.Setenv("XDG_CACHE_HOME", origCache)
-	}()
-	_ = os.Setenv("HOME", tmpDir)
-	_ = os.Setenv("XDG_CACHE_HOME", filepath.Join(tmpDir, ".cache"))
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("XDG_CACHE_HOME", filepath.Join(tmpDir, ".cache"))
 
 	var buf bytes.Buffer
 	CrashCmd.SetOut(&buf)

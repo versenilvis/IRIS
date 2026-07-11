@@ -42,20 +42,8 @@ func TestUpdateState(t *testing.T) {
 	}
 	defer func() { _ = os.RemoveAll(tmpDir) }()
 
-	// Override home dir for testing
-	homeBackup := os.Getenv("HOME")
-	err = os.Setenv("HOME", tmpDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = os.Setenv("HOME", homeBackup) }()
-
-	xdgBackup := os.Getenv("XDG_DATA_HOME")
-	err = os.Setenv("XDG_DATA_HOME", filepath.Join(tmpDir, ".local", "share"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = os.Setenv("XDG_DATA_HOME", xdgBackup) }()
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("XDG_DATA_HOME", filepath.Join(tmpDir, ".local", "share"))
 
 	state := config.LoadState()
 	state.Updater.SeenVersion = "v1.0.0"
