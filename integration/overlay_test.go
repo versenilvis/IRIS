@@ -1,15 +1,14 @@
-package tests
+package integration
 
 import (
 	"strings"
 	"testing"
 
-	"github.com/versenilvis/iris/integration"
 	"github.com/versenilvis/iris/spec"
 )
 
 func TestRenderGhostText_CursorAtEnd(t *testing.T) {
-	o := integration.NewOverlay()
+	o := NewOverlay()
 	items := []spec.Suggestion{
 		{Cmd: "git checkout -b feature"},
 	}
@@ -35,7 +34,7 @@ func TestRenderGhostText_CursorAtEnd(t *testing.T) {
 }
 
 func TestGetGhostText(t *testing.T) {
-	o := integration.NewOverlay()
+	o := NewOverlay()
 	items := []spec.Suggestion{
 		{Cmd: "docker exec -it my-container bash"},
 	}
@@ -63,7 +62,7 @@ func TestGetGhostText(t *testing.T) {
 }
 
 func TestGhostText_MenuSync(t *testing.T) {
-	o := integration.NewOverlay()
+	o := NewOverlay()
 	items := []spec.Suggestion{
 		{Cmd: "git checkout -b first"},
 		{Cmd: "git checkout master"},
@@ -90,7 +89,7 @@ func TestGhostText_MenuSync(t *testing.T) {
 }
 
 func TestGhostText_Truncation(t *testing.T) {
-	o := integration.NewOverlay()
+	o := NewOverlay()
 	longCmd := "git commit -m '" + strings.Repeat("a", 150) + "'"
 	items := []spec.Suggestion{
 		{Cmd: longCmd},
@@ -107,7 +106,7 @@ func TestGhostText_Truncation(t *testing.T) {
 }
 
 func TestHideMenu_PreservesTypedQueryForAI(t *testing.T) {
-	o := integration.NewOverlay()
+	o := NewOverlay()
 	o.HideMenu("git commit")
 
 	if o.GetTypedQuery() != "git commit" {

@@ -1,9 +1,7 @@
-package tests
+package integration
 
 import (
 	"testing"
-
-	"github.com/versenilvis/iris/integration"
 )
 
 func TestComputeCursorCol(t *testing.T) {
@@ -41,7 +39,7 @@ func TestComputeCursorCol(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := integration.ComputeCursorCol(tt.data)
+			got := ComputeCursorCol(tt.data)
 			if got != tt.want {
 				t.Errorf("ComputeCursorCol(%q) = %d, want %d", tt.data, got, tt.want)
 			}

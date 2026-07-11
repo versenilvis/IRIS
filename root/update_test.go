@@ -1,4 +1,4 @@
-package tests
+package root
 
 import (
 	"os"
@@ -6,8 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/versenilvis/iris/config"
-	"github.com/versenilvis/iris/root"
+	"github.com/versenilvis/iris/internal/config"
 )
 
 func TestIsNewer(t *testing.T) {
@@ -29,7 +28,7 @@ func TestIsNewer(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		if got := root.IsNewer(tt.current, tt.latest); got != tt.want {
+		if got := IsNewer(tt.current, tt.latest); got != tt.want {
 			t.Errorf("IsNewer(%q, %q) = %v; want %v", tt.current, tt.latest, got, tt.want)
 		}
 	}
@@ -43,20 +42,8 @@ func TestUpdateState(t *testing.T) {
 	}
 	defer func() { _ = os.RemoveAll(tmpDir) }()
 
-	// Override home dir for testing
-	homeBackup := os.Getenv("HOME")
-	err = os.Setenv("HOME", tmpDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = os.Setenv("HOME", homeBackup) }()
-
-	xdgBackup := os.Getenv("XDG_DATA_HOME")
-	err = os.Setenv("XDG_DATA_HOME", filepath.Join(tmpDir, ".local", "share"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = os.Setenv("XDG_DATA_HOME", xdgBackup) }()
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("XDG_DATA_HOME", filepath.Join(tmpDir, ".local", "share"))
 
 	state := config.LoadState()
 	state.Updater.SeenVersion = "v1.0.0"

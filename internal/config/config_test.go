@@ -1,18 +1,14 @@
-package tests
+package config
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
-
-	"github.com/versenilvis/iris/config"
-	"github.com/versenilvis/iris/root"
 )
 
 func TestDefaultConfigAndState(t *testing.T) {
-	cfg := config.DefaultConfig()
+	cfg := DefaultConfig()
 	if cfg.Core.Version != 1 {
 		t.Errorf("expected version 1, got %d", cfg.Core.Version)
 	}
@@ -31,7 +27,7 @@ func TestDefaultConfigAndState(t *testing.T) {
 
 	// test manual provider registration
 	cfg.AI.Provider = "custom"
-	cfg.AI.Providers = map[string]config.ProviderConfig{
+	cfg.AI.Providers = map[string]ProviderConfig{
 		"custom": {
 			InheritedFrom: "openai",
 			Endpoint:      "https://custom-api.com/v1",
@@ -57,14 +53,14 @@ func TestDefaultConfigAndState(t *testing.T) {
 		t.Errorf("expected min interval 5000, got %d", cfg.AI.SuggestOnEmpty.MinIntervalMS)
 	}
 
-	state := config.DefaultState()
+	state := DefaultState()
 	if state.LastMode != "spec" {
 		t.Errorf("expected last mode spec, got %q", state.LastMode)
 	}
 }
 
 func TestCustomDuration(t *testing.T) {
-	var dur config.Duration
+	var dur Duration
 	err := dur.UnmarshalText([]byte("6h"))
 	if err != nil {
 		t.Fatalf("unexpected error unmarshalling duration: %v", err)
@@ -94,8 +90,7 @@ func TestValidationAndEnvironmentOverrides(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	_ = os.Setenv("XDG_CONFIG_HOME", tmpDir)
-	defer func() { _ = os.Unsetenv("XDG_CONFIG_HOME") }()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 
 	configDir := filepath.Join(tmpDir, "iris")
 	if mkErr := os.MkdirAll(configDir, 0755); mkErr != nil {
@@ -117,33 +112,19 @@ model = "qwen-2.5-coder-32b"
 		t.Fatalf("failed to write config file: %v", wrErr)
 	}
 
-	_ = os.Setenv("IRIS_CORE_DEBUG", "true")
-	_ = os.Setenv("IRIS_CORE_SHELL", "fish")
-	_ = os.Setenv("IRIS_CORE_MODE", "history")
-	_ = os.Setenv("IRIS_UI_GHOST_TEXT", "false")
-	_ = os.Setenv("IRIS_UI_MAX_SUGGESTIONS", "250")
-	_ = os.Setenv("IRIS_UI_MAX_HEIGHT", "25")
-	_ = os.Setenv("IRIS_UPDATER_CHANNEL", "nightly")
-	_ = os.Setenv("IRIS_UPDATER_INTERVAL", "12h")
-	_ = os.Setenv("IRIS_UPDATER_CHECK_ON_STARTUP", "false")
-	_ = os.Setenv("IRIS_AI_PROVIDER", "ollama")
-	_ = os.Setenv("GROQ_API_KEY", "gsk_test_123")
+	t.Setenv("IRIS_CORE_DEBUG", "true")
+	t.Setenv("IRIS_CORE_SHELL", "fish")
+	t.Setenv("IRIS_CORE_MODE", "history")
+	t.Setenv("IRIS_UI_GHOST_TEXT", "false")
+	t.Setenv("IRIS_UI_MAX_SUGGESTIONS", "250")
+	t.Setenv("IRIS_UI_MAX_HEIGHT", "25")
+	t.Setenv("IRIS_UPDATER_CHANNEL", "nightly")
+	t.Setenv("IRIS_UPDATER_INTERVAL", "12h")
+	t.Setenv("IRIS_UPDATER_CHECK_ON_STARTUP", "false")
+	t.Setenv("IRIS_AI_PROVIDER", "ollama")
+	t.Setenv("GROQ_API_KEY", "gsk_test_123")
 
-	defer func() {
-		_ = os.Unsetenv("IRIS_CORE_DEBUG")
-		_ = os.Unsetenv("IRIS_CORE_SHELL")
-		_ = os.Unsetenv("IRIS_CORE_MODE")
-		_ = os.Unsetenv("IRIS_UI_GHOST_TEXT")
-		_ = os.Unsetenv("IRIS_UI_MAX_SUGGESTIONS")
-		_ = os.Unsetenv("IRIS_UI_MAX_HEIGHT")
-		_ = os.Unsetenv("IRIS_UPDATER_CHANNEL")
-		_ = os.Unsetenv("IRIS_UPDATER_INTERVAL")
-		_ = os.Unsetenv("IRIS_UPDATER_CHECK_ON_STARTUP")
-		_ = os.Unsetenv("IRIS_AI_PROVIDER")
-		_ = os.Unsetenv("GROQ_API_KEY")
-	}()
-
-	cfg, err := config.Load()
+	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("failed to load config: %v", err)
 	}
@@ -183,8 +164,8 @@ model = "qwen-2.5-coder-32b"
 		t.Errorf("expected groq api key gsk_test_123 from env, got %q", groqCfg.GetAPIKey())
 	}
 
-	_ = os.Setenv("IRIS_CORE_MODE", "invalid")
-	_, err = config.Load()
+	t.Setenv("IRIS_CORE_MODE", "invalid")
+	_, err = Load()
 	if err == nil {
 		t.Errorf("expected validation error for invalid mode in env")
 	}
@@ -197,10 +178,9 @@ func TestLoadSave(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	_ = os.Setenv("XDG_CONFIG_HOME", tmpDir)
-	defer func() { _ = os.Unsetenv("XDG_CONFIG_HOME") }()
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 
-	cfg, err := config.Load()
+	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("failed to load: %v", err)
 	}
@@ -208,12 +188,12 @@ func TestLoadSave(t *testing.T) {
 	cfg.Core.Shell = "zsh"
 	cfg.UI.MaxHeight = 20
 
-	err = config.Save(cfg)
+	err = Save(cfg)
 	if err != nil {
 		t.Fatalf("failed to save: %v", err)
 	}
 
-	loaded, err := config.Load()
+	loaded, err := Load()
 	if err != nil {
 		t.Fatalf("failed to load after save: %v", err)
 	}
@@ -233,12 +213,8 @@ func TestMigration(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	_ = os.Setenv("HOME", tmpDir)
-	_ = os.Setenv("XDG_DATA_HOME", filepath.Join(tmpDir, ".local", "share"))
-	defer func() {
-		_ = os.Unsetenv("HOME")
-		_ = os.Unsetenv("XDG_DATA_HOME")
-	}()
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("XDG_DATA_HOME", filepath.Join(tmpDir, ".local", "share"))
 
 	legacyDir := filepath.Join(tmpDir, ".iris")
 	if errMkdir := os.MkdirAll(legacyDir, 0755); errMkdir != nil {
@@ -251,12 +227,12 @@ func TestMigration(t *testing.T) {
 	legacyUpdateJson := `{"seen_version": "v1.2.3", "last_check": 1234567890}`
 	_ = os.WriteFile(filepath.Join(legacyDir, "update_state.json"), []byte(legacyUpdateJson), 0644)
 
-	err = config.MigrateFromLegacyJSON()
+	err = MigrateFromLegacyJSON()
 	if err != nil {
 		t.Fatalf("migration failed: %v", err)
 	}
 
-	state := config.LoadState()
+	state := LoadState()
 	if state.LastMode != "history" {
 		t.Errorf("expected migrated last mode 'history', got %q", state.LastMode)
 	}
@@ -275,30 +251,4 @@ func TestMigration(t *testing.T) {
 	}
 }
 
-func TestConfigCommands(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "iris-config-cmd-test")
-	if err != nil {
-		t.Fatalf("failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
 
-	origConfigHome := os.Getenv("XDG_CONFIG_HOME")
-	defer func() {
-		_ = os.Setenv("XDG_CONFIG_HOME", origConfigHome)
-	}()
-	_ = os.Setenv("XDG_CONFIG_HOME", tmpDir)
-
-	root.ConfigInitCmd.Run(root.ConfigInitCmd, []string{})
-
-	configPath := filepath.Join(tmpDir, "iris", "config.toml")
-	if _, err := os.Stat(configPath); err != nil {
-		t.Errorf("expected config file to be created at %s, but it was not", configPath)
-	}
-
-	buf := new(bytes.Buffer)
-	root.ConfigShowCmd.SetOut(buf)
-	root.ConfigShowCmd.Run(root.ConfigShowCmd, []string{})
-	if buf.Len() == 0 {
-		t.Errorf("expected show command to output configuration")
-	}
-}

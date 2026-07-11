@@ -1,4 +1,4 @@
-package tests
+package ai
 
 import (
 	"context"
@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/versenilvis/iris/ai"
 	"github.com/versenilvis/iris/spec"
 )
 
@@ -18,43 +17,43 @@ type mockAISuggester struct {
 	ret   *spec.Suggestion
 }
 
-func (m *mockAISuggester) SuggestOnEmpty(ctx context.Context, env ai.EnvSnapshot) (*spec.Suggestion, error) {
+func (m *mockAISuggester) SuggestOnEmpty(ctx context.Context, env EnvSnapshot) (*spec.Suggestion, error) {
 	atomic.AddInt32(&m.calls, 1)
 	return m.ret, nil
 }
 
 func TestRuleBasedSuggester(t *testing.T) {
-	rule := ai.RuleBasedSuggester{}
-	ctx := context.Background()
+	rule := RuleBasedSuggester{}
 
-	// case 1: retry failed command
-	sugg1, _ := rule.SuggestOnEmpty(ctx, ai.EnvSnapshot{LastExitCode: 1, LastCmd: "make build"})
+	// Case 1: Last exit code != 0
+	ctx := context.Background()
+	sugg1, _ := rule.SuggestOnEmpty(ctx, EnvSnapshot{LastExitCode: 1, LastCmd: "make build"})
 	if sugg1 == nil || sugg1.Cmd != "make build" || sugg1.Confidence != 80 {
 		t.Fatalf("expected retry make build with conf 80, got: %+v", sugg1)
 	}
 
 	// case 2: git status after git status
-	sugg2, _ := rule.SuggestOnEmpty(ctx, ai.EnvSnapshot{LastCmd: "git status"})
+	sugg2, _ := rule.SuggestOnEmpty(ctx, EnvSnapshot{LastCmd: "git status"})
 	if sugg2 == nil || sugg2.Cmd != "git diff" || sugg2.Confidence != 75 {
 		t.Fatalf("expected git diff with conf 75, got: %+v", sugg2)
 	}
 
 	// case 3: modified git files
-	sugg3, _ := rule.SuggestOnEmpty(ctx, ai.EnvSnapshot{GitStatus: " M main.go"})
+	sugg3, _ := rule.SuggestOnEmpty(ctx, EnvSnapshot{GitStatus: " M main.go"})
 	if sugg3 == nil || sugg3.Cmd != "git status" || sugg3.Confidence != 70 {
 		t.Fatalf("expected git status with conf 70, got: %+v", sugg3)
 	}
 
 	// case 4: package.json signature (conf 65)
-	sugg4, _ := rule.SuggestOnEmpty(ctx, ai.EnvSnapshot{DirSignature: "package.json"})
+	sugg4, _ := rule.SuggestOnEmpty(ctx, EnvSnapshot{DirSignature: "package.json"})
 	if sugg4 == nil || sugg4.Cmd != "npm run dev" || sugg4.Confidence != 65 {
 		t.Fatalf("expected npm run dev with conf 65, got: %+v", sugg4)
 	}
 }
 
 func TestContextCache_ShouldCallAI(t *testing.T) {
-	cache := ai.NewContextCache()
-	snap := ai.EnvSnapshot{Cwd: "/test", GitStatus: "clean"}
+	cache := NewContextCache()
+	snap := EnvSnapshot{Cwd: "/test", GitStatus: "clean"}
 
 	// first call -> true
 	if !cache.ShouldCallAI(snap, 50*time.Millisecond) {
@@ -80,17 +79,16 @@ func TestContextCache_ShouldCallAI(t *testing.T) {
 func TestEmptyLinePredictor_TwoTier(t *testing.T) {
 	ctx := context.Background()
 	mockAI := &mockAISuggester{ret: &spec.Suggestion{Cmd: "ai-suggested-cmd", Confidence: 85}}
-	predictor := ai.NewEmptyLinePredictor(nil, mockAI, 50*time.Millisecond)
+	predictor := NewEmptyLinePredictor(nil, mockAI, 50*time.Millisecond)
 
-	// case 1: rule based match >= 70 -> ai not called
-	env1 := ai.EnvSnapshot{LastExitCode: 1, LastCmd: "failed-cmd"}
+	env1 := EnvSnapshot{LastExitCode: 1, LastCmd: "failed-cmd"}
 	sugg1, _ := predictor.Predict(ctx, env1, true)
 	if sugg1 == nil || sugg1.Cmd != "failed-cmd" || atomic.LoadInt32(&mockAI.calls) != 0 {
 		t.Fatalf("expected rule based result and 0 ai calls, got sugg: %+v, calls: %d", sugg1, mockAI.calls)
 	}
 
 	// case 2: rule based conf < 70 -> ai called
-	env2 := ai.EnvSnapshot{DirSignature: "package.json"}
+	env2 := EnvSnapshot{DirSignature: "package.json"}
 	sugg2, _ := predictor.Predict(ctx, env2, true)
 	if sugg2 == nil || sugg2.Cmd != "ai-suggested-cmd" || atomic.LoadInt32(&mockAI.calls) != 1 {
 		t.Fatalf("expected ai result and 1 ai call, got sugg: %+v, calls: %d", sugg2, mockAI.calls)
@@ -110,7 +108,7 @@ func TestExtractScriptsAndTargets_Makefile(t *testing.T) {
 	_ = os.WriteFile(filepath.Join(tmp, "Makefile"), content, 0644)
 
 	var sb strings.Builder
-	ai.ExtractScriptsAndTargets(&sb, tmp, "")
+	ExtractScriptsAndTargets(&sb, tmp, "")
 	res := sb.String()
 
 	if !strings.Contains(res, "build") || !strings.Contains(res, "all") {

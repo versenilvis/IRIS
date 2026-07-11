@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/versenilvis/iris/config"
+	"github.com/versenilvis/iris/internal/config"
 )
 
 // updateResult is passed from the async checker to the main loop

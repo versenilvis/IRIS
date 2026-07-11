@@ -4,10 +4,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/versenilvis/iris/ai"
-	"github.com/versenilvis/iris/config"
 	"github.com/versenilvis/iris/integration"
-	"github.com/versenilvis/iris/logger"
+	"github.com/versenilvis/iris/internal/ai"
+	"github.com/versenilvis/iris/internal/config"
+	"github.com/versenilvis/iris/internal/logger"
 	"github.com/versenilvis/iris/spec"
 )
 
