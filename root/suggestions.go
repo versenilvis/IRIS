@@ -87,7 +87,7 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 				for i, item := range deduped {
 					if item.Cmd == aiSugg.Cmd && aiSugg.Confidence > item.Confidence {
 						deduped[i].Confidence = aiSugg.Confidence
-						if deduped[i].Source == "" || deduped[i].Source == "spec" {
+						if deduped[i].Source == "" || deduped[i].Source == "spec" || deduped[i].Source == "history" {
 							deduped[i].Source = "ai"
 						}
 						break

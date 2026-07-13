@@ -123,3 +123,20 @@ func TestScore_UnsortedHistorySorting(t *testing.T) {
 		t.Errorf("expected cmdC > cmdA > cmdB based on frecency, got %s, %s, %s", scored[0].Cmd, scored[1].Cmd, scored[2].Cmd)
 	}
 }
+
+func TestBasePriorityFor_HistoryWithConfidence(t *testing.T) {
+	s1 := spec.Suggestion{Source: "history"}
+	if p := basePriorityFor(s1); p != 40 {
+		t.Errorf("expected default history priority 40 when confidence unset, got %d", p)
+	}
+
+	s2 := spec.Suggestion{Source: "history", Confidence: 85}
+	if p := basePriorityFor(s2); p != 85 {
+		t.Errorf("expected history priority 85 when confidence is 85, got %d", p)
+	}
+
+	s3 := spec.Suggestion{Source: "history", Confidence: 150}
+	if p := basePriorityFor(s3); p != 100 {
+		t.Errorf("expected capped history priority 100 when confidence is > 100, got %d", p)
+	}
+}

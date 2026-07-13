@@ -45,5 +45,8 @@ func TestMergeResults(t *testing.T) {
 		if res[0].Cmd != aiSugg.Cmd {
 			t.Errorf("Expected AI suggestion at index 0, got %q (confidence %d)", res[0].Cmd, res[0].Confidence)
 		}
+		if res[0].Source != "ai" {
+			t.Errorf("Expected promoted source 'ai', got %q", res[0].Source)
+		}
 	})
 }
