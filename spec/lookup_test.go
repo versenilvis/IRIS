@@ -97,7 +97,6 @@ func TestLookup_NoFlagGateAndPriority(t *testing.T) {
 	}
 }
 
-
 func TestLookupConcurrent(t *testing.T) {
 	Registry = make(map[string]*Spec)
 	Register(&Spec{
@@ -116,14 +115,12 @@ func TestLookupConcurrent(t *testing.T) {
 	const iterations = 50
 
 	for range goroutines {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for range iterations {
 				_ = Lookup("gca")
 				_ = Lookup("git ")
 			}
-		}()
+		})
 	}
 	wg.Wait()
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"strings"
 	"time"
@@ -72,9 +73,7 @@ func (c *OpenAIClient) Suggest(ctx context.Context, buf string, env EnvSnapshot,
 		"max_tokens":  100,
 		"temperature": 0.2,
 	}
-	for k, v := range c.cfg.ExtraRequestBody {
-		reqMap[k] = v
-	}
+	maps.Copy(reqMap, c.cfg.ExtraRequestBody)
 
 	bodyBytes, err := json.Marshal(reqMap)
 	if err != nil {

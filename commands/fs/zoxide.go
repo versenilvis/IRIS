@@ -52,7 +52,7 @@ func ZoxideGenerator() spec.GeneratorFunc {
 
 			if fullQuery == "" {
 				limit := min(len(dirs), 20)
-				for i := 0; i < limit; i++ {
+				for i := range limit {
 					path := dirs[i]
 					display := strings.Replace(path, home, "~", 1)
 					zoxideSuggestions = append(zoxideSuggestions, spec.Suggestion{

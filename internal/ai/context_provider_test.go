@@ -94,7 +94,7 @@ func TestProviderCache_Eviction(t *testing.T) {
 	ctx := context.Background()
 
 	// 1. Fill cache to capacity (50 items) rapidly before any TTL expires
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		p := &mockProvider{
 			name:      fmt.Sprintf("prov-%d", i),
 			matchPref: "test",
@@ -184,7 +184,7 @@ func TestAIEngine_ConcurrentRegistrationAndGather(t *testing.T) {
 	ctx := context.Background()
 	var wg sync.WaitGroup
 
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
@@ -196,11 +196,9 @@ func TestAIEngine_ConcurrentRegistrationAndGather(t *testing.T) {
 			engine.RegisterProvider(p)
 		}(i)
 
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			engine.GatherDynamicContext(ctx, "docker ps", "/tmp")
-		}()
+		})
 	}
 
 	wg.Wait()
