@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -186,7 +187,7 @@ func (p *universalProvider) Gather(ctx context.Context) (string, error) {
 		wg.Wait()
 
 		formatGitErr := func(name string, err error) string {
-			if err == context.DeadlineExceeded || strings.Contains(err.Error(), "signal: killed") {
+			if errors.Is(err, context.DeadlineExceeded) || strings.Contains(err.Error(), "signal: killed") {
 				return fmt.Sprintf("[Git probe timed out: %s]\n", name)
 			}
 			return fmt.Sprintf("[Git probe failed (%s): %v]\n", name, err)

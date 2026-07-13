@@ -43,7 +43,7 @@ func NewFrecencyStore(dbPath string) (*FrecencyStore, error) {
 	_ = os.Chmod(dir, 0700)
 
 	if f, err := os.OpenFile(dbPath, os.O_CREATE, 0600); err == nil {
-		f.Close()
+		_ = f.Close()
 	}
 	_ = os.Chmod(dbPath, 0600)
 
