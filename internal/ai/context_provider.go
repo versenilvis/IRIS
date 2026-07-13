@@ -169,7 +169,7 @@ func (p *universalProvider) Gather(ctx context.Context) (string, error) {
 			defer wg.Done()
 			ctxProbe, cancel := context.WithTimeout(ctx, 400*time.Millisecond)
 			defer cancel()
-			recentOut, recentErr = exec.CommandContext(ctxProbe, "git", "-C", p.cwd, "branch", "--sort=-committerdate", "--format=%(refname:short)").Output()
+			recentOut, recentErr = exec.CommandContext(ctxProbe, "git", "-C", p.cwd, "for-each-ref", "--sort=-committerdate", "--format=%(refname:short)", "--count=10", "refs/heads/").Output()
 		}()
 		go func() {
 			defer wg.Done()
@@ -212,9 +212,9 @@ func (p *universalProvider) Gather(ctx context.Context) (string, error) {
 		} else {
 			recentBranchesList := strings.Split(strings.TrimSpace(string(recentOut)), "\n")
 			var recentBranches []string
-			for i, b := range recentBranchesList {
+			for _, b := range recentBranchesList {
 				b = strings.TrimSpace(b)
-				if b != "" && i < 10 {
+				if b != "" {
 					recentBranches = append(recentBranches, b)
 				}
 			}
