@@ -105,7 +105,8 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 	}
 	ctxTimeout, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
-	signals := scoring.CollectSignals(ctxTimeout, cwd, query, rootCmd, scoring.GetFrecencyStore())
+	store, _ := scoring.GetFrecencyStore()
+	signals := scoring.CollectSignals(ctxTimeout, cwd, query, rootCmd, store)
 	scored := scoring.Score(deduped, signals)
 
 	finalResults := make([]spec.Suggestion, 0, len(scored))

@@ -143,3 +143,19 @@ func TestFrecencyStore_SQLiteConfigurationAndContext(t *testing.T) {
 		t.Errorf("expected context.Canceled from Record with canceled context, got %v", err)
 	}
 }
+
+func TestFrecencyStore_NilReceiver(t *testing.T) {
+	var nilStore *FrecencyStore
+	if err := nilStore.Record(context.Background(), "cmd", "cwd"); err != nil {
+		t.Errorf("expected nil error on nil store Record, got %v", err)
+	}
+	if entries, err := nilStore.QueryLocal(context.Background(), "cwd", "", 10); err != nil || entries != nil {
+		t.Errorf("expected nil entries and nil error on nil store QueryLocal, got %v, %v", entries, err)
+	}
+	if entries, err := nilStore.QueryGlobal(context.Background(), "", 10); err != nil || entries != nil {
+		t.Errorf("expected nil entries and nil error on nil store QueryGlobal, got %v, %v", entries, err)
+	}
+	if err := nilStore.Close(); err != nil {
+		t.Errorf("expected nil error on nil store Close, got %v", err)
+	}
+}

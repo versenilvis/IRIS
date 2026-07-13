@@ -95,6 +95,9 @@ CREATE INDEX IF NOT EXISTS idx_history_cwd_cmd ON history_entries(cwd, cmd);
 }
 
 func (f *FrecencyStore) Record(ctx context.Context, cmd, cwd string) error {
+	if f == nil {
+		return nil
+	}
 	cmd = strings.TrimSpace(cmd)
 	if cmd == "" || cwd == "" {
 		return nil
@@ -149,6 +152,9 @@ func (f *FrecencyStore) RawScore(count int, lastUsed time.Time) float64 {
 }
 
 func (f *FrecencyStore) QueryLocal(ctx context.Context, cwd, prefix string, limit int) ([]FrecencyEntry, error) {
+	if f == nil {
+		return nil, nil
+	}
 	if limit <= 0 {
 		limit = 50
 	}
@@ -207,6 +213,9 @@ func (f *FrecencyStore) QueryLocal(ctx context.Context, cwd, prefix string, limi
 }
 
 func (f *FrecencyStore) QueryGlobal(ctx context.Context, prefix string, limit int) ([]FrecencyEntry, error) {
+	if f == nil {
+		return nil, nil
+	}
 	if limit <= 0 {
 		limit = 50
 	}
@@ -280,6 +289,9 @@ func (f *FrecencyStore) QueryGlobal(ctx context.Context, prefix string, limit in
 }
 
 func (f *FrecencyStore) Close() error {
+	if f == nil {
+		return nil
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.db != nil {
@@ -303,15 +315,21 @@ func parseTimestamp(s string) (time.Time, error) {
 
 var (
 	globalFrecencyStore *FrecencyStore
-	globalFrecencyOnce  sync.Once
+	globalFrecencyMu    sync.Mutex
 )
 
-func GetFrecencyStore() *FrecencyStore {
-	globalFrecencyOnce.Do(func() {
-		store, err := NewFrecencyStore("")
-		if err == nil {
-			globalFrecencyStore = store
-		}
-	})
-	return globalFrecencyStore
+func GetFrecencyStore() (*FrecencyStore, error) {
+	globalFrecencyMu.Lock()
+	defer globalFrecencyMu.Unlock()
+
+	if globalFrecencyStore != nil {
+		return globalFrecencyStore, nil
+	}
+
+	store, err := NewFrecencyStore("")
+	if err != nil {
+		return nil, err
+	}
+	globalFrecencyStore = store
+	return globalFrecencyStore, nil
 }

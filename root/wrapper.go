@@ -334,7 +334,9 @@ func runWrapper() {
 					go func(c, d string) {
 						ctxRecord, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
 						defer cancel()
-						_ = scoring.GetFrecencyStore().Record(ctxRecord, c, d)
+						if store, err := scoring.GetFrecencyStore(); err == nil && store != nil {
+							_ = store.Record(ctxRecord, c, d)
+						}
 					}(cmdToRecord, cwd)
 				}
 				// hook: after user executes a command, print the update notice exactly once per session
