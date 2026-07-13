@@ -50,9 +50,10 @@ func TestScore_NormalizedFrecency(t *testing.T) {
 	scored := Score(suggestions, signals)
 	var lsBreakdown, pushBreakdown ScoreBreakdown
 	for _, s := range scored {
-		if s.Cmd == "ls -la" {
+		switch s.Cmd {
+		case "ls -la":
 			lsBreakdown = s.Breakdown
-		} else if s.Cmd == "git push" {
+		case "git push":
 			pushBreakdown = s.Breakdown
 		}
 	}
