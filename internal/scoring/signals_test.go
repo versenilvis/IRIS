@@ -1,6 +1,7 @@
 package scoring
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -17,10 +18,10 @@ func TestCollectSignals(t *testing.T) {
 	}
 	defer store.Close()
 
-	_ = store.Record("npm run dev", tmpDir)
-	_ = store.Record("npm test", "/other/dir")
+	_ = store.Record(context.Background(), "npm run dev", tmpDir)
+	_ = store.Record(context.Background(), "npm test", "/other/dir")
 
-	signals := CollectSignals(tmpDir, "npm", "npm", store)
+	signals := CollectSignals(context.Background(), tmpDir, "npm", "npm", store)
 
 	if !signals.Workspace.HasNodeProject {
 		t.Error("expected HasNodeProject to be true in collected signals")

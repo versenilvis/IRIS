@@ -53,7 +53,7 @@ func NewFrecencyStore(dbPath string) (*FrecencyStore, error) {
 	}
 
 	store := &FrecencyStore{db: db}
-	if err := store.initSchema(); err != nil {
+	if err := store.initSchema(context.Background()); err != nil {
 		_ = db.Close()
 		return nil, err
 	}
@@ -62,7 +62,22 @@ func NewFrecencyStore(dbPath string) (*FrecencyStore, error) {
 	return store, nil
 }
 
-func (f *FrecencyStore) initSchema() error {
+func (f *FrecencyStore) configureSQLite(ctx context.Context) error {
+	_, err := f.db.ExecContext(ctx, "PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000;")
+	return err
+}
+
+func (f *FrecencyStore) initSchema(ctx context.Context) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctxTimeout, cancel := context.WithTimeout(ctx, 2000*time.Millisecond)
+	defer cancel()
+
+	if err := f.configureSQLite(ctxTimeout); err != nil {
+		return err
+	}
+
 	schema := `
 CREATE TABLE IF NOT EXISTS history_entries (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -75,11 +90,11 @@ CREATE TABLE IF NOT EXISTS history_entries (
 
 CREATE INDEX IF NOT EXISTS idx_history_cwd_cmd ON history_entries(cwd, cmd);
 `
-	_, err := f.db.ExecContext(context.Background(), schema)
+	_, err := f.db.ExecContext(ctxTimeout, schema)
 	return err
 }
 
-func (f *FrecencyStore) Record(cmd, cwd string) error {
+func (f *FrecencyStore) Record(ctx context.Context, cmd, cwd string) error {
 	cmd = strings.TrimSpace(cmd)
 	if cmd == "" || cwd == "" {
 		return nil
@@ -88,6 +103,14 @@ func (f *FrecencyStore) Record(cmd, cwd string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctxTimeout, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
+	defer cancel()
+
+	_ = f.configureSQLite(ctxTimeout)
+
 	query := `
 INSERT INTO history_entries (cmd, cwd, count, last_used)
 VALUES (?, ?, 1, CURRENT_TIMESTAMP)
@@ -95,7 +118,7 @@ ON CONFLICT(cmd, cwd) DO UPDATE SET
     count = count + 1,
     last_used = CURRENT_TIMESTAMP;
 `
-	_, err := f.db.ExecContext(context.Background(), query, cmd, cwd)
+	_, err := f.db.ExecContext(ctxTimeout, query, cmd, cwd)
 	return err
 }
 
@@ -125,19 +148,27 @@ func (f *FrecencyStore) RawScore(count int, lastUsed time.Time) float64 {
 	return float64(count) * weight
 }
 
-func (f *FrecencyStore) QueryLocal(cwd, prefix string, limit int) ([]FrecencyEntry, error) {
+func (f *FrecencyStore) QueryLocal(ctx context.Context, cwd, prefix string, limit int) ([]FrecencyEntry, error) {
 	if limit <= 0 {
 		limit = 50
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctxTimeout, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
+	defer cancel()
+
+	_ = f.configureSQLite(ctxTimeout)
+
 	var rows *sql.Rows
 	var err error
 	if prefix != "" {
-		rows, err = f.db.QueryContext(context.Background(), `SELECT cmd, cwd, count, last_used FROM history_entries WHERE cwd = ? AND cmd LIKE ?`, cwd, prefix+"%")
+		rows, err = f.db.QueryContext(ctxTimeout, `SELECT cmd, cwd, count, last_used FROM history_entries WHERE cwd = ? AND cmd LIKE ?`, cwd, prefix+"%")
 	} else {
-		rows, err = f.db.QueryContext(context.Background(), `SELECT cmd, cwd, count, last_used FROM history_entries WHERE cwd = ?`, cwd)
+		rows, err = f.db.QueryContext(ctxTimeout, `SELECT cmd, cwd, count, last_used FROM history_entries WHERE cwd = ?`, cwd)
 	}
 	if err != nil {
 		return nil, err
@@ -175,19 +206,27 @@ func (f *FrecencyStore) QueryLocal(cwd, prefix string, limit int) ([]FrecencyEnt
 	return entries, nil
 }
 
-func (f *FrecencyStore) QueryGlobal(prefix string, limit int) ([]FrecencyEntry, error) {
+func (f *FrecencyStore) QueryGlobal(ctx context.Context, prefix string, limit int) ([]FrecencyEntry, error) {
 	if limit <= 0 {
 		limit = 50
 	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctxTimeout, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
+	defer cancel()
+
+	_ = f.configureSQLite(ctxTimeout)
+
 	var rows *sql.Rows
 	var err error
 	if prefix != "" {
-		rows, err = f.db.QueryContext(context.Background(), `SELECT cmd, cwd, count, last_used FROM history_entries WHERE cmd LIKE ?`, prefix+"%")
+		rows, err = f.db.QueryContext(ctxTimeout, `SELECT cmd, cwd, count, last_used FROM history_entries WHERE cmd LIKE ?`, prefix+"%")
 	} else {
-		rows, err = f.db.QueryContext(context.Background(), `SELECT cmd, cwd, count, last_used FROM history_entries`)
+		rows, err = f.db.QueryContext(ctxTimeout, `SELECT cmd, cwd, count, last_used FROM history_entries`)
 	}
 	if err != nil {
 		return nil, err
