@@ -95,6 +95,18 @@ func TestLookup_NoFlagGateAndPriority(t *testing.T) {
 	if !foundOpt {
 		t.Error("expected --verbose in lookup results even without typed dash")
 	}
+
+	partialResults := Lookup("demo ver")
+	foundPartialOpt := false
+	for _, r := range partialResults {
+		if strings.Contains(r.Cmd, "--verbose") {
+			foundPartialOpt = true
+			break
+		}
+	}
+	if !foundPartialOpt {
+		t.Error("expected --verbose when partial query is 'ver' (trimmed dash match)")
+	}
 }
 
 func TestLookupConcurrent(t *testing.T) {
