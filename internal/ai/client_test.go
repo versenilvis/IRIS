@@ -197,6 +197,18 @@ func TestNormalizeSuggestion(t *testing.T) {
 			raw:      "fix(auth): resolve bug\"",
 			expected: "git commit -m \"fix(auth): resolve bug\"",
 		},
+		{
+			name:     "Insert space when buf ends in ordinary word char and raw starts with flag",
+			buf:      "docker run",
+			raw:      "-it ubuntu",
+			expected: "docker run -it ubuntu",
+		},
+		{
+			name:     "Insert space when buf ends in ordinary word char and raw starts with quote",
+			buf:      "FOO=bar",
+			raw:      "\"baz\"",
+			expected: "FOO=bar \"baz\"",
+		},
 	}
 
 	for _, tt := range tests {
