@@ -24,12 +24,14 @@ type Subcommand struct {
 	Options     []Option
 	Generator   GeneratorFunc
 	MaxArgs     int
+	Priority    int
 }
 
 // Option represents a command flag or option
 type Option struct {
 	Name        string
 	Description string
+	Priority    int
 }
 
 // Suggestion represents an item in the suggestion menu
@@ -39,6 +41,7 @@ type Suggestion struct {
 	Icon       string
 	Source     string // "history", "spec", "ai"
 	Confidence int    // 0-100
+	Priority   int    // static author priority
 }
 
 var Registry = map[string]*Spec{}
