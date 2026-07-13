@@ -217,6 +217,9 @@ func (p *universalProvider) Gather(ctx context.Context) (string, error) {
 				b = strings.TrimSpace(b)
 				if b != "" {
 					recentBranches = append(recentBranches, b)
+					if len(recentBranches) >= 10 {
+						break
+					}
 				}
 			}
 			if len(recentBranches) > 0 {
