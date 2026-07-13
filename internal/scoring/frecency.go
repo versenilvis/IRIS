@@ -194,6 +194,9 @@ func (f *FrecencyStore) QueryLocal(ctx context.Context, cwd, prefix string, limi
 			RawScore: f.RawScore(count, t),
 		})
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	sort.SliceStable(entries, func(i, j int) bool {
 		return entries[i].RawScore > entries[j].RawScore
@@ -262,6 +265,9 @@ func (f *FrecencyStore) QueryGlobal(ctx context.Context, prefix string, limit in
 				RawScore: score,
 			}
 		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	var entries []FrecencyEntry
