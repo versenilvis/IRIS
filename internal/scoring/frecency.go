@@ -253,3 +253,18 @@ func parseTimestamp(s string) (time.Time, error) {
 	}
 	return time.Parse("2006-01-02", s)
 }
+
+var (
+	globalFrecencyStore *FrecencyStore
+	globalFrecencyOnce  sync.Once
+)
+
+func GetFrecencyStore() *FrecencyStore {
+	globalFrecencyOnce.Do(func() {
+		store, err := NewFrecencyStore("")
+		if err == nil {
+			globalFrecencyStore = store
+		}
+	})
+	return globalFrecencyStore
+}
