@@ -2,7 +2,6 @@ package root
 
 import (
 	"context"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -97,7 +96,7 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 		}
 	}
 
-	cwd, _ := os.Getwd()
+	cwd := spec.GetCWD()
 	tokens := spec.Tokenize(query)
 	rootCmd := ""
 	if len(tokens) > 0 {
