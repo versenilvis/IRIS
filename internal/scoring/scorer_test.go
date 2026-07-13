@@ -152,4 +152,7 @@ func TestIsSubsequence_UTF8(t *testing.T) {
 	if isSubsequence("xyz", "tiếng việt") {
 		t.Error("expected 'xyz' NOT to be subsequence of 'tiếng việt'")
 	}
+	if !isSubsequence("αγ", "αβγδε") {
+		t.Error("expected multi-byte rune 'αγ' to be subsequence of 'αβγδε'")
+	}
 }
