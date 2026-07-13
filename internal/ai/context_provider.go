@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/versenilvis/iris/internal/workspace"
 )
 
 type CommandContextProvider struct {
@@ -88,6 +90,39 @@ func (p *universalProvider) Gather(ctx context.Context) (string, error) {
 
 	var sb strings.Builder
 
+	ws := workspace.DetectCached(p.cwd)
+	var ecosystems []string
+	if ws.HasGit {
+		ecosystems = append(ecosystems, "Git")
+	}
+	if ws.HasNodeProject {
+		ecosystems = append(ecosystems, "Node/Bun")
+	}
+	if ws.HasGoProject {
+		ecosystems = append(ecosystems, "Go")
+	}
+	if ws.HasRustProject {
+		ecosystems = append(ecosystems, "Rust")
+	}
+	if ws.HasPythonProject {
+		ecosystems = append(ecosystems, "Python")
+	}
+	if ws.HasJustfile {
+		ecosystems = append(ecosystems, "Just")
+	}
+	if ws.HasMakefile {
+		ecosystems = append(ecosystems, "Makefile/C++")
+	}
+	if ws.HasDockerfile {
+		ecosystems = append(ecosystems, "Docker")
+	}
+	if ws.HasK8s {
+		ecosystems = append(ecosystems, "K8s")
+	}
+	if len(ecosystems) > 0 {
+		fmt.Fprintf(&sb, "Detected Workspace Ecosystems: %s\n\n", strings.Join(ecosystems, ", "))
+	}
+
 	ExtractScriptsAndTargets(&sb, p.cwd, "")
 
 	if entries, err := os.ReadDir(p.cwd); err == nil {
@@ -111,8 +146,7 @@ func (p *universalProvider) Gather(ctx context.Context) (string, error) {
 		}
 	}
 
-	cmd := exec.CommandContext(ctxTimeout, "git", "-C", p.cwd, "rev-parse", "--is-inside-work-tree")
-	if cmd.Run() == nil {
+	if ws.HasGit {
 		branchOut, _ := exec.CommandContext(ctxTimeout, "git", "-C", p.cwd, "rev-parse", "--abbrev-ref", "HEAD").Output()
 		currentBranch := strings.TrimSpace(string(branchOut))
 
