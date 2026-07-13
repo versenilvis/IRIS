@@ -57,8 +57,10 @@ func NormalizeSuggestion(buf string, suggCmd string) string {
 	}
 
 	if buf != "" {
-		if strings.HasPrefix(strings.ToLower(suggCmd), strings.ToLower(buf)) && len(suggCmd) >= len(buf) {
-			suggCmd = buf + suggCmd[len(buf):]
+		bufRunes := []rune(buf)
+		suggRunes := []rune(suggCmd)
+		if len(suggRunes) >= len(bufRunes) && strings.EqualFold(string(suggRunes[:len(bufRunes)]), buf) {
+			suggCmd = buf + string(suggRunes[len(bufRunes):])
 		} else if fields := strings.Fields(buf); len(fields) > 0 && len(suggCmd) > 0 {
 			firstWord := strings.ToLower(fields[0])
 			suggLow := strings.ToLower(suggCmd)
