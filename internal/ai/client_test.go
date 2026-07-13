@@ -218,8 +218,8 @@ func TestNormalizeSuggestion(t *testing.T) {
 		{
 			name:     "Safe rune slicing with multibyte prefix",
 			buf:      "echo \"xin chào ",
-			raw:      "echo \"XIN CHÀO việt nam\"",
-			expected: "echo \"xin chào việt nam\"",
+			raw:      "echo \"XIN CHÀO thế giới\"",
+			expected: "echo \"xin chào thế giới\"",
 		},
 	}
 
