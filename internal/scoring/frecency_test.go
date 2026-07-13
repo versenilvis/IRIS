@@ -2,6 +2,7 @@ package scoring
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -120,16 +121,16 @@ func TestFrecencyStore_SQLiteConfigurationAndContext(t *testing.T) {
 	defer store.Close()
 
 	var journalMode string
-	if err := store.db.QueryRow("PRAGMA journal_mode;").Scan(&journalMode); err != nil {
-		t.Fatalf("failed to query journal_mode: %v", err)
+	if qErr := store.db.QueryRow("PRAGMA journal_mode;").Scan(&journalMode); qErr != nil {
+		t.Fatalf("failed to query journal_mode: %v", qErr)
 	}
 	if journalMode != "wal" {
 		t.Errorf("expected journal_mode 'wal', got '%s'", journalMode)
 	}
 
 	var busyTimeout int
-	if err := store.db.QueryRow("PRAGMA busy_timeout;").Scan(&busyTimeout); err != nil {
-		t.Fatalf("failed to query busy_timeout: %v", err)
+	if qErr := store.db.QueryRow("PRAGMA busy_timeout;").Scan(&busyTimeout); qErr != nil {
+		t.Fatalf("failed to query busy_timeout: %v", qErr)
 	}
 	if busyTimeout != 5000 {
 		t.Errorf("expected busy_timeout 5000, got %d", busyTimeout)
@@ -139,7 +140,7 @@ func TestFrecencyStore_SQLiteConfigurationAndContext(t *testing.T) {
 	cancel()
 
 	err = store.Record(ctxCanceled, "git status", tmpDir)
-	if err != context.Canceled {
+	if !errors.Is(err, context.Canceled) {
 		t.Errorf("expected context.Canceled from Record with canceled context, got %v", err)
 	}
 }
