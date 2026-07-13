@@ -152,7 +152,7 @@ func TestBuildCompletionPrompt(t *testing.T) {
 	if !strings.Contains(prompt, "Input buffer (must appear verbatim at the start of your output):\ndocker exec ") {
 		t.Errorf("prompt missing verbatim input buffer instructions: %s", prompt)
 	}
-	if strings.Contains(prompt, "GitStatus:") || strings.Contains(prompt, "PreviousCommand:") {
+	if strings.Contains(prompt, "GitStatus:") || strings.Contains(prompt, "PreviousCommand (already finished, exit code ") {
 		t.Errorf("prompt should omit empty GitStatus or PreviousCommand: %s", prompt)
 	}
 	if !strings.Contains(prompt, "  git status\n  git commit -m \"fix(auth): update\"\n") {
