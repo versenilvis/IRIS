@@ -209,6 +209,12 @@ func TestNormalizeSuggestion(t *testing.T) {
 			raw:      "\"baz\"",
 			expected: "FOO=bar \"baz\"",
 		},
+		{
+			name:     "Insert space when buf ends in ordinary word char and raw starts with regular word",
+			buf:      "docker run",
+			raw:      "ubuntu",
+			expected: "docker run ubuntu",
+		},
 	}
 
 	for _, tt := range tests {
