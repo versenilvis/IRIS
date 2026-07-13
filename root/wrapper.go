@@ -646,7 +646,7 @@ func runWrapper() {
 										historyList = append(historyList, results[j])
 									}
 								} else {
-									for j := 0; j < limit; j++ {
+									for j := range limit {
 										historyList = append(historyList, results[j])
 									}
 								}

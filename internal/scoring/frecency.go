@@ -129,10 +129,7 @@ func (f *FrecencyStore) RawScore(count int, lastUsed time.Time) float64 {
 	if count <= 0 {
 		return 0
 	}
-	age := time.Since(lastUsed)
-	if age < 0 {
-		age = 0
-	}
+	age := max(time.Since(lastUsed), 0)
 
 	var weight float64
 	switch {

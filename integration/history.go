@@ -130,7 +130,7 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 		var results []HistResult
 		limit := min(len(historyCache), 100)
 
-		for i := 0; i < limit; i++ {
+		for i := range limit {
 			cmd := historyCache[i]
 			results = append(results, HistResult{
 				ID:  idMapCache[cmd],
