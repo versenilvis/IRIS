@@ -73,9 +73,9 @@ jobs:
           cat <<EOF > release_notes.md
           $GEN_NOTES
 
-          ## Installation
+          ## Update
           \`\`\`bash
-          curl -sS https://raw.githubusercontent.com/versenilvis/iris/main/scripts/install.sh | sh
+          iris update
           \`\`\`
           EOF
         env:
