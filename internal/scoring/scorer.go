@@ -163,16 +163,18 @@ func matchQualityScore(cmd, query string) int {
 }
 
 func isSubsequence(sub, full string) bool {
-	if len(sub) == 0 {
+	subRunes := []rune(sub)
+	fullRunes := []rune(full)
+	if len(subRunes) == 0 {
 		return true
 	}
 	i := 0
-	for j := 0; j < len(full) && i < len(sub); j++ {
-		if sub[i] == full[j] {
+	for j := 0; j < len(fullRunes) && i < len(subRunes); j++ {
+		if subRunes[i] == fullRunes[j] {
 			i++
 		}
 	}
-	return i == len(sub)
+	return i == len(subRunes)
 }
 
 func normalizeFrecency(raw []float64) []int {

@@ -140,3 +140,16 @@ func TestBasePriorityFor_HistoryWithConfidence(t *testing.T) {
 		t.Errorf("expected capped history priority 100 when confidence is > 100, got %d", p)
 	}
 }
+
+func TestIsSubsequence_UTF8(t *testing.T) {
+	_ = isSubsequence("gố", "gõ tiếng việt")
+	if !isSubsequence("việt", "tiếng việt") {
+		t.Error("expected 'việt' to be subsequence of 'tiếng việt'")
+	}
+	if !isSubsequence("tệt", "tiếng việt") {
+		t.Error("expected 'tệt' to be subsequence of 'tiếng việt'")
+	}
+	if isSubsequence("xyz", "tiếng việt") {
+		t.Error("expected 'xyz' NOT to be subsequence of 'tiếng việt'")
+	}
+}
