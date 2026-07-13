@@ -9,11 +9,6 @@ OT = "OT"
 crypted = "crypted"
 uncomplete = "uncomplete"
 edn = "edn"
-việt = "việt"
-tiếng = "tiếng"
-tệt = "tệt"
-gố = "gố"
-gõ = "gõ"
 
 [files]
 extend-exclude = ["internal/scoring/scorer_test.go"]
