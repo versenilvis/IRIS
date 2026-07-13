@@ -91,7 +91,7 @@ func ScoreWithConfig(suggestions []spec.Suggestion, signals SignalSet, config Sc
 	}
 
 	sort.SliceStable(scored, func(i, j int) bool {
-		if math.Abs(scored[i].Score-scored[j].Score) > 1e-6 {
+		if scored[i].Score != scored[j].Score {
 			return scored[i].Score > scored[j].Score
 		}
 		if scored[i].Breakdown.Frecency != scored[j].Breakdown.Frecency {
