@@ -113,6 +113,22 @@ func (p *universalProvider) Gather(ctx context.Context) (string, error) {
 
 	cmd := exec.CommandContext(ctxTimeout, "git", "-C", p.cwd, "rev-parse", "--is-inside-work-tree")
 	if cmd.Run() == nil {
+		branchOut, _ := exec.CommandContext(ctxTimeout, "git", "-C", p.cwd, "rev-parse", "--abbrev-ref", "HEAD").Output()
+		currentBranch := strings.TrimSpace(string(branchOut))
+
+		prevBranchOut, _ := exec.CommandContext(ctxTimeout, "git", "-C", p.cwd, "rev-parse", "--abbrev-ref", "@{-1}").Output()
+		prevBranch := strings.TrimSpace(string(prevBranchOut))
+
+		recentBranchesOut, _ := exec.CommandContext(ctxTimeout, "git", "-C", p.cwd, "branch", "--sort=-committerdate", "--format=%(refname:short)").Output()
+		recentBranchesList := strings.Split(strings.TrimSpace(string(recentBranchesOut)), "\n")
+		var recentBranches []string
+		for i, b := range recentBranchesList {
+			b = strings.TrimSpace(b)
+			if b != "" && i < 10 {
+				recentBranches = append(recentBranches, b)
+			}
+		}
+
 		statusOut, _ := exec.CommandContext(ctxTimeout, "git", "-C", p.cwd, "status", "-s").Output()
 		statusStr := strings.TrimSpace(string(statusOut))
 		if len(statusStr) > 1000 {
@@ -129,6 +145,17 @@ func (p *universalProvider) Gather(ctx context.Context) (string, error) {
 		logStr := strings.TrimSpace(string(logOut))
 
 		sb.WriteString("Git Repository State:\n")
+		if currentBranch != "" {
+			fmt.Fprintf(&sb, "Current Branch: %s\n", currentBranch)
+		}
+		if prevBranch != "" && prevBranch != "HEAD" && prevBranch != currentBranch {
+			fmt.Fprintf(&sb, "Previous Checkout/Switch Branch (@{-1}): %s\n", prevBranch)
+		}
+		if len(recentBranches) > 0 {
+			fmt.Fprintf(&sb, "Recent Local Branches (by recent activity): %s\n\n", strings.Join(recentBranches, ", "))
+		} else if currentBranch != "" {
+			sb.WriteString("\n")
+		}
 		if statusStr != "" {
 			fmt.Fprintf(&sb, "Status:\n%s\n\n", statusStr)
 		}
