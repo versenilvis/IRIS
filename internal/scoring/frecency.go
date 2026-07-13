@@ -1,6 +1,7 @@
 package scoring
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
@@ -66,7 +67,7 @@ CREATE TABLE IF NOT EXISTS history_entries (
 
 CREATE INDEX IF NOT EXISTS idx_history_cwd_cmd ON history_entries(cwd, cmd);
 `
-	_, err := f.db.Exec(schema)
+	_, err := f.db.ExecContext(context.Background(), schema)
 	return err
 }
 
@@ -86,7 +87,7 @@ ON CONFLICT(cmd, cwd) DO UPDATE SET
     count = count + 1,
     last_used = CURRENT_TIMESTAMP;
 `
-	_, err := f.db.Exec(query, cmd, cwd)
+	_, err := f.db.ExecContext(context.Background(), query, cmd, cwd)
 	return err
 }
 
@@ -126,9 +127,9 @@ func (f *FrecencyStore) QueryLocal(cwd, prefix string, limit int) ([]FrecencyEnt
 	var rows *sql.Rows
 	var err error
 	if prefix != "" {
-		rows, err = f.db.Query(`SELECT cmd, cwd, count, last_used FROM history_entries WHERE cwd = ? AND cmd LIKE ?`, cwd, prefix+"%")
+		rows, err = f.db.QueryContext(context.Background(), `SELECT cmd, cwd, count, last_used FROM history_entries WHERE cwd = ? AND cmd LIKE ?`, cwd, prefix+"%")
 	} else {
-		rows, err = f.db.Query(`SELECT cmd, cwd, count, last_used FROM history_entries WHERE cwd = ?`, cwd)
+		rows, err = f.db.QueryContext(context.Background(), `SELECT cmd, cwd, count, last_used FROM history_entries WHERE cwd = ?`, cwd)
 	}
 	if err != nil {
 		return nil, err
@@ -176,9 +177,9 @@ func (f *FrecencyStore) QueryGlobal(prefix string, limit int) ([]FrecencyEntry, 
 	var rows *sql.Rows
 	var err error
 	if prefix != "" {
-		rows, err = f.db.Query(`SELECT cmd, cwd, count, last_used FROM history_entries WHERE cmd LIKE ?`, prefix+"%")
+		rows, err = f.db.QueryContext(context.Background(), `SELECT cmd, cwd, count, last_used FROM history_entries WHERE cmd LIKE ?`, prefix+"%")
 	} else {
-		rows, err = f.db.Query(`SELECT cmd, cwd, count, last_used FROM history_entries`)
+		rows, err = f.db.QueryContext(context.Background(), `SELECT cmd, cwd, count, last_used FROM history_entries`)
 	}
 	if err != nil {
 		return nil, err
