@@ -1,0 +1,254 @@
+package scoring
+
+import (
+	"database/sql"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+	"sync"
+	"time"
+
+	_ "modernc.org/sqlite"
+)
+
+type FrecencyEntry struct {
+	Cmd      string
+	Cwd      string
+	Count    int
+	LastUsed time.Time
+	RawScore float64
+}
+
+type FrecencyStore struct {
+	db *sql.DB
+	mu sync.Mutex
+}
+
+func NewFrecencyStore(dbPath string) (*FrecencyStore, error) {
+	if dbPath == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil, err
+		}
+		dbPath = filepath.Join(home, ".local", "share", "iris", "history.db")
+	}
+
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+		return nil, fmt.Errorf("failed to create directory for history.db: %w", err)
+	}
+
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open sqlite database: %w", err)
+	}
+
+	store := &FrecencyStore{db: db}
+	if err := store.initSchema(); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+
+	return store, nil
+}
+
+func (f *FrecencyStore) initSchema() error {
+	schema := `
+CREATE TABLE IF NOT EXISTS history_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cmd TEXT NOT NULL,
+    cwd TEXT NOT NULL,
+    count INTEGER DEFAULT 1,
+    last_used TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(cmd, cwd)
+);
+
+CREATE INDEX IF NOT EXISTS idx_history_cwd_cmd ON history_entries(cwd, cmd);
+`
+	_, err := f.db.Exec(schema)
+	return err
+}
+
+func (f *FrecencyStore) Record(cmd, cwd string) error {
+	cmd = strings.TrimSpace(cmd)
+	if cmd == "" || cwd == "" {
+		return nil
+	}
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	query := `
+INSERT INTO history_entries (cmd, cwd, count, last_used)
+VALUES (?, ?, 1, CURRENT_TIMESTAMP)
+ON CONFLICT(cmd, cwd) DO UPDATE SET
+    count = count + 1,
+    last_used = CURRENT_TIMESTAMP;
+`
+	_, err := f.db.Exec(query, cmd, cwd)
+	return err
+}
+
+func (f *FrecencyStore) RawScore(count int, lastUsed time.Time) float64 {
+	if count <= 0 {
+		return 0
+	}
+	age := time.Since(lastUsed)
+	if age < 0 {
+		age = 0
+	}
+
+	var weight float64
+	switch {
+	case age <= time.Hour:
+		weight = 100.0
+	case age <= 24*time.Hour:
+		weight = 50.0
+	case age <= 7*24*time.Hour:
+		weight = 20.0
+	case age <= 30*24*time.Hour:
+		weight = 5.0
+	default:
+		weight = 1.0
+	}
+
+	return float64(count) * weight
+}
+
+func (f *FrecencyStore) QueryLocal(cwd, prefix string, limit int) ([]FrecencyEntry, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	var rows *sql.Rows
+	var err error
+	if prefix != "" {
+		rows, err = f.db.Query(`SELECT cmd, cwd, count, last_used FROM history_entries WHERE cwd = ? AND cmd LIKE ?`, cwd, prefix+"%")
+	} else {
+		rows, err = f.db.Query(`SELECT cmd, cwd, count, last_used FROM history_entries WHERE cwd = ?`, cwd)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var entries []FrecencyEntry
+	for rows.Next() {
+		var cmd, rCwd string
+		var count int
+		var lastUsedRaw string
+		if err := rows.Scan(&cmd, &rCwd, &count, &lastUsedRaw); err != nil {
+			continue
+		}
+		t, err := parseTimestamp(lastUsedRaw)
+		if err != nil {
+			t = time.Now()
+		}
+		entries = append(entries, FrecencyEntry{
+			Cmd:      cmd,
+			Cwd:      rCwd,
+			Count:    count,
+			LastUsed: t,
+			RawScore: f.RawScore(count, t),
+		})
+	}
+
+	sort.SliceStable(entries, func(i, j int) bool {
+		return entries[i].RawScore > entries[j].RawScore
+	})
+
+	if len(entries) > limit {
+		entries = entries[:limit]
+	}
+	return entries, nil
+}
+
+func (f *FrecencyStore) QueryGlobal(prefix string, limit int) ([]FrecencyEntry, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	var rows *sql.Rows
+	var err error
+	if prefix != "" {
+		rows, err = f.db.Query(`SELECT cmd, cwd, count, last_used FROM history_entries WHERE cmd LIKE ?`, prefix+"%")
+	} else {
+		rows, err = f.db.Query(`SELECT cmd, cwd, count, last_used FROM history_entries`)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	dedupe := make(map[string]*FrecencyEntry)
+	for rows.Next() {
+		var cmd, rCwd string
+		var count int
+		var lastUsedRaw string
+		if err := rows.Scan(&cmd, &rCwd, &count, &lastUsedRaw); err != nil {
+			continue
+		}
+		t, err := parseTimestamp(lastUsedRaw)
+		if err != nil {
+			t = time.Now()
+		}
+		score := f.RawScore(count, t)
+		if existing, found := dedupe[cmd]; found {
+			existing.Count += count
+			existing.RawScore += score
+			if t.After(existing.LastUsed) {
+				existing.LastUsed = t
+				existing.Cwd = rCwd
+			}
+		} else {
+			dedupe[cmd] = &FrecencyEntry{
+				Cmd:      cmd,
+				Cwd:      rCwd,
+				Count:    count,
+				LastUsed: t,
+				RawScore: score,
+			}
+		}
+	}
+
+	var entries []FrecencyEntry
+	for _, entry := range dedupe {
+		entries = append(entries, *entry)
+	}
+
+	sort.SliceStable(entries, func(i, j int) bool {
+		return entries[i].RawScore > entries[j].RawScore
+	})
+
+	if len(entries) > limit {
+		entries = entries[:limit]
+	}
+	return entries, nil
+}
+
+func (f *FrecencyStore) Close() error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.db != nil {
+		return f.db.Close()
+	}
+	return nil
+}
+
+func parseTimestamp(s string) (time.Time, error) {
+	if t, err := time.Parse("2006-01-02 15:04:05", s); err == nil {
+		return t, nil
+	}
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t, nil
+	}
+	if t, err := time.Parse("2006-01-02 15:04:05.999999999-07:00", s); err == nil {
+		return t, nil
+	}
+	return time.Parse("2006-01-02", s)
+}
