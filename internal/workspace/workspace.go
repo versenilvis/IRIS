@@ -7,13 +7,16 @@ import (
 )
 
 type WorkspaceInfo struct {
-	HasGit         bool
-	HasNodeProject bool
-	HasGoProject   bool
-	HasRustProject bool
-	HasDockerfile  bool
-	HasMakefile    bool
-	SignatureFiles []string
+	HasGit           bool
+	HasNodeProject   bool
+	HasGoProject     bool
+	HasRustProject   bool
+	HasPythonProject bool
+	HasDockerfile    bool
+	HasMakefile      bool
+	HasJustfile      bool
+	HasK8s           bool
+	SignatureFiles   []string
 }
 
 var signatureChecks = []struct {
@@ -26,15 +29,18 @@ var signatureChecks = []struct {
 	{"Cargo.toml", func(w *WorkspaceInfo) { w.HasRustProject = true }},
 	{"Dockerfile", func(w *WorkspaceInfo) { w.HasDockerfile = true }},
 	{"Makefile", func(w *WorkspaceInfo) { w.HasMakefile = true }},
-	{"docker-compose.yml", nil},
-	{"docker-compose.yaml", nil},
-	{"justfile", nil},
+	{"justfile", func(w *WorkspaceInfo) { w.HasJustfile = true }},
+	{"pyproject.toml", func(w *WorkspaceInfo) { w.HasPythonProject = true }},
+	{"requirements.txt", func(w *WorkspaceInfo) { w.HasPythonProject = true }},
+	{"Chart.yaml", func(w *WorkspaceInfo) { w.HasK8s = true }},
+	{"k8s", func(w *WorkspaceInfo) { w.HasK8s = true }},
+	{"kubernetes", func(w *WorkspaceInfo) { w.HasK8s = true }},
+	{"docker-compose.yml", func(w *WorkspaceInfo) { w.HasDockerfile = true }},
+	{"docker-compose.yaml", func(w *WorkspaceInfo) { w.HasDockerfile = true }},
 	{"Taskfile.yml", nil},
 	{"pom.xml", nil},
 	{"build.gradle", nil},
 	{"CMakeLists.txt", nil},
-	{"pyproject.toml", nil},
-	{"requirements.txt", nil},
 }
 
 // Detect scans the given directory for signature files and returns workspace metadata

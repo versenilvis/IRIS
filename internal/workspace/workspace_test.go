@@ -96,3 +96,22 @@ func TestDetectCached_CwdChange(t *testing.T) {
 		t.Fatal("expected no HasGit for dir2")
 	}
 }
+
+func TestDetect_MultiEcosystems(t *testing.T) {
+	tmp := t.TempDir()
+	_ = os.WriteFile(filepath.Join(tmp, "justfile"), []byte("build:"), 0644)
+	_ = os.WriteFile(filepath.Join(tmp, "pyproject.toml"), []byte(""), 0644)
+	_ = os.WriteFile(filepath.Join(tmp, "Chart.yaml"), []byte("apiVersion: v2"), 0644)
+
+	info := Detect(tmp)
+
+	if !info.HasJustfile {
+		t.Error("expected HasJustfile to be true")
+	}
+	if !info.HasPythonProject {
+		t.Error("expected HasPythonProject to be true")
+	}
+	if !info.HasK8s {
+		t.Error("expected HasK8s to be true")
+	}
+}
