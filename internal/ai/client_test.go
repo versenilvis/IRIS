@@ -215,6 +215,12 @@ func TestNormalizeSuggestion(t *testing.T) {
 			raw:      "ubuntu",
 			expected: "docker run ubuntu",
 		},
+		{
+			name:     "Safe rune slicing with multibyte prefix",
+			buf:      "echo \"xin chào ",
+			raw:      "echo \"XIN CHÀO việt nam\"",
+			expected: "echo \"xin chào việt nam\"",
+		},
 	}
 
 	for _, tt := range tests {
