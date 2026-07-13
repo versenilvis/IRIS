@@ -86,14 +86,14 @@ func Lookup(input string) []Suggestion {
 
 				for _, sub := range spec.Subcommands {
 					results = append(results, Suggestion{
-						Cmd: strings.TrimSpace(query) + " " + sub.Name, Desc: sub.Description, Icon: query,
+						Cmd: strings.TrimSpace(query) + " " + sub.Name, Desc: sub.Description, Icon: query, Priority: sub.Priority,
 					})
 				}
 				if spec.Generator != nil {
 					genResults := spec.Generator(tokens, prefix, partial)
 					for _, g := range genResults {
 						results = append(results, Suggestion{
-							Cmd: strings.TrimSpace(query) + " " + g.Cmd, Desc: g.Desc, Icon: query,
+							Cmd: strings.TrimSpace(query) + " " + g.Cmd, Desc: g.Desc, Icon: query, Priority: g.Priority,
 						})
 					}
 				}
@@ -232,9 +232,10 @@ func Lookup(input string) []Suggestion {
 			}
 
 			results = append(results, Suggestion{
-				Cmd:  finalCmd,
-				Desc: g.Desc,
-				Icon: rootCmdName,
+				Cmd:      finalCmd,
+				Desc:     g.Desc,
+				Icon:     rootCmdName,
+				Priority: g.Priority,
 			})
 		}
 	}
@@ -243,25 +244,23 @@ func Lookup(input string) []Suggestion {
 		for _, sub := range currentSubs {
 			if partial == "" || HasPrefix(sub.Name, partial) {
 				results = append(results, Suggestion{
-					Cmd: prefix + " " + sub.Name, Desc: sub.Description, Icon: rootCmdName,
+					Cmd: prefix + " " + sub.Name, Desc: sub.Description, Icon: rootCmdName, Priority: sub.Priority,
 				})
 			}
 		}
 	}
 
-	if len(partial) > 0 && partial[0] == '-' {
-		usedOpts := make(map[string]bool)
-		for _, t := range tokens {
-			if strings.HasPrefix(t, "-") {
-				usedOpts[t] = true
-			}
+	usedOpts := make(map[string]bool)
+	for _, t := range tokens {
+		if strings.HasPrefix(t, "-") {
+			usedOpts[t] = true
 		}
-		for _, opt := range currentOpts {
-			if !usedOpts[opt.Name] && (partial == "" || HasPrefix(opt.Name, partial)) {
-				results = append(results, Suggestion{
-					Cmd: linePrefix + " " + opt.Name, Desc: opt.Description, Icon: rootCmdName,
-				})
-			}
+	}
+	for _, opt := range currentOpts {
+		if !usedOpts[opt.Name] && (partial == "" || HasPrefix(opt.Name, partial)) {
+			results = append(results, Suggestion{
+				Cmd: linePrefix + " " + opt.Name, Desc: opt.Description, Icon: rootCmdName, Priority: opt.Priority,
+			})
 		}
 	}
 
