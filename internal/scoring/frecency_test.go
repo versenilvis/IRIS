@@ -1,6 +1,7 @@
 package scoring
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -70,5 +71,40 @@ func TestFrecencyStore_QueryGlobalDedupe(t *testing.T) {
 	}
 	if entries[0].Count != 3 {
 		t.Errorf("expected combined count 3 across workspaces, got %d", entries[0].Count)
+	}
+}
+
+func TestFrecencyStore_Permissions(t *testing.T) {
+	tmpRoot := t.TempDir()
+	dbDir := filepath.Join(tmpRoot, "subdir", "iris")
+	dbPath := filepath.Join(dbDir, "history.db")
+
+	if err := os.MkdirAll(dbDir, 0755); err != nil {
+		t.Fatalf("failed to make pre-existing dir: %v", err)
+	}
+	if err := os.WriteFile(dbPath, []byte{}, 0644); err != nil {
+		t.Fatalf("failed to write dummy existing db file: %v", err)
+	}
+
+	store, err := NewFrecencyStore(dbPath)
+	if err != nil {
+		t.Fatalf("NewFrecencyStore failed: %v", err)
+	}
+	defer store.Close()
+
+	dirInfo, err := os.Stat(dbDir)
+	if err != nil {
+		t.Fatalf("stat dbDir failed: %v", err)
+	}
+	if perm := dirInfo.Mode().Perm(); perm != 0700 {
+		t.Errorf("expected directory permissions 0700, got %04o", perm)
+	}
+
+	fileInfo, err := os.Stat(dbPath)
+	if err != nil {
+		t.Fatalf("stat dbPath failed: %v", err)
+	}
+	if perm := fileInfo.Mode().Perm(); perm != 0600 {
+		t.Errorf("expected database file permissions 0600, got %04o", perm)
 	}
 }
