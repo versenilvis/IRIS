@@ -332,6 +332,15 @@ func runWrapper() {
 				if cmdToRecord != "" {
 					cwd, _ := os.Getwd()
 					go func(c, d string) {
+						defer func() {
+							if r := recover(); r != nil {
+								WriteCrashLog(r)
+								restoreTerminal()
+								printCrashNotice()
+								startRescueShell()
+								os.Exit(2)
+							}
+						}()
 						ctxRecord, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
 						defer cancel()
 						if store, err := scoring.GetFrecencyStore(); err == nil && store != nil {
