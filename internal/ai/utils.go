@@ -38,6 +38,7 @@ func CleanSuggestion(raw string) string {
 }
 
 func NormalizeSuggestion(buf string, suggCmd string) string {
+	rawCmd := strings.TrimSpace(suggCmd)
 	suggCmd = CleanSuggestion(suggCmd)
 
 	if strings.Contains(buf, "-m \"") || strings.Contains(buf, "-am \"") || strings.Contains(buf, "--message \"") {
@@ -58,12 +59,18 @@ func NormalizeSuggestion(buf string, suggCmd string) string {
 	if buf != "" {
 		if strings.HasPrefix(strings.ToLower(suggCmd), strings.ToLower(buf)) && len(suggCmd) >= len(buf) {
 			suggCmd = buf + suggCmd[len(buf):]
-		} else if fields := strings.Fields(buf); len(fields) > 0 {
+		} else if fields := strings.Fields(buf); len(fields) > 0 && len(suggCmd) > 0 {
 			firstWord := strings.ToLower(fields[0])
 			suggLow := strings.ToLower(suggCmd)
 			if !strings.HasPrefix(suggLow, firstWord) && !strings.HasPrefix(suggLow, "sudo ") {
-				if strings.HasSuffix(buf, " ") || strings.HasSuffix(buf, "\"") || strings.HasSuffix(buf, "'") || strings.HasSuffix(buf, "=") || strings.HasSuffix(buf, "/") || strings.HasPrefix(suggCmd, "-") || strings.HasPrefix(suggCmd, "\"") || strings.HasPrefix(suggCmd, "'") {
-					suggCmd = buf + suggCmd
+				delta := suggCmd
+				if strings.HasPrefix(rawCmd, "-") || strings.HasPrefix(rawCmd, "\"") || strings.HasPrefix(rawCmd, "'") {
+					delta = rawCmd
+				}
+				if strings.HasSuffix(buf, " ") || strings.HasSuffix(buf, "\"") || strings.HasSuffix(buf, "'") || strings.HasSuffix(buf, "=") || strings.HasSuffix(buf, "/") {
+					suggCmd = buf + delta
+				} else if strings.HasPrefix(delta, "-") || strings.HasPrefix(delta, "\"") || strings.HasPrefix(delta, "'") {
+					suggCmd = buf + " " + delta
 				}
 			}
 		}
