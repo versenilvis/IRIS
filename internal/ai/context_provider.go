@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/versenilvis/iris/internal/workspace"
@@ -147,56 +148,104 @@ func (p *universalProvider) Gather(ctx context.Context) (string, error) {
 	}
 
 	if ws.HasGit {
-		branchOut, _ := exec.CommandContext(ctxTimeout, "git", "-C", p.cwd, "rev-parse", "--abbrev-ref", "HEAD").Output()
-		currentBranch := strings.TrimSpace(string(branchOut))
+		var wg sync.WaitGroup
+		var branchErr, prevErr, recentErr, statusErr, diffErr, logErr error
+		var branchOut, prevOut, recentOut, statusOut, diffOut, logOut []byte
 
-		prevBranchOut, _ := exec.CommandContext(ctxTimeout, "git", "-C", p.cwd, "rev-parse", "--abbrev-ref", "@{-1}").Output()
-		prevBranch := strings.TrimSpace(string(prevBranchOut))
+		wg.Add(6)
+		go func() {
+			defer wg.Done()
+			ctxProbe, cancel := context.WithTimeout(ctx, 400*time.Millisecond)
+			defer cancel()
+			branchOut, branchErr = exec.CommandContext(ctxProbe, "git", "-C", p.cwd, "rev-parse", "--abbrev-ref", "HEAD").Output()
+		}()
+		go func() {
+			defer wg.Done()
+			ctxProbe, cancel := context.WithTimeout(ctx, 400*time.Millisecond)
+			defer cancel()
+			prevOut, prevErr = exec.CommandContext(ctxProbe, "git", "-C", p.cwd, "rev-parse", "--abbrev-ref", "@{-1}").Output()
+		}()
+		go func() {
+			defer wg.Done()
+			ctxProbe, cancel := context.WithTimeout(ctx, 400*time.Millisecond)
+			defer cancel()
+			recentOut, recentErr = exec.CommandContext(ctxProbe, "git", "-C", p.cwd, "branch", "--sort=-committerdate", "--format=%(refname:short)").Output()
+		}()
+		go func() {
+			defer wg.Done()
+			statusOut, statusErr = exec.CommandContext(ctxTimeout, "git", "-C", p.cwd, "status", "-s").Output()
+		}()
+		go func() {
+			defer wg.Done()
+			diffOut, diffErr = exec.CommandContext(ctxTimeout, "git", "-C", p.cwd, "diff", "--staged").Output()
+		}()
+		go func() {
+			defer wg.Done()
+			logOut, logErr = exec.CommandContext(ctxTimeout, "git", "-C", p.cwd, "log", "-n", "5", "--no-decorate", "--pretty=format:%s").Output()
+		}()
+		wg.Wait()
 
-		recentBranchesOut, _ := exec.CommandContext(ctxTimeout, "git", "-C", p.cwd, "branch", "--sort=-committerdate", "--format=%(refname:short)").Output()
-		recentBranchesList := strings.Split(strings.TrimSpace(string(recentBranchesOut)), "\n")
-		var recentBranches []string
-		for i, b := range recentBranchesList {
-			b = strings.TrimSpace(b)
-			if b != "" && i < 10 {
-				recentBranches = append(recentBranches, b)
+		formatGitErr := func(name string, err error) string {
+			if err == context.DeadlineExceeded || strings.Contains(err.Error(), "signal: killed") {
+				return fmt.Sprintf("[Git probe timed out: %s]\n", name)
+			}
+			return fmt.Sprintf("[Git probe failed (%s): %v]\n", name, err)
+		}
+
+		sb.WriteString("Git Repository State:\n")
+		if branchErr != nil {
+			sb.WriteString(formatGitErr("current branch", branchErr))
+		} else if currentBranch := strings.TrimSpace(string(branchOut)); currentBranch != "" {
+			fmt.Fprintf(&sb, "Current Branch: %s\n", currentBranch)
+		}
+
+		if prevErr != nil {
+			if !strings.Contains(prevErr.Error(), "exit status 128") {
+				sb.WriteString(formatGitErr("previous branch", prevErr))
+			}
+		} else if prevBranch := strings.TrimSpace(string(prevOut)); prevBranch != "" && prevBranch != "HEAD" && prevBranch != strings.TrimSpace(string(branchOut)) {
+			fmt.Fprintf(&sb, "Previous Checkout/Switch Branch (@{-1}): %s\n", prevBranch)
+		}
+
+		if recentErr != nil {
+			sb.WriteString(formatGitErr("recent branches", recentErr))
+		} else {
+			recentBranchesList := strings.Split(strings.TrimSpace(string(recentOut)), "\n")
+			var recentBranches []string
+			for i, b := range recentBranchesList {
+				b = strings.TrimSpace(b)
+				if b != "" && i < 10 {
+					recentBranches = append(recentBranches, b)
+				}
+			}
+			if len(recentBranches) > 0 {
+				fmt.Fprintf(&sb, "Recent Local Branches (by recent activity): %s\n\n", strings.Join(recentBranches, ", "))
+			} else if strings.TrimSpace(string(branchOut)) != "" && branchErr == nil {
+				sb.WriteString("\n")
 			}
 		}
 
-		statusOut, _ := exec.CommandContext(ctxTimeout, "git", "-C", p.cwd, "status", "-s").Output()
-		statusStr := strings.TrimSpace(string(statusOut))
-		if len(statusStr) > 1000 {
-			statusStr = statusStr[:1000] + "\n... (truncated)"
-		}
-
-		diffOut, _ := exec.CommandContext(ctxTimeout, "git", "-C", p.cwd, "diff", "--staged").Output()
-		diffStr := strings.TrimSpace(string(diffOut))
-		if len(diffStr) > 1500 {
-			diffStr = diffStr[:1500] + "\n... (truncated)"
-		}
-
-		logOut, _ := exec.CommandContext(ctxTimeout, "git", "-C", p.cwd, "log", "-n", "5", "--no-decorate", "--pretty=format:%s").Output()
-		logStr := strings.TrimSpace(string(logOut))
-
-		sb.WriteString("Git Repository State:\n")
-		if currentBranch != "" {
-			fmt.Fprintf(&sb, "Current Branch: %s\n", currentBranch)
-		}
-		if prevBranch != "" && prevBranch != "HEAD" && prevBranch != currentBranch {
-			fmt.Fprintf(&sb, "Previous Checkout/Switch Branch (@{-1}): %s\n", prevBranch)
-		}
-		if len(recentBranches) > 0 {
-			fmt.Fprintf(&sb, "Recent Local Branches (by recent activity): %s\n\n", strings.Join(recentBranches, ", "))
-		} else if currentBranch != "" {
-			sb.WriteString("\n")
-		}
-		if statusStr != "" {
+		if statusErr != nil {
+			sb.WriteString(formatGitErr("status", statusErr))
+		} else if statusStr := strings.TrimSpace(string(statusOut)); statusStr != "" {
+			if len(statusStr) > 1000 {
+				statusStr = statusStr[:1000] + "\n... (truncated)"
+			}
 			fmt.Fprintf(&sb, "Status:\n%s\n\n", statusStr)
 		}
-		if diffStr != "" {
+
+		if diffErr != nil {
+			sb.WriteString(formatGitErr("staged diff", diffErr))
+		} else if diffStr := strings.TrimSpace(string(diffOut)); diffStr != "" {
+			if len(diffStr) > 1500 {
+				diffStr = diffStr[:1500] + "\n... (truncated)"
+			}
 			fmt.Fprintf(&sb, "Staged Diff:\n%s\n\n", diffStr)
 		}
-		if logStr != "" {
+
+		if logErr != nil {
+			sb.WriteString(formatGitErr("commit messages", logErr))
+		} else if logStr := strings.TrimSpace(string(logOut)); logStr != "" {
 			fmt.Fprintf(&sb, "User's recent commit messages (MUST follow this exact style, formatting, language, and casing conventions):\n%s\n", logStr)
 		}
 	}
