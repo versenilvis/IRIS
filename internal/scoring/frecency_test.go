@@ -121,7 +121,7 @@ func TestFrecencyStore_SQLiteConfigurationAndContext(t *testing.T) {
 	defer store.Close()
 
 	var journalMode string
-	if qErr := store.db.QueryRow("PRAGMA journal_mode;").Scan(&journalMode); qErr != nil {
+	if qErr := store.db.QueryRowContext(context.Background(), "PRAGMA journal_mode;").Scan(&journalMode); qErr != nil {
 		t.Fatalf("failed to query journal_mode: %v", qErr)
 	}
 	if journalMode != "wal" {
@@ -129,7 +129,7 @@ func TestFrecencyStore_SQLiteConfigurationAndContext(t *testing.T) {
 	}
 
 	var busyTimeout int
-	if qErr := store.db.QueryRow("PRAGMA busy_timeout;").Scan(&busyTimeout); qErr != nil {
+	if qErr := store.db.QueryRowContext(context.Background(), "PRAGMA busy_timeout;").Scan(&busyTimeout); qErr != nil {
 		t.Fatalf("failed to query busy_timeout: %v", qErr)
 	}
 	if busyTimeout != 5000 {
