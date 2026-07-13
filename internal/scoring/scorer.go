@@ -126,6 +126,12 @@ func basePriorityFor(s spec.Suggestion) int {
 		}
 		return 50
 	case "history":
+		if s.Confidence > 0 {
+			if s.Confidence > 100 {
+				return 100
+			}
+			return s.Confidence
+		}
 		return 40
 	default:
 		return 50
