@@ -112,8 +112,6 @@ func (f *FrecencyStore) Record(ctx context.Context, cmd, cwd string) error {
 	ctxTimeout, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
 	defer cancel()
 
-	_ = f.configureSQLite(ctxTimeout)
-
 	query := `
 INSERT INTO history_entries (cmd, cwd, count, last_used)
 VALUES (?, ?, 1, CURRENT_TIMESTAMP)
@@ -163,8 +161,6 @@ func (f *FrecencyStore) QueryLocal(ctx context.Context, cwd, prefix string, limi
 	}
 	ctxTimeout, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
 	defer cancel()
-
-	_ = f.configureSQLite(ctxTimeout)
 
 	var rows *sql.Rows
 	var err error
@@ -224,8 +220,6 @@ func (f *FrecencyStore) QueryGlobal(ctx context.Context, prefix string, limit in
 	}
 	ctxTimeout, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
 	defer cancel()
-
-	_ = f.configureSQLite(ctxTimeout)
 
 	var rows *sql.Rows
 	var err error
