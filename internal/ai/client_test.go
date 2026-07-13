@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -132,5 +133,75 @@ func TestOpenAIClient_TimeoutAndCancel(t *testing.T) {
 	_, err = client.Suggest(ctxCancel, "sleep", env, "")
 	if err == nil {
 		t.Errorf("expected context canceled error, got nil")
+	}
+}
+
+func TestBuildCompletionPrompt(t *testing.T) {
+	env := EnvSnapshot{
+		Cwd:          "/home/user/project",
+		LastCmd:      "",
+		LastExitCode: 0,
+		GitStatus:    "",
+		RecentCmds: []string{
+			"git status",
+			"git commit -m \"fix(auth): update\"",
+		},
+	}
+	prompt := BuildCompletionPrompt("docker exec ", env, "Running containers: app (nginx)")
+
+	if !strings.Contains(prompt, "Input buffer (must appear verbatim at the start of your output):\ndocker exec ") {
+		t.Errorf("prompt missing verbatim input buffer instructions: %s", prompt)
+	}
+	if strings.Contains(prompt, "GitStatus:") || strings.Contains(prompt, "PreviousCommand:") {
+		t.Errorf("prompt should omit empty GitStatus or PreviousCommand: %s", prompt)
+	}
+	if !strings.Contains(prompt, "  git status\n  git commit -m \"fix(auth): update\"\n") {
+		t.Errorf("prompt should format RecentCmds one per line: %s", prompt)
+	}
+	if !strings.Contains(prompt, "DynamicContext:\nRunning containers: app (nginx)") {
+		t.Errorf("prompt missing dynamic context: %s", prompt)
+	}
+}
+
+func TestNormalizeSuggestion(t *testing.T) {
+	tests := []struct {
+		name     string
+		buf      string
+		raw      string
+		expected string
+	}{
+		{
+			name:     "Verbatim prefix unchanged",
+			buf:      "docker exec -it ",
+			raw:      "docker exec -it app-server sh",
+			expected: "docker exec -it app-server sh",
+		},
+		{
+			name:     "Case normalization of prefix",
+			buf:      "docker exec ",
+			raw:      "Docker exec -it app-server sh",
+			expected: "docker exec -it app-server sh",
+		},
+		{
+			name:     "Suffix only completion when buf ends in space",
+			buf:      "docker exec ",
+			raw:      "-it app-server sh",
+			expected: "docker exec -it app-server sh",
+		},
+		{
+			name:     "Suffix only quote completion when buf ends in quote",
+			buf:      "git commit -m \"",
+			raw:      "fix(auth): resolve bug\"",
+			expected: "git commit -m \"fix(auth): resolve bug\"",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := NormalizeSuggestion(tt.buf, tt.raw)
+			if got != tt.expected {
+				t.Errorf("NormalizeSuggestion(%q, %q) = %q, want %q", tt.buf, tt.raw, got, tt.expected)
+			}
+		})
 	}
 }

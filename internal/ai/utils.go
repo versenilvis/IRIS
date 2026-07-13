@@ -55,6 +55,20 @@ func NormalizeSuggestion(buf string, suggCmd string) string {
 		}
 	}
 
+	if buf != "" {
+		if strings.HasPrefix(strings.ToLower(suggCmd), strings.ToLower(buf)) && len(suggCmd) >= len(buf) {
+			suggCmd = buf + suggCmd[len(buf):]
+		} else if fields := strings.Fields(buf); len(fields) > 0 {
+			firstWord := strings.ToLower(fields[0])
+			suggLow := strings.ToLower(suggCmd)
+			if !strings.HasPrefix(suggLow, firstWord) && !strings.HasPrefix(suggLow, "sudo ") {
+				if strings.HasSuffix(buf, " ") || strings.HasSuffix(buf, "\"") || strings.HasSuffix(buf, "'") || strings.HasSuffix(buf, "=") || strings.HasSuffix(buf, "/") || strings.HasPrefix(suggCmd, "-") || strings.HasPrefix(suggCmd, "\"") || strings.HasPrefix(suggCmd, "'") {
+					suggCmd = buf + suggCmd
+				}
+			}
+		}
+	}
+
 	return suggCmd
 }
 
