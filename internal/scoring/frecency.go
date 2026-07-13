@@ -36,9 +36,16 @@ func NewFrecencyStore(dbPath string) (*FrecencyStore, error) {
 		dbPath = filepath.Join(home, ".local", "share", "iris", "history.db")
 	}
 
-	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+	dir := filepath.Dir(dbPath)
+	if err := os.MkdirAll(dir, 0700); err != nil {
 		return nil, fmt.Errorf("failed to create directory for history.db: %w", err)
 	}
+	_ = os.Chmod(dir, 0700)
+
+	if f, err := os.OpenFile(dbPath, os.O_CREATE, 0600); err == nil {
+		f.Close()
+	}
+	_ = os.Chmod(dbPath, 0600)
 
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
@@ -50,6 +57,7 @@ func NewFrecencyStore(dbPath string) (*FrecencyStore, error) {
 		_ = db.Close()
 		return nil, err
 	}
+	_ = os.Chmod(dbPath, 0600)
 
 	return store, nil
 }
