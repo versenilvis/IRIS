@@ -69,7 +69,7 @@ func NormalizeSuggestion(buf string, suggCmd string) string {
 				}
 				if strings.HasSuffix(buf, " ") || strings.HasSuffix(buf, "\"") || strings.HasSuffix(buf, "'") || strings.HasSuffix(buf, "=") || strings.HasSuffix(buf, "/") {
 					suggCmd = buf + delta
-				} else if strings.HasPrefix(delta, "-") || strings.HasPrefix(delta, "\"") || strings.HasPrefix(delta, "'") {
+				} else {
 					suggCmd = buf + " " + delta
 				}
 			}
