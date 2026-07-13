@@ -62,6 +62,53 @@ func TestLookup(t *testing.T) {
 	}
 }
 
+func TestLookup_NoFlagGateAndPriority(t *testing.T) {
+	Registry["demo"] = &Spec{
+		Name: "demo",
+		Subcommands: []Subcommand{
+			{Name: "sub1", Priority: 85},
+		},
+		Options: []Option{
+			{Name: "--verbose", Priority: 70},
+		},
+	}
+
+	results := Lookup("demo ")
+	foundSub, foundOpt := false, false
+	for _, r := range results {
+		if strings.Contains(r.Cmd, "sub1") {
+			foundSub = true
+			if r.Priority != 85 {
+				t.Errorf("expected subcommand Priority 85, got %d", r.Priority)
+			}
+		}
+		if strings.Contains(r.Cmd, "--verbose") {
+			foundOpt = true
+			if r.Priority != 70 {
+				t.Errorf("expected option Priority 70, got %d", r.Priority)
+			}
+		}
+	}
+	if !foundSub {
+		t.Error("expected sub1 in lookup results")
+	}
+	if !foundOpt {
+		t.Error("expected --verbose in lookup results even without typed dash")
+	}
+
+	partialResults := Lookup("demo ver")
+	foundPartialOpt := false
+	for _, r := range partialResults {
+		if strings.Contains(r.Cmd, "--verbose") {
+			foundPartialOpt = true
+			break
+		}
+	}
+	if !foundPartialOpt {
+		t.Error("expected --verbose when partial query is 'ver' (trimmed dash match)")
+	}
+}
+
 func TestLookupConcurrent(t *testing.T) {
 	Registry = make(map[string]*Spec)
 	Register(&Spec{
@@ -80,14 +127,12 @@ func TestLookupConcurrent(t *testing.T) {
 	const iterations = 50
 
 	for range goroutines {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for range iterations {
 				_ = Lookup("gca")
 				_ = Lookup("git ")
 			}
-		}()
+		})
 	}
 	wg.Wait()
 }

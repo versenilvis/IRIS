@@ -2,12 +2,16 @@ package ai
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/versenilvis/iris/internal/workspace"
 )
 
 type CommandContextProvider struct {
@@ -88,6 +92,39 @@ func (p *universalProvider) Gather(ctx context.Context) (string, error) {
 
 	var sb strings.Builder
 
+	ws := workspace.DetectCached(p.cwd)
+	var ecosystems []string
+	if ws.HasGit {
+		ecosystems = append(ecosystems, "Git")
+	}
+	if ws.HasNodeProject {
+		ecosystems = append(ecosystems, "Node/Bun")
+	}
+	if ws.HasGoProject {
+		ecosystems = append(ecosystems, "Go")
+	}
+	if ws.HasRustProject {
+		ecosystems = append(ecosystems, "Rust")
+	}
+	if ws.HasPythonProject {
+		ecosystems = append(ecosystems, "Python")
+	}
+	if ws.HasJustfile {
+		ecosystems = append(ecosystems, "Just")
+	}
+	if ws.HasMakefile {
+		ecosystems = append(ecosystems, "Makefile/C++")
+	}
+	if ws.HasDockerfile {
+		ecosystems = append(ecosystems, "Docker")
+	}
+	if ws.HasK8s {
+		ecosystems = append(ecosystems, "K8s")
+	}
+	if len(ecosystems) > 0 {
+		fmt.Fprintf(&sb, "Detected Workspace Ecosystems: %s\n\n", strings.Join(ecosystems, ", "))
+	}
+
 	ExtractScriptsAndTargets(&sb, p.cwd, "")
 
 	if entries, err := os.ReadDir(p.cwd); err == nil {
@@ -111,31 +148,108 @@ func (p *universalProvider) Gather(ctx context.Context) (string, error) {
 		}
 	}
 
-	cmd := exec.CommandContext(ctxTimeout, "git", "-C", p.cwd, "rev-parse", "--is-inside-work-tree")
-	if cmd.Run() == nil {
-		statusOut, _ := exec.CommandContext(ctxTimeout, "git", "-C", p.cwd, "status", "-s").Output()
-		statusStr := strings.TrimSpace(string(statusOut))
-		if len(statusStr) > 1000 {
-			statusStr = statusStr[:1000] + "\n... (truncated)"
-		}
+	if ws.HasGit {
+		var wg sync.WaitGroup
+		var branchErr, prevErr, recentErr, statusErr, diffErr, logErr error
+		var branchOut, prevOut, recentOut, statusOut, diffOut, logOut []byte
 
-		diffOut, _ := exec.CommandContext(ctxTimeout, "git", "-C", p.cwd, "diff", "--staged").Output()
-		diffStr := strings.TrimSpace(string(diffOut))
-		if len(diffStr) > 1500 {
-			diffStr = diffStr[:1500] + "\n... (truncated)"
-		}
+		wg.Add(6)
+		go func() {
+			defer wg.Done()
+			ctxProbe, cancel := context.WithTimeout(ctx, 400*time.Millisecond)
+			defer cancel()
+			branchOut, branchErr = exec.CommandContext(ctxProbe, "git", "-C", p.cwd, "rev-parse", "--abbrev-ref", "HEAD").Output()
+		}()
+		go func() {
+			defer wg.Done()
+			ctxProbe, cancel := context.WithTimeout(ctx, 400*time.Millisecond)
+			defer cancel()
+			prevOut, prevErr = exec.CommandContext(ctxProbe, "git", "-C", p.cwd, "rev-parse", "--abbrev-ref", "@{-1}").Output()
+		}()
+		go func() {
+			defer wg.Done()
+			ctxProbe, cancel := context.WithTimeout(ctx, 400*time.Millisecond)
+			defer cancel()
+			recentOut, recentErr = exec.CommandContext(ctxProbe, "git", "-C", p.cwd, "for-each-ref", "--sort=-committerdate", "--format=%(refname:short)", "--count=10", "refs/heads/").Output()
+		}()
+		go func() {
+			defer wg.Done()
+			statusOut, statusErr = exec.CommandContext(ctxTimeout, "git", "-C", p.cwd, "status", "-s").Output()
+		}()
+		go func() {
+			defer wg.Done()
+			diffOut, diffErr = exec.CommandContext(ctxTimeout, "git", "-C", p.cwd, "diff", "--staged").Output()
+		}()
+		go func() {
+			defer wg.Done()
+			logOut, logErr = exec.CommandContext(ctxTimeout, "git", "-C", p.cwd, "log", "-n", "5", "--no-decorate", "--pretty=format:%s").Output()
+		}()
+		wg.Wait()
 
-		logOut, _ := exec.CommandContext(ctxTimeout, "git", "-C", p.cwd, "log", "-n", "5", "--no-decorate", "--pretty=format:%s").Output()
-		logStr := strings.TrimSpace(string(logOut))
+		formatGitErr := func(name string, err error) string {
+			if errors.Is(err, context.DeadlineExceeded) || strings.Contains(err.Error(), "signal: killed") {
+				return fmt.Sprintf("[Git probe timed out: %s]\n", name)
+			}
+			return fmt.Sprintf("[Git probe failed (%s): %v]\n", name, err)
+		}
 
 		sb.WriteString("Git Repository State:\n")
-		if statusStr != "" {
+		if branchErr != nil {
+			sb.WriteString(formatGitErr("current branch", branchErr))
+		} else if currentBranch := strings.TrimSpace(string(branchOut)); currentBranch != "" {
+			fmt.Fprintf(&sb, "Current Branch: %s\n", currentBranch)
+		}
+
+		if prevErr != nil {
+			if !strings.Contains(prevErr.Error(), "exit status 128") {
+				sb.WriteString(formatGitErr("previous branch", prevErr))
+			}
+		} else if prevBranch := strings.TrimSpace(string(prevOut)); prevBranch != "" && prevBranch != "HEAD" && prevBranch != strings.TrimSpace(string(branchOut)) {
+			fmt.Fprintf(&sb, "Previous Checkout/Switch Branch (@{-1}): %s\n", prevBranch)
+		}
+
+		if recentErr != nil {
+			sb.WriteString(formatGitErr("recent branches", recentErr))
+		} else {
+			recentBranchesList := strings.Split(strings.TrimSpace(string(recentOut)), "\n")
+			var recentBranches []string
+			for _, b := range recentBranchesList {
+				b = strings.TrimSpace(b)
+				if b != "" {
+					recentBranches = append(recentBranches, b)
+					if len(recentBranches) >= 10 {
+						break
+					}
+				}
+			}
+			if len(recentBranches) > 0 {
+				fmt.Fprintf(&sb, "Recent Local Branches (by recent activity): %s\n\n", strings.Join(recentBranches, ", "))
+			} else if strings.TrimSpace(string(branchOut)) != "" && branchErr == nil {
+				sb.WriteString("\n")
+			}
+		}
+
+		if statusErr != nil {
+			sb.WriteString(formatGitErr("status", statusErr))
+		} else if statusStr := strings.TrimSpace(string(statusOut)); statusStr != "" {
+			if len(statusStr) > 1000 {
+				statusStr = statusStr[:1000] + "\n... (truncated)"
+			}
 			fmt.Fprintf(&sb, "Status:\n%s\n\n", statusStr)
 		}
-		if diffStr != "" {
+
+		if diffErr != nil {
+			sb.WriteString(formatGitErr("staged diff", diffErr))
+		} else if diffStr := strings.TrimSpace(string(diffOut)); diffStr != "" {
+			if len(diffStr) > 1500 {
+				diffStr = diffStr[:1500] + "\n... (truncated)"
+			}
 			fmt.Fprintf(&sb, "Staged Diff:\n%s\n\n", diffStr)
 		}
-		if logStr != "" {
+
+		if logErr != nil {
+			sb.WriteString(formatGitErr("commit messages", logErr))
+		} else if logStr := strings.TrimSpace(string(logOut)); logStr != "" {
 			fmt.Fprintf(&sb, "User's recent commit messages (MUST follow this exact style, formatting, language, and casing conventions):\n%s\n", logStr)
 		}
 	}

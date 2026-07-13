@@ -22,6 +22,7 @@ import (
 	"github.com/versenilvis/iris/internal/ai"
 	"github.com/versenilvis/iris/internal/config"
 	"github.com/versenilvis/iris/internal/logger"
+	"github.com/versenilvis/iris/internal/scoring"
 	"github.com/versenilvis/iris/spec"
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
@@ -81,6 +82,7 @@ func restoreTerminal() {
 // coordinates between the shell process and the suggestion overlay
 func runWrapper() {
 	var naiveBuffer string
+	var lastSubmittedCommand string
 	cursorOffset := 0
 	var bufferMu sync.Mutex
 	var userNavigated atomic.Bool
@@ -323,6 +325,25 @@ func runWrapper() {
 			if query == "IRIS_CMD_STOP" {
 				isCommandActive.Store(false)
 				SetCurrentAISuggestion(nil)
+				bufferMu.Lock()
+				cmdToRecord := lastSubmittedCommand
+				lastSubmittedCommand = ""
+				bufferMu.Unlock()
+				if cmdToRecord != "" {
+					cwd := spec.GetCWD()
+					go func(c, d string) {
+						defer func() {
+							if r := recover(); r != nil {
+								WriteCrashLog(r)
+							}
+						}()
+						ctxRecord, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+						defer cancel()
+						if store, err := scoring.GetFrecencyStore(); err == nil && store != nil {
+							_ = store.Record(ctxRecord, c, d)
+						}
+					}(cmdToRecord, cwd)
+				}
 				// hook: after user executes a command, print the update notice exactly once per session
 				if !updatePrinted {
 					select {
@@ -621,7 +642,7 @@ func runWrapper() {
 										historyList = append(historyList, results[j])
 									}
 								} else {
-									for j := 0; j < limit; j++ {
+									for j := range limit {
 										historyList = append(historyList, results[j])
 									}
 								}
@@ -759,9 +780,11 @@ func runWrapper() {
 				} else if b == 0x0d || b == 0x0a {
 					intercepted = true
 					logger.Debugf("Intercepted Enter key, navigated=%v", overlay.GetUserNavigated())
+					var cmdToSubmit string
 					if overlay.IsVisible() && overlay.GetUserNavigated() {
 						selected := overlay.GetCurrentCmd()
 						if selected != "" {
+							cmdToSubmit = selected
 							activeModeMu.RLock()
 							currentMode := activeMode
 							activeModeMu.RUnlock()
@@ -783,6 +806,10 @@ func runWrapper() {
 					isCommandActive.Store(true)
 					_, _ = ptmx.Write([]byte{b})
 					bufferMu.Lock()
+					if cmdToSubmit == "" {
+						cmdToSubmit = naiveBuffer
+					}
+					lastSubmittedCommand = strings.TrimSpace(cmdToSubmit)
 					naiveBuffer = ""
 					cursorOffset = 0
 					bufferMu.Unlock()

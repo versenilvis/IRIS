@@ -1,13 +1,16 @@
 package root
 
 import (
+	"context"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/versenilvis/iris/integration"
 	"github.com/versenilvis/iris/internal/ai"
 	"github.com/versenilvis/iris/internal/config"
 	"github.com/versenilvis/iris/internal/logger"
+	"github.com/versenilvis/iris/internal/scoring"
 	"github.com/versenilvis/iris/spec"
 )
 
@@ -78,16 +81,14 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 		if normalizedCmd != "" && normalizedCmd != normalizedQuery && strings.HasPrefix(strings.ToLower(normalizedCmd), strings.ToLower(normalizedQuery)) {
 			if !seen[aiSugg.Cmd] {
 				seen[aiSugg.Cmd] = true
-				if len(deduped) == 0 || aiSugg.Confidence > deduped[0].Confidence {
-					deduped = append([]spec.Suggestion{*aiSugg}, deduped...)
-				} else {
-					deduped = append(deduped, *aiSugg)
-				}
-			} else if len(deduped) > 0 && aiSugg.Confidence > deduped[0].Confidence {
+				deduped = append(deduped, *aiSugg)
+			} else {
 				for i, item := range deduped {
-					if item.Cmd == aiSugg.Cmd {
-						deduped = append(deduped[:i], deduped[i+1:]...)
-						deduped = append([]spec.Suggestion{*aiSugg}, deduped...)
+					if item.Cmd == aiSugg.Cmd && aiSugg.Confidence > item.Confidence {
+						deduped[i].Confidence = aiSugg.Confidence
+						if deduped[i].Source == "" || deduped[i].Source == "spec" || deduped[i].Source == "history" {
+							deduped[i].Source = "ai"
+						}
 						break
 					}
 				}
@@ -95,10 +96,27 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 		}
 	}
 
-	if len(deduped) > maxSugg {
-		deduped = deduped[:maxSugg]
+	cwd := spec.GetCWD()
+	tokens := spec.Tokenize(query)
+	rootCmd := ""
+	if len(tokens) > 0 {
+		rootCmd = tokens[0]
 	}
-	return deduped
+	ctxTimeout, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	store, _ := scoring.GetFrecencyStore()
+	signals := scoring.CollectSignals(ctxTimeout, cwd, query, rootCmd, store)
+	scored := scoring.Score(deduped, signals)
+
+	finalResults := make([]spec.Suggestion, 0, len(scored))
+	for _, sc := range scored {
+		finalResults = append(finalResults, sc.Suggestion)
+	}
+
+	if len(finalResults) > maxSugg {
+		finalResults = finalResults[:maxSugg]
+	}
+	return finalResults
 }
 
 var (
