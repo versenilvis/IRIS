@@ -1,9 +1,11 @@
 package root
 
 import (
+	"context"
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/versenilvis/iris/integration"
 	"github.com/versenilvis/iris/internal/ai"
@@ -101,7 +103,9 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 	if len(tokens) > 0 {
 		rootCmd = tokens[0]
 	}
-	signals := scoring.CollectSignals(cwd, query, rootCmd, scoring.GetFrecencyStore())
+	ctxTimeout, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	signals := scoring.CollectSignals(ctxTimeout, cwd, query, rootCmd, scoring.GetFrecencyStore())
 	scored := scoring.Score(deduped, signals)
 
 	finalResults := make([]spec.Suggestion, 0, len(scored))

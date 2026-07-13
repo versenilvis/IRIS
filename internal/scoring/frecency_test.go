@@ -1,6 +1,7 @@
 package scoring
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -17,12 +18,12 @@ func TestFrecencyStore_RecordAndQueryLocal(t *testing.T) {
 	defer store.Close()
 
 	cwd := "/home/user/project"
-	_ = store.Record("git status", cwd)
-	_ = store.Record("git status", cwd)
-	_ = store.Record("git status", cwd)
-	_ = store.Record("git commit -m 'test'", cwd)
+	_ = store.Record(context.Background(), "git status", cwd)
+	_ = store.Record(context.Background(), "git status", cwd)
+	_ = store.Record(context.Background(), "git status", cwd)
+	_ = store.Record(context.Background(), "git commit -m 'test'", cwd)
 
-	entries, err := store.QueryLocal(cwd, "git", 10)
+	entries, err := store.QueryLocal(context.Background(), cwd, "git", 10)
 	if err != nil {
 		t.Fatalf("QueryLocal failed: %v", err)
 	}
@@ -58,11 +59,11 @@ func TestFrecencyStore_QueryGlobalDedupe(t *testing.T) {
 	}
 	defer store.Close()
 
-	_ = store.Record("make build", "/repo/a")
-	_ = store.Record("make build", "/repo/a")
-	_ = store.Record("make build", "/repo/b")
+	_ = store.Record(context.Background(), "make build", "/repo/a")
+	_ = store.Record(context.Background(), "make build", "/repo/a")
+	_ = store.Record(context.Background(), "make build", "/repo/b")
 
-	entries, err := store.QueryGlobal("make", 10)
+	entries, err := store.QueryGlobal(context.Background(), "make", 10)
 	if err != nil {
 		t.Fatalf("QueryGlobal failed: %v", err)
 	}
@@ -106,5 +107,39 @@ func TestFrecencyStore_Permissions(t *testing.T) {
 	}
 	if perm := fileInfo.Mode().Perm(); perm != 0600 {
 		t.Errorf("expected database file permissions 0600, got %04o", perm)
+	}
+}
+
+func TestFrecencyStore_SQLiteConfigurationAndContext(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "history.db")
+	store, err := NewFrecencyStore(dbPath)
+	if err != nil {
+		t.Fatalf("NewFrecencyStore failed: %v", err)
+	}
+	defer store.Close()
+
+	var journalMode string
+	if err := store.db.QueryRow("PRAGMA journal_mode;").Scan(&journalMode); err != nil {
+		t.Fatalf("failed to query journal_mode: %v", err)
+	}
+	if journalMode != "wal" {
+		t.Errorf("expected journal_mode 'wal', got '%s'", journalMode)
+	}
+
+	var busyTimeout int
+	if err := store.db.QueryRow("PRAGMA busy_timeout;").Scan(&busyTimeout); err != nil {
+		t.Fatalf("failed to query busy_timeout: %v", err)
+	}
+	if busyTimeout != 5000 {
+		t.Errorf("expected busy_timeout 5000, got %d", busyTimeout)
+	}
+
+	ctxCanceled, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	err = store.Record(ctxCanceled, "git status", tmpDir)
+	if err != context.Canceled {
+		t.Errorf("expected context.Canceled from Record with canceled context, got %v", err)
 	}
 }

@@ -1,6 +1,7 @@
 package scoring
 
 import (
+	"context"
 	"strings"
 
 	"github.com/versenilvis/iris/internal/workspace"
@@ -16,13 +17,17 @@ type SignalSet struct {
 }
 
 // CollectSignals gathers environment, workspace, and historical frecency signals for the given query and directory
-func CollectSignals(cwd, query, rootCmd string, frecency *FrecencyStore) SignalSet {
+func CollectSignals(ctx context.Context, cwd, query, rootCmd string, frecency *FrecencyStore) SignalSet {
 	ws := workspace.DetectCached(cwd)
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
 
 	var local, global []FrecencyEntry
 	if frecency != nil {
-		local, _ = frecency.QueryLocal(cwd, query, 50)
-		global, _ = frecency.QueryGlobal(query, 50)
+		local, _ = frecency.QueryLocal(ctx, cwd, query, 50)
+		global, _ = frecency.QueryGlobal(ctx, query, 50)
 	}
 
 	return SignalSet{
