@@ -330,7 +330,7 @@ func runWrapper() {
 				lastSubmittedCommand = ""
 				bufferMu.Unlock()
 				if cmdToRecord != "" {
-					cwd, _ := os.Getwd()
+					cwd := spec.GetCWD()
 					go func(c, d string) {
 						defer func() {
 							if r := recover(); r != nil {
