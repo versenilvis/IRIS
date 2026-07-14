@@ -547,6 +547,7 @@ func runWrapper() {
 	// for most cases, I just handle the already have terminal shortcuts
 	// for some shortcuts like tab, enter, shift tab, ctrl r,
 	// they have a little bit different behavior to match our tool
+	inBracketedPaste := false
 	for {
 		inputSlice := make([]byte, 128)
 		n, err := os.Stdin.Read(inputSlice)
@@ -556,6 +557,7 @@ func runWrapper() {
 
 		if n > 0 {
 			if isExecuting() {
+				inBracketedPaste = false
 				_, _ = ptmx.Write(inputSlice[:n])
 				continue
 			}
@@ -572,7 +574,8 @@ func runWrapper() {
 					if i+5 < n && inputSlice[i+1] == '[' && inputSlice[i+2] == '2' && inputSlice[i+3] == '0' {
 						if (inputSlice[i+4] == '0' || inputSlice[i+4] == '1') && inputSlice[i+5] == '~' {
 							intercepted = true
-							logger.Debugf("Intercepted bracketed paste event")
+							inBracketedPaste = inputSlice[i+4] == '0'
+							logger.Debugf("Intercepted bracketed paste event inPaste=%v", inBracketedPaste)
 							_, _ = ptmx.Write(inputSlice[i : i+6])
 							i += 5
 							continue
@@ -947,6 +950,7 @@ func runWrapper() {
 						shouldOverlayDraw = true
 						userNavigated.Store(false)
 					case '\r', '\n', 0x03, 0x15: // enter, ctrl+c, ctrl+u: clear buffer on line reset
+						inBracketedPaste = false
 						bufferMu.Lock()
 						naiveBuffer = ""
 						cursorOffset = 0
@@ -961,9 +965,9 @@ func runWrapper() {
 					default:
 						// track normal printable characters in the buffer for matching
 						if b >= 32 && b <= 126 {
-							// if user presses space, check if the current word is an alias
+							// expand alias on space, but only when typing manually (not pasting)
 							bufferMu.Lock()
-							isSpaceAlias := b == ' ' && naiveBuffer != "" && !strings.Contains(naiveBuffer, " ")
+							isSpaceAlias := !inBracketedPaste && b == ' ' && naiveBuffer != "" && !strings.Contains(naiveBuffer, " ")
 							var target string
 							var ok bool
 							if isSpaceAlias {
