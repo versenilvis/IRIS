@@ -20,7 +20,6 @@ func TestMergeResults(t *testing.T) {
 		}
 	})
 
-
 	t.Run("Limit 100", func(t *testing.T) {
 		res := MergeResults("a", "history")
 		if len(res) > 100 {
@@ -49,4 +48,28 @@ func TestMergeResults(t *testing.T) {
 			t.Errorf("Expected promoted source 'ai', got %q", res[0].Source)
 		}
 	})
+}
+
+func TestPrevRecordedCommandState(t *testing.T) {
+	spec.ResetRegistry()
+	spec.Register(&spec.Spec{
+		Name: "git",
+		Subcommands: []spec.Subcommand{
+			{Name: "checkout"},
+		},
+	})
+
+	setPrevRecordedInfo("git checkout feature-abc", "/repo/dir")
+	skel, cwd := getPrevRecordedInfo()
+	if skel != "git checkout" || cwd != "/repo/dir" {
+		t.Errorf("expected skel='git checkout' and cwd='/repo/dir', got skel=%q, cwd=%q", skel, cwd)
+	}
+	if gotSkel := getPrevSkeleton(); gotSkel != "git checkout" {
+		t.Errorf("expected getPrevSkeleton()='git checkout', got %q", gotSkel)
+	}
+
+	setPrevRecordedInfo("", "")
+	if gotSkel := getPrevSkeleton(); gotSkel != "" {
+		t.Errorf("expected empty getPrevSkeleton() after reset, got %q", gotSkel)
+	}
 }
