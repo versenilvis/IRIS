@@ -20,8 +20,9 @@ func TestCollectSignals(t *testing.T) {
 
 	_ = store.Record(context.Background(), "npm run dev", tmpDir, 0)
 	_ = store.Record(context.Background(), "npm test", "/other/dir", 0)
+	_ = store.RecordTransition(context.Background(), "git checkout", "npm run dev", tmpDir, 0)
 
-	signals := CollectSignals(context.Background(), tmpDir, "npm", "npm", store)
+	signals := CollectSignals(context.Background(), tmpDir, "npm", "npm", store, "git checkout")
 
 	if !signals.Workspace.HasNodeProject {
 		t.Error("expected HasNodeProject to be true in collected signals")
@@ -31,5 +32,8 @@ func TestCollectSignals(t *testing.T) {
 	}
 	if len(signals.GlobalFrecency) != 2 {
 		t.Errorf("expected global frecency to contain 2 entries, got %d", len(signals.GlobalFrecency))
+	}
+	if !signals.TransitionIsLocal || len(signals.TransitionEntries) != 1 || signals.TransitionEntries[0].NextSkeleton != "npm run dev" {
+		t.Errorf("expected transition entry 'npm run dev', got %v (isLocal=%v)", signals.TransitionEntries, signals.TransitionIsLocal)
 	}
 }
