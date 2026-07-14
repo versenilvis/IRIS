@@ -557,6 +557,7 @@ func runWrapper() {
 
 		if n > 0 {
 			if isExecuting() {
+				inBracketedPaste = false
 				_, _ = ptmx.Write(inputSlice[:n])
 				continue
 			}
@@ -573,11 +574,7 @@ func runWrapper() {
 					if i+5 < n && inputSlice[i+1] == '[' && inputSlice[i+2] == '2' && inputSlice[i+3] == '0' {
 						if (inputSlice[i+4] == '0' || inputSlice[i+4] == '1') && inputSlice[i+5] == '~' {
 							intercepted = true
-							if inputSlice[i+4] == '0' {
-								inBracketedPaste = true
-							} else {
-								inBracketedPaste = false
-							}
+							inBracketedPaste = inputSlice[i+4] == '0'
 							logger.Debugf("Intercepted bracketed paste event inPaste=%v", inBracketedPaste)
 							_, _ = ptmx.Write(inputSlice[i : i+6])
 							i += 5
@@ -953,6 +950,7 @@ func runWrapper() {
 						shouldOverlayDraw = true
 						userNavigated.Store(false)
 					case '\r', '\n', 0x03, 0x15: // enter, ctrl+c, ctrl+u: clear buffer on line reset
+						inBracketedPaste = false
 						bufferMu.Lock()
 						naiveBuffer = ""
 						cursorOffset = 0
