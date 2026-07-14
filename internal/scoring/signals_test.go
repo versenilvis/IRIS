@@ -18,8 +18,8 @@ func TestCollectSignals(t *testing.T) {
 	}
 	defer store.Close()
 
-	_ = store.Record(context.Background(), "npm run dev", tmpDir)
-	_ = store.Record(context.Background(), "npm test", "/other/dir")
+	_ = store.Record(context.Background(), "npm run dev", tmpDir, 0)
+	_ = store.Record(context.Background(), "npm test", "/other/dir", 0)
 
 	signals := CollectSignals(context.Background(), tmpDir, "npm", "npm", store)
 

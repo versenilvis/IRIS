@@ -22,6 +22,14 @@ type FrecencyEntry struct {
 	RawScore float64
 }
 
+type TransitionEntry struct {
+	PrevSkeleton string
+	NextSkeleton string
+	Cwd          string
+	Count        int
+	LastUsed     time.Time
+}
+
 type FrecencyStore struct {
 	db *sql.DB
 	mu sync.Mutex
@@ -51,6 +59,7 @@ func NewFrecencyStore(dbPath string) (*FrecencyStore, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite database: %w", err)
 	}
+	db.SetMaxOpenConns(1)
 
 	store := &FrecencyStore{db: db}
 	if err := store.initSchema(context.Background()); err != nil {
@@ -89,16 +98,29 @@ CREATE TABLE IF NOT EXISTS history_entries (
 );
 
 CREATE INDEX IF NOT EXISTS idx_history_cwd_cmd ON history_entries(cwd, cmd);
+
+CREATE TABLE IF NOT EXISTS command_transitions (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    prev_skeleton TEXT NOT NULL,
+    next_skeleton TEXT NOT NULL,
+    cwd           TEXT NOT NULL,
+    count         INTEGER DEFAULT 1,
+    last_used     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(prev_skeleton, next_skeleton, cwd)
+);
+
+CREATE INDEX IF NOT EXISTS idx_transitions_prev_cwd ON command_transitions(prev_skeleton, cwd);
 `
 	_, err := f.db.ExecContext(ctxTimeout, schema)
 	return err
 }
 
-func (f *FrecencyStore) Record(ctx context.Context, cmd, cwd string) error {
+func (f *FrecencyStore) Record(ctx context.Context, cmd, cwd string, exitCode int) error {
 	if f == nil {
 		return nil
 	}
 	cmd = strings.TrimSpace(cmd)
+	cwd = strings.TrimSpace(cwd)
 	if cmd == "" || cwd == "" {
 		return nil
 	}
@@ -112,15 +134,159 @@ func (f *FrecencyStore) Record(ctx context.Context, cmd, cwd string) error {
 	ctxTimeout, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
 	defer cancel()
 
-	query := `
+	var query string
+	if exitCode == 0 {
+		query = `
 INSERT INTO history_entries (cmd, cwd, count, last_used)
 VALUES (?, ?, 1, CURRENT_TIMESTAMP)
 ON CONFLICT(cmd, cwd) DO UPDATE SET
     count = count + 1,
     last_used = CURRENT_TIMESTAMP;
 `
+	} else {
+		query = `
+INSERT INTO history_entries (cmd, cwd, count, last_used)
+VALUES (?, ?, 0, CURRENT_TIMESTAMP)
+ON CONFLICT(cmd, cwd) DO UPDATE SET
+    last_used = CURRENT_TIMESTAMP;
+`
+	}
 	_, err := f.db.ExecContext(ctxTimeout, query, cmd, cwd)
 	return err
+}
+
+func (f *FrecencyStore) RecordTransition(ctx context.Context, prevSkeleton, nextSkeleton, cwd string, nextExitCode int) error {
+	if f == nil {
+		return nil
+	}
+	prevSkeleton = strings.TrimSpace(prevSkeleton)
+	nextSkeleton = strings.TrimSpace(nextSkeleton)
+	cwd = strings.TrimSpace(cwd)
+	if prevSkeleton == "" || nextSkeleton == "" || cwd == "" {
+		return nil
+	}
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctxTimeout, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
+	defer cancel()
+
+	var query string
+	if nextExitCode == 0 {
+		query = `
+INSERT INTO command_transitions (prev_skeleton, next_skeleton, cwd, count, last_used)
+VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)
+ON CONFLICT(prev_skeleton, next_skeleton, cwd) DO UPDATE SET
+    count = count + 1,
+    last_used = CURRENT_TIMESTAMP;
+`
+	} else {
+		query = `
+INSERT INTO command_transitions (prev_skeleton, next_skeleton, cwd, count, last_used)
+VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP)
+ON CONFLICT(prev_skeleton, next_skeleton, cwd) DO UPDATE SET
+    last_used = CURRENT_TIMESTAMP;
+`
+	}
+	_, err := f.db.ExecContext(ctxTimeout, query, prevSkeleton, nextSkeleton, cwd)
+	return err
+}
+
+func (f *FrecencyStore) QueryTransitionsWithFallback(ctx context.Context, prevSkeleton, cwd string) ([]TransitionEntry, bool) {
+	if f == nil {
+		return nil, false
+	}
+	prevSkeleton = strings.TrimSpace(prevSkeleton)
+	cwd = strings.TrimSpace(cwd)
+	if prevSkeleton == "" {
+		return nil, false
+	}
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctxTimeout, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
+	defer cancel()
+
+	// Phase 1: Local query with depth fallback
+	parts := strings.Fields(prevSkeleton)
+	for len(parts) > 0 {
+		key := strings.Join(parts, " ")
+		rows, err := f.db.QueryContext(ctxTimeout, `
+SELECT prev_skeleton, next_skeleton, cwd, count, last_used
+FROM command_transitions
+WHERE prev_skeleton = ? AND cwd = ? AND count > 0
+ORDER BY count DESC
+`, key, cwd)
+		if err == nil {
+			var entries []TransitionEntry
+			for rows.Next() {
+				var prev, next, rCwd string
+				var count int
+				var lastUsedRaw string
+				if err := rows.Scan(&prev, &next, &rCwd, &count, &lastUsedRaw); err == nil {
+					t, _ := parseTimestamp(lastUsedRaw)
+					entries = append(entries, TransitionEntry{
+						PrevSkeleton: prev,
+						NextSkeleton: next,
+						Cwd:          rCwd,
+						Count:        count,
+						LastUsed:     t,
+					})
+				}
+			}
+			_ = rows.Close()
+			if len(entries) > 0 {
+				return entries, true
+			}
+		}
+		parts = parts[:len(parts)-1]
+	}
+
+	// Phase 2: Global query with depth fallback
+	parts = strings.Fields(prevSkeleton)
+	for len(parts) > 0 {
+		key := strings.Join(parts, " ")
+		rows, err := f.db.QueryContext(ctxTimeout, `
+SELECT prev_skeleton, next_skeleton, SUM(count) as total_count, MAX(last_used) as max_last_used
+FROM command_transitions
+WHERE prev_skeleton = ? AND count > 0
+GROUP BY next_skeleton
+ORDER BY total_count DESC
+`, key)
+		if err == nil {
+			var entries []TransitionEntry
+			for rows.Next() {
+				var prev, next string
+				var count int
+				var lastUsedRaw string
+				if err := rows.Scan(&prev, &next, &count, &lastUsedRaw); err == nil {
+					t, _ := parseTimestamp(lastUsedRaw)
+					entries = append(entries, TransitionEntry{
+						PrevSkeleton: prev,
+						NextSkeleton: next,
+						Cwd:          "",
+						Count:        count,
+						LastUsed:     t,
+					})
+				}
+			}
+			_ = rows.Close()
+			if len(entries) > 0 {
+				return entries, false
+			}
+		}
+		parts = parts[:len(parts)-1]
+	}
+
+	return nil, false
 }
 
 func (f *FrecencyStore) RawScore(count int, lastUsed time.Time) float64 {
