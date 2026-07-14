@@ -62,6 +62,18 @@ func TestApplyContextRules_MultiEcosystem(t *testing.T) {
 			expected: 40,
 		},
 		{
+			name:     "git push active branch gets double bonus clamped to 100",
+			ws:       workspace.WorkspaceInfo{HasGit: true, GitBranch: "fix/scoring"},
+			cmd:      "git push origin fix/scoring",
+			expected: 100, // 40 (git push) + 60 (active branch) = 100
+		},
+		{
+			name:     "git push other branch gets normal git push bonus only",
+			ws:       workspace.WorkspaceInfo{HasGit: true, GitBranch: "fix/scoring"},
+			cmd:      "git push origin fix/alias",
+			expected: 40,
+		},
+		{
 			name:     "unrelated command gets no bonus",
 			ws:       workspace.WorkspaceInfo{HasGit: true},
 			cmd:      "echo hello",
