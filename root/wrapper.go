@@ -369,7 +369,9 @@ func runWrapper() {
 				bufferMu.Unlock()
 				if cmdToRecord != "" {
 					cwd := spec.GetCWD()
-					go func(c, d string, code int) {
+					prevSkeleton, prevCwd := getPrevRecordedInfo()
+					currSkeleton := scoring.ExtractSkeleton(cmdToRecord)
+					go func(c, d string, code int, pSkel, pCwd, cSkel string) {
 						defer func() {
 							if r := recover(); r != nil {
 								WriteCrashLog(r)
@@ -379,8 +381,12 @@ func runWrapper() {
 						defer cancel()
 						if store, err := scoring.GetFrecencyStore(); err == nil && store != nil {
 							_ = store.Record(ctxRecord, c, d, code)
+							if pSkel != "" && cSkel != "" {
+								_ = store.RecordTransition(ctxRecord, pSkel, cSkel, d, code)
+							}
 						}
-					}(cmdToRecord, cwd, exitCode)
+					}(cmdToRecord, cwd, exitCode, prevSkeleton, prevCwd, currSkeleton)
+					setPrevRecordedInfo(cmdToRecord, cwd)
 				}
 				// hook: after user executes a command, print the update notice exactly once per session
 				if !updatePrinted {
