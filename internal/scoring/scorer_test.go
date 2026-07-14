@@ -156,3 +156,83 @@ func TestIsSubsequence_UTF8(t *testing.T) {
 		t.Error("expected multi-byte rune 'αγ' to be subsequence of 'αβγδε'")
 	}
 }
+
+func TestScore_TransitionAndColdStartGuard(t *testing.T) {
+	spec.ResetRegistry()
+	spec.Register(&spec.Spec{
+		Name: "git",
+		Subcommands: []spec.Subcommand{
+			{Name: "pull"},
+			{Name: "status"},
+		},
+	})
+
+	suggestions := []spec.Suggestion{
+		{Cmd: "git pull --rebase origin main", Source: "spec"},
+		{Cmd: "git status", Source: "spec"},
+	}
+
+	// Cold-start test: nil/empty TransitionEntries should not panic and contribute 0
+	signalsCold := SignalSet{
+		Query:             "git",
+		TransitionEntries: nil,
+	}
+	scoredCold := Score(suggestions, signalsCold)
+	if len(scoredCold) != 2 || scoredCold[0].Breakdown.Transition != 0 {
+		t.Errorf("expected 0 transition score on cold-start without panic, got %v", scoredCold)
+	}
+
+	// Transition Local test
+	signalsLocal := SignalSet{
+		Query:             "git",
+		TransitionEntries: []TransitionEntry{{NextSkeleton: "git pull", Count: 10}},
+		TransitionIsLocal: true,
+	}
+	scoredLocal := Score(suggestions, signalsLocal)
+	if scoredLocal[0].Breakdown.Transition != 100 {
+		t.Errorf("expected transition score 100 for git pull when local, got %d", scoredLocal[0].Breakdown.Transition)
+	}
+
+	// Transition Global test (damping 70%)
+	signalsGlobal := SignalSet{
+		Query:             "git",
+		TransitionEntries: []TransitionEntry{{NextSkeleton: "git pull", Count: 10}},
+		TransitionIsLocal: false,
+	}
+	scoredGlobal := Score(suggestions, signalsGlobal)
+	if scoredGlobal[0].Breakdown.Transition != 70 {
+		t.Errorf("expected transition score 70 for git pull when global (70%% damping), got %d", scoredGlobal[0].Breakdown.Transition)
+	}
+}
+
+func TestScore_TieBreakingOrder(t *testing.T) {
+	// All three suggestions will be constructed to have identical total scores (0),
+	// but different breakdown scores to verify tie-break priority: Transition > Frecency > ContextBonus > Alphabetical.
+	suggestions := []spec.Suggestion{
+		{Cmd: "cmdA", Source: "test", Priority: 0},
+		{Cmd: "cmdB", Source: "test", Priority: 0},
+	}
+
+	// We set weight configuration with 0 weights so total scores are identical (0), triggering tie-break logic
+	zeroConfig := ScoreConfig{
+		WeightBasePriority: 0,
+		WeightContextBonus: 0,
+		WeightFrecency:     0,
+		WeightTransition:   0,
+		WeightMatchQuality: 0,
+	}
+
+	signals := SignalSet{
+		Query: "",
+		TransitionEntries: []TransitionEntry{
+			{NextSkeleton: "cmdB", Count: 10},
+			{NextSkeleton: "cmdA", Count: 5},
+		},
+		TransitionIsLocal: true,
+	}
+
+	scored := ScoreWithConfig(suggestions, signals, zeroConfig)
+	if len(scored) != 2 || scored[0].Cmd != "cmdB" {
+		t.Errorf("expected cmdB to win tie-break due to higher Transition score, got %v", scored)
+	}
+}

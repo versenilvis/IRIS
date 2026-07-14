@@ -29,6 +29,37 @@ import (
 	"golang.org/x/term"
 )
 
+var (
+	prevRecordedCommand string
+	prevCmdCwd          string
+	prevCmdMu           sync.Mutex
+)
+
+func getPrevSkeleton() string {
+	prevCmdMu.Lock()
+	defer prevCmdMu.Unlock()
+	if prevRecordedCommand == "" {
+		return ""
+	}
+	return scoring.ExtractSkeleton(prevRecordedCommand)
+}
+
+func getPrevRecordedInfo() (string, string) {
+	prevCmdMu.Lock()
+	defer prevCmdMu.Unlock()
+	if prevRecordedCommand == "" {
+		return "", ""
+	}
+	return scoring.ExtractSkeleton(prevRecordedCommand), prevCmdCwd
+}
+
+func setPrevRecordedInfo(cmd, cwd string) {
+	prevCmdMu.Lock()
+	defer prevCmdMu.Unlock()
+	prevRecordedCommand = cmd
+	prevCmdCwd = cwd
+}
+
 func loadMode() string {
 	mode := config.Get().Core.Mode
 	if mode == "last" {
