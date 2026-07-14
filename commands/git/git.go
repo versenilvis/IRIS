@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/versenilvis/iris/internal/workspace"
 	"github.com/versenilvis/iris/spec"
 )
 
@@ -67,8 +68,8 @@ func getGitResultsFiltered(tokens []string, localOnly bool, args ...string) []sp
 		return nil
 	}
 
-	activeBranch := ""
-	if args[0] == "branch" {
+	activeBranch := workspace.DetectCached(cwd).GitBranch
+	if activeBranch == "" && args[0] == "branch" {
 		activeCmd := exec.CommandContext(ctx, "git", "rev-parse", "--abbrev-ref", "HEAD")
 		activeCmd.Dir = cwd
 		if activeOut, err := activeCmd.Output(); err == nil {
@@ -152,9 +153,13 @@ func getGitResultsFiltered(tokens []string, localOnly bool, args ...string) []sp
 		})
 	}
 
+	if activeBranch == "" {
+		activeBranch = workspace.DetectCached(cwd).GitBranch
+	}
 	if activeBranch != "" {
 		for i, r := range results {
 			if r.Cmd == activeBranch {
+				r.Priority = 100
 				copy(results[1:i+1], results[0:i])
 				results[0] = r
 				break

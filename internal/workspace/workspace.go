@@ -3,11 +3,13 @@ package workspace
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
 type WorkspaceInfo struct {
 	HasGit           bool
+	GitBranch        string
 	HasNodeProject   bool
 	HasGoProject     bool
 	HasRustProject   bool
@@ -57,7 +59,53 @@ func Detect(cwd string) WorkspaceInfo {
 		}
 	}
 
+	info.GitBranch = detectGitBranch(cwd)
+	if info.GitBranch != "" {
+		info.HasGit = true
+	}
+
 	return info
+}
+
+func detectGitBranch(cwd string) string {
+	dir := cwd
+	for i := 0; i < 10 && dir != "" && dir != "/" && dir != "."; i++ {
+		gitPath := filepath.Join(dir, ".git")
+		info, err := os.Stat(gitPath)
+		if err == nil {
+			var headPath string
+			if info.IsDir() {
+				headPath = filepath.Join(gitPath, "HEAD")
+			} else {
+				content, errRead := os.ReadFile(gitPath)
+				if errRead == nil {
+					s := strings.TrimSpace(string(content))
+					if strings.HasPrefix(s, "gitdir: ") {
+						gitDir := strings.TrimSpace(strings.TrimPrefix(s, "gitdir: "))
+						if !filepath.IsAbs(gitDir) {
+							gitDir = filepath.Join(dir, gitDir)
+						}
+						headPath = filepath.Join(gitDir, "HEAD")
+					}
+				}
+			}
+			if headPath != "" {
+				if data, errHead := os.ReadFile(headPath); errHead == nil {
+					s := strings.TrimSpace(string(data))
+					if strings.HasPrefix(s, "ref: refs/heads/") {
+						return strings.TrimPrefix(s, "ref: refs/heads/")
+					}
+				}
+			}
+			return ""
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return ""
 }
 
 type cacheEntry struct {
