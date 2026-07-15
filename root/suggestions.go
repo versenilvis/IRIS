@@ -76,6 +76,13 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 		}
 	}
 
+	if mode == "history" && normalizedQuery == "" {
+		if len(deduped) > maxSugg {
+			deduped = deduped[:maxSugg]
+		}
+		return deduped
+	}
+
 	if aiSugg := GetCurrentAISuggestion(); aiSugg != nil {
 		normalizedCmd := strings.TrimSpace(aiSugg.Cmd)
 		if normalizedCmd != "" && normalizedCmd != normalizedQuery && strings.HasPrefix(strings.ToLower(normalizedCmd), strings.ToLower(normalizedQuery)) {
