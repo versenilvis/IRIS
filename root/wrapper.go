@@ -368,6 +368,7 @@ func runWrapper() {
 				lastSubmittedCommand = ""
 				bufferMu.Unlock()
 				if cmdToRecord != "" {
+					integration.RecordSessionCommand(cmdToRecord)
 					cwd := spec.GetCWD()
 					prevSkeleton, prevCwd := getPrevRecordedInfo()
 					currSkeleton := scoring.ExtractSkeleton(cmdToRecord)
@@ -649,13 +650,21 @@ func runWrapper() {
 							if inputSlice[i+2] == 'A' {
 								arrowDir = "up"
 							}
-							moved, _ := overlay.MoveCursor(arrowDir)
+							moved, selectedCmd := overlay.MoveCursor(arrowDir)
 							if !moved {
 								i += 2
 								continue
 							}
 
 							bufferMu.Lock()
+							activeModeMu.RLock()
+							isHistMode := activeMode == "history"
+							activeModeMu.RUnlock()
+							if isHistMode && selectedCmd != "" {
+								naiveBuffer = selectedCmd
+								cursorOffset = 0
+								_, _ = ptmx.Write(append([]byte{0x15}, selectedCmd...))
+							}
 							bufCopy := naiveBuffer
 							offsetCopy := cursorOffset
 							bufferMu.Unlock()
