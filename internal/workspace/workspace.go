@@ -80,8 +80,8 @@ func detectGitBranch(cwd string) string {
 				content, errRead := os.ReadFile(gitPath)
 				if errRead == nil {
 					s := strings.TrimSpace(string(content))
-					if strings.HasPrefix(s, "gitdir: ") {
-						gitDir := strings.TrimSpace(strings.TrimPrefix(s, "gitdir: "))
+					if after, ok := strings.CutPrefix(s, "gitdir: "); ok {
+						gitDir := strings.TrimSpace(after)
 						if !filepath.IsAbs(gitDir) {
 							gitDir = filepath.Join(dir, gitDir)
 						}
@@ -92,8 +92,8 @@ func detectGitBranch(cwd string) string {
 			if headPath != "" {
 				if data, errHead := os.ReadFile(headPath); errHead == nil {
 					s := strings.TrimSpace(string(data))
-					if strings.HasPrefix(s, "ref: refs/heads/") {
-						return strings.TrimPrefix(s, "ref: refs/heads/")
+					if after, ok := strings.CutPrefix(s, "ref: refs/heads/"); ok {
+						return after
 					}
 				}
 			}
