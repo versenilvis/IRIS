@@ -51,6 +51,11 @@ func TestMergeResults(t *testing.T) {
 }
 
 func TestPrevRecordedCommandState(t *testing.T) {
+	origRegistry := spec.Registry
+	t.Cleanup(func() {
+		spec.Registry = origRegistry
+	})
+
 	spec.ResetRegistry()
 	spec.Register(&spec.Spec{
 		Name: "git",
