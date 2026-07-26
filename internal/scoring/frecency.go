@@ -219,33 +219,35 @@ func (f *FrecencyStore) QueryTransitionsWithFallback(ctx context.Context, prevSk
 	parts := strings.Fields(prevSkeleton)
 	for len(parts) > 0 {
 		key := strings.Join(parts, " ")
-		rows, err := f.db.QueryContext(ctxTimeout, `
+		var loopEntries []TransitionEntry
+		func() {
+			rows, err := f.db.QueryContext(ctxTimeout, `
 SELECT prev_skeleton, next_skeleton, cwd, count, last_used
 FROM command_transitions
 WHERE prev_skeleton = ? AND cwd = ? AND count > 0
 ORDER BY count DESC
 `, key, cwd)
-		if err == nil {
-			var entries []TransitionEntry
-			for rows.Next() {
-				var prev, next, rCwd string
-				var count int
-				var lastUsedRaw string
-				if err := rows.Scan(&prev, &next, &rCwd, &count, &lastUsedRaw); err == nil {
-					t, _ := parseTimestamp(lastUsedRaw)
-					entries = append(entries, TransitionEntry{
-						PrevSkeleton: prev,
-						NextSkeleton: next,
-						Cwd:          rCwd,
-						Count:        count,
-						LastUsed:     t,
-					})
+			if err == nil {
+				defer rows.Close()
+				for rows.Next() {
+					var prev, next, rCwd string
+					var count int
+					var lastUsedRaw string
+					if err := rows.Scan(&prev, &next, &rCwd, &count, &lastUsedRaw); err == nil {
+						t, _ := parseTimestamp(lastUsedRaw)
+						loopEntries = append(loopEntries, TransitionEntry{
+							PrevSkeleton: prev,
+							NextSkeleton: next,
+							Cwd:          rCwd,
+							Count:        count,
+							LastUsed:     t,
+						})
+					}
 				}
 			}
-			_ = rows.Close()
-			if len(entries) > 0 {
-				return entries, true
-			}
+		}()
+		if len(loopEntries) > 0 {
+			return loopEntries, true
 		}
 		parts = parts[:len(parts)-1]
 	}
@@ -254,34 +256,36 @@ ORDER BY count DESC
 	parts = strings.Fields(prevSkeleton)
 	for len(parts) > 0 {
 		key := strings.Join(parts, " ")
-		rows, err := f.db.QueryContext(ctxTimeout, `
+		var loopEntries []TransitionEntry
+		func() {
+			rows, err := f.db.QueryContext(ctxTimeout, `
 SELECT prev_skeleton, next_skeleton, SUM(count) as total_count, MAX(last_used) as max_last_used
 FROM command_transitions
 WHERE prev_skeleton = ? AND count > 0
 GROUP BY next_skeleton
 ORDER BY total_count DESC
 `, key)
-		if err == nil {
-			var entries []TransitionEntry
-			for rows.Next() {
-				var prev, next string
-				var count int
-				var lastUsedRaw string
-				if err := rows.Scan(&prev, &next, &count, &lastUsedRaw); err == nil {
-					t, _ := parseTimestamp(lastUsedRaw)
-					entries = append(entries, TransitionEntry{
-						PrevSkeleton: prev,
-						NextSkeleton: next,
-						Cwd:          "",
-						Count:        count,
-						LastUsed:     t,
-					})
+			if err == nil {
+				defer rows.Close()
+				for rows.Next() {
+					var prev, next string
+					var count int
+					var lastUsedRaw string
+					if err := rows.Scan(&prev, &next, &count, &lastUsedRaw); err == nil {
+						t, _ := parseTimestamp(lastUsedRaw)
+						loopEntries = append(loopEntries, TransitionEntry{
+							PrevSkeleton: prev,
+							NextSkeleton: next,
+							Cwd:          "",
+							Count:        count,
+							LastUsed:     t,
+						})
+					}
 				}
 			}
-			_ = rows.Close()
-			if len(entries) > 0 {
-				return entries, false
-			}
+		}()
+		if len(loopEntries) > 0 {
+			return loopEntries, false
 		}
 		parts = parts[:len(parts)-1]
 	}
