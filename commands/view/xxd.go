@@ -8,6 +8,7 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "xxd",
 		Description: "Make a hexdump or do the reverse",
+		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-help", Description: "Show help for xxd"},
 			{Name: "-autoskip", Description: "Toggle autoskip: A single '*' replaces nul-lines.  Default off"},

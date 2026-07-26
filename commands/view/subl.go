@@ -8,6 +8,7 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "subl",
 		Description: "Sublime Text",
+		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "--project", Description: "Load the given project"},
 			{Name: "--command", Description: "Run the given command"},

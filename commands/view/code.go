@@ -8,6 +8,7 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "code",
 		Description: "Read from stdin (e.g.",
+		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-d", Description: "Compare two files with each other"},
 			{Name: "-m", Description: "Add folder(s) to the last active window"},

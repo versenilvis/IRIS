@@ -8,6 +8,7 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "rich",
 		Description: "Defined by terminal, appearance may differ",
+		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-p", Description: "Print console markup. See https://rich.readthedocs.io/en/latest/markup.html"},
 			{Name: "-u", Description: "Display a horizontal rule"},

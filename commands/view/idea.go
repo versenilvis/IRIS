@@ -8,6 +8,7 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "idea",
 		Description: "IntelliJ IDEA CLI",
+		Generator:   spec.FileGenerator(),
 		Subcommands: []spec.Subcommand{
 			{Name: "diff", Description: "Open the diff viewer to see the differences between two specified files"},
 			{Name: "merge", Description: "Open the Merge dialog to merge the specified files"},

@@ -8,6 +8,7 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "vimr",
 		Description: "VimR - Neovim GUI for macOS in Swift",
+		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-h", Description: "Show help"},
 			{Name: "--dry-run", Description: "Just print the 'open' command"},

@@ -8,6 +8,7 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "bat",
 		Description: "A cat(1) clone with syntax highlighting and Git integration",
+		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-A", Description: "Show non-printable characters"},
 			{Name: "-p", Description: "Show plain style, no decorations"},

@@ -8,6 +8,7 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "zed",
 		Description: "A lightning-fast, collaborative code editor written in Rust",
+		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-h", Description: "Print help information"},
 			{Name: "-v", Description: "Print Zed's version and the app path"},
