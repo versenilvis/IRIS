@@ -660,14 +660,19 @@ func runWrapper() {
 							activeModeMu.RLock()
 							isHistMode := activeMode == "history"
 							activeModeMu.RUnlock()
+							var toWrite []byte
 							if isHistMode && selectedCmd != "" {
 								naiveBuffer = selectedCmd
 								cursorOffset = 0
-								_, _ = ptmx.Write(append([]byte{0x15}, selectedCmd...))
+								toWrite = append([]byte{0x15}, selectedCmd...)
 							}
 							bufCopy := naiveBuffer
 							offsetCopy := cursorOffset
 							bufferMu.Unlock()
+
+							if len(toWrite) > 0 {
+								_, _ = ptmx.Write(toWrite)
+							}
 
 							var b strings.Builder
 							if !disableGhostText.Load() {
