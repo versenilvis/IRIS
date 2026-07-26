@@ -141,13 +141,16 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 		historyCache = nil
 		idMapCache = make(map[string]int)
 
+		currentID := len(sessionHistory) + len(allCmds)
+
 		sessionHistoryMu.Lock()
 		for i := len(sessionHistory) - 1; i >= 0; i-- {
 			cmd := sessionHistory[i]
 			if !seen[cmd] {
 				historyCache = append(historyCache, cmd)
 				seen[cmd] = true
-				idMapCache[cmd] = len(historyCache)
+				idMapCache[cmd] = currentID
+				currentID--
 			}
 		}
 		sessionHistoryMu.Unlock()
@@ -157,7 +160,8 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 			if !seen[cmd] {
 				historyCache = append(historyCache, cmd)
 				seen[cmd] = true
-				idMapCache[cmd] = len(historyCache)
+				idMapCache[cmd] = currentID
+				currentID--
 			}
 		}
 
