@@ -115,3 +115,29 @@ func TestLookup_CobraRealBinary(t *testing.T) {
 		t.Logf("  - Cmd: %-25s | Source: %-15s | Priority: %d | Desc: %s", r.Cmd, r.Source, r.Priority, r.Desc)
 	}
 }
+
+func TestLookup_CobraKubectl(t *testing.T) {
+	results := Lookup("kubectl get ")
+	if len(results) == 0 {
+		t.Skip("kubectl binary not available or output no completions")
+	}
+	t.Logf("Got %d completions for 'kubectl get ':", len(results))
+	for i, r := range results {
+		if i >= 10 {
+			t.Logf("  ... and %d more", len(results)-10)
+			break
+		}
+		t.Logf("  - Cmd: %-30s | Source: %-15s | Priority: %d | Desc: %s", r.Cmd, r.Source, r.Priority, r.Desc)
+	}
+}
+
+func TestLookup_CobraGolangciLint(t *testing.T) {
+	results := Lookup("golangci-lint ")
+	if len(results) == 0 {
+		t.Skip("golangci-lint binary not available or output no completions")
+	}
+	t.Logf("Got %d completions for 'golangci-lint ':", len(results))
+	for _, r := range results {
+		t.Logf("  - Cmd: %-30s | Source: %-15s | Priority: %d | Desc: %s", r.Cmd, r.Source, r.Priority, r.Desc)
+	}
+}
