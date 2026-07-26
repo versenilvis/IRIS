@@ -850,7 +850,12 @@ func runWrapper() {
 							currentMode := activeMode
 							activeModeMu.RUnlock()
 							if currentMode == "spec" {
-								selected = strings.TrimSpace(selected) + " "
+								s := strings.TrimSpace(selected)
+								if strings.HasSuffix(s, "/") || strings.HasSuffix(s, "\\") {
+									selected = s
+								} else {
+									selected = s + " "
+								}
 							}
 							_, _ = ptmx.Write(append([]byte{0x15}, selected...))
 						}
@@ -911,7 +916,12 @@ func runWrapper() {
 						currentMode := activeMode
 						activeModeMu.RUnlock()
 						if currentMode == "spec" {
-							selected = strings.TrimSpace(selected) + " "
+							s := strings.TrimSpace(selected)
+							if strings.HasSuffix(s, "/") || strings.HasSuffix(s, "\\") {
+								selected = s
+							} else {
+								selected = s + " "
+							}
 						}
 
 						bufferMu.Lock()
