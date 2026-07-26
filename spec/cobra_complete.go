@@ -115,9 +115,6 @@ func QueryCobraComplete(binName string, args []string, partial string) []Suggest
 	cmdArgs = append(cmdArgs, partial)
 	out, err := exec.CommandContext(ctx, binName, cmdArgs...).Output()
 	if err != nil {
-		cobraCacheMu.Lock()
-		cobraCache[argKey] = cobraCacheEntry{}
-		cobraCacheMu.Unlock()
 		return nil
 	}
 
