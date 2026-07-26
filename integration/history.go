@@ -13,12 +13,33 @@ import (
 )
 
 var (
+	sessionHistory   []string
+	sessionHistoryMu sync.Mutex
+
 	historyCache  []string
 	idMapCache    map[string]int
 	searcherCache *fuzzy.Searcher
 	mu            sync.Mutex
 	lastModTime   int64
 )
+
+func RecordSessionCommand(cmd string) {
+	cmd = strings.TrimSpace(cmd)
+	if cmd == "" {
+		return
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	
+	sessionHistoryMu.Lock()
+	defer sessionHistoryMu.Unlock()
+	
+	if len(sessionHistory) > 0 && sessionHistory[len(sessionHistory)-1] == cmd {
+		return
+	}
+	sessionHistory = append(sessionHistory, cmd)
+	historyCache = nil // invalidate to merge session history on next search
+}
 
 type HistResult struct {
 	ID         int
@@ -65,61 +86,82 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 	// lazy load history if cache is empty
 	if len(historyCache) == 0 {
 		file, err := os.Open(histFile)
-		if err != nil {
+		if err != nil && !os.IsNotExist(err) {
 			return nil, err
 		}
-		defer func() { _ = file.Close() }()
+		if file != nil {
+			defer func() { _ = file.Close() }()
+		}
 
 		var allCmds []string
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			line := scanner.Text()
-			cmd := line
+		if file != nil {
+			scanner := bufio.NewScanner(file)
+			for scanner.Scan() {
+				line := scanner.Text()
+				cmd := line
 
-			if shellName == "zsh" {
-				parts := strings.SplitN(line, ";", 2)
-				if len(parts) == 2 {
-					cmd = parts[1]
-				}
-			} else if shellName == "bash" {
-				if strings.HasPrefix(line, "#") && len(line) > 1 {
-					isTimestamp := true
-					for _, c := range line[1:] {
-						if c < '0' || c > '9' {
-							isTimestamp = false
-							break
+				if shellName == "zsh" {
+					parts := strings.SplitN(line, ";", 2)
+					if len(parts) == 2 {
+						cmd = parts[1]
+					}
+				} else if shellName == "bash" {
+					if strings.HasPrefix(line, "#") && len(line) > 1 {
+						isTimestamp := true
+						for _, c := range line[1:] {
+							if c < '0' || c > '9' {
+								isTimestamp = false
+								break
+							}
+						}
+						if isTimestamp {
+							continue
 						}
 					}
-					if isTimestamp {
+				} else if shellName == "fish" {
+					if after, ok := strings.CutPrefix(line, "- cmd: "); ok {
+						cmd = after
+					} else {
 						continue
 					}
 				}
-			} else if shellName == "fish" {
-				if after, ok := strings.CutPrefix(line, "- cmd: "); ok {
-					cmd = after
-				} else {
-					continue
+
+				cmd = strings.TrimSpace(cmd)
+				if cmd != "" {
+					allCmds = append(allCmds, cmd)
 				}
 			}
-
-			cmd = strings.TrimSpace(cmd)
-			if cmd != "" {
-				allCmds = append(allCmds, cmd)
+			if err := scanner.Err(); err != nil {
+				return nil, err
 			}
-		}
-		if err := scanner.Err(); err != nil {
-			return nil, err
 		}
 
 		// build historyCache backwards so newest commands come first
 		seen := make(map[string]bool)
+		historyCache = nil
+		idMapCache = make(map[string]int)
+
+		currentID := len(sessionHistory) + len(allCmds)
+
+		sessionHistoryMu.Lock()
+		for i := len(sessionHistory) - 1; i >= 0; i-- {
+			cmd := sessionHistory[i]
+			if !seen[cmd] {
+				historyCache = append(historyCache, cmd)
+				seen[cmd] = true
+				idMapCache[cmd] = currentID
+				currentID--
+			}
+		}
+		sessionHistoryMu.Unlock()
+
 		for i := len(allCmds) - 1; i >= 0; i-- {
 			cmd := allCmds[i]
 			if !seen[cmd] {
 				historyCache = append(historyCache, cmd)
 				seen[cmd] = true
-				// we assign the ID as the original line number (1-indexed based on allCmds length)
-				idMapCache[cmd] = i + 1
+				idMapCache[cmd] = currentID
+				currentID--
 			}
 		}
 

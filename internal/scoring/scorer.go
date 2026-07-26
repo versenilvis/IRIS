@@ -12,6 +12,7 @@ type ScoreBreakdown struct {
 	BasePriority int
 	ContextBonus int
 	Frecency     int
+	Transition   int
 	MatchQuality int
 }
 
@@ -25,13 +26,15 @@ type ScoreConfig struct {
 	WeightBasePriority float64
 	WeightContextBonus float64
 	WeightFrecency     float64
+	WeightTransition   float64
 	WeightMatchQuality float64
 }
 
 var DefaultScoreConfig = ScoreConfig{
 	WeightBasePriority: 0.30,
 	WeightContextBonus: 0.25,
-	WeightFrecency:     0.25,
+	WeightFrecency:     0.15,
+	WeightTransition:   0.10,
 	WeightMatchQuality: 0.20,
 }
 
@@ -71,11 +74,13 @@ func ScoreWithConfig(suggestions []spec.Suggestion, signals SignalSet, config Sc
 		bp := basePriorityFor(s)
 		cb := ApplyContextRules(signals.Workspace, s.Cmd)
 		frec := normFrec[i]
+		trans := transitionScoreFor(ExtractSkeleton(s.Cmd), signals.TransitionEntries, signals.TransitionIsLocal)
 		mq := matchQualityScore(s.Cmd, signals.Query)
 
 		total := config.WeightBasePriority*float64(bp) +
 			config.WeightContextBonus*float64(cb) +
 			config.WeightFrecency*float64(frec) +
+			config.WeightTransition*float64(trans) +
 			config.WeightMatchQuality*float64(mq)
 
 		scored[i] = ScoredSuggestion{
@@ -85,6 +90,7 @@ func ScoreWithConfig(suggestions []spec.Suggestion, signals SignalSet, config Sc
 				BasePriority: bp,
 				ContextBonus: cb,
 				Frecency:     frec,
+				Transition:   trans,
 				MatchQuality: mq,
 			},
 		}
@@ -93,6 +99,9 @@ func ScoreWithConfig(suggestions []spec.Suggestion, signals SignalSet, config Sc
 	sort.SliceStable(scored, func(i, j int) bool {
 		if scored[i].Score != scored[j].Score {
 			return scored[i].Score > scored[j].Score
+		}
+		if scored[i].Breakdown.Transition != scored[j].Breakdown.Transition {
+			return scored[i].Breakdown.Transition > scored[j].Breakdown.Transition
 		}
 		if scored[i].Breakdown.Frecency != scored[j].Breakdown.Frecency {
 			return scored[i].Breakdown.Frecency > scored[j].Breakdown.Frecency
@@ -104,6 +113,26 @@ func ScoreWithConfig(suggestions []spec.Suggestion, signals SignalSet, config Sc
 	})
 
 	return scored
+}
+
+func transitionScoreFor(cmdSkeleton string, entries []TransitionEntry, isLocal bool) int {
+	if len(entries) == 0 {
+		return 0 // cold-start: no data, contributes 0 (must check before accessing entries[0])
+	}
+	maxCount := entries[0].Count
+	if maxCount <= 0 {
+		return 0
+	}
+	for _, e := range entries {
+		if e.NextSkeleton == cmdSkeleton {
+			score := (float64(e.Count) / float64(maxCount)) * 100.0
+			if !isLocal {
+				score *= 0.7
+			}
+			return int(math.Round(score))
+		}
+	}
+	return 0
 }
 
 func basePriorityFor(s spec.Suggestion) int {

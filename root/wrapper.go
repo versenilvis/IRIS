@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -27,6 +28,37 @@ import (
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 )
+
+var (
+	prevRecordedCommand string
+	prevCmdCwd          string
+	prevCmdMu           sync.Mutex
+)
+
+func getPrevSkeleton() string {
+	prevCmdMu.Lock()
+	defer prevCmdMu.Unlock()
+	if prevRecordedCommand == "" {
+		return ""
+	}
+	return scoring.ExtractSkeleton(prevRecordedCommand)
+}
+
+func getPrevRecordedInfo() (string, string) {
+	prevCmdMu.Lock()
+	defer prevCmdMu.Unlock()
+	if prevRecordedCommand == "" {
+		return "", ""
+	}
+	return scoring.ExtractSkeleton(prevRecordedCommand), prevCmdCwd
+}
+
+func setPrevRecordedInfo(cmd, cwd string) {
+	prevCmdMu.Lock()
+	defer prevCmdMu.Unlock()
+	prevRecordedCommand = cmd
+	prevCmdCwd = cwd
+}
 
 func loadMode() string {
 	mode := config.Get().Core.Mode
@@ -322,7 +354,13 @@ func runWrapper() {
 				continue
 			}
 
-			if query == "IRIS_CMD_STOP" {
+			if query == "IRIS_CMD_STOP" || strings.HasPrefix(query, "IRIS_CMD_STOP:") {
+				exitCode := 0
+				if after, ok := strings.CutPrefix(query, "IRIS_CMD_STOP:"); ok {
+					if code, err := strconv.Atoi(after); err == nil {
+						exitCode = code
+					}
+				}
 				isCommandActive.Store(false)
 				SetCurrentAISuggestion(nil)
 				bufferMu.Lock()
@@ -330,8 +368,11 @@ func runWrapper() {
 				lastSubmittedCommand = ""
 				bufferMu.Unlock()
 				if cmdToRecord != "" {
+					integration.RecordSessionCommand(cmdToRecord)
 					cwd := spec.GetCWD()
-					go func(c, d string) {
+					prevSkeleton, prevCwd := getPrevRecordedInfo()
+					currSkeleton := scoring.ExtractSkeleton(cmdToRecord)
+					go func(c, d string, code int, pSkel, pCwd, cSkel string) {
 						defer func() {
 							if r := recover(); r != nil {
 								WriteCrashLog(r)
@@ -340,9 +381,13 @@ func runWrapper() {
 						ctxRecord, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
 						defer cancel()
 						if store, err := scoring.GetFrecencyStore(); err == nil && store != nil {
-							_ = store.Record(ctxRecord, c, d)
+							_ = store.Record(ctxRecord, c, d, code)
+							if pSkel != "" && cSkel != "" {
+								_ = store.RecordTransition(ctxRecord, pSkel, cSkel, d, code)
+							}
 						}
-					}(cmdToRecord, cwd)
+					}(cmdToRecord, cwd, exitCode, prevSkeleton, prevCwd, currSkeleton)
+					setPrevRecordedInfo(cmdToRecord, cwd)
 				}
 				// hook: after user executes a command, print the update notice exactly once per session
 				if !updatePrinted {
@@ -605,16 +650,29 @@ func runWrapper() {
 							if inputSlice[i+2] == 'A' {
 								arrowDir = "up"
 							}
-							moved, _ := overlay.MoveCursor(arrowDir)
+							moved, selectedCmd := overlay.MoveCursor(arrowDir)
 							if !moved {
 								i += 2
 								continue
 							}
 
 							bufferMu.Lock()
+							activeModeMu.RLock()
+							isHistMode := activeMode == "history"
+							activeModeMu.RUnlock()
+							var toWrite []byte
+							if isHistMode && selectedCmd != "" {
+								naiveBuffer = selectedCmd
+								cursorOffset = 0
+								toWrite = append([]byte{0x15}, selectedCmd...)
+							}
 							bufCopy := naiveBuffer
 							offsetCopy := cursorOffset
 							bufferMu.Unlock()
+
+							if len(toWrite) > 0 {
+								_, _ = ptmx.Write(toWrite)
+							}
 
 							var b strings.Builder
 							if !disableGhostText.Load() {

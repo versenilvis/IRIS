@@ -38,6 +38,22 @@ var DefaultContextRules = []ContextRule{
 	},
 	&SimpleContextRule{
 		check: func(ws workspace.WorkspaceInfo, cmd string) bool {
+			if !ws.HasGit || ws.GitBranch == "" {
+				return false
+			}
+			isRelevantCmd := strings.HasPrefix(cmd, "git push") || strings.HasPrefix(cmd, "git pull") ||
+				strings.HasPrefix(cmd, "git checkout") || strings.HasPrefix(cmd, "git switch") ||
+				strings.HasPrefix(cmd, "git branch") || strings.HasPrefix(cmd, "git merge") ||
+				strings.HasPrefix(cmd, "git rebase")
+			if !isRelevantCmd {
+				return false
+			}
+			return strings.HasSuffix(cmd, " "+ws.GitBranch) || strings.Contains(cmd, " "+ws.GitBranch+" ")
+		},
+		bonus: 60,
+	},
+	&SimpleContextRule{
+		check: func(ws workspace.WorkspaceInfo, cmd string) bool {
 			return ws.HasGit && (strings.HasPrefix(cmd, "git init") || strings.HasPrefix(cmd, "git clone"))
 		},
 		bonus: -50,

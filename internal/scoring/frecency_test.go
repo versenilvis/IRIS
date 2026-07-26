@@ -19,10 +19,10 @@ func TestFrecencyStore_RecordAndQueryLocal(t *testing.T) {
 	defer store.Close()
 
 	cwd := "/home/user/project"
-	_ = store.Record(context.Background(), "git status", cwd)
-	_ = store.Record(context.Background(), "git status", cwd)
-	_ = store.Record(context.Background(), "git status", cwd)
-	_ = store.Record(context.Background(), "git commit -m 'test'", cwd)
+	_ = store.Record(context.Background(), "git status", cwd, 0)
+	_ = store.Record(context.Background(), "git status", cwd, 0)
+	_ = store.Record(context.Background(), "git status", cwd, 0)
+	_ = store.Record(context.Background(), "git commit -m 'test'", cwd, 0)
 
 	entries, err := store.QueryLocal(context.Background(), cwd, "git", 10)
 	if err != nil {
@@ -60,9 +60,9 @@ func TestFrecencyStore_QueryGlobalDedupe(t *testing.T) {
 	}
 	defer store.Close()
 
-	_ = store.Record(context.Background(), "make build", "/repo/a")
-	_ = store.Record(context.Background(), "make build", "/repo/a")
-	_ = store.Record(context.Background(), "make build", "/repo/b")
+	_ = store.Record(context.Background(), "make build", "/repo/a", 0)
+	_ = store.Record(context.Background(), "make build", "/repo/a", 0)
+	_ = store.Record(context.Background(), "make build", "/repo/b", 0)
 
 	entries, err := store.QueryGlobal(context.Background(), "make", 10)
 	if err != nil {
@@ -139,7 +139,7 @@ func TestFrecencyStore_SQLiteConfigurationAndContext(t *testing.T) {
 	ctxCanceled, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	err = store.Record(ctxCanceled, "git status", tmpDir)
+	err = store.Record(ctxCanceled, "git status", tmpDir, 0)
 	if !errors.Is(err, context.Canceled) {
 		t.Errorf("expected context.Canceled from Record with canceled context, got %v", err)
 	}
@@ -147,7 +147,7 @@ func TestFrecencyStore_SQLiteConfigurationAndContext(t *testing.T) {
 
 func TestFrecencyStore_NilReceiver(t *testing.T) {
 	var nilStore *FrecencyStore
-	if err := nilStore.Record(context.Background(), "cmd", "cwd"); err != nil {
+	if err := nilStore.Record(context.Background(), "cmd", "cwd", 0); err != nil {
 		t.Errorf("expected nil error on nil store Record, got %v", err)
 	}
 	if entries, err := nilStore.QueryLocal(context.Background(), "cwd", "", 10); err != nil || entries != nil {
@@ -158,5 +158,72 @@ func TestFrecencyStore_NilReceiver(t *testing.T) {
 	}
 	if err := nilStore.Close(); err != nil {
 		t.Errorf("expected nil error on nil store Close, got %v", err)
+	}
+}
+
+func TestFrecencyStore_ExitCodeBehavior(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "history.db")
+	store, err := NewFrecencyStore(dbPath)
+	if err != nil {
+		t.Fatalf("NewFrecencyStore failed: %v", err)
+	}
+	defer store.Close()
+
+	cwd := "/home/user/test"
+	_ = store.Record(context.Background(), "grep foo", cwd, 0) // count=1
+	_ = store.Record(context.Background(), "grep foo", cwd, 1) // count unchanged (1)
+
+	entries, _ := store.QueryLocal(context.Background(), cwd, "grep", 10)
+	if len(entries) != 1 || entries[0].Count != 1 {
+		t.Errorf("expected grep count to be 1 after non-zero exit code, got %v", entries)
+	}
+
+	_ = store.RecordTransition(context.Background(), "git checkout", "git status", cwd, 0)
+	_ = store.RecordTransition(context.Background(), "git checkout", "git status", cwd, 1)
+
+	transitions, isLocal := store.QueryTransitionsWithFallback(context.Background(), "git checkout", cwd)
+	if !isLocal || len(transitions) != 1 || transitions[0].Count != 1 {
+		t.Errorf("expected transition count 1 after non-zero exit code, got %v, isLocal=%v", transitions, isLocal)
+	}
+}
+
+func TestFrecencyStore_TransitionCwdIsolationAndDepthFallback(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "history.db")
+	store, err := NewFrecencyStore(dbPath)
+	if err != nil {
+		t.Fatalf("NewFrecencyStore failed: %v", err)
+	}
+	defer store.Close()
+
+	projectA := "/repo/a"
+	projectB := "/repo/b"
+
+	_ = store.RecordTransition(context.Background(), "git checkout", "npm run dev", projectA, 0)
+	_ = store.RecordTransition(context.Background(), "git checkout", "go test", projectB, 0)
+	_ = store.RecordTransition(context.Background(), "git checkout", "go test", projectB, 0)
+
+	// query in project B should return go test (Local) and not npm run dev
+	transB, isLocalB := store.QueryTransitionsWithFallback(context.Background(), "git checkout", projectB)
+	if !isLocalB || len(transB) != 1 || transB[0].NextSkeleton != "go test" {
+		t.Errorf("expected local transition 'go test' for project B, got %v (isLocal=%v)", transB, isLocalB)
+	}
+
+	// query in project C (no local data) should fallback to Global (returning both aggregated)
+	projectC := "/repo/c"
+	transC, isLocalC := store.QueryTransitionsWithFallback(context.Background(), "git checkout", projectC)
+	if isLocalC || len(transC) != 2 {
+		t.Errorf("expected global transitions for project C, got %v (isLocal=%v)", transC, isLocalC)
+	}
+	if transC[0].NextSkeleton != "go test" {
+		t.Errorf("expected global top transition to be 'go test' (count 2), got %s", transC[0].NextSkeleton)
+	}
+
+	// depth fallback test: query deep skeleton with no exact match should fallback to shallower prefix
+	_ = store.RecordTransition(context.Background(), "git remote", "git fetch", projectA, 0)
+	transDeep, isLocalDeep := store.QueryTransitionsWithFallback(context.Background(), "git remote add", projectA)
+	if !isLocalDeep || len(transDeep) != 1 || transDeep[0].NextSkeleton != "git fetch" {
+		t.Errorf("expected depth fallback to 'git fetch' from 'git remote', got %v", transDeep)
 	}
 }
