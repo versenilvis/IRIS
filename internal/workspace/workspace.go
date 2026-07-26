@@ -59,22 +59,19 @@ func Detect(cwd string) WorkspaceInfo {
 		}
 	}
 
-	info.GitBranch = detectGitBranch(cwd)
-	if info.GitBranch != "" {
-		info.HasGit = true
-	}
+	info.HasGit, info.GitBranch = detectGitInfo(cwd)
 
 	return info
 }
 
-func resolveGitHeadPath(cwd string) string {
+func resolveGitHeadPath(cwd string) (hasGit bool, headPath string) {
 	dir := cwd
 	for i := 0; i < 10 && dir != "" && dir != "/" && dir != "."; i++ {
 		gitPath := filepath.Join(dir, ".git")
 		info, err := os.Stat(gitPath)
 		if err == nil {
 			if info.IsDir() {
-				return filepath.Join(gitPath, "HEAD")
+				return true, filepath.Join(gitPath, "HEAD")
 			}
 			content, errRead := os.ReadFile(gitPath)
 			if errRead == nil {
@@ -84,10 +81,10 @@ func resolveGitHeadPath(cwd string) string {
 					if !filepath.IsAbs(gitDir) {
 						gitDir = filepath.Join(dir, gitDir)
 					}
-					return filepath.Join(gitDir, "HEAD")
+					return true, filepath.Join(gitDir, "HEAD")
 				}
 			}
-			return "" // found .git but couldn't resolve HEAD
+			return true, "" // found .git but couldn't resolve HEAD
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
@@ -95,20 +92,20 @@ func resolveGitHeadPath(cwd string) string {
 		}
 		dir = parent
 	}
-	return ""
+	return false, ""
 }
 
-func detectGitBranch(cwd string) string {
-	headPath := resolveGitHeadPath(cwd)
+func detectGitInfo(cwd string) (hasGit bool, branch string) {
+	hasGit, headPath := resolveGitHeadPath(cwd)
 	if headPath != "" {
 		if data, errHead := os.ReadFile(headPath); errHead == nil {
 			s := strings.TrimSpace(string(data))
 			if after, ok := strings.CutPrefix(s, "ref: refs/heads/"); ok {
-				return after
+				return hasGit, after
 			}
 		}
 	}
-	return ""
+	return hasGit, ""
 }
 
 type cacheEntry struct {
@@ -131,7 +128,7 @@ func DetectCached(cwd string) WorkspaceInfo {
 	key := cwd + "|" + dirInfo.ModTime().String()
 
 	// Incorporate Git HEAD modtime into cache key to catch branch switches
-	if headPath := resolveGitHeadPath(cwd); headPath != "" {
+	if _, headPath := resolveGitHeadPath(cwd); headPath != "" {
 		if headInfo, err := os.Stat(headPath); err == nil {
 			key += "|HEAD:" + headInfo.ModTime().String()
 		}
