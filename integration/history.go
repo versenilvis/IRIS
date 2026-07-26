@@ -28,15 +28,17 @@ func RecordSessionCommand(cmd string) {
 	if cmd == "" {
 		return
 	}
+	mu.Lock()
+	defer mu.Unlock()
+	
 	sessionHistoryMu.Lock()
 	defer sessionHistoryMu.Unlock()
+	
 	if len(sessionHistory) > 0 && sessionHistory[len(sessionHistory)-1] == cmd {
 		return
 	}
 	sessionHistory = append(sessionHistory, cmd)
-	mu.Lock()
 	historyCache = nil // invalidate to merge session history on next search
-	mu.Unlock()
 }
 
 type HistResult struct {
