@@ -5,14 +5,25 @@ import (
 )
 
 func TestRecordSessionCommand_MergeAndDeduplicate(t *testing.T) {
-	// reset sessionHistory
 	sessionHistoryMu.Lock()
+	origSessionHistory := sessionHistory
 	sessionHistory = nil
 	sessionHistoryMu.Unlock()
 
 	mu.Lock()
+	origHistoryCache := historyCache
 	historyCache = nil
 	mu.Unlock()
+
+	t.Cleanup(func() {
+		sessionHistoryMu.Lock()
+		sessionHistory = origSessionHistory
+		sessionHistoryMu.Unlock()
+
+		mu.Lock()
+		historyCache = origHistoryCache
+		mu.Unlock()
+	})
 
 	RecordSessionCommand("git status")
 	RecordSessionCommand("npm run dev")
