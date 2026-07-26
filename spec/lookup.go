@@ -106,6 +106,14 @@ func Lookup(input string) []Suggestion {
 	spec, exists := Registry[rootCmdName]
 	logger.Debugf("core lookup tokens: %v, registry exists: %v", tokens, exists)
 	if !exists {
+		partial := tokens[len(tokens)-1]
+		args := tokens[1:]
+		if len(args) > 0 && args[len(args)-1] == partial {
+			args = args[:len(args)-1]
+		}
+		if cobSugg := QueryCobraComplete(rootCmdName, args, partial); len(cobSugg) > 0 {
+			return cobSugg
+		}
 		return nil
 	}
 
