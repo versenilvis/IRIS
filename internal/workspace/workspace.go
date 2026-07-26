@@ -67,43 +67,46 @@ func Detect(cwd string) WorkspaceInfo {
 	return info
 }
 
-func detectGitBranch(cwd string) string {
+func resolveGitHeadPath(cwd string) string {
 	dir := cwd
 	for i := 0; i < 10 && dir != "" && dir != "/" && dir != "."; i++ {
 		gitPath := filepath.Join(dir, ".git")
 		info, err := os.Stat(gitPath)
 		if err == nil {
-			var headPath string
 			if info.IsDir() {
-				headPath = filepath.Join(gitPath, "HEAD")
-			} else {
-				content, errRead := os.ReadFile(gitPath)
-				if errRead == nil {
-					s := strings.TrimSpace(string(content))
-					if after, ok := strings.CutPrefix(s, "gitdir: "); ok {
-						gitDir := strings.TrimSpace(after)
-						if !filepath.IsAbs(gitDir) {
-							gitDir = filepath.Join(dir, gitDir)
-						}
-						headPath = filepath.Join(gitDir, "HEAD")
+				return filepath.Join(gitPath, "HEAD")
+			}
+			content, errRead := os.ReadFile(gitPath)
+			if errRead == nil {
+				s := strings.TrimSpace(string(content))
+				if after, ok := strings.CutPrefix(s, "gitdir: "); ok {
+					gitDir := strings.TrimSpace(after)
+					if !filepath.IsAbs(gitDir) {
+						gitDir = filepath.Join(dir, gitDir)
 					}
+					return filepath.Join(gitDir, "HEAD")
 				}
 			}
-			if headPath != "" {
-				if data, errHead := os.ReadFile(headPath); errHead == nil {
-					s := strings.TrimSpace(string(data))
-					if after, ok := strings.CutPrefix(s, "ref: refs/heads/"); ok {
-						return after
-					}
-				}
-			}
-			return ""
+			return "" // found .git but couldn't resolve HEAD
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
 			break
 		}
 		dir = parent
+	}
+	return ""
+}
+
+func detectGitBranch(cwd string) string {
+	headPath := resolveGitHeadPath(cwd)
+	if headPath != "" {
+		if data, errHead := os.ReadFile(headPath); errHead == nil {
+			s := strings.TrimSpace(string(data))
+			if after, ok := strings.CutPrefix(s, "ref: refs/heads/"); ok {
+				return after
+			}
+		}
 	}
 	return ""
 }
@@ -119,13 +122,20 @@ var (
 )
 
 // DetectCached returns cached workspace info, invalidating when directory modtime changes
-// this handles mid-session file creation (e.g. go mod init) without requiring cd
+// or when the Git HEAD file changes (to catch branch switches that don't affect cwd modtime).
 func DetectCached(cwd string) WorkspaceInfo {
 	dirInfo, err := os.Stat(cwd)
 	if err != nil {
 		return Detect(cwd)
 	}
 	key := cwd + "|" + dirInfo.ModTime().String()
+
+	// Incorporate Git HEAD modtime into cache key to catch branch switches
+	if headPath := resolveGitHeadPath(cwd); headPath != "" {
+		if headInfo, err := os.Stat(headPath); err == nil {
+			key += "|HEAD:" + headInfo.ModTime().String()
+		}
+	}
 
 	wsCacheMu.Lock()
 	defer wsCacheMu.Unlock()
