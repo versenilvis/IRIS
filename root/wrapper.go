@@ -356,8 +356,8 @@ func runWrapper() {
 
 			if query == "IRIS_CMD_STOP" || strings.HasPrefix(query, "IRIS_CMD_STOP:") {
 				exitCode := 0
-				if strings.HasPrefix(query, "IRIS_CMD_STOP:") {
-					if code, err := strconv.Atoi(strings.TrimPrefix(query, "IRIS_CMD_STOP:")); err == nil {
+				if after, ok := strings.CutPrefix(query, "IRIS_CMD_STOP:"); ok {
+					if code, err := strconv.Atoi(after); err == nil {
 						exitCode = code
 					}
 				}
