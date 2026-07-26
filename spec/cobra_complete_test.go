@@ -90,3 +90,15 @@ func TestFilterByPartial_EmptyPartial(t *testing.T) {
 		t.Errorf("expected all suggestions for empty partial, got %d", len(filtered))
 	}
 }
+
+func TestLookup_CobraRealBinary(t *testing.T) {
+	// Test real lookup for 'gh' (GitHub CLI) which has no hand-written spec in Iris
+	results := Lookup("gh repo ")
+	if len(results) == 0 {
+		t.Skip("gh binary not available or output no completions")
+	}
+	t.Logf("Got %d completions for 'gh repo ':", len(results))
+	for _, r := range results {
+		t.Logf("  - Cmd: %-25s | Source: %-15s | Priority: %d | Desc: %s", r.Cmd, r.Source, r.Priority, r.Desc)
+	}
+}
