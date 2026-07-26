@@ -67,7 +67,7 @@ func TestQueryCobraComplete_NonCobraBinary(t *testing.T) {
 	// 'ls' is not Cobra-based, should return nil gracefully
 	result := QueryCobraComplete("ls", nil, "")
 	if result != nil {
-		t.Logf("ls returned %d suggestions (unexpected but non-fatal)", len(result))
+		t.Fatalf("expected nil for non-Cobra binary 'ls', got %v", result)
 	}
 }
 
