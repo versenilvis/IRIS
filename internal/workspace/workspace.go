@@ -66,10 +66,7 @@ func Detect(cwd string) WorkspaceInfo {
 
 func resolveGitHeadPath(cwd string) (hasGit bool, headPath string) {
 	dir := cwd
-	for {
-		if dir == "" {
-			break
-		}
+	for dir != "" {
 		gitPath := filepath.Join(dir, ".git")
 		info, err := os.Stat(gitPath)
 		if err == nil {
