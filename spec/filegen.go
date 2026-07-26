@@ -143,9 +143,13 @@ func FileGenerator(filters ...string) GeneratorFunc {
 					continue
 				}
 			}
+			desc := "file"
+			if ext := strings.ToLower(filepath.Ext(name)); ext != "" {
+				desc = strings.TrimPrefix(ext, ".")
+			}
 			results = append(results, Suggestion{
 				Cmd:  fullPath,
-				Desc: "file",
+				Desc: desc,
 			})
 		}
 
