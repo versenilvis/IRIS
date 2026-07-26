@@ -61,9 +61,13 @@ func Lookup(input string) []Suggestion {
 
 	scanExternalCommands()
 
-	// if you have an alias in your shell config like: alias gca="git commit -a"
-	// if the first word match it, IRIS will suggest "git commit -a"
-	if len(tokens) > 1 {
+	// if you have an alias in your shell config like: alias nv="nvim"
+	// expand it even when there's only one token (e.g. "nv ") so that the
+	// target spec's Generator (FileGenerator etc.) can still fire.
+	// only expand when there's a trailing space — i.e. the user has committed
+	// to the alias name and is now typing arguments (tokens last elem == "")
+	hasTrailingSpace := len(tokens) > 0 && tokens[len(tokens)-1] == ""
+	if hasTrailingSpace || len(tokens) > 1 {
 		if target, ok := aliases[tokens[0]]; ok {
 			aliasTokens := Tokenize(target)
 			if len(aliasTokens) > 0 && aliasTokens[len(aliasTokens)-1] == "" {

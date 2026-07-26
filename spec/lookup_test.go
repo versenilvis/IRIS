@@ -136,3 +136,35 @@ func TestLookupConcurrent(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestLookup_AliasFileGenerator(t *testing.T) {
+	ResetRegistry()
+	Register(&Spec{
+		Name:      "nvim",
+		Generator: FileGenerator(),
+	})
+	// alias "nv" -> "nvim", single token with trailing space
+	ShellAliases = map[string]string{"nv": "nvim"}
+
+	results := Lookup("nv ")
+	if len(results) == 0 {
+		t.Errorf("expected file suggestions for alias 'nv ' -> 'nvim', got none")
+	}
+	for _, r := range results {
+		if !strings.HasPrefix(r.Cmd, "nvim ") {
+			t.Errorf("expected suggestion to start with 'nvim ', got %q", r.Cmd)
+		}
+	}
+}
+
+func TestLookup_NvimFileGenerator(t *testing.T) {
+	ResetRegistry()
+	Register(&Spec{
+		Name:      "nvim",
+		Generator: FileGenerator(),
+	})
+	results := Lookup("nvim ")
+	if len(results) == 0 {
+		t.Errorf("expected file suggestions for 'nvim ', got none")
+	}
+}
