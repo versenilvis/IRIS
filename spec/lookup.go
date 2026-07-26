@@ -206,10 +206,28 @@ func Lookup(input string) []Suggestion {
 	linePrefix := linePrefixBuilder.String()
 
 	if currentGen != nil && allowMoreArgs {
-		genResults := currentGen(tokens, prefix, partial)
+		genPartial := partial
+		genLinePrefix := linePrefix
+
+		if partial == "" && len(tokens) >= 3 {
+			prevToken := tokens[len(tokens)-2]
+			if strings.HasSuffix(prevToken, "/") || strings.HasSuffix(prevToken, "\\") {
+				genPartial = prevToken
+				lpBuilder := strings.Builder{}
+				for i := 0; i < len(tokens)-2; i++ {
+					if i > 0 {
+						lpBuilder.WriteByte(' ')
+					}
+					lpBuilder.WriteString(tokens[i])
+				}
+				genLinePrefix = lpBuilder.String()
+			}
+		}
+
+		genResults := currentGen(tokens, prefix, genPartial)
 
 		for _, g := range genResults {
-			if partial != "" && !HasPrefix(g.Cmd, partial) && !strings.Contains(g.Cmd, partial) {
+			if genPartial != "" && !HasPrefix(g.Cmd, genPartial) && !strings.Contains(g.Cmd, genPartial) {
 				continue
 			}
 
@@ -224,8 +242,10 @@ func Lookup(input string) []Suggestion {
 			finalCmd := ""
 			if len(tokens) > depth+1 && strings.HasPrefix(g.Cmd, tokens[depth]) {
 				finalCmd = prefix + " " + suggested
+			} else if genLinePrefix != "" {
+				finalCmd = genLinePrefix + " " + suggested
 			} else {
-				finalCmd = strings.TrimSpace(linePrefix) + " " + suggested
+				finalCmd = suggested
 			}
 
 			newTokens := Tokenize(finalCmd)

@@ -1,6 +1,8 @@
 package spec
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -197,5 +199,35 @@ func TestLookup_OptionAndFilePriority(t *testing.T) {
 	}
 	if !strings.HasPrefix(resultsDash[0].Cmd, "nvim -") {
 		t.Errorf("expected option as top result for 'nvim -', got %q", resultsDash[0].Cmd)
+	}
+}
+
+func TestLookup_NestedDirectoryTrailingSpace(t *testing.T) {
+	ResetRegistry()
+	Register(&Spec{
+		Name:      "cat",
+		Generator: FileGenerator(),
+	})
+
+	tmpDir := t.TempDir()
+	subDir := filepath.Join(tmpDir, "subdir")
+	_ = os.Mkdir(subDir, 0755)
+	testFile := filepath.Join(subDir, "hello.txt")
+	_ = os.WriteFile(testFile, []byte("hi"), 0644)
+
+	query := "cat " + subDir + "/ "
+	results := Lookup(query)
+	if len(results) == 0 {
+		t.Fatalf("expected results for %q, got 0", query)
+	}
+	found := false
+	for _, r := range results {
+		if strings.Contains(r.Cmd, "hello.txt") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected hello.txt in results, got %v", results)
 	}
 }
