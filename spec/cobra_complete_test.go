@@ -91,6 +91,19 @@ func TestFilterByPartial_EmptyPartial(t *testing.T) {
 	}
 }
 
+func TestBuildCobraCacheKey(t *testing.T) {
+	key1 := buildCobraCacheKey("gh", []string{"repo", "foo bar"}, "baz")
+	key2 := buildCobraCacheKey("gh", []string{"repo", "foo", "bar"}, "baz")
+	key3 := buildCobraCacheKey("gh", []string{"repo", "foo bar"}, "other")
+
+	if key1 == key2 {
+		t.Errorf("expected quoted argument key1 and key2 to be distinct, but were equal")
+	}
+	if key1 == key3 {
+		t.Errorf("expected key1 and key3 with different partials to be distinct, but were equal")
+	}
+}
+
 func TestLookup_CobraRealBinary(t *testing.T) {
 	// Test real lookup for 'gh' (GitHub CLI) which has no hand-written spec in Iris
 	results := Lookup("gh repo ")

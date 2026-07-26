@@ -78,8 +78,20 @@ func parseCobraOutput(raw string, prefix string) []Suggestion {
 	return results
 }
 
+func buildCobraCacheKey(binKey string, args []string, partial string) string {
+	var sb strings.Builder
+	sb.WriteString(binKey)
+	for _, arg := range args {
+		sb.WriteByte('\x00')
+		sb.WriteString(arg)
+	}
+	sb.WriteByte('\x00')
+	sb.WriteString(partial)
+	return sb.String()
+}
+
 // QueryCobraComplete calls `binName __complete <args> <partial>` and returns
-// structured suggestions cached per binary mtime and args.
+// structured suggestions cached per binary mtime, args, and partial.
 // returns nil if the binary is not Cobra-based or times out.
 func QueryCobraComplete(binName string, args []string, partial string) []Suggestion {
 	if strings.ContainsAny(binName, `/\`) {
@@ -87,7 +99,7 @@ func QueryCobraComplete(binName string, args []string, partial string) []Suggest
 	}
 
 	binKey := cobraBinKey(binName)
-	argKey := binKey + "|" + strings.Join(args, " ")
+	argKey := buildCobraCacheKey(binKey, args, partial)
 
 	cobraCacheMu.Lock()
 	if entry, ok := cobraCache[argKey]; ok {
