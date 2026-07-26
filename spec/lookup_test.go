@@ -168,3 +168,34 @@ func TestLookup_NvimFileGenerator(t *testing.T) {
 		t.Errorf("expected file suggestions for 'nvim ', got none")
 	}
 }
+
+func TestLookup_OptionAndFilePriority(t *testing.T) {
+	ResetRegistry()
+	Register(&Spec{
+		Name:      "nvim",
+		Generator: FileGenerator(),
+		Options: []Option{
+			{Name: "-c", Description: "Execute cmd"},
+			{Name: "--cmd", Description: "Execute cmd before config"},
+		},
+	})
+
+	// When query is 'nvim ', files should be prioritized over flags
+	resultsEmpty := Lookup("nvim ")
+	if len(resultsEmpty) == 0 {
+		t.Fatalf("expected results for 'nvim ', got 0")
+	}
+	// first result should be a file or dir (Priority 50), not option (Priority 10)
+	if strings.HasPrefix(resultsEmpty[0].Cmd, "nvim -") {
+		t.Errorf("expected file/dir as top result for 'nvim ', got %q", resultsEmpty[0].Cmd)
+	}
+
+	// When query is 'nvim -', flags should be prioritized (Priority 80)
+	resultsDash := Lookup("nvim -")
+	if len(resultsDash) == 0 {
+		t.Fatalf("expected results for 'nvim -', got 0")
+	}
+	if !strings.HasPrefix(resultsDash[0].Cmd, "nvim -") {
+		t.Errorf("expected option as top result for 'nvim -', got %q", resultsDash[0].Cmd)
+	}
+}

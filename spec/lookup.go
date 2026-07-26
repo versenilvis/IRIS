@@ -271,8 +271,16 @@ func Lookup(input string) []Suggestion {
 	for _, opt := range currentOpts {
 		trimmedOpt := strings.TrimLeft(opt.Name, "-")
 		if !usedOpts[opt.Name] && (partial == "" || HasPrefix(opt.Name, partial) || HasPrefix(trimmedOpt, partial)) {
+			optPriority := opt.Priority
+			if optPriority == 0 {
+				if strings.HasPrefix(partial, "-") {
+					optPriority = 80
+				} else {
+					optPriority = 10
+				}
+			}
 			results = append(results, Suggestion{
-				Cmd: linePrefix + " " + opt.Name, Desc: opt.Description, Icon: rootCmdName, Priority: opt.Priority,
+				Cmd: linePrefix + " " + opt.Name, Desc: opt.Description, Icon: rootCmdName, Priority: optPriority,
 			})
 		}
 	}
