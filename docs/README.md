@@ -1,32 +1,26 @@
-# IRIS documentation
+# Iris documentation
 
-Iris is a fast terminal autocomplete assistant written in Go. It wraps around your shell (Zsh, Bash, or Fish) to give you real-time command suggestions, a floating dropdown menu, and smart history search right where you type
+Iris is a fast terminal autocomplete assistant written in Go. It wraps around your shell (Zsh, Bash, or Fish) to give you real-time command suggestions, a floating dropdown menu, and smart history search right where you type.
 
 ## Table of contents
 
 - [Getting started](#getting-started)
-- [Usage guide](#usage-guide)
-- [Commands reference](#commands-reference)
+- [Shortcuts](#shortcuts)
 - [Configuration guide](#configuration-guide)
-- [Troubleshooting guide](#troubleshooting-guide)
-- [Developer guide](development.md)
+- [Reporting bugs](#reporting-bugs)
+- [Developer documentation](dev/README.md)
 
 ## Getting started
 
 ### Dependencies
 
-Before installing Iris, ensure your system meets the following requirements:
 - OS: Linux or macOS
-- Terminal emulator with ANSI escape sequence support
-- Go 1.24 or newer if building from source
+- Terminal emulator with ANSI color support
+- Go 1.24 or newer (if building from source)
 
 ### Installation
 
-You can install Iris using any of the three methods below:
-
 #### Method 1: Install script (recommended)
-
-Quickly download and install the precompiled binary using our install script:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/versenilvis/iris/main/scripts/install.sh | sh
@@ -34,17 +28,11 @@ curl -sSL https://raw.githubusercontent.com/versenilvis/iris/main/scripts/instal
 
 #### Method 2: Go install
 
-If you already have Go installed on your system, install directly to your `GOBIN`:
-
 ```bash
 go install github.com/versenilvis/iris@latest
 ```
 
-Ensure that your `$GOPATH/bin` or `$HOME/go/bin` directory is added to your system `PATH`
-
 #### Method 3: Build from source
-
-To develop or compile Iris locally from source, install `just` command runner and execute `just reload`:
 
 ```bash
 git clone https://github.com/versenilvis/iris.git
@@ -52,201 +40,120 @@ cd iris
 just reload
 ```
 
-### Shell integration setup
+### Shell setup
 
-To enable intelligent auto-completion and overlay rendering, connect Iris to your shell environment
+Add an alias to your shell configuration file to launch Iris easily:
 
-For Zsh (`~/.zshrc`):
-
+**Zsh (`~/.zshrc`):**
 ```zsh
 if command -v iris >/dev/null 2>&1; then
     alias i="iris"
 fi
 ```
 
-For Bash (`~/.bashrc`):
-
+**Bash (`~/.bashrc`):**
 ```bash
 if command -v iris >/dev/null 2>&1; then
     alias i="iris"
 fi
 ```
 
-For Fish (`~/.config/fish/config.fish`):
-
+**Fish (`~/.config/fish/config.fish`):**
 ```fish
 if command -v iris >/dev/null 2>&1
     alias i="iris"
 end
 ```
 
-Verify your installation by running:
+## Shortcuts
 
-```bash
-iris version
-```
+| Shortcut                           | Action                  | Description                                                               |
+| :--------------------------------- | :---------------------- | :------------------------------------------------------------------------ |
+| <kbd>Shift</kbd> + <kbd>Tab</kbd>  | Toggle menu             | Show or hide the suggestion menu.                                         |
+| <kbd>Esc</kbd>                     | Hide menu               | Temporarily hide the menu until the next key press.                       |
+| <kbd>Tab</kbd>                     | Accept suggestion       | Insert the currently selected suggestion into the prompt.                 |
+| <kbd>Enter</kbd>                   | Execute command         | Close the menu and send the current command to the shell.                 |
+| <kbd>↑</kbd>                       | Navigate up / history   | Move the selection up, or open command history when the prompt is empty.  |
+| <kbd>↓</kbd>                       | Navigate down / history | Move the selection down, or open command history when the prompt is empty. |
+| <kbd>→</kbd>                       | Accept ghost text       | Accept the faded ghost text suggestion when the menu is open.             |
+| <kbd>←</kbd> / <kbd>→</kbd>        | Move cursor             | Move the cursor inside the input buffer. Disabled when the prompt is empty. |
+| <kbd>Ctrl</kbd> + <kbd>R</kbd>     | Switch mode             | Toggle between `spec` and `history` mode.                                 |
+| <kbd>Ctrl</kbd> + <kbd>A</kbd>     | Beginning of line       | Move the cursor to the start of the command line.                         |
+| <kbd>Ctrl</kbd> + <kbd>E</kbd>     | End of line             | Move the cursor to the end of the command line.                           |
+| <kbd>Ctrl</kbd> + <kbd>L</kbd>     | Clear screen            | Clear the terminal while preserving the input buffer and redrawing the menu. |
+| <kbd>Ctrl</kbd> + <kbd>U</kbd>     | Clear command           | Remove the entire current command and close the menu.                     |
+| <kbd>Ctrl</kbd> + <kbd>C</kbd>     | Cancel command          | Send `SIGINT`, clear the input buffer, and close the menu.                |
+| <kbd>Ctrl</kbd> + <kbd>W</kbd>     | Delete word             | Delete the word immediately before the cursor.                            |
 
-## Usage guide
-
-Once inside an interactive Iris session, your shell receives powerful real-time auto-completion overlays and navigation enhancements
-
-### Core navigation
-
-When you type a command or query, Iris displays a floating overlay box positioned directly below your cursor with matching suggestions
-
-- Up arrow (`↑`): Move the selection cursor up through the suggestion list
-- Down arrow (`↓`): Move the selection cursor down through the suggestion list
-- Tab: Insert the currently highlighted suggestion directly into your command line buffer without executing it
-- Enter: Execute the currently highlighted command immediately or submit the text typed in your prompt
-- Esc: Temporarily dismiss and hide the overlay suggestion menu for the current line
-- Shift+Tab: Permanently disable overlay suggestions until toggled back on
-
-### Mode switching
-
-Iris operates in two primary autocomplete modes: specification suggestions and history navigation
-
-You can toggle between these modes instantly at any time by pressing `Ctrl+R`
-
-- Specification mode (`spec`): Suggests available subcommands, flags, and arguments based on built-in tool specifications (such as git, npm, docker, or go)
-- History mode (`history`): Suggests previous commands from your shell history that match your typed prefix using fuzzy matching
-
-When navigating with arrow keys and pressing `Ctrl+R`, Iris resets the menu selection and immediately loads suggestions for your typed query under the newly active mode
-
-### Instant alias expansion
-
-Iris supports POSIX and shell aliases defined in your configuration
-
-When you type an alias keyword and press the `Space` key, Iris immediately expands the alias into its full command inside your command line buffer
-
-### Ghost text autosuggestions
-
-When ghost text is enabled, Iris displays inline completion suggestions ahead of your cursor in a muted style
-
-- Right Arrow (`→`): Accept the inline ghost text suggestion and append it to your current command line buffer
-
-## Commands reference
-
-Iris provides a comprehensive set of CLI commands to manage shell integration, updates, configuration, and diagnostics:
-
-```bash
-# start interactive autocomplete session (wrapped terminal wrapper)
-iris [flags]
-  -s, --shell <shell>   specify target shell environment (zsh, bash, fish)
-  -d, --debug           enable runtime debug logging to ~/.cache/iris/iris.log
-
-# shell integration setup and initialization
-iris setup [shell]      automatically configure shell integration in RC file and initialize default config
-iris init <shell>       output raw shell wrapper code for manual evaluation in profile scripts
-
-# configuration management
-iris config init        initialize default configuration file at ~/.config/iris/config.toml
-iris config show        output current active/resolved configuration in TOML format
-
-# maintenance and diagnostics
-iris update             check GitHub release tracks and update binary to latest release
-iris version            print current semantic version string
-iris uninstall          remove shell integration hooks from RC files and uninstall Iris binary
-iris crash-log          display file path to the latest captured stack trace report
-iris crash-log --clear  remove all stored crash logs from ~/.cache/iris/crashes
-```
+> [!NOTE]
+> With <kbd>Ctrl</kbd> + <kbd>A</kbd>, <kbd>Ctrl</kbd> + <kbd>E</kbd>, <kbd>Ctrl</kbd> + <kbd>W</kbd>, <kbd>Ctrl</kbd> + <kbd>U</kbd>, <kbd>Ctrl</kbd> + <kbd>L</kbd>, and <kbd>Ctrl</kbd> + <kbd>C</kbd>: they belong to your shell by default. IRIS handles them directly in raw mode so your cursor and menu stay in sync
 
 ## Configuration guide
 
-Iris uses a clean TOML configuration file located at `~/.config/iris/config.toml` to customize UI presentation, suggestion behavior, and core engine settings
+Iris uses a clean TOML configuration file located at `~/.config/iris/config.toml`.
 
-### Default configuration structure
-
-Below is a complete sample configuration template with all available parameters and comments:
-
-```toml
-# ~/.config/iris/config.toml
-# iris configuration file
-
-[core]
-# schema version
-# do not edit this field manually
-version = 1
-
-# override shell: "bash", "zsh", "fish", keep empty for auto detection
-shell = ""
-
-# startup mode: "last", "spec", "history"
-# "last" = remember last mode used
-mode = "last"
-
-# enable debug logging
-debug = false
-
-[ui]
-# visual style: "modern" (icons, category pills, shortcut footer) or "classic" (minimalist, centered number, no icons)
-style = "modern"
-
-# enable Nerd Fonts icons in overlay menu
-nerd-fonts = true
-
-# enable inline ghost text
-ghost-text = true
-
-# maximum suggestions to display
-max-suggestions = 100
-
-# maximum height of the overlay
-max-height = 15
-
-[git]
-# hide current branch in checkout/switch list
-filter-active-branch = true
-
-# merge remote and local branches with same name
-deduplicate-branches = true
-
-[updater]
-# check for updates on startup
-check-on-startup = true
-
-# update channel: "stable", "nightly"
-channel = "stable"
-
-# interval between update checks, e.g. "24h", "6h", "30m"
-check-interval = "24h"
-```
-
-### Configuration sections
-
-- `[core]`: Defines core engine settings including schema version, forced target shell (`bash`, `zsh`, `fish`), initial startup mode (`last`, `spec`, `history`), and diagnostic debug logging
-- `[ui]`: Controls visual layout such as inline ghost text autocompletion, total suggestions rendered, and maximum overlay box height
-- `[git]`: Specialized Git autocompletion behavior such as filtering out the currently active branch when switching and deduplicating local and remote branch names
-- `[updater]`: Configures automated background updates, checking frequency (`check-interval`), and release track (`channel`)
-
-### CLI configuration commands
-
-Iris provides built-in commands to inspect and modify settings directly from your shell:
+### Creating & viewing config
 
 ```bash
 iris config init
 iris config show
 ```
 
-## Troubleshooting guide
+### Sample `config.toml`
 
-If you encounter unexpected behavior while running Iris, use the diagnostic procedures outlined below
+```toml
+[core]
+version = 1
+shell = ""        # "zsh", "bash", "fish", or empty for auto-detection
+mode = "last"     # "last", "spec", or "history"
+debug = false
 
-### Debug mode and logging
+[ui]
+style = "modern"  # "modern" or "classic"
+ghost-text = true
+max-suggestions = 100
+max-height = 15
+nerd-fonts = true
 
-To inspect overlay positioning or command interception bugs in real time, launch Iris in debug mode:
+[git]
+filter-active-branch = true
+deduplicate-branches = true
 
+[updater]
+check-on-startup = true
+channel = "stable" # "stable" or "nightly"
+check-interval = "24h"
+
+[ai]
+enabled = false
+provider = "groq" # "groq" or "ollama"
+debounce_ms = 400
+
+[ai.providers.groq]
+endpoint = "https://api.groq.com/openai/v1/chat/completions"
+api_key_env = "GROQ_API_KEY" # or set api_key directly
+model = "llama-3.3-70b-versatile"
+timeout_ms = 3000
+
+[ai.providers.ollama]
+endpoint = "http://localhost:11434/v1/chat/completions"
+model = "qwen2.5-coder"
+timeout_ms = 5000
+```
+
+## Reporting bugs
+> [!NOTE]
+> Describing the bug you are facing, along with the relevant log  
+> Enabling debug mode and then performing actions that led to the error
+
+Run IRIS with debug mode:
 ```bash
 iris -d
 ```
-
-Runtime activities are written directly to the log file located at `~/.cache/iris/iris.log`. You can follow real-time events by running:
-
-```bash
-tail -f ~/.cache/iris/iris.log
+or `config.toml`:
+```toml
+debug=true
 ```
 
-> [!Caution]
-> ### Common issues and solutions
-> - Overlay Position Misaligned: Multi-line shell prompts (such as Starship) emitting ANSI codes can cause offset issues. Iris automatically parses carriage returns (`\r`) and horizontal escape codes (`\033[nC`) to anchor visual columns accurately
-> - Menu Disappears When Toggling Mode: When pressing `Ctrl+R` after arrow navigation, Iris restores the original search query automatically so suggestions reload cleanly
-> - Inspecting Crash Logs: If the session terminates unexpectedly, inspect captured stack traces by running `iris crash-log`
+> [!IMPORTANT]
+> **Since IRIS logs everything you type, you should only enable debug mode when you need to report bugs**

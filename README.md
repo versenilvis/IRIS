@@ -9,7 +9,7 @@
   [![GitHub Actions](https://img.shields.io/github/actions/workflow/status/versenilvis/IRIS/release.yml?branch=main&style=for-the-badge&logo=github&logoColor=white&label=Actions)](https://github.com/versenilvis/IRIS/actions/workflows/release.yml)
   [![License: 0BSD](https://img.shields.io/badge/License-0BSD-blue?style=for-the-badge&logo=github&logoColor=white)](./LICENSE)
   
-  <a href="#why-iris-instead-of-fig">Comparison</a> · <a href="#installation">Installation</a> · <a href="#docs">Docs</a>  · <a href="#shortcuts">Shortcuts</a> · <a href="#reporting-bugs">Reporting bugs</a>
+  <a href="#why-iris-instead-of-fig">Comparison</a> · <a href="#installation">Installation</a> · <a href="./docs/README.md">Docs</a> · <a href="./docs/README.md#shortcuts">Shortcuts</a> · <a href="./docs/README.md#reporting-bugs">Reporting bugs</a>
 
 </div>
 <div align="center">
@@ -100,51 +100,11 @@ curl -sSL https://raw.githubusercontent.com/versenilvis/iris/main/scripts/instal
 ## Docs
 
 - [Getting started](./docs/README.md#getting-started): dependencies, installation methods, and shell integration setup
-- [Usage guide](./docs/README.md#usage-guide): core navigation, mode switching, instant alias expansion, and ghost text
-- [Configuration guide](./docs/README.md#configuration-guide): TOML configuration file structure, settings sections, and CLI commands
-- [Troubleshooting guide](./docs/README.md#troubleshooting-guide): debug mode, runtime log inspection, and common solutions
-- [Developer guide](./docs/development.md): system architecture overview, PTY bridge mechanics, and contribution instructions
+- [Shortcuts](./docs/README.md#shortcuts): core navigation, shortcuts table, mode switching, and ghost text
+- [Configuration guide](./docs/README.md#configuration-guide): TOML configuration settings including AI provider options
+- [Reporting bugs](./docs/README.md#reporting-bugs): debug mode, log inspection, and crash reporting
+- [Developer documentation](./docs/dev/README.md): system architecture overview, engine design, and contribution guide
  
-## Shortcuts
-
-| Shortcut                           | Action                  | Description                                                               |
-| :--------------------------------- | :---------------------- | :------------------------------------------------------------------------ |
-| <kbd>Shift</kbd> + <kbd>Tab</kbd>  | Toggle menu             | Show or hide the suggestion menu.                                         |
-| <kbd>Esc</kbd>                     | Hide menu               | Temporarily hide the menu until the next key press.                       |
-| <kbd>Tab</kbd>                     | Accept suggestion       | Insert the currently selected suggestion into the prompt.                 |
-| <kbd>Enter</kbd>                   | Execute command         | Close the menu and send the current command to the shell.                 |
-| <kbd>↑</kbd>                       | Navigate up / history   | Move the selection up, or open command history when the prompt is empty.  |
-| <kbd>↓</kbd>                       | Navigate down / history | Move the selection down, or open command history when the prompt is empty. |
-| <kbd>→</kbd>                       | Accept ghost text       | Accept the faded ghost text suggestion when the menu is open.             |
-| <kbd>←</kbd> / <kbd>→</kbd>        | Move cursor             | Move the cursor inside the input buffer. Disabled when the prompt is empty. |
-| <kbd>Ctrl</kbd> + <kbd>R</kbd>     | Switch mode             | Toggle between `spec` and `history` mode.                                 |
-| <kbd>Ctrl</kbd> + <kbd>A</kbd>     | Beginning of line       | Move the cursor to the start of the command line.                         |
-| <kbd>Ctrl</kbd> + <kbd>E</kbd>     | End of line             | Move the cursor to the end of the command line.                           |
-| <kbd>Ctrl</kbd> + <kbd>L</kbd>     | Clear screen            | Clear the terminal while preserving the input buffer and redrawing the menu. |
-| <kbd>Ctrl</kbd> + <kbd>U</kbd>     | Clear command           | Remove the entire current command and close the menu.                     |
-| <kbd>Ctrl</kbd> + <kbd>C</kbd>     | Cancel command          | Send `SIGINT`, clear the input buffer, and close the menu.                |
-| <kbd>Ctrl</kbd> + <kbd>W</kbd>     | Delete word             | Delete the word immediately before the cursor.                            |
-
-> [!NOTE]
-> With <kbd>Ctrl</kbd> + <kbd>A</kbd>, <kbd>Ctrl</kbd> + <kbd>E</kbd>, <kbd>Ctrl</kbd> + <kbd>W</kbd>, <kbd>Ctrl</kbd> + <kbd>U</kbd>, <kbd>Ctrl</kbd> + <kbd>L</kbd>, and <kbd>Ctrl</kbd> + <kbd>C</kbd>: they belong to your shell by default. IRIS handles them directly in raw mode so your cursor and menu stay in sync
-
-## Reporting bugs
-> [!NOTE]
-> Describing the bug you are facing, along with the relevant log  
-> Enabling debug mode and then performing actions that led to the error
-
-Run IRIS with debug mode:
-```bash
-iris -d
-```
-or `config.toml`:
-```toml
-debug=true
-```
-
-> [!IMPORTANT]
-> **Since IRIS logs everything you type, you should only enable debug mode when you need to report bugs**
-
 ## License
 
 This project is licensed under the [0BSD License](LICENSE) - no strings attached. Meaning you can do whatever you want with it.
