@@ -1,4 +1,4 @@
-# Iris documentation
+# User guide
 
 Iris is a fast terminal autocomplete assistant written in Go. It wraps around your shell (Zsh, Bash, or Fish) to give you real-time command suggestions, a floating dropdown menu, and smart history search right where you type.
 
@@ -74,9 +74,9 @@ end
 | <kbd>Tab</kbd>                     | Accept suggestion       | Insert the currently selected suggestion into the prompt.                 |
 | <kbd>Enter</kbd>                   | Execute command         | Close the menu and send the current command to the shell.                 |
 | <kbd>↑</kbd>                       | Navigate up / history   | Move the selection up, or open command history when the prompt is empty.  |
-| <kbd>↓</kbd>                       | Navigate down / history | Move the selection down, or open command history when the prompt is empty. |
+| <kbd>↓</kbd>                       | Navigate down / history | Move the selection down, or open command history when the prompt is empty.|
 | <kbd>→</kbd>                       | Accept ghost text       | Accept the faded ghost text suggestion when the menu is open.             |
-| <kbd>←</kbd> / <kbd>→</kbd>        | Move cursor             | Move the cursor inside the input buffer. Disabled when the prompt is empty. |
+| <kbd>←</kbd> / <kbd>→</kbd>        | Move cursor             | Move the cursor inside the input buffer. Disabled when the prompt is empty|
 | <kbd>Ctrl</kbd> + <kbd>R</kbd>     | Switch mode             | Toggle between `spec` and `history` mode.                                 |
 | <kbd>Ctrl</kbd> + <kbd>A</kbd>     | Beginning of line       | Move the cursor to the start of the command line.                         |
 | <kbd>Ctrl</kbd> + <kbd>E</kbd>     | End of line             | Move the cursor to the end of the command line.                           |
