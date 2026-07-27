@@ -141,6 +141,9 @@ model = "qwen2.5-coder"
 timeout_ms = 5000
 ```
 
+> [!NOTE]
+> Using `api_key_env` is recommended over hardcoding `api_key` in plain text to keep credentials out of configuration files.
+
 ## Reporting bugs
 > [!NOTE]
 > Describing the bug you are facing, along with the relevant log  
