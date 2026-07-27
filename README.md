@@ -15,8 +15,7 @@
     [![Documentation](https://img.shields.io/badge/docs-available-brightgreen?style=for-the-badge&logo=github&logoColor=white)](./docs/README.md)
   [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=for-the-badge&logo=github&logoColor=white)](./CONTRIBUTING.md)
   
-  
-  <a href="#why-iris-instead-of-fig">Comparison</a> · <a href="#installation">Installation</a> · <a href="./docs/README.md">Docs</a> · <a href="./docs/README.md#shortcuts">Shortcuts</a> · <a href="./docs/README.md#reporting-bugs">Reporting bugs</a>
+  <a href="#why-iris-instead-of-fig">Comparison</a> · <a href="#installation">Installation</a> · <a href="./docs/README.md">Docs</a> · <a href="./docs/README.md#shortcuts">Shortcuts</a> · <a href="./docs/README.md#configuration-guide">Configuration</a> · <a href="./docs/README.md#reporting-bugs">Reporting bugs</a>
 
 </div>
 <div align="center">
