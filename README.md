@@ -6,8 +6,15 @@
   <!-- <h1>IRIS</h1> -->
   <p>IRIS (Intelligent Real-time Input Suggestion) - A shell auto-completion tool that works like code editor's IntelliSense</p>
   
-  [![GitHub Actions](https://img.shields.io/github/actions/workflow/status/versenilvis/IRIS/release.yml?branch=main&style=for-the-badge&logo=github&logoColor=white&label=Actions)](https://github.com/versenilvis/IRIS/actions/workflows/release.yml)
+  [![macOS](https://img.shields.io/badge/macOS-FFFFFF?style=for-the-badge&logo=apple&logoColor=black)](https://www.apple.com/macos/)
+  [![Linux](https://img.shields.io/badge/Linux-131415?style=for-the-badge&logo=linux&logoColor=white)](https://www.kernel.org/)
+  <br>
+  <!--[![GitHub Actions](https://img.shields.io/github/actions/workflow/status/versenilvis/IRIS/release.yml?branch=main&style=for-the-badge&logo=github&logoColor=white&label=Actions)](https://github.com/versenilvis/IRIS/actions/workflows/release.yml)-->
+  [![Status](https://img.shields.io/badge/status-beta-yellow?style=for-the-badge&logo=github&logoColor=white)]()
   [![License: 0BSD](https://img.shields.io/badge/License-0BSD-blue?style=for-the-badge&logo=github&logoColor=white)](./LICENSE)
+    [![Documentation](https://img.shields.io/badge/docs-available-brightgreen?style=for-the-badge&logo=github&logoColor=white)](./docs/README.md)
+  [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=for-the-badge&logo=github&logoColor=white)](./CONTRIBUTING.md)
+  
   
   <a href="#why-iris-instead-of-fig">Comparison</a> · <a href="#installation">Installation</a> · <a href="./docs/README.md">Docs</a> · <a href="./docs/README.md#shortcuts">Shortcuts</a> · <a href="./docs/README.md#reporting-bugs">Reporting bugs</a>
 
@@ -31,6 +38,11 @@ Run iris wherever you already work; your local machine, a remote server, or anyw
   [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=for-the-badge&logo=github&logoColor=white)](./.github/CONTRIBUTING.md)
 -->
 
+## AI suggestions
+<div align="center">
+  <img width="1920" height="1080" alt="output" src="https://github.com/user-attachments/assets/ab80fe75-b5dd-4acd-84bb-45bca17ee3b7" />
+  <i>IRIS has AI suggestions like your code editor (API key/Local)</i>
+</div>
 
 ## Why Iris instead of Fig
 
