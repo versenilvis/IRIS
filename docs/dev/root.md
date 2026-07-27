@@ -4,11 +4,11 @@ The `root` package is the entry point and orchestration layer of Iris, handling 
 
 ## How it works
 
-1. **PTY wrapper**: Starts a pseudoterminal (PTY) and launches target shell (`zsh`, `bash`, `fish`) inside it.
+1. **PTY wrapper**: Starts a pseudoterminal (PTY) wrapping the user's shell (`zsh`, `bash`, or `fish`). Shell is selected via `--shell` flag, config, or auto-detected by walking `/proc/<pid>/comm` up the parent process tree, falling back to `$SHELL`, and ultimately defaulting to `bash` if nothing matches.
 2. **IO interception**: Runs two pumps:
    - **Output pump**: Forwards shell output to terminal screen via synchronized `TermWrite`.
    - **Input pump**: Listens to keystrokes in raw mode, tracks typed characters in `naiveBuffer`, and triggers suggestion rendering.
-3. **State management**: Tracks active completion mode (`spec` vs `history`).
+3. **State management**: Tracks active completion mode (`spec` vs `history`). Shell-specific IPC hooks (`preexec`/`precmd` for zsh, `PROMPT_COMMAND` for bash, `fish_postexec` for fish) signal command boundaries via `IRIS_CMD_STOP`.
 
 ## Key components
 
