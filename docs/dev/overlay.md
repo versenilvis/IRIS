@@ -4,8 +4,8 @@ The `overlay` package handles the visual representation of suggestions. It is de
 
 ## Design Philosophy
 
-- **ANSI ESC Everywhere**: It uses CSI (Command Sequence Introducer) codes to manipulate the terminal.
-- **Save/Restore**: It uses `\0337` (DECSC) and `\0338` (DECRC) to jump back to the prompt after drawing the menu.
+- **ANSI ESC Everywhere**: It uses ANSI escape sequences and CSI (Control Sequence Introducer) codes to manipulate the terminal.
+- **Save/Restore**: It uses DECSC (`\0337`) and DECRC (`\0338`) escape sequences to jump back to the prompt after drawing the menu.
 - **Fixed Width**: The box is exactly 72 characters wide (`boxWidth`) to ensure a consistent, premium feel.
 
 ## Technical Details
