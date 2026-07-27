@@ -211,9 +211,14 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 	addMatches := func(q string) {
 		qLow := strings.ToLower(q)
 		queryFirstWord := ""
+		querySecondWord := ""
 		if strings.IndexByte(qLow, ' ') != -1 {
 			if fields := strings.Fields(qLow); len(fields) > 0 {
 				queryFirstWord = fields[0]
+				// capture subcommand token for filtering when it's not a flag
+				if len(fields) > 1 && !strings.HasPrefix(fields[1], "-") {
+					querySecondWord = fields[1]
+				}
 			}
 		}
 
@@ -224,15 +229,26 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 			}
 
 			// filter results by command name match
+			fields := strings.Fields(m.Str)
 			firstWord := m.Str
-			if idx := strings.IndexByte(m.Str, ' '); idx != -1 {
-				firstWord = m.Str[:idx]
+			if len(fields) > 0 {
+				firstWord = fields[0]
 			}
 			firstWordLow := strings.ToLower(firstWord)
 
 			if queryFirstWord != "" {
 				if firstWordLow != queryFirstWord {
 					continue
+				}
+				// when query has a non-flag second token, filter by subcommand prefix
+				if querySecondWord != "" {
+					if len(fields) < 2 {
+						continue
+					}
+					secondWordLow := strings.ToLower(fields[1])
+					if !strings.HasPrefix(secondWordLow, querySecondWord) {
+						continue
+					}
 				}
 			} else {
 				if !strings.HasPrefix(firstWordLow, qLow) {
