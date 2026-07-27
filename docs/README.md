@@ -146,8 +146,9 @@ timeout_ms = 5000
 
 ## Reporting bugs
 > [!NOTE]
-> Describing the bug you are facing, along with the relevant log  
-> Enabling debug mode and then performing actions that led to the error
+> When submitting a bug report, please include:
+> - A detailed description of the bug and steps to reproduce it
+> - Relevant log files captured while running in debug mode
 
 Run IRIS with debug mode:
 ```bash
