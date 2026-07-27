@@ -208,7 +208,7 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 	var results []HistResult
 	seenCmds := make(map[string]bool)
 
-	addMatches := func(q string) {
+	addMatches := func(q string, subcmdFilter bool) {
 		qLow := strings.ToLower(q)
 		queryFirstWord := ""
 		querySecondWord := ""
@@ -244,7 +244,7 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 					continue
 				}
 				// when query has a non-flag second token, filter by subcommand prefix
-				if querySecondWord != "" {
+				if subcmdFilter && querySecondWord != "" {
 					if len(fields) < 2 {
 						continue
 					}
@@ -268,10 +268,18 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 		}
 	}
 
-	addMatches(query)
-
+	addMatches(query, true)
 	for _, altQ := range alternativeQueries {
-		addMatches(altQ)
+		addMatches(altQ, true)
+	}
+
+	// fallback: if subcommand filter produced nothing, retry without it
+	// so typos like "git chckout" still surface fuzzy matches
+	if len(results) == 0 {
+		addMatches(query, false)
+		for _, altQ := range alternativeQueries {
+			addMatches(altQ, false)
+		}
 	}
 
 	getTier := func(cmd, q string) int {
