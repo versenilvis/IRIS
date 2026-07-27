@@ -13,4 +13,3 @@ This directory contains code architecture guides, engine design notes, and devel
 - [File & path generator](filegen.md): File system traversal, extension filtering, and directory slash preservation
 - [History provider](history.md): Shell history indexing, search algorithms, and caching
 - [Auto updater](updater.md): Release tracking, version comparison, and atomic binary updates
-- [Shell setup notes](guide.md): Shell history and zsh auto-suggestion notes
