@@ -215,9 +215,12 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 		if strings.IndexByte(qLow, ' ') != -1 {
 			if fields := strings.Fields(qLow); len(fields) > 0 {
 				queryFirstWord = fields[0]
-				// capture subcommand token for filtering when it's not a flag
-				if len(fields) > 1 && !strings.HasPrefix(fields[1], "-") {
-					querySecondWord = fields[1]
+				// find first non-flag token after the command as the subcommand
+				for _, f := range fields[1:] {
+					if !strings.HasPrefix(f, "-") {
+						querySecondWord = f
+						break
+					}
 				}
 			}
 		}
