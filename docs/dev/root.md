@@ -1,40 +1,39 @@
-# IRIS: Central Integration & Event Loop (`root/`)
+# Iris central integration & event loop (`root/`)
 
-The `root` package is the entry point and the orchestration layer of IRIS. It handles the low-level terminal manipulation and the main interaction loop.
+The `root` package is the entry point and orchestration layer of Iris, handling low-level terminal PTY manipulation and the main interaction loop.
 
 ## How it works
 
-1. **PTY Wrapper**: When you run `iris`, it starts a Pseudo-Terminal (PTY) and launches `bash` inside it.
-2. **IO Interception**: It creates two "pumps":
-   - **Output Pump**: Forwards everything from Bash to your screen using `TermWrite` (synchronized to prevent UI glitches).
-   - **Input Pump**: Listens to your keyboard. If it detects you are typing a command, it records it in a `naiveBuffer` and triggers the suggestion engine.
-3. **State Management**: It tracks whether you are in `spec` mode (command suggestions) or `history` mode (Ctrl+R).
+1. **PTY wrapper**: Starts a pseudoterminal (PTY) and launches target shell (`zsh`, `bash`, `fish`) inside it.
+2. **IO interception**: Runs two pumps:
+   - **Output pump**: Forwards shell output to terminal screen via synchronized `TermWrite`.
+   - **Input pump**: Listens to keystrokes in raw mode, tracks typed characters in `naiveBuffer`, and triggers suggestion rendering.
+3. **State management**: Tracks active completion mode (`spec` vs `history`).
 
-## Key Components
+## Key components
 
-### `root.go`
-Contains the `runWrapper()` function which:
-- Sets the terminal to **Raw Mode** so Iris can capture keys like `Tab`, `Esc`, or `Ctrl+C` before the shell does.
-- Manages the `naiveBuffer`: a string that tracks exactly what you see on your prompt.
-- Handles **Selection Logic**: When you press `Tab`, it modifies the Bash line using the `Ctrl+U` (clear line) + `selected command` sequence.
+### `root/wrapper.go`
+Contains the core PTY loop:
+- Sets terminal to raw mode to intercept keys like `Tab`, `Esc`, or `Ctrl+C`.
+- Manages `naiveBuffer` string tracking prompt input state.
+- Handles suggestion insertion when pressing `Tab` or `Enter`.
 
-### `term_sync.go`
-Provides `TermWrite`, a thread-safe wrapper around `os.Stdout`. It uses a `sync.Mutex` to ensure that if Bash and the Iris Overlay try to write at the exact same millisecond, the output doesn't get garbled.
+### `root/term_sync.go`
+Provides `TermWrite`, a thread-safe stdout wrapper using `sync.Mutex` to prevent screen garbling when shell output and overlay rendering overlap.
 
-## Example Flow
+## Example flow
+
 1. User types `g`.
 2. `root` captures `g`, appends to `naiveBuffer`.
 3. `root` calls `renderOverlay()`.
 4. `renderOverlay` calls `Lookup("g")`.
-5. `overlay` renders the result `git`.
+5. `overlay` renders suggestions box.
 6. User presses `Tab`.
-7. `root` sends `Ctrl+U` to Bash, then sends `git ` (the completion).
+7. `root` inserts completion into prompt buffer.
 
-## Hot-Reload
+## Hot-reload
 
-IRIS features an **Atomic Hot-Reload** mechanism designed for rapid development:
+Iris includes an atomic hot-reload mechanism for rapid local development:
 
-- **Signal Listener**: The root process listens for `SIGUSR1`.
-- **Identity Exposure**: It exports `IRIS_PID` to the environment so child processes knows where to send the signal.
-- **In-place Replacement**: Upon receiving the signal, Iris uses `syscall.Exec` to replace its current process image with the newly built binary.
-- **Handoff Notification**: It uses `IRIS_RELOADED` to notify the new instance to announce its successful load.
+- **Signal listener**: The root process listens for `SIGUSR1`.
+- **Process replace**: Uses `syscall.Exec` to replace the running binary in-place without killing the underlying PTY shell session.

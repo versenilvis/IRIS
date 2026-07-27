@@ -1,39 +1,37 @@
-# Command Specification & Navigation (`commands/core/spec.go`)
+# Command specification & lookup engine (`spec/`)
 
-The `spec` module is the "language parser" of IRIS. it understands the relationship between commands, subcommands, and flags.
+The `spec` module is the language parser of Iris. It understands the relationship between commands, subcommands, and flags.
 
-## Data Structures
+## Data structures
 
-- **`Spec`**: The top-level definition (e.g., for `git`).
-- **`Subcommand`**: Recursively defined children (e.g., `commit` under `git`).
-- **`Generator`**: A function that provides dynamic content (like files or docker IDs).
+- **`Spec`**: Top-level command definition (e.g. `git`).
+- **`Subcommand`**: Recursively defined children (e.g. `commit` under `git`).
+- **`Generator`**: A function providing dynamic content (e.g. file paths, docker IDs).
 
-## The `Lookup` Algorithm
+## The `Lookup` algorithm
 
-This is the most critical function in IRIS. It follows these steps:
+The core path-traversal function:
 
-1. **Tokenization**: Splits `"git commit -m"` into `["git", "commit", "-m"]`. 
-   - *Empty tokens* (from a trailing space) indicate the user is ready for the next level of suggestions.
-2. **Tree Walking**: It starts at the root (`git`) and tries to match each following token against the current node's subcommands.
-3. **Context Identification**: Once it can't walk any further (e.g., a partial word or an option), it defines:
-   - `prefix`: The path already traveled.
-   - `partial`: The word currently being typed.
-4. **Result Collection**: It gathers all valid subcommands and options that match the `partial` prefix.
+1. **Tokenization**: Splits `"git commit -m"` into `["git", "commit", "-m"]`. Empty tokens (from trailing space) indicate the user is ready for the next suggestion level.
+2. **Tree walking**: Starts at the root node (`git`) and matches each token against available subcommands.
+3. **Context identification**: When traversal stops (partial word or option prefix), it defines:
+   - `prefix`: the path already traversed.
+   - `partial`: the word currently being typed.
+4. **Result collection**: Gathers all subcommands and options matching the `partial` prefix.
 
 ## Example
+
 Input: `git com`
-1. Tokens: `["git", "com"]`
-2. Walk: Root is `git`.
-3. Next token `com` doesn't exactly match `commit`.
-4. Stop walking. `partial` = `com`.
-5. Suggestions: Look for subcommands of `git` starting with `com`.
+1. Tokens: `["git", "com"]`.
+2. Walk: root is `git`.
+3. Next token `com` doesn't match `commit` exactly.
+4. Stop. `partial = "com"`.
+5. Suggestions: subcommands of `git` starting with `com`.
 6. Return: `git commit`.
 
-## Shell Aliases & Priority
+## Shell aliases & priority
 
-IRIS deeply integrates with your shell environment to provide a personalized experience:
-
-- **Dynamic Alias Parsing**: Scans `.bashrc`, `.zshrc`, and other configuration files for aliases. 
-- **Highest Priority**: Shell Aliases are given top priority in the suggestion engine, appearing above manual specs and system commands.
-- **Token Injection**: If a root command is recognized as an alias (e.g., `gr` for `go run`), IRIS injects the expanded tokens into the lookup engine to provide accurate subcommand suggestions.
-- **Display**: Suggestions for aliases show the expanded command (e.g., `tmux a -t`) while noting the alias name in the description (e.g., `alias: ta`).
+- **Dynamic alias parsing**: Scans shell config files (`.bashrc`, `.zshrc`) for defined aliases.
+- **Highest priority**: Aliases appear above spec and system command suggestions.
+- **Token injection**: When a root command is an alias (e.g. `gr` for `go run`), Iris injects expanded tokens into the lookup engine for accurate subcommand suggestions.
+- **Display**: Shows the expanded command (e.g. `tmux a -t`) with the alias name in the description (e.g. `alias: ta`).
