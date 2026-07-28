@@ -30,7 +30,7 @@ func main() {
 		"npm run build",
 	}
 
-	fmt.Println("=== Dangerous Command Detection ===\n")
+	fmt.Println("=== Dangerous Command Detection ===")
 	for _, cmd := range tests {
 		dangerous, label := ai.IsDangerous(cmd)
 		if dangerous {
