@@ -691,9 +691,10 @@ func (s *WrapperSession) handleInputLoop() {
 							}
 							s.bufferMu.Lock()
 							if s.naiveBuffer != "" || s.overlay.IsVisible() {
+								rl := len([]rune(s.naiveBuffer))
 								s.cursorOffset++
-								if s.cursorOffset > len(s.naiveBuffer) {
-									s.cursorOffset = len(s.naiveBuffer)
+								if s.cursorOffset > rl {
+									s.cursorOffset = rl
 								}
 								shouldOverlayDraw = true
 								s.userNavigated.Store(false)
@@ -871,7 +872,7 @@ func (s *WrapperSession) handleInputLoop() {
 					switch b {
 					case 0x01:
 						s.bufferMu.Lock()
-						s.cursorOffset = len(s.naiveBuffer)
+						s.cursorOffset = len([]rune(s.naiveBuffer))
 						if s.naiveBuffer != "" || s.overlay.IsVisible() {
 							shouldOverlayDraw = true
 						}
@@ -977,12 +978,15 @@ func (s *WrapperSession) handleInputLoop() {
 							if s.cursorOffset == 0 {
 								s.naiveBuffer += string(b)
 							} else {
-								if s.cursorOffset > len(s.naiveBuffer) {
-									s.cursorOffset = len(s.naiveBuffer)
+								runes := []rune(s.naiveBuffer)
+								rl := len(runes)
+								if s.cursorOffset > rl {
+									s.cursorOffset = rl
 								}
-								pos := len(s.naiveBuffer) - s.cursorOffset
-								if pos >= 0 && pos <= len(s.naiveBuffer) {
-									s.naiveBuffer = s.naiveBuffer[:pos] + string(b) + s.naiveBuffer[pos:]
+								pos := rl - s.cursorOffset
+								if pos >= 0 && pos <= rl {
+									inserted := append(runes[:pos:pos], append([]rune{rune(b)}, runes[pos:]...)...)
+									s.naiveBuffer = string(inserted)
 								} else {
 									s.naiveBuffer += string(b)
 									s.cursorOffset = 0
