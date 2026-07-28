@@ -2,12 +2,12 @@ package spec
 
 import (
 	"maps"
-	"slices"
 	"strings"
 	"sync"
 
 	"github.com/versenilvis/iris/integration/shell"
 	"github.com/versenilvis/iris/internal/logger"
+	"slices"
 )
 
 var (
@@ -34,38 +34,10 @@ func GetAliasesCopy() map[string]string {
 // it changes aliases to real commands, finds subcommands inside others, and runs generators for more suggestions
 // e.g. Lookup("git che") -> suggests "git checkout"
 // e.g. Lookup("git checkout ") -> suggests branch names via generator
-func Lookup(input string) []Suggestion {
-	if shell.Current != nil {
-		aliases := shell.Current.ScanAliases()
-		shellAliasesMu.Lock()
-		ShellAliases = aliases
-		shellAliasesMu.Unlock()
+func resolveAliases(tokens []string, aliases map[string]string) []string {
+	if len(tokens) == 0 {
+		return tokens
 	}
-
-	shellAliasesMu.RLock()
-	aliases := ShellAliases
-	shellAliasesMu.RUnlock()
-
-	if input == "" {
-		return topLevelSuggestions("", aliases)
-	}
-
-	tokens := Tokenize(input)
-
-	if len(tokens) == 1 && tokens[0] == "" {
-		return topLevelSuggestions("", aliases)
-	}
-	// NOTE: remember that wrapper already check if we type nothing, but I just want to make sure
-	// in the future, maybe we will write unit test or using Lookup in another module
-	// it will be safer because we maybe forget to check it in that module
-
-	scanExternalCommands()
-
-	// if you have an alias in your shell config like: alias nv="nvim"
-	// expand it even when there's only one token (e.g. "nv ") so that the
-	// target spec's Generator (FileGenerator etc.) can still fire.
-	// only expand when there's a trailing space — i.e. the user has committed
-	// to the alias name and is now typing arguments (tokens last elem == "")
 	hasTrailingSpace := len(tokens) > 0 && tokens[len(tokens)-1] == ""
 	if hasTrailingSpace || len(tokens) > 1 {
 		if target, ok := aliases[tokens[0]]; ok {
@@ -73,54 +45,13 @@ func Lookup(input string) []Suggestion {
 			if len(aliasTokens) > 0 && aliasTokens[len(aliasTokens)-1] == "" {
 				aliasTokens = aliasTokens[:len(aliasTokens)-1]
 			}
-			tokens = append(aliasTokens, tokens[1:]...)
+			return append(aliasTokens, tokens[1:]...)
 		}
 	}
+	return tokens
+}
 
-	if len(tokens) == 1 {
-		query := tokens[0]
-		results := topLevelSuggestions(query, aliases)
-
-		if spec, exists := Registry[query]; exists {
-			hasTrailingSpace := query != "" && query[len(query)-1] == ' '
-
-			if hasTrailingSpace {
-				partial := ""
-				prefix := query
-
-				for _, sub := range spec.Subcommands {
-					results = append(results, Suggestion{
-						Cmd: strings.TrimSpace(query) + " " + sub.Name, Desc: sub.Description, Icon: query, Priority: sub.Priority,
-					})
-				}
-				if spec.Generator != nil {
-					genResults := spec.Generator(tokens, prefix, partial)
-					for _, g := range genResults {
-						results = append(results, Suggestion{
-							Cmd: strings.TrimSpace(query) + " " + g.Cmd, Desc: g.Desc, Icon: query, Priority: g.Priority,
-						})
-					}
-				}
-			}
-		}
-		return results
-	}
-
-	rootCmdName := tokens[0]
-	spec, exists := Registry[rootCmdName]
-	logger.Debugf("core lookup tokens: %v, registry exists: %v", tokens, exists)
-	if !exists {
-		partial := tokens[len(tokens)-1]
-		args := tokens[1:]
-		if len(args) > 0 && args[len(args)-1] == partial {
-			args = args[:len(args)-1]
-		}
-		if cobSugg := QueryCobraComplete(rootCmdName, args, partial); len(cobSugg) > 0 {
-			return cobSugg
-		}
-		return nil
-	}
-
+func resolveSubcommands(tokens []string, spec *Spec) (int, []Subcommand, []Option, GeneratorFunc) {
 	currentSubs, currentOpts, currentGen := spec.Subcommands, spec.Options, spec.Generator
 	depth := 1
 
@@ -151,14 +82,17 @@ func Lookup(input string) []Suggestion {
 			depth++
 			continue
 		}
-		// invalid subcommand word typed
 		if len(currentSubs) > 0 {
-			return nil
+			return depth, nil, nil, nil
 		}
 		break
 	}
+	return depth, currentSubs, currentOpts, currentGen
+}
 
+func generateSuggestions(tokens []string, depth int, spec *Spec, currentSubs []Subcommand, currentOpts []Option, currentGen GeneratorFunc) []Suggestion {
 	results := []Suggestion{}
+	rootCmdName := tokens[0]
 
 	currentLimit := spec.MaxArgs
 	tempSubs := spec.Subcommands
@@ -183,9 +117,6 @@ func Lookup(input string) []Suggestion {
 
 	partial := tokens[len(tokens)-1]
 	allowMoreArgs := currentLimit <= 0 || argCount < currentLimit
-
-	logger.Debugf("core query tokens: %v (partial: '%s')", tokens, partial)
-	logger.Debugf("core depth: %d, argCount: %d, limit: %d, allowMore: %v", depth, argCount, currentLimit, allowMoreArgs)
 
 	prefixBuilder := strings.Builder{}
 	for i := 0; i < depth; i++ {
@@ -236,9 +167,6 @@ func Lookup(input string) []Suggestion {
 				suggested = "\"" + suggested + "\""
 			}
 
-			// if the suggestion is a full path that includes
-			// words already in the command line (multi-word support), we replace
-			// the entire argument part by using prefix only
 			finalCmd := ""
 			if len(tokens) > depth+1 && strings.HasPrefix(g.Cmd, tokens[depth]) {
 				finalCmd = prefix + " " + suggested
@@ -306,6 +234,84 @@ func Lookup(input string) []Suggestion {
 	}
 
 	return results
+}
+
+func Lookup(input string) []Suggestion {
+	if shell.Current != nil {
+		aliases := shell.Current.ScanAliases()
+		shellAliasesMu.Lock()
+		ShellAliases = aliases
+		shellAliasesMu.Unlock()
+	}
+
+	shellAliasesMu.RLock()
+	aliases := ShellAliases
+	shellAliasesMu.RUnlock()
+
+	if input == "" {
+		return topLevelSuggestions("", aliases)
+	}
+
+	tokens := Tokenize(input)
+
+	if len(tokens) == 1 && tokens[0] == "" {
+		return topLevelSuggestions("", aliases)
+	}
+
+	scanExternalCommands()
+
+	tokens = resolveAliases(tokens, aliases)
+
+	if len(tokens) == 1 {
+		query := tokens[0]
+		results := topLevelSuggestions(query, aliases)
+
+		if spec, exists := Registry[query]; exists {
+			hasTrailingSpace := query != "" && query[len(query)-1] == ' '
+
+			if hasTrailingSpace {
+				partial := ""
+				prefix := query
+
+				for _, sub := range spec.Subcommands {
+					results = append(results, Suggestion{
+						Cmd: strings.TrimSpace(query) + " " + sub.Name, Desc: sub.Description, Icon: query, Priority: sub.Priority,
+					})
+				}
+				if spec.Generator != nil {
+					genResults := spec.Generator(tokens, prefix, partial)
+					for _, g := range genResults {
+						results = append(results, Suggestion{
+							Cmd: strings.TrimSpace(query) + " " + g.Cmd, Desc: g.Desc, Icon: query, Priority: g.Priority,
+						})
+					}
+				}
+			}
+		}
+		return results
+	}
+
+	rootCmdName := tokens[0]
+	spec, exists := Registry[rootCmdName]
+	logger.Debugf("core lookup tokens: %v, registry exists: %v", tokens, exists)
+	if !exists {
+		partial := tokens[len(tokens)-1]
+		args := tokens[1:]
+		if len(args) > 0 && args[len(args)-1] == partial {
+			args = args[:len(args)-1]
+		}
+		if cobSugg := QueryCobraComplete(rootCmdName, args, partial); len(cobSugg) > 0 {
+			return cobSugg
+		}
+		return nil
+	}
+
+	depth, currentSubs, currentOpts, currentGen := resolveSubcommands(tokens, spec)
+	if currentSubs == nil && currentOpts == nil && currentGen == nil {
+		return nil
+	}
+
+	return generateSuggestions(tokens, depth, spec, currentSubs, currentOpts, currentGen)
 }
 
 func topLevelSuggestions(query string, aliases map[string]string) []Suggestion {
