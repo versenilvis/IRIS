@@ -225,7 +225,51 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 			}
 		}
 
-		matches := searcherCache.SearchWithScores(q, &fuzzy.SearchOptions{Limit: 200})
+		// extract pure prefix matches based strictly on recency order (historyCache is newest-first)
+		for _, cmd := range historyCache {
+			if seenCmds[cmd] {
+				continue
+			}
+			cmdLow := strings.ToLower(cmd)
+			if strings.HasPrefix(cmdLow, qLow) || strings.Contains(cmdLow, qLow) {
+				fields := strings.Fields(cmd)
+				firstWordLow := ""
+				if len(fields) > 0 {
+					firstWordLow = strings.ToLower(fields[0])
+				}
+				
+				if queryFirstWord != "" {
+					if firstWordLow != queryFirstWord {
+						continue
+					}
+					if subcmdFilter && querySecondWord != "" {
+						if len(fields) < 2 {
+							continue
+						}
+						secondWordLow := strings.ToLower(fields[1])
+						if !strings.HasPrefix(secondWordLow, querySecondWord) {
+							continue
+						}
+					}
+				} else {
+					if !strings.HasPrefix(firstWordLow, qLow) {
+						continue
+					}
+				}
+				
+				seenCmds[cmd] = true
+				results = append(results, HistResult{
+					ID:         idMapCache[cmd],
+					Cmd:        cmd,
+					FuzzyScore: 10000,
+				})
+				if len(results) >= 200 {
+					break
+				}
+			}
+		}
+
+		matches := searcherCache.SearchWithScores(q, &fuzzy.SearchOptions{Limit: 1000})
 		for _, m := range matches {
 			if seenCmds[m.Str] {
 				continue

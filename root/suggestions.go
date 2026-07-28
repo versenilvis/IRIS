@@ -57,13 +57,16 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 
 	if mode == "history" {
 		// history mode: history first, then spec/alias
-		for _, h := range histResults {
+		// scale confidence based on recency (index in histResults) so the most recent commands stay on top
+		baseConf := 95
+		for i, h := range histResults {
+			conf := max(baseConf-(i*2), 60)
 			addSuggestion(spec.Suggestion{
 				Cmd:        h.Cmd,
 				Desc:       "history",
 				Icon:       "history",
 				Source:     "history",
-				Confidence: 70,
+				Confidence: conf,
 			})
 		}
 		for _, s := range cmdResults {
