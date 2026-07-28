@@ -138,6 +138,7 @@ type Theme struct {
 	DescSel    lipgloss.Color
 	SelBg      lipgloss.Color
 	ScrollInfo lipgloss.Color
+	GhostText  lipgloss.Color
 }
 
 var currentTheme = Theme{
@@ -151,6 +152,7 @@ var currentTheme = Theme{
 	DescSel:    lipgloss.Color("#edecee"),
 	SelBg:      lipgloss.Color("#3d375e"),
 	ScrollInfo: lipgloss.Color("#a277ff"),
+	GhostText:  lipgloss.Color("#4B4A4C"),
 }
 
 func SetTheme(t Theme) {
@@ -485,9 +487,8 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 
 	s.WriteString("\0337")
 	if ghostText != "" {
-		s.WriteString("\033[90m")
-		s.WriteString(ghostText)
-		s.WriteString("\033[0m")
+		styled := lipgloss.NewStyle().Foreground(currentTheme.GhostText).Render(ghostText)
+		s.WriteString(styled)
 	}
 	if padLen > 0 {
 		s.WriteString(strings.Repeat(" ", padLen))
