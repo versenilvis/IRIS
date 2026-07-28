@@ -42,6 +42,7 @@ type Suggestion struct {
 	Source     string // "history", "spec", "ai"
 	Confidence int    // 0-100
 	Priority   int    // static author priority
+	Dangerous  bool   // set when the command matches destructive patterns
 }
 
 var Registry = map[string]*Spec{}

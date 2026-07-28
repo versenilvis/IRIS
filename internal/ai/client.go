@@ -15,13 +15,17 @@ import (
 	"github.com/versenilvis/iris/spec"
 )
 
-var sharedHTTPClient = &http.Client{}
+var sharedHTTPClient = &http.Client{
+	Timeout: 10 * time.Second,
+}
 
 func NewClient(cfg config.ProviderConfig) (Client, error) {
 	protocol := strings.ToLower(strings.TrimSpace(cfg.InheritedFrom))
 	switch protocol {
 	case "openai", "":
 		return NewOpenAIClient(cfg), nil
+	case "anthropic":
+		return NewAnthropicClient(cfg), nil
 	default:
 		return nil, fmt.Errorf("unsupported ai protocol: %s", cfg.InheritedFrom)
 	}
@@ -135,5 +139,6 @@ func (c *OpenAIClient) Suggest(ctx context.Context, buf string, env EnvSnapshot,
 		Icon:       "ai",
 		Source:     string(SourceAI),
 		Confidence: 85,
+		Dangerous:  func() bool { d, _ := IsDangerous(cleaned); return d }(),
 	}, nil
 }

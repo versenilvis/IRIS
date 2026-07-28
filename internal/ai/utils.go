@@ -188,3 +188,36 @@ func ExtractScriptsAndTargets(sb *strings.Builder, dir string, prefix string) {
 		}
 	}
 }
+
+// Dangerous patterns that trigger a warning when AI suggests them.
+var dangerousPatterns = []struct {
+	pattern *regexp.Regexp
+	label   string
+}{
+	{regexp.MustCompile(`\brm\s+(-[rRf]+\s+)*[/~]`), "recursive delete"},
+	{regexp.MustCompile(`\brm\s+-rf\b`), "force remove"},
+	{regexp.MustCompile(`>\s*/dev/sd[a-z]`), "overwrite block device"},
+	{regexp.MustCompile(`\bdd\s+if=`), "raw disk write"},
+	{regexp.MustCompile(`\bmkfs\.`), "format filesystem"},
+	{regexp.MustCompile(`\bchmod\s+(-R\s+)?777\b`), "world-writable permissions"},
+	{regexp.MustCompile(`\bchown\s+(-R\s+)?[^ ]*root\b`), "chown to root"},
+	{regexp.MustCompile(`:\(\)\s*\{[ :&;|]`), "fork bomb"},
+	{regexp.MustCompile(`\bcurl\s+.*\|\s*(ba)?sh\b`), "curl pipe shell"},
+	{regexp.MustCompile(`\bwget\s+.*\|\s*(ba)?sh\b`), "wget pipe shell"},
+	{regexp.MustCompile(`\bsudo\s+rm\s+-rf\s+/`), "sudo rm -rf /"},
+	{regexp.MustCompile(`\bgit\s+push\s+--force\b`), "force push"},
+	{regexp.MustCompile(`\bgit\s+reset\s+--hard\b`), "hard reset"},
+	{regexp.MustCompile(`\bdocker\s+(rm|kill|stop)\s+.*\$\(`), "docker command injection"},
+	{regexp.MustCompile(`\beval\s+`), "eval"},
+	{regexp.MustCompile(`>\s*/etc/`), "overwrite system config"},
+}
+
+// IsDangerous checks a command for destructive shell patterns.
+func IsDangerous(cmd string) (bool, string) {
+	for _, dp := range dangerousPatterns {
+		if dp.pattern.MatchString(cmd) {
+			return true, dp.label
+		}
+	}
+	return false, ""
+}

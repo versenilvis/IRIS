@@ -4,11 +4,45 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
 )
+
+// Patterns that look like credentials or secrets — redacted in debug logs
+var secretPatterns = []*regexp.Regexp{
+	regexp.MustCompile(`(?i)(api[_-]?key|api[_-]?secret|auth[_-]?token|access[_-]?token|secret[_-]?key|private[_-]?key|password|passwd|credential)s?\s*[:=]\s*\S+`),
+	regexp.MustCompile(`(?i)--(api-key|password|passwd|token|secret)\s+\S+`),
+	regexp.MustCompile(`(?i)(Authorization|X-API-Key)\s*:\s*\S+`),
+	regexp.MustCompile(`(?i)(sk-[a-zA-Z0-9]{20,})`),                                    // OpenAI/Anthropic-style keys
+	regexp.MustCompile(`(?i)([a-zA-Z0-9+/]{30,}={0,2})`),                                 // base64-like tokens in command context
+	regexp.MustCompile(`(?i)curl\s+.*(-u|--user)\s+\S+`),                                 // curl basic auth
+	regexp.MustCompile(`(?i)export\s+\S*(API[_-]?KEY|TOKEN|SECRET|PASSWORD)\S*\s*=\s*\S+`),
+}
+
+// sanitize scrubs potential secrets from log messages
+func sanitize(s string) string {
+	for _, pat := range secretPatterns {
+		s = pat.ReplaceAllStringFunc(s, func(match string) string {
+			// Preserve the key/flag name but redact the value
+			if idx := strings.Index(match, "="); idx >= 0 {
+				return match[:idx+1] + "[REDACTED]"
+			}
+			if idx := strings.Index(match, ":"); idx >= 0 {
+				return match[:idx+1] + " [REDACTED]"
+			}
+			// For flag-style: --flag value
+			parts := strings.Fields(match)
+			if len(parts) >= 2 {
+				return parts[0] + " [REDACTED]"
+			}
+			return "[REDACTED]"
+		})
+	}
+	return s
+}
 
 type Level int
 
@@ -92,6 +126,10 @@ func logmsg(lvl Level, lvlStr string, format string, a ...any) {
 
 	tStr := time.Now().Format("2006-01-02T15:04:05.000Z07:00")
 	msg := fmt.Sprintf(format, a...)
+	// Scrub credentials from debug-level messages to prevent secrets leaking into logs
+	if lvl == LevelDebug {
+		msg = sanitize(msg)
+	}
 	_, _ = fmt.Fprintf(logFile, "%s [%s] [%s] %s\n", tStr, lvlStr, caller, msg)
 }
 

@@ -243,11 +243,57 @@ var updateCmd = &cobra.Command{
 
 		fmt.Printf("\033[36m[IRIS] updating %s → %s\033[0m\n", Version, latest)
 
-		// download and replace the binary using the install script
+		// Download the install script to a temp file for inspection before executing.
+		// This avoids the "curl | sh" anti-pattern and lets us validate the response.
 		installScript := "https://raw.githubusercontent.com/versenilvis/iris/main/scripts/install.sh"
-		fmt.Printf("running: curl -sSL %s | sh\n\n", installScript)
+		fmt.Printf("downloading: %s\n", installScript)
 
-		cmdRun := exec.Command("sh", "-c", "curl -sSL "+installScript+" | sh")
+		resp, err := http.Get(installScript)
+		if err != nil {
+			fmt.Printf("\n\033[31m[IRIS] download failed: %v\033[0m\n", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			fmt.Printf("\n\033[31m[IRIS] download failed: HTTP %d\033[0m\n", resp.StatusCode)
+			return
+		}
+
+		scriptBytes, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20)) // 1MB max
+		if err != nil {
+			fmt.Printf("\n\033[31m[IRIS] failed to read install script: %v\033[0m\n", err)
+			return
+		}
+
+		// Basic validation: must start with a shebang
+		if len(scriptBytes) < 3 || string(scriptBytes[:2]) != "#!" {
+			fmt.Printf("\n\033[31m[IRIS] downloaded file does not appear to be a shell script (no shebang). Refusing to execute.\033[0m\n")
+			return
+		}
+
+		tmpFile, err := os.CreateTemp("", "iris-update-*.sh")
+		if err != nil {
+			fmt.Printf("\n\033[31m[IRIS] failed to create temp file: %v\033[0m\n", err)
+			return
+		}
+		tmpPath := tmpFile.Name()
+		defer os.Remove(tmpPath)
+
+		if _, err := tmpFile.Write(scriptBytes); err != nil {
+			tmpFile.Close()
+			fmt.Printf("\n\033[31m[IRIS] failed to write install script: %v\033[0m\n", err)
+			return
+		}
+		tmpFile.Close()
+
+		if err := os.Chmod(tmpPath, 0700); err != nil {
+			fmt.Printf("\n\033[31m[IRIS] failed to make script executable: %v\033[0m\n", err)
+			return
+		}
+
+		fmt.Printf("running install script...\n\n")
+		cmdRun := exec.Command("sh", tmpPath)
 		cmdRun.Stdout = os.Stdout
 		cmdRun.Stderr = os.Stderr
 		cmdRun.Stdin = os.Stdin

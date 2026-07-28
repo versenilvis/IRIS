@@ -126,19 +126,62 @@ check-interval = "24h"
 
 [ai]
 enabled = false
-provider = "groq" # "groq" or "ollama"
+provider = "groq"          # name of the provider block to use (see below)
 debounce_ms = 400
+min_interval_ms = 1000
+
+# ── AI Providers ───────────────────────────────────────────
+# IRIS supports two protocols via inherited_from:
+#   "openai"    — OpenAI-compatible chat completions
+#   "anthropic" — Anthropic native Messages API
+#
+# Available providers: groq, ollama, openrouter, anthropic,
+#   deepseek, openai, lmstudio, or any custom name you define.
 
 [ai.providers.groq]
-endpoint = "https://api.groq.com/openai/v1/chat/completions"
-api_key_env = "GROQ_API_KEY" # or set api_key directly
+inherited_from = "openai"
+endpoint = "https://api.groq.com/openai/v1"
+api_key_env = "GROQ_API_KEY"
 model = "llama-3.3-70b-versatile"
 timeout_ms = 3000
 
 [ai.providers.ollama]
-endpoint = "http://localhost:11434/v1/chat/completions"
+inherited_from = "openai"
+endpoint = "http://localhost:11434/v1"
 model = "qwen2.5-coder"
 timeout_ms = 5000
+
+# OpenRouter — access any model through one API key
+# [ai.providers.openrouter]
+# inherited_from = "openai"
+# endpoint = "https://openrouter.ai/api/v1"
+# api_key_env = "OPENROUTER_API_KEY"
+# model = "google/gemini-2.0-flash-001"
+# timeout_ms = 3000
+
+# Anthropic — native Claude API
+# [ai.providers.anthropic]
+# inherited_from = "anthropic"
+# endpoint = "https://api.anthropic.com/v1/messages"
+# api_key_env = "ANTHROPIC_API_KEY"
+# model = "claude-3-5-haiku-20241022"
+# timeout_ms = 3000
+
+# DeepSeek
+# [ai.providers.deepseek]
+# inherited_from = "openai"
+# endpoint = "https://api.deepseek.com/v1"
+# api_key_env = "DEEPSEEK_API_KEY"
+# model = "deepseek-chat"
+# timeout_ms = 3000
+
+# OpenAI
+# [ai.providers.openai]
+# inherited_from = "openai"
+# endpoint = "https://api.openai.com/v1"
+# api_key_env = "OPENAI_API_KEY"
+# model = "gpt-4o-mini"
+# timeout_ms = 3000
 ```
 
 > [!NOTE]

@@ -82,6 +82,90 @@ channel = "stable"
 
 # interval between update checks, e.g. "24h", "6h", "30m"
 check-interval = "24h"
+
+# ── AI Suggestions ───────────────────────────────────────────
+# IRIS supports two API protocols:
+#   "openai"    — OpenAI-compatible chat completions (OpenRouter, Groq, Ollama,
+#                 DeepSeek, LM Studio, Together, Fireworks, xAI, etc.)
+#   "anthropic" — Anthropic native Messages API (Claude models)
+#
+# Set inherited_from to the protocol your provider uses.
+# Use api_key_env (recommended) to avoid hardcoding keys in plaintext.
+#
+# Pick ONE provider by uncommenting and setting ai.provider to its name.
+
+[ai]
+# enable AI-powered command suggestions
+enabled = false
+
+# which provider block to use (must match a name under [ai.providers.*])
+provider = ""
+
+# delay (ms) before firing an AI request after the user stops typing
+debounce_ms = 500
+
+# minimum interval (ms) between successive AI requests
+min_interval_ms = 1000
+
+# ── Provider: OpenRouter (any model, OpenAI-compatible) ──────
+# [ai.providers.openrouter]
+# inherited_from = "openai"
+# endpoint = "https://openrouter.ai/api/v1"
+# api_key_env = "OPENROUTER_API_KEY"
+# model = "google/gemini-2.0-flash-001"
+# timeout_ms = 3000
+
+# ── Provider: Groq (fast, free tier) ─────────────────────────
+# [ai.providers.groq]
+# inherited_from = "openai"
+# endpoint = "https://api.groq.com/openai/v1"
+# api_key_env = "GROQ_API_KEY"
+# model = "llama-3.3-70b-versatile"
+# timeout_ms = 3000
+
+# ── Provider: Ollama (local, no API key) ─────────────────────
+# [ai.providers.ollama]
+# inherited_from = "openai"
+# endpoint = "http://localhost:11434/v1"
+# model = "qwen2.5-coder"
+# timeout_ms = 5000
+
+# ── Provider: Anthropic (native Claude API) ──────────────────
+# [ai.providers.anthropic]
+# inherited_from = "anthropic"
+# endpoint = "https://api.anthropic.com/v1/messages"
+# api_key_env = "ANTHROPIC_API_KEY"
+# model = "claude-3-5-haiku-20241022"
+# timeout_ms = 3000
+
+# ── Provider: DeepSeek ───────────────────────────────────────
+# [ai.providers.deepseek]
+# inherited_from = "openai"
+# endpoint = "https://api.deepseek.com/v1"
+# api_key_env = "DEEPSEEK_API_KEY"
+# model = "deepseek-chat"
+# timeout_ms = 3000
+
+# ── Provider: LM Studio (local) ──────────────────────────────
+# [ai.providers.lmstudio]
+# inherited_from = "openai"
+# endpoint = "http://localhost:1234/v1"
+# model = "local-model"
+# timeout_ms = 5000
+
+# ── Provider: OpenAI ─────────────────────────────────────────
+# [ai.providers.openai]
+# inherited_from = "openai"
+# endpoint = "https://api.openai.com/v1"
+# api_key_env = "OPENAI_API_KEY"
+# model = "gpt-4o-mini"
+# timeout_ms = 3000
+
+# ── Suggest-on-empty (contextual hints on blank prompt) ──────
+# [ai.suggest_on_empty]
+# enabled = false
+# debounce_ms = 800
+# min_interval_ms = 5000
 `
 		err = os.WriteFile(path, []byte(defaultContent), 0644)
 		if err != nil {
