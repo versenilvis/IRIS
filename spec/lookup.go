@@ -119,7 +119,7 @@ func generateSuggestions(tokens []string, depth int, spec *Spec, currentSubs []S
 	allowMoreArgs := currentLimit <= 0 || argCount < currentLimit
 
 	prefixBuilder := strings.Builder{}
-	for i := 0; i < depth; i++ {
+	for i := range depth {
 		if i > 0 {
 			prefixBuilder.WriteByte(' ')
 		}
