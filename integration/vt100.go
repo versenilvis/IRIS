@@ -8,12 +8,16 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// ComputeCursorCol parses raw terminal output containing ANSI escape sequences
+// and calculates the visual column position of the cursor
 func ComputeCursorCol(data []byte) int {
 	col := 0
 	i := 0
 	n := len(data)
 	for i < n {
 		b := data[i]
+		
+		// handle basic control characters like carriage return, backspace, and tab
 		if b == '\r' {
 			col = 0
 			i++
@@ -32,8 +36,11 @@ func ComputeCursorCol(data []byte) int {
 			i++
 			continue
 		}
+		
+		// process ANSI escape sequences starting with ESC
 		if b == '\033' {
 			if i+1 < n && data[i+1] == '[' {
+				// parse CSI (Control Sequence Introducer) sequences which may move the cursor
 				j := i + 2
 				for j < n && data[j] >= 0x20 && data[j] <= 0x3F {
 					j++
@@ -51,6 +58,7 @@ func ComputeCursorCol(data []byte) int {
 						}
 						return def
 					}
+					
 					switch cmd {
 					case 'C':
 						col += getParam(0, 1)
@@ -67,6 +75,7 @@ func ComputeCursorCol(data []byte) int {
 				}
 				break
 			} else if i+1 < n && data[i+1] == ']' {
+				// skip OSC (Operating System Command) sequences
 				j := i + 2
 				for j < n {
 					if data[j] == '\007' {
@@ -82,6 +91,7 @@ func ComputeCursorCol(data []byte) int {
 				i = j
 				continue
 			} else if i+1 < n && (data[i+1] == 'P' || data[i+1] == 'X' || data[i+1] == '^' || data[i+1] == '_') {
+				// skip DCS, SOS, PM, APC sequences which are terminated by ST
 				j := i + 2
 				for j < n {
 					if data[j] == '\033' && j+1 < n && data[j+1] == '\\' {
@@ -103,6 +113,8 @@ func ComputeCursorCol(data []byte) int {
 			i++
 			continue
 		}
+		
+		// process printable ascii and multi-byte unicode characters
 		if b < 0x7f {
 			col++
 			i++
