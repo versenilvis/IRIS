@@ -227,6 +227,12 @@ func (s *WrapperSession) isExecuting() bool {
 	return pgrp != s.shellPGID
 }
 
+func (s *WrapperSession) bufferEmpty() bool {
+	s.bufferMu.Lock()
+	defer s.bufferMu.Unlock()
+	return s.naiveBuffer == ""
+}
+
 func (s *WrapperSession) startStdoutBridge() {
 	defer func() {
 		if r := recover(); r != nil {
@@ -612,7 +618,7 @@ func (s *WrapperSession) handleInputLoop() {
 
 							i += 2
 							continue
-						} else if !s.overlay.IsVisible() && s.naiveBuffer == "" && (inputSlice[i+2] == 'A' || inputSlice[i+2] == 'B') {
+						} else if !s.overlay.IsVisible() && s.bufferEmpty() && (inputSlice[i+2] == 'A' || inputSlice[i+2] == 'B') {
 							intercepted = true
 							activeModeMu.Lock()
 							activeMode = "history"
