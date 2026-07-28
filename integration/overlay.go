@@ -6,9 +6,9 @@ import (
 	"sync"
 
 	"github.com/charmbracelet/lipgloss"
-	"golang.org/x/term"
 	"github.com/versenilvis/iris/internal/logger"
 	"github.com/versenilvis/iris/spec"
+	"golang.org/x/term"
 )
 
 const (

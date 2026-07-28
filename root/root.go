@@ -50,8 +50,8 @@ It works exactly like coding editor suggestion menu drop down.`,
 			runWrapper()
 		},
 	}
-	shellFlag   string
-	debugMode   bool
+	shellFlag string
+	debugMode bool
 )
 
 func init() {

@@ -41,7 +41,7 @@ func init() {
 				Description: "compile packages and dependencies",
 				MaxArgs:     1,
 				Generator:   spec.FileGenerator(".go"),
-				Options: append(globalBuildOptions, 
+				Options: append(globalBuildOptions,
 					spec.Option{Name: ".", Description: "current package"},
 					spec.Option{Name: "./...", Description: "all packages"},
 					spec.Option{Name: "-o", Description: "output file or directory"},

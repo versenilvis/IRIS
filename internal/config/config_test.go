@@ -250,5 +250,3 @@ func TestMigration(t *testing.T) {
 		t.Errorf("expected backup file update_state.json.bak to exist")
 	}
 }
-
-

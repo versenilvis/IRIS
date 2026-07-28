@@ -1,4 +1,5 @@
 //go:build ignore
+
 package main
 
 import (
@@ -11,10 +12,10 @@ import (
 
 // TestEvent represents a single line of output from 'go test -json'
 type TestEvent struct {
-	Package string  `json:"Package"`
-	Test    string  `json:"Test"`
-	Action  string  `json:"Action"` // pass, fail, skip, run...
-	Output  string  `json:"Output"`
+	Package string `json:"Package"`
+	Test    string `json:"Test"`
+	Action  string `json:"Action"` // pass, fail, skip, run...
+	Output  string `json:"Output"`
 }
 
 func main() {
@@ -28,14 +29,14 @@ func main() {
 
 	// Parse JSON stream
 	decoder := json.NewDecoder(stdout)
-	
+
 	type result struct {
 		name     string
 		category string
 		status   string
 	}
 	results := []result{}
-	
+
 	for {
 		var event TestEvent
 		if err := decoder.Decode(&event); err != nil {
@@ -46,7 +47,7 @@ func main() {
 		if event.Test != "" && (event.Action == "pass" || event.Action == "fail" || event.Action == "skip") {
 			pkgParts := strings.Split(event.Package, "/")
 			category := pkgParts[len(pkgParts)-1]
-			
+
 			results = append(results, result{
 				name:     event.Test,
 				category: category,
@@ -72,7 +73,7 @@ func main() {
 		case "skip":
 			status = "\033[33mSKIP\033[0m"
 		}
-		
+
 		fmt.Printf("%-18s | %-12s | %-45s\n", status, res.category, res.name)
 	}
 

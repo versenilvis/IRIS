@@ -39,7 +39,7 @@ func init() {
 						continue
 					}
 					seen[target] = true
-					
+
 					cmd := target
 					if prefix != "" {
 						cmd = prefix + " " + target

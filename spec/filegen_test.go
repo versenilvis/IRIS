@@ -20,7 +20,6 @@ func TestFileGenerator(t *testing.T) {
 	_ = os.Chdir(tmp)
 	defer func() { _ = os.Chdir(oldWd) }()
 
-
 	t.Run("dirOnly shows only dirs", func(t *testing.T) {
 		gen := FileGenerator("/")
 		results := gen([]string{"cd", ""}, "cd ", "")
@@ -30,7 +29,6 @@ func TestFileGenerator(t *testing.T) {
 			}
 		}
 	})
-
 
 	t.Run("Filter extension", func(t *testing.T) {
 		gen := FileGenerator(".go")
@@ -49,7 +47,6 @@ func TestFileGenerator(t *testing.T) {
 		}
 	})
 
-
 	t.Run("Nested path", func(t *testing.T) {
 		gen := FileGenerator()
 		results := gen([]string{"ls", "src/u"}, "ls src/u", "src/u")
@@ -64,7 +61,6 @@ func TestFileGenerator(t *testing.T) {
 		}
 	})
 
-
 	t.Run("Deep scan 1 level", func(t *testing.T) {
 		gen := FileGenerator()
 		results := gen([]string{"ls", "src/"}, "ls src/", "src/")
@@ -78,9 +74,6 @@ func TestFileGenerator(t *testing.T) {
 			t.Errorf("Deep scan did not find src/utils.go")
 		}
 	})
-
-
-
 
 	t.Run("Hidden files are skipped", func(t *testing.T) {
 		gen := FileGenerator()

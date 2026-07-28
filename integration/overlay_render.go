@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
-	"golang.org/x/term"
 	"github.com/versenilvis/iris/internal/config"
 	"github.com/versenilvis/iris/internal/logger"
+	"golang.org/x/term"
 )
 
 func renderMatchedTitle(title, typed string, selected bool, w int) string {

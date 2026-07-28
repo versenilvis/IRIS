@@ -135,7 +135,7 @@ func TestDetectCached_BranchSwitchWithoutDirChange(t *testing.T) {
 	// Simulate branch switch by updating .git/HEAD only
 	// (this does not update the modtime of tmp on typical filesystems since tmp's direct children didn't change)
 	_ = os.WriteFile(headPath, []byte("ref: refs/heads/feature\n"), 0644)
-	
+
 	// Force the modtime of HEAD to be distinct to avoid flakiness on low-res file systems
 	infoAfter, _ := os.Stat(headPath)
 	newMod := infoAfter.ModTime().Add(2 * time.Second)
