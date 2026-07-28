@@ -230,42 +230,39 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 			if seenCmds[cmd] {
 				continue
 			}
-			cmdLow := strings.ToLower(cmd)
-			if strings.HasPrefix(cmdLow, qLow) || strings.Contains(cmdLow, qLow) {
-				fields := strings.Fields(cmd)
-				firstWordLow := ""
-				if len(fields) > 0 {
-					firstWordLow = strings.ToLower(fields[0])
+			fields := strings.Fields(cmd)
+			firstWordLow := ""
+			if len(fields) > 0 {
+				firstWordLow = strings.ToLower(fields[0])
+			}
+			
+			if queryFirstWord != "" {
+				if firstWordLow != queryFirstWord {
+					continue
 				}
-				
-				if queryFirstWord != "" {
-					if firstWordLow != queryFirstWord {
+				if subcmdFilter && querySecondWord != "" {
+					if len(fields) < 2 {
 						continue
 					}
-					if subcmdFilter && querySecondWord != "" {
-						if len(fields) < 2 {
-							continue
-						}
-						secondWordLow := strings.ToLower(fields[1])
-						if !strings.HasPrefix(secondWordLow, querySecondWord) {
-							continue
-						}
-					}
-				} else {
-					if !strings.HasPrefix(firstWordLow, qLow) {
+					secondWordLow := strings.ToLower(fields[1])
+					if !strings.HasPrefix(secondWordLow, querySecondWord) {
 						continue
 					}
 				}
-				
-				seenCmds[cmd] = true
-				results = append(results, HistResult{
-					ID:         idMapCache[cmd],
-					Cmd:        cmd,
-					FuzzyScore: 10000,
-				})
-				if len(results) >= 200 {
-					break
+			} else {
+				if !strings.HasPrefix(firstWordLow, qLow) {
+					continue
 				}
+			}
+			
+			seenCmds[cmd] = true
+			results = append(results, HistResult{
+				ID:         idMapCache[cmd],
+				Cmd:        cmd,
+				FuzzyScore: 10000,
+			})
+			if len(results) >= 200 {
+				break
 			}
 		}
 
