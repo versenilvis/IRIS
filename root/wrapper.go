@@ -124,7 +124,7 @@ type WrapperSession struct {
 	bufferMu             sync.Mutex
 	userNavigated        atomic.Bool
 	isCommandActive      atomic.Bool
-	suggestionsEnabled   bool
+	suggestionsEnabled   atomic.Bool
 	disableGhostText     atomic.Bool
 	updatePrinted        bool
 	pendingUpdate        <-chan updateResult
@@ -197,9 +197,9 @@ func runWrapper() {
 		cmd:                c,
 		shellName:          shellName,
 		overlay:            integration.NewOverlay(),
-		suggestionsEnabled: true,
 		shellPGID:          shellPGID,
 	}
+	session.suggestionsEnabled.Store(true)
 	session.disableGhostText.Store(!config.Get().UI.GhostText)
 	session.pendingUpdate = startBackgroundUpdateCheck()
 
@@ -500,7 +500,7 @@ func (s *WrapperSession) renderOverlay() {
 	s.renderMu.Lock()
 	defer s.renderMu.Unlock()
 
-	if !s.suggestionsEnabled || s.isExecuting() {
+	if !s.suggestionsEnabled.Load() || s.isExecuting() {
 		if s.renderTimer != nil {
 			s.renderTimer.Stop()
 			s.renderTimer = nil
@@ -559,9 +559,9 @@ func (s *WrapperSession) handleInputLoop() {
 					if i+2 < n && (inputSlice[i+1] == '[' || inputSlice[i+1] == 'O') {
 						if inputSlice[i+1] == '[' && inputSlice[i+2] == 'Z' {
 							intercepted = true
-							s.suggestionsEnabled = !s.suggestionsEnabled
-							logger.Debugf("Intercepted Shift+Tab, suggestionsEnabled=%v", s.suggestionsEnabled)
-							if !s.suggestionsEnabled {
+							s.suggestionsEnabled.Store(!s.suggestionsEnabled.Load())
+							logger.Debugf("Intercepted Shift+Tab, suggestionsEnabled=%v", s.suggestionsEnabled.Load())
+							if !s.suggestionsEnabled.Load() {
 								writeStdout([]byte(s.overlay.ClearAndDisable()))
 							} else {
 								shouldOverlayDraw = true

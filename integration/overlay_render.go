@@ -12,7 +12,7 @@ import (
 )
 
 func renderMatchedTitle(title, typed string, selected bool, w int) string {
-	t := currentTheme
+	t := theme()
 	textColor := t.Text
 	if selected {
 		textColor = t.TextSel
@@ -49,7 +49,7 @@ func (o *Overlay) draw() string {
 		return ""
 	}
 
-	t := currentTheme
+	t := theme()
 	border := lipgloss.NewStyle().Foreground(t.Border)
 	scrollStyle := lipgloss.NewStyle().Foreground(t.ScrollInfo)
 

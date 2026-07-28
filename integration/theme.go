@@ -1,6 +1,10 @@
 package integration
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"sync/atomic"
+
+	"github.com/charmbracelet/lipgloss"
+)
 
 type Theme struct {
 	Border     lipgloss.Color
@@ -15,19 +19,30 @@ type Theme struct {
 	ScrollInfo lipgloss.Color
 }
 
-var currentTheme = Theme{
-	Border:     lipgloss.Color("#a277ff"),
-	Accent:     lipgloss.Color("#61ffca"),
-	Muted:      lipgloss.Color("#6d6a7f"),
-	Text:       lipgloss.Color("#edecee"),
-	TextSel:    lipgloss.Color("#ffffff"),
-	Match:      lipgloss.Color("#61ffca"),
-	Desc:       lipgloss.Color("#9692a8"),
-	DescSel:    lipgloss.Color("#edecee"),
-	SelBg:      lipgloss.Color("#3d375e"),
-	ScrollInfo: lipgloss.Color("#a277ff"),
+var themePtr atomic.Pointer[Theme]
+
+func init() {
+	themePtr.Store(&Theme{
+		Border:     lipgloss.Color("#a277ff"),
+		Accent:     lipgloss.Color("#61ffca"),
+		Muted:      lipgloss.Color("#6d6a7f"),
+		Text:       lipgloss.Color("#edecee"),
+		TextSel:    lipgloss.Color("#ffffff"),
+		Match:      lipgloss.Color("#61ffca"),
+		Desc:       lipgloss.Color("#9692a8"),
+		DescSel:    lipgloss.Color("#edecee"),
+		SelBg:      lipgloss.Color("#3d375e"),
+		ScrollInfo: lipgloss.Color("#a277ff"),
+	})
 }
 
 func SetTheme(t Theme) {
-	currentTheme = t
+	themePtr.Store(&t)
+}
+
+func theme() Theme {
+	if t := themePtr.Load(); t != nil {
+		return *t
+	}
+	return Theme{}
 }
