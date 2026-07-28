@@ -2,6 +2,7 @@ package root
 
 import (
 	"context"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -58,7 +59,7 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 	if mode == "history" {
 		// history mode: history first, then spec/alias
 		// scale confidence based on recency (index in histResults) so the most recent commands stay on top
-		baseConf := 95
+		baseConf := 75
 		for i, h := range histResults {
 			conf := max(baseConf-(i*2), 60)
 			addSuggestion(spec.Suggestion{
@@ -104,6 +105,19 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 				}
 			}
 		}
+	}
+
+	if mode == "history" {
+		sort.SliceStable(deduped, func(i, j int) bool {
+			if deduped[i].Confidence != deduped[j].Confidence {
+				return deduped[i].Confidence > deduped[j].Confidence
+			}
+			return deduped[i].Cmd < deduped[j].Cmd
+		})
+		if len(deduped) > maxSugg {
+			deduped = deduped[:maxSugg]
+		}
+		return deduped
 	}
 
 	cwd := spec.GetCWD()
