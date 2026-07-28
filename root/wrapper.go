@@ -246,7 +246,8 @@ func (s *WrapperSession) startStdoutBridge() {
 				restoreTerminal()
 				os.Exit(0)
 			}
-			continue
+			restoreTerminal()
+			break
 		}
 		writeStdout(buf[:n])
 
