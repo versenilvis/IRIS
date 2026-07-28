@@ -266,28 +266,6 @@ func Lookup(input string) []Suggestion {
 		query := tokens[0]
 		results := topLevelSuggestions(query, aliases)
 
-		if spec, exists := Registry[query]; exists {
-			hasTrailingSpace := query != "" && query[len(query)-1] == ' '
-
-			if hasTrailingSpace {
-				partial := ""
-				prefix := query
-
-				for _, sub := range spec.Subcommands {
-					results = append(results, Suggestion{
-						Cmd: strings.TrimSpace(query) + " " + sub.Name, Desc: sub.Description, Icon: query, Priority: sub.Priority,
-					})
-				}
-				if spec.Generator != nil {
-					genResults := spec.Generator(tokens, prefix, partial)
-					for _, g := range genResults {
-						results = append(results, Suggestion{
-							Cmd: strings.TrimSpace(query) + " " + g.Cmd, Desc: g.Desc, Icon: query, Priority: g.Priority,
-						})
-					}
-				}
-			}
-		}
 		return results
 	}
 
