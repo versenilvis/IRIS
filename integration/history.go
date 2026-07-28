@@ -30,10 +30,10 @@ func RecordSessionCommand(cmd string) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	
+
 	sessionHistoryMu.Lock()
 	defer sessionHistoryMu.Unlock()
-	
+
 	if len(sessionHistory) > 0 && sessionHistory[len(sessionHistory)-1] == cmd {
 		return
 	}
@@ -236,7 +236,7 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 			if len(fields) > 0 {
 				firstWordLow = strings.ToLower(fields[0])
 			}
-			
+
 			if queryFirstWord != "" {
 				if firstWordLow != queryFirstWord {
 					continue
@@ -255,7 +255,7 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 					continue
 				}
 			}
-			
+
 			seenCmds[cmd] = true
 			results = append(results, HistResult{
 				ID:         idMapCache[cmd],

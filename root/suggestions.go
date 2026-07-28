@@ -88,7 +88,7 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 		if len(tokens) > 0 {
 			rootCmd = tokens[0]
 		}
-		
+
 		ctxTimeout, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 		defer cancel()
 		store, _ := scoring.GetFrecencyStore()

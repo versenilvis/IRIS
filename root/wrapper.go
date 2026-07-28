@@ -167,83 +167,7 @@ func runWrapper() {
 	logger.Debugf("Terminal set to raw mode successfully")
 	defer restoreTerminal()
 
-	sigCh := make(chan os.Signal, 2)
-	signal.Notify(sigCh, syscall.SIGWINCH, syscall.SIGUSR1)
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				WriteCrashLog(r)
-				restoreTerminal()
-				printCrashNotice()
-				startRescueShell()
-				os.Exit(2)
-			}
-		}()
-		for s := range sigCh {
-			switch s {
-			case syscall.SIGWINCH:
-				logger.Debugf("Received SIGWINCH terminal resize signal")
-				_ = pty.InheritSize(os.Stdin, ptmx) // handle terminal window resize
-			// this is the core feature of reloading
-			// it helps IRIS reload itself that you dont need to restart the shell manually
-			// SIGUSR1 is the signal to active reload when you type "just reload"
-			case syscall.SIGUSR1:
-				// trigger iris reload by executing itself again
-				exe, _ := os.Executable()
-				_ = os.Setenv("IRIS_RELOADED", "true")
-
-				innerShell := getActiveInnerShell(c.Process.Pid, shellName)
-				if innerShell != "" {
-					// to detect which is last shell (bash, zsh, fish)
-					_ = os.Setenv("IRIS_ACTIVE_SHELL", innerShell)
-				}
-
-				if c.Process != nil {
-					cwd, linkErr := os.Readlink(fmt.Sprintf("/proc/%d/cwd", c.Process.Pid))
-					if linkErr != nil {
-						ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
-						out, errCmd := exec.CommandContext(ctx, "lsof", "-p", fmt.Sprintf("%d", c.Process.Pid), "-a", "-d", "cwd", "-F", "n").Output()
-						cancel()
-						if errCmd == nil {
-							for line := range strings.SplitSeq(string(out), "\n") {
-								if strings.HasPrefix(line, "n") {
-									cwd = strings.TrimSpace(line[1:])
-									linkErr = nil
-									break
-								}
-							}
-						}
-					}
-					if linkErr == nil {
-						_ = os.Chdir(cwd)
-					}
-					_ = syscall.Kill(c.Process.Pid, syscall.SIGKILL)
-					_ = ptmx.Close()
-				}
-
-				restoreTerminal()
-				execArgs := []string{os.Args[0]}
-				if logDir, pathErr := config.CachePath(); pathErr == nil {
-					argsFile := filepath.Join(logDir, "reload-args")
-					if data, readErr := os.ReadFile(argsFile); readErr == nil {
-						lines := strings.SplitSeq(string(data), "\n")
-						for line := range lines {
-							trimmed := strings.TrimSpace(line)
-							if trimmed != "" {
-								execArgs = append(execArgs, trimmed)
-							}
-						}
-						_ = os.Remove(argsFile)
-					} else {
-						execArgs = os.Args
-					}
-				} else {
-					execArgs = os.Args
-				}
-				_ = syscall.Exec(exe, execArgs, os.Environ())
-			}
-		}
-	}()
+	startSignalMonitor(ptmx, c, shellName)
 
 	overlay := integration.NewOverlay()
 
@@ -1081,4 +1005,84 @@ func runWrapper() {
 			}
 		}
 	}
+}
+
+func startSignalMonitor(ptmx *os.File, c *exec.Cmd, shellName string) {
+	sigCh := make(chan os.Signal, 2)
+	signal.Notify(sigCh, syscall.SIGWINCH, syscall.SIGUSR1)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				WriteCrashLog(r)
+				restoreTerminal()
+				printCrashNotice()
+				startRescueShell()
+				os.Exit(2)
+			}
+		}()
+		for s := range sigCh {
+			switch s {
+			case syscall.SIGWINCH:
+				logger.Debugf("Received SIGWINCH terminal resize signal")
+				_ = pty.InheritSize(os.Stdin, ptmx) // handle terminal window resize
+			// this is the core feature of reloading
+			// it helps IRIS reload itself that you dont need to restart the shell manually
+			// SIGUSR1 is the signal to active reload when you type "just reload"
+			case syscall.SIGUSR1:
+				// trigger iris reload by executing itself again
+				exe, _ := os.Executable()
+				_ = os.Setenv("IRIS_RELOADED", "true")
+
+				innerShell := getActiveInnerShell(c.Process.Pid, shellName)
+				if innerShell != "" {
+					// to detect which is last shell (bash, zsh, fish)
+					_ = os.Setenv("IRIS_ACTIVE_SHELL", innerShell)
+				}
+
+				if c.Process != nil {
+					cwd, linkErr := os.Readlink(fmt.Sprintf("/proc/%d/cwd", c.Process.Pid))
+					if linkErr != nil {
+						ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+						out, errCmd := exec.CommandContext(ctx, "lsof", "-p", fmt.Sprintf("%d", c.Process.Pid), "-a", "-d", "cwd", "-F", "n").Output()
+						cancel()
+						if errCmd == nil {
+							for line := range strings.SplitSeq(string(out), "\n") {
+								if strings.HasPrefix(line, "n") {
+									cwd = strings.TrimSpace(line[1:])
+									linkErr = nil
+									break
+								}
+							}
+						}
+					}
+					if linkErr == nil {
+						_ = os.Chdir(cwd)
+					}
+					_ = syscall.Kill(c.Process.Pid, syscall.SIGKILL)
+					_ = ptmx.Close()
+				}
+
+				restoreTerminal()
+				execArgs := []string{os.Args[0]}
+				if logDir, pathErr := config.CachePath(); pathErr == nil {
+					argsFile := filepath.Join(logDir, "reload-args")
+					if data, readErr := os.ReadFile(argsFile); readErr == nil {
+						lines := strings.SplitSeq(string(data), "\n")
+						for line := range lines {
+							trimmed := strings.TrimSpace(line)
+							if trimmed != "" {
+								execArgs = append(execArgs, trimmed)
+							}
+						}
+						_ = os.Remove(argsFile)
+					} else {
+						execArgs = os.Args
+					}
+				} else {
+					execArgs = os.Args
+				}
+				_ = syscall.Exec(exe, execArgs, os.Environ())
+			}
+		}
+	}()
 }
