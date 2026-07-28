@@ -48,57 +48,62 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 		aliases := spec.GetAliasesCopy()
 		histResults, _ := integration.SearchHistory(query, aliases)
 
-		// scale confidence based on recency (index in histResults) so the most recent commands stay on top
 		baseConf := 75
 		for i, h := range histResults {
-			conf := max(baseConf-(i*2), 60)
 			addSuggestion(spec.Suggestion{
 				Cmd:        h.Cmd,
 				Desc:       "history",
 				Icon:       "history",
 				Source:     "history",
-				Confidence: conf,
+				Confidence: max(baseConf-(i*2), 60),
 			})
 		}
-	}
 
-	for _, s := range cmdResults {
-		addSuggestion(s)
-	}
+		for _, s := range cmdResults {
+			addSuggestion(s)
+		}
 
-	if mode == "history" && normalizedQuery == "" {
+		if normalizedQuery == "" {
+			if len(deduped) > maxSugg {
+				return deduped[:maxSugg]
+			}
+			return deduped
+		}
+
+		injectAISuggestion(&deduped, seen, normalizedQuery)
+
+		sort.SliceStable(deduped, func(i, j int) bool {
+			return deduped[i].Confidence > deduped[j].Confidence
+		})
+
 		if len(deduped) > maxSugg {
 			return deduped[:maxSugg]
 		}
 		return deduped
 	}
 
+	for _, s := range cmdResults {
+		addSuggestion(s)
+	}
+
 	injectAISuggestion(&deduped, seen, normalizedQuery)
 
-	var finalResults []spec.Suggestion
-	if mode == "history" {
-		sort.SliceStable(deduped, func(i, j int) bool {
-			return deduped[i].Confidence > deduped[j].Confidence
-		})
-		finalResults = deduped
-	} else {
-		cwd := spec.GetCWD()
-		tokens := spec.Tokenize(query)
-		rootCmd := ""
-		if len(tokens) > 0 {
-			rootCmd = tokens[0]
-		}
+	cwd := spec.GetCWD()
+	tokens := spec.Tokenize(query)
+	rootCmd := ""
+	if len(tokens) > 0 {
+		rootCmd = tokens[0]
+	}
 
-		ctxTimeout, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
-		defer cancel()
-		store, _ := scoring.GetFrecencyStore()
-		signals := scoring.CollectSignals(ctxTimeout, cwd, query, rootCmd, store, getPrevSkeleton())
-		scored := scoring.Score(deduped, signals)
+	ctxTimeout, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	store, _ := scoring.GetFrecencyStore()
+	signals := scoring.CollectSignals(ctxTimeout, cwd, query, rootCmd, store, getPrevSkeleton())
+	scored := scoring.Score(deduped, signals)
 
-		finalResults = make([]spec.Suggestion, 0, len(scored))
-		for _, sc := range scored {
-			finalResults = append(finalResults, sc.Suggestion)
-		}
+	finalResults := make([]spec.Suggestion, 0, len(scored))
+	for _, sc := range scored {
+		finalResults = append(finalResults, sc.Suggestion)
 	}
 
 	if len(finalResults) > maxSugg {
