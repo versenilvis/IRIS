@@ -18,6 +18,8 @@ func parseHistoryFile(shellName, histFile string) ([]string, error) {
 	var allCmds []string
 	if file != nil {
 		scanner := bufio.NewScanner(file)
+		buf := make([]byte, 64*1024)
+		scanner.Buffer(buf, 1024*1024)
 		for scanner.Scan() {
 			line := scanner.Text()
 			cmd := line
