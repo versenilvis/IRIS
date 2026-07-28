@@ -78,10 +78,7 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 	var finalResults []spec.Suggestion
 	if mode == "history" {
 		sort.SliceStable(deduped, func(i, j int) bool {
-			if deduped[i].Confidence != deduped[j].Confidence {
-				return deduped[i].Confidence > deduped[j].Confidence
-			}
-			return deduped[i].Cmd < deduped[j].Cmd
+			return deduped[i].Confidence > deduped[j].Confidence
 		})
 		finalResults = deduped
 	} else {
