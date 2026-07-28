@@ -80,10 +80,14 @@ func runWatchdog() {
 		return
 	}
 
-	// save original terminal settings in parent process
-	watchdogOldState, errState := term.MakeRaw(int(os.Stdin.Fd()))
-	if errState == nil {
-		_ = term.Restore(int(os.Stdin.Fd()), watchdogOldState)
+	// save original terminal settings in parent process if Stdin is a terminal
+	var watchdogOldState *term.State
+	if term.IsTerminal(int(os.Stdin.Fd())) {
+		var errState error
+		watchdogOldState, errState = term.MakeRaw(int(os.Stdin.Fd()))
+		if errState == nil {
+			_ = term.Restore(int(os.Stdin.Fd()), watchdogOldState)
+		}
 	}
 
 	r, w, err := os.Pipe()
@@ -92,9 +96,16 @@ func runWatchdog() {
 		return
 	}
 
+	cmdStdin := os.Stdin
+	if !term.IsTerminal(int(cmdStdin.Fd())) {
+		if tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0); err == nil {
+			cmdStdin = tty
+		}
+	}
+
 	cmd := exec.CommandContext(context.Background(), exe, os.Args[1:]...)
 	cmd.Env = append(os.Environ(), "IRIS_IS_CHILD=true")
-	cmd.Stdin = os.Stdin
+	cmd.Stdin = cmdStdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = w
 

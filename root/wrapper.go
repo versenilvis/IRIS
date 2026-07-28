@@ -152,20 +152,34 @@ func runWrapper() {
 	}
 	defer func() { _ = ptmx.Close() }()
 
-	_ = pty.InheritSize(os.Stdin, ptmx)
+	stdinFile := os.Stdin
+	if !term.IsTerminal(int(stdinFile.Fd())) {
+		if tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0); err == nil {
+			stdinFile = tty
+		}
+	}
+
+	_ = pty.InheritSize(stdinFile, ptmx)
 	spec.ShellPID = c.Process.Pid
 
 	logger.Infof("PTY child shell started: shell=%s, path=%s, pid=%d", shellName, adapter.GetShellPath(), c.Process.Pid)
 
 	// put terminal in raw mode to intercept every keystroke
 	var errMakeRaw error
-	oldState, errMakeRaw = term.MakeRaw(int(os.Stdin.Fd()))
+	oldState, errMakeRaw = term.MakeRaw(int(stdinFile.Fd()))
 	if errMakeRaw != nil {
 		logger.Errorf("Failed to set terminal raw mode: %v", errMakeRaw)
 		panic(errMakeRaw)
 	}
 	logger.Debugf("Terminal set to raw mode successfully")
-	defer restoreTerminal()
+	defer func() {
+		oldStateMu.Lock()
+		defer oldStateMu.Unlock()
+		if oldState != nil {
+			_ = term.Restore(int(stdinFile.Fd()), oldState)
+			oldState = nil
+		}
+	}()
 
 	sigCh := make(chan os.Signal, 2)
 	signal.Notify(sigCh, syscall.SIGWINCH, syscall.SIGUSR1)
@@ -183,7 +197,7 @@ func runWrapper() {
 			switch s {
 			case syscall.SIGWINCH:
 				logger.Debugf("Received SIGWINCH terminal resize signal")
-				_ = pty.InheritSize(os.Stdin, ptmx) // handle terminal window resize
+				_ = pty.InheritSize(stdinFile, ptmx) // handle terminal window resize
 			// this is the core feature of reloading
 			// it helps IRIS reload itself that you dont need to restart the shell manually
 			// SIGUSR1 is the signal to active reload when you type "just reload"
@@ -595,7 +609,7 @@ func runWrapper() {
 	inBracketedPaste := false
 	for {
 		inputSlice := make([]byte, 128)
-		n, err := os.Stdin.Read(inputSlice)
+		n, err := stdinFile.Read(inputSlice)
 		if err != nil {
 			break
 		}
