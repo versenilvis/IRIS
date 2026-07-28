@@ -500,3 +500,15 @@ func GetFrecencyStore() (*FrecencyStore, error) {
 	globalFrecencyStore = store
 	return globalFrecencyStore, nil
 }
+
+// CloseGlobalFrecencyStore safely closes the singleton database connection.
+// This is primarily used in testing to prevent goroutine leaks from the DB connectionOpener.
+func CloseGlobalFrecencyStore() {
+	globalFrecencyMu.Lock()
+	defer globalFrecencyMu.Unlock()
+	
+	if globalFrecencyStore != nil {
+		_ = globalFrecencyStore.Close()
+		globalFrecencyStore = nil
+	}
+}
