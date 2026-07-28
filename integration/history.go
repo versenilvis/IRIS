@@ -226,6 +226,7 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 		}
 
 		// extract pure prefix matches based strictly on recency order (historyCache is newest-first)
+		strictMatches := 0
 		for _, cmd := range historyCache {
 			if seenCmds[cmd] {
 				continue
@@ -261,7 +262,8 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 				Cmd:        cmd,
 				FuzzyScore: 10000,
 			})
-			if len(results) >= 200 {
+			strictMatches++
+			if strictMatches >= 200 {
 				break
 			}
 		}
