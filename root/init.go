@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/versenilvis/iris/integration/shell"
 	"github.com/versenilvis/iris/internal/config"
 )
 
@@ -135,13 +136,13 @@ var setupCmd = &cobra.Command{
 
 		switch shellName {
 		case "zsh":
-			configFile = filepath.Join(home, ".zshrc")
+			configFile = filepath.Join(shell.GetZshConfigDir(), ".zshrc")
 			evalCmd = `eval "$(iris init zsh)"`
 		case "bash":
 			configFile = filepath.Join(home, ".bashrc")
 			evalCmd = `eval "$(iris init bash)"`
 		case "fish":
-			configFile = filepath.Join(home, ".config", "fish", "config.fish")
+			configFile = filepath.Join(shell.GetFishConfigDir(), "config.fish")
 			evalCmd = `iris init fish | source`
 		default:
 			fmt.Printf("Unsupported shell: %s. Please add iris init manually.\n", shellName)
