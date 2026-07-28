@@ -13,7 +13,7 @@ func TestMain(m *testing.M) {
 	scoring.CloseGlobalFrecencyStore()
 	if code == 0 {
 		if err := goleak.Find(); err != nil {
-			os.Stderr.WriteString("goleak: " + err.Error() + "\n")
+			_, _ = os.Stderr.WriteString("goleak: " + err.Error() + "\n")
 			os.Exit(1)
 		}
 	}
