@@ -343,7 +343,7 @@ func runWrapper() {
 
 	var disableGhostText atomic.Bool
 	disableGhostText.Store(!config.Get().UI.GhostText)
-	var renderOverlay func() = func() {}
+	renderOverlay := func() {}
 
 	// listen for suggestion requests from shell scripts via the ipc pipe
 	go func() {

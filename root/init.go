@@ -169,8 +169,8 @@ var setupCmd = &cobra.Command{
 			} else {
 				newContent = "# Iris Autocomplete\n" + evalCmd + "\n"
 			}
-			if err := os.MkdirAll(filepath.Dir(configFile), 0755); err != nil {
-				fmt.Printf("Failed to create directory for %s: %v\n", configFile, err)
+			if mkdirErr := os.MkdirAll(filepath.Dir(configFile), 0755); mkdirErr != nil {
+				fmt.Printf("Failed to create directory for %s: %v\n", configFile, mkdirErr)
 				return
 			}
 			err = os.WriteFile(configFile, []byte(newContent), 0644)
