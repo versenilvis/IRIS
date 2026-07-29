@@ -167,20 +167,24 @@ func runWrapper() {
 
 	// put terminal in raw mode to intercept every keystroke
 	var errMakeRaw error
-	oldState, errMakeRaw = term.MakeRaw(int(stdinFile.Fd()))
-	if errMakeRaw != nil {
-		logger.Errorf("Failed to set terminal raw mode: %v", errMakeRaw)
-		panic(errMakeRaw)
-	}
-	logger.Debugf("Terminal set to raw mode successfully")
-	defer func() {
-		oldStateMu.Lock()
-		defer oldStateMu.Unlock()
-		if oldState != nil {
-			_ = term.Restore(int(stdinFile.Fd()), oldState)
-			oldState = nil
+	if term.IsTerminal(int(stdinFile.Fd())) {
+		oldState, errMakeRaw = term.MakeRaw(int(stdinFile.Fd()))
+		if errMakeRaw != nil {
+			logger.Errorf("Failed to set terminal raw mode: %v", errMakeRaw)
+			panic(errMakeRaw)
 		}
-	}()
+		logger.Debugf("Terminal set to raw mode successfully")
+		defer func() {
+			oldStateMu.Lock()
+			defer oldStateMu.Unlock()
+			if oldState != nil {
+				_ = term.Restore(int(stdinFile.Fd()), oldState)
+				oldState = nil
+			}
+		}()
+	} else {
+		logger.Warnf("stdinFile is not a terminal, skipping raw mode")
+	}
 
 	sigCh := make(chan os.Signal, 2)
 	signal.Notify(sigCh, syscall.SIGWINCH, syscall.SIGUSR1)
