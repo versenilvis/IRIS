@@ -304,12 +304,12 @@ func runWrapper() {
 		for {
 			n, err := ptmx.Read(buf)
 			if err != nil {
+				restoreTerminal()
 				if err == io.EOF || errors.Is(err, syscall.EIO) || strings.Contains(err.Error(), "input/output error") {
-					restoreTerminal()
 					os.Exit(0)
 				}
-				restoreTerminal()
-				os.Exit(0)
+				logger.Errorf("Unexpected PTY read error: %v", err)
+				os.Exit(1)
 			}
 			writeStdout(buf[:n])
 
