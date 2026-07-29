@@ -107,13 +107,19 @@ version = 1
 shell = ""        # "zsh", "bash", "fish", or empty for auto-detection
 mode = "last"     # "last", "spec", or "history"
 debug = false
+expand-alias = true
 
 [ui]
 style = "modern"  # "modern" or "classic"
 ghost-text = true
+hidden-files = false
 max-suggestions = 100
 max-height = 15
 nerd-fonts = true
+
+[keybindings]
+toggle-mode = "ctrl+r"
+toggle-menu = "ctrl+space"
 
 [git]
 filter-active-branch = true

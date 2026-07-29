@@ -50,6 +50,9 @@ mode = "last"
 # enable debug logging
 debug = false
 
+# auto expand alias when typing space
+expand-alias = true
+
 [ui]
 # visual style: "modern" (icons, category pills, shortcut footer) or "classic" (minimalist, centered number, no icons)
 style = "modern"
@@ -60,11 +63,21 @@ nerd-fonts = true
 # enable inline ghost text
 ghost-text = true
 
+# show hidden files (starting with dot) in file generator
+hidden-files = false
+
 # maximum suggestions to display
 max-suggestions = 100
 
 # maximum height of the overlay
 max-height = 15
+
+[keybindings]
+# toggle between spec and history mode
+toggle-mode = "ctrl+r"
+
+# toggle menu visibility
+toggle-menu = "ctrl+space"
 
 [git]
 # hide current branch in checkout/switch list
