@@ -434,6 +434,24 @@ func (o *Overlay) GetGhostText(buffer string, cursorAtEnd bool) string {
 	return ""
 }
 
+func (o *Overlay) ClearGhostTextState() {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.LastGhostLen = 0
+}
+
+func (o *Overlay) HideGhostTextSync() string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if o.LastGhostLen > 0 {
+		padLen := o.LastGhostLen + 4
+		res := "\0337" + strings.Repeat(" ", padLen) + "\0338"
+		o.LastGhostLen = 0
+		return res
+	}
+	return ""
+}
+
 func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd bool) string {
 	o.mu.Lock()
 	defer o.mu.Unlock()

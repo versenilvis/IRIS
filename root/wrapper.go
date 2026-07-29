@@ -576,9 +576,9 @@ func runWrapper() {
 		}
 
 		if renderTimer != nil {
-			renderTimer.Stop()
+			return
 		}
-		renderTimer = time.AfterFunc(25*time.Millisecond, func() {
+		renderTimer = time.AfterFunc(20*time.Millisecond, func() {
 			renderMu.Lock()
 			renderTimer = nil
 			renderMu.Unlock()
