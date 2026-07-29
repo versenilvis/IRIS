@@ -84,6 +84,7 @@ func saveMode(mode string) {
 
 var (
 	oldState     *term.State
+	oldStateFd   int
 	oldStateMu   sync.Mutex
 	activeMode   string
 	activeModeMu sync.RWMutex
@@ -104,7 +105,7 @@ func restoreTerminal() {
 	oldStateMu.Lock()
 	defer oldStateMu.Unlock()
 	if oldState != nil {
-		_ = term.Restore(int(os.Stdin.Fd()), oldState)
+		_ = term.Restore(oldStateFd, oldState)
 		oldState = nil
 	}
 }
@@ -155,7 +156,7 @@ func runWrapper() {
 
 	stdinFile := os.Stdin
 	if !term.IsTerminal(int(stdinFile.Fd())) {
-		if tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0); err == nil {
+		if tty, ttyErr := os.OpenFile("/dev/tty", os.O_RDWR, 0); ttyErr == nil {
 			stdinFile = tty
 		}
 	}
@@ -173,6 +174,7 @@ func runWrapper() {
 			logger.Errorf("Failed to set terminal raw mode: %v", errMakeRaw)
 			panic(errMakeRaw)
 		}
+		oldStateFd = int(stdinFile.Fd())
 		logger.Debugf("Terminal set to raw mode successfully")
 		defer func() {
 			oldStateMu.Lock()

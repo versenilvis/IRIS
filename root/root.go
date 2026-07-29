@@ -98,7 +98,7 @@ func runWatchdog() {
 
 	cmdStdin := os.Stdin
 	if !term.IsTerminal(int(cmdStdin.Fd())) {
-		if tty, err := os.OpenFile("/dev/tty", os.O_RDWR, 0); err == nil {
+		if tty, ttyErr := os.OpenFile("/dev/tty", os.O_RDWR, 0); ttyErr == nil {
 			cmdStdin = tty
 		}
 	}

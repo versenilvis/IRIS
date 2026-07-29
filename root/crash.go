@@ -20,7 +20,8 @@ func startRescueShell() {
 	if shell == "" {
 		shell = "/bin/sh"
 	}
-	_ = syscall.Exec(shell, []string{shell}, os.Environ())
+	env := append(os.Environ(), "IRIS_RESCUE=1")
+	_ = syscall.Exec(shell, []string{shell}, env)
 }
 
 var (
