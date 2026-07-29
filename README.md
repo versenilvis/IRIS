@@ -2,20 +2,21 @@
   <!-- <img width="50%" alt="banner" src="https://github.com/user-attachments/assets/c5ec623b-8259-473f-b7c3-3d01a64deb5d" /> -->
   <!-- <img width="25%" alt="logo" src="https://github.com/user-attachments/assets/79d3913c-56b7-42cb-8b07-53e98f39322b" /> -->
   <img width="15%" alt="logo" src="https://github.com/user-attachments/assets/10b7ca98-872b-44a2-bdcd-265f18aa0564" />
-  
+
   <!-- <h1>IRIS</h1> -->
   <p>IRIS (Intelligent Real-time Input Suggestion) - A shell auto-completion tool that works like code editor's IntelliSense</p>
-  
-  [![macOS](https://img.shields.io/badge/macOS-FFFFFF?style=for-the-badge&logo=apple&logoColor=black)](https://www.apple.com/macos/)
-  [![Linux](https://img.shields.io/badge/Linux-131415?style=for-the-badge&logo=linux&logoColor=white)](https://www.kernel.org/)
-  <br>
+
+[![macOS](https://img.shields.io/badge/macOS-FFFFFF?style=for-the-badge&logo=apple&logoColor=black)](https://www.apple.com/macos/)
+[![Linux](https://img.shields.io/badge/Linux-131415?style=for-the-badge&logo=linux&logoColor=white)](https://www.kernel.org/)
+<br>
   <!--[![GitHub Actions](https://img.shields.io/github/actions/workflow/status/versenilvis/IRIS/release.yml?branch=main&style=for-the-badge&logo=github&logoColor=white&label=Actions)](https://github.com/versenilvis/IRIS/actions/workflows/release.yml)-->
-  [![Status](https://img.shields.io/badge/status-beta-yellow?style=for-the-badge&logo=github&logoColor=white)]()
-  [![License: 0BSD](https://img.shields.io/badge/License-0BSD-blue?style=for-the-badge&logo=github&logoColor=white)](./LICENSE)
-    [![Documentation](https://img.shields.io/badge/docs-available-brightgreen?style=for-the-badge&logo=github&logoColor=white)](./docs/README.md)
-  [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=for-the-badge&logo=github&logoColor=white)](./CONTRIBUTING.md)
-  
-  <a href="#why-iris-instead-of-fig">Comparison</a> · <a href="#installation">Installation</a> · <a href="./docs/README.md">Docs</a> · <a href="./docs/README.md#shortcuts">Shortcuts</a> · <a href="./docs/README.md#configuration-guide">Configuration</a> · <a href="./docs/README.md#reporting-bugs">Reporting bugs</a>
+
+[![Status](https://img.shields.io/badge/status-beta-yellow?style=for-the-badge&logo=github&logoColor=white)](<>)
+[![License: 0BSD](https://img.shields.io/badge/License-0BSD-blue?style=for-the-badge&logo=github&logoColor=white)](./LICENSE)
+[![Documentation](https://img.shields.io/badge/docs-available-brightgreen?style=for-the-badge&logo=github&logoColor=white)](./docs/README.md)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=for-the-badge&logo=github&logoColor=white)](./CONTRIBUTING.md)
+
+<a href="#why-iris-instead-of-fig">Comparison</a> · <a href="#installation">Installation</a> · <a href="./docs/README.md">Docs</a> · <a href="./docs/README.md#shortcuts">Shortcuts</a> · <a href="./docs/README.md#configuration-guide">Configuration</a> · <a href="./docs/README.md#reporting-bugs">Reporting bugs</a>
 
 </div>
 <div align="center">
@@ -38,6 +39,7 @@ Run iris wherever you already work; your local machine, a remote server, or anyw
 -->
 
 ## AI suggestions
+
 <div align="center">
   <img width="1920" height="1080" alt="output" src="https://github.com/user-attachments/assets/ab80fe75-b5dd-4acd-84bb-45bca17ee3b7" />
   <i>IRIS has AI suggestions like your code editor (API key/Local)</i>
@@ -46,7 +48,7 @@ Run iris wherever you already work; your local machine, a remote server, or anyw
 ## Why Iris instead of Fig
 
 > [!IMPORTANT]
-> **[Fig](https://app.fig.io/) was officially sunset in September 2024 and migrated to Amazon Q Developer (which requires cloud authentication and proprietary bloat)**  
+> **[Fig](https://app.fig.io/) was officially sunset in September 2024 and migrated to Amazon Q Developer (which requires cloud authentication and proprietary bloat)**
 > **IRIS is the lightweight, open-source, zero-telemetry alternative built purely on native Go and TTY with no accounts, no GUI app, and no background daemons required**
 
 ### How it compares
@@ -84,7 +86,40 @@ curl -sSL https://raw.githubusercontent.com/versenilvis/iris/main/scripts/instal
 > [!WARNING]
 > Currently, Windows is not supported
 
+### Installation with Nix Flakes
+
+If you are using Nix Flakes, you can consume this module directly without building it manually.
+
+1. In your `flake.nix` inputs, add:
+
+   ```nix
+   iris.url = "github:versenilvis/iris/main";
+   ```
+
+2. Then, use one of the following options to add IRIS to your system:
+
+   **Option A: Using Home Manager**
+
+   Add to your Home Manager configuration:
+
+   ```nix
+   home.packages = [
+     inputs.iris.packages.${system}.default
+   ];
+   ```
+
+   **Option B: Without Home Manager**
+
+   Add to your system configuration:
+
+   ```nix
+   environment.systemPackages = [
+     inputs.iris.packages.${system}.default
+   ];
+   ```
+
 ## Theme
+
 <div align="center">
   <img width="1920" height="1080" alt="Kitty terminal showcase" src="https://github.com/user-attachments/assets/d45cf36e-6d7d-437a-9af9-28cd994bf55f" />
   😺 <i>Kitty terminal</i>
@@ -115,7 +150,7 @@ curl -sSL https://raw.githubusercontent.com/versenilvis/iris/main/scripts/instal
 - [Configuration guide](./docs/README.md#configuration-guide): TOML configuration settings including AI provider options
 - [Reporting bugs](./docs/README.md#reporting-bugs): debug mode, log inspection, and crash reporting
 - [Developer documentation](./docs/dev/README.md): system architecture overview, engine design, and contribution guide
- 
+
 ## License
 
 This project is licensed under the [0BSD License](LICENSE) - no strings attached. Meaning you can do whatever you want with it.
@@ -129,6 +164,7 @@ Thank you!
 I'd love to hear your feedback
 
 Feel free to reach out via:
-* [Email](mailto:versedev.store@proton.me)
-* [Twitter](https://twitter.com/versenilvis)
-* [GitHub issues](https://github.com/versenilvis/iris/issues/new)
+
+- [Email](mailto:versedev.store@proton.me)
+- [Twitter](https://twitter.com/versenilvis)
+- [GitHub issues](https://github.com/versenilvis/iris/issues/new)

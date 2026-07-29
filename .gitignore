@@ -8,3 +8,5 @@ docs/code
 docs/plan
 todo.txt
 scratch/
+.env
+.byte/
