@@ -30,7 +30,7 @@ if [ -n "$TMUX" ] && [ -n "$IRIS_PID" ]; then
     fi
 fi
 
-if [ -z "$IRIS_PID" ]; then
+if [ -z "$IRIS_PID" ] && [ -z "$IRIS_RESCUE" ]; then
     export IRIS_ACTIVE_SHELL="zsh"
     exec iris
 fi
@@ -66,7 +66,7 @@ if [ -n "$TMUX" ] && [ -n "$IRIS_PID" ]; then
     fi
 fi
 
-if [ -z "$IRIS_PID" ]; then
+if [ -z "$IRIS_PID" ] && [ -z "$IRIS_RESCUE" ]; then
     export IRIS_ACTIVE_SHELL="bash"
     exec iris
 fi
@@ -82,7 +82,7 @@ if set -q TMUX; and set -q IRIS_PID
     end
 end
 
-if status is-interactive; and not set -q IRIS_PID
+if status is-interactive; and not set -q IRIS_PID; and not set -q IRIS_RESCUE
     set -gx IRIS_ACTIVE_SHELL "fish"
     exec iris
 end
