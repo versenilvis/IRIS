@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/versenilvis/iris/internal/config"
 )
 
 // for tracking current working dir
@@ -34,7 +36,7 @@ func GetCWD() string {
 // dir = "src/", filePrefix = "mai"
 // search for which matches "mai" case, and show it (whici is both main.go and main.py)
 // but if you type "go run src/mai" -> it will only shows suggestion about src/main.go
-// NOTE: it will skip hidden file start with dot prefix
+// NOTE: it will skip hidden file start with dot prefix unless configured otherwise
 func FileGenerator(filters ...string) GeneratorFunc {
 	dirOnly := false
 	filterSet := make(map[string]bool)
@@ -82,8 +84,8 @@ func FileGenerator(filters ...string) GeneratorFunc {
 		for _, entry := range entries {
 			name := entry.Name()
 
-			// skip hidden files
-			if strings.HasPrefix(name, ".") {
+			// skip hidden files if not configured to show them
+			if !config.Get().UI.ShowHiddenFiles && strings.HasPrefix(entry.Name(), ".") {
 				continue
 			}
 

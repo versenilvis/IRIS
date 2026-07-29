@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/versenilvis/iris/integration/shell"
 	"github.com/versenilvis/iris/internal/config"
 )
 
@@ -26,10 +27,12 @@ var uninstallCmd = &cobra.Command{
 			return
 		}
 
+		zshrcPath := filepath.Join(shell.GetZshConfigDir(), ".zshrc")
+
 		configFiles := []string{
-			filepath.Join(home, ".zshrc"),
+			zshrcPath,
 			filepath.Join(home, ".bashrc"),
-			filepath.Join(home, ".config", "fish", "config.fish"),
+			filepath.Join(shell.GetFishConfigDir(), "config.fish"),
 		}
 
 		for _, file := range configFiles {

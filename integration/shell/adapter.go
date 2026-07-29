@@ -1,11 +1,14 @@
 package shell
 
 import (
+	"context"
 	"fmt"
 	"maps"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // Adapter defines the behavior for different shell environments
@@ -59,7 +62,43 @@ func (z *ZshAdapter) PrepareSelectSequence(selected string) []byte {
 	return append([]byte{0x15}, []byte(selected)...)
 }
 func (z *ZshAdapter) ScanAliases() map[string]string {
-	return ScanPosixAliases([]string{".zshrc", ".zshenv", ".zprofile"})
+	envSet := os.Getenv("ZDOTDIR") != ""
+	zdotdir := GetZshConfigDir()
+	home, _ := os.UserHomeDir()
+	
+	var files []string
+	if !envSet && zdotdir != home {
+		files = append(files, filepath.Join(home, ".zshenv"))
+	}
+	
+	files = append(files,
+		filepath.Join(zdotdir, ".zshenv"),
+		filepath.Join(zdotdir, ".zprofile"),
+		filepath.Join(zdotdir, ".zshrc"),
+	)
+	
+	return ScanPosixAliases(files)
+}
+
+func GetZshConfigDir() string {
+	if zdotdir := os.Getenv("ZDOTDIR"); zdotdir != "" {
+		return zdotdir
+	}
+	
+	// Fallback: ask zsh directly in case ZDOTDIR is set in ~/.zshenv without export
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "zsh", "-c", "echo $ZDOTDIR")
+	out, err := cmd.Output()
+	if err == nil {
+		zdotdir := strings.TrimSpace(string(out))
+		if zdotdir != "" {
+			return zdotdir
+		}
+	}
+	
+	home, _ := os.UserHomeDir()
+	return home
 }
 
 // FishAdapter implementation
@@ -75,7 +114,15 @@ func (f *FishAdapter) PrepareSelectSequence(selected string) []byte {
 }
 func (f *FishAdapter) ScanAliases() map[string]string {
 	// fish uses 'alias' command in config.fish or separate function files
-	return ScanPosixAliases([]string{filepath.Join(".config", "fish", "config.fish")})
+	return ScanPosixAliases([]string{filepath.Join(GetFishConfigDir(), "config.fish")})
+}
+
+func GetFishConfigDir() string {
+	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
+		return filepath.Join(xdg, "fish")
+	}
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".config", "fish")
 }
 
 func ScanPosixAliases(files []string) map[string]string {

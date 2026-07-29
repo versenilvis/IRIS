@@ -5,17 +5,19 @@ import "time"
 func DefaultConfig() *Config {
 	return &Config{
 		Core: CoreConfig{
-			Version: 1,
-			Shell:   "",
-			Mode:    "last",
-			Debug:   false,
+			Version:     1,
+			Shell:       "",
+			Mode:        "last",
+			Debug:       false,
+			ExpandAlias: true,
 		},
 		UI: UIConfig{
-			Style:          "modern",
-			GhostText:      true,
-			MaxSuggestions: 100,
-			MaxHeight:      15,
-			NerdFonts:      true,
+			Style:           "modern",
+			GhostText:       true,
+			ShowHiddenFiles: false,
+			MaxSuggestions:  100,
+			MaxHeight:       15,
+			NerdFonts:       true,
 		},
 		Git: GitConfig{
 			FilterActiveBranch:  true,
@@ -37,6 +39,10 @@ func DefaultConfig() *Config {
 				DebounceMS:    800,
 				MinIntervalMS: 5000,
 			},
+		},
+		Keybindings: KeybindingsConfig{
+			ToggleMode: "ctrl+r",
+			ToggleMenu: "shift+tab",
 		},
 	}
 }

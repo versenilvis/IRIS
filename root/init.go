@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/versenilvis/iris/integration/shell"
 	"github.com/versenilvis/iris/internal/config"
 )
 
@@ -145,13 +146,13 @@ var setupCmd = &cobra.Command{
 
 		switch shellName {
 		case "zsh":
-			configFile = filepath.Join(home, ".zshrc")
+			configFile = filepath.Join(shell.GetZshConfigDir(), ".zshrc")
 			evalCmd = `eval "$(iris init zsh)"`
 		case "bash":
 			configFile = filepath.Join(home, ".bashrc")
 			evalCmd = `eval "$(iris init bash)"`
 		case "fish":
-			configFile = filepath.Join(home, ".config", "fish", "config.fish")
+			configFile = filepath.Join(shell.GetFishConfigDir(), "config.fish")
 			evalCmd = `iris init fish | source`
 		default:
 			fmt.Printf("Unsupported shell: %s. Please add iris init manually.\n", shellName)
@@ -202,12 +203,18 @@ mode = "last"
 # enable debug logging
 debug = false
 
+# automatically expand aliases on space
+expand-alias = true
+
 [ui]
 # visual style: "modern" (icons, category pills, shortcut footer) or "classic" (minimalist, centered number, no icons)
 style = "modern"
 
 # enable Nerd Fonts icons in overlay menu
 nerd-fonts = true
+
+# show hidden files with dot prefix
+hidden-files = false
 
 # enable inline ghost text
 ghost-text = true
@@ -234,6 +241,12 @@ channel = "stable"
 
 # interval between update checks, e.g. "24h", "6h", "30m"
 check-interval = "24h"
+
+[keybindings]
+toggle_mode = "ctrl+r"
+toggle_menu = "shift+tab"
+select_suggestion = "tab"
+accept_suggestion = "right"
 `
 				if errWrite := os.WriteFile(path, []byte(defaultContent), 0644); errWrite == nil {
 					fmt.Printf("✓ Initialized default config file at %s\n", path)
