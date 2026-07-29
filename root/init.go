@@ -71,6 +71,18 @@ if [ -z "$IRIS_PID" ] && [ -z "$IRIS_RESCUE" ]; then
     export IRIS_ACTIVE_SHELL="bash"
     exec iris
 fi
+
+# Iris Autocomplete Hook
+if [ -n "$IRIS_PID" ] && [ -n "$IRIS_FD" ]; then
+  _iris_bash_precmd() {
+    printf "IRIS_CMD_STOP\x00" >&$IRIS_FD 2>/dev/null
+  }
+
+  if [[ ";$PROMPT_COMMAND;" != *";_iris_bash_precmd;"* ]]; then
+    PROMPT_COMMAND="_iris_bash_precmd${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
+  fi
+fi
+
 `)
 		case "fish":
 			fmt.Printf(`
