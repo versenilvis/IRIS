@@ -247,6 +247,8 @@ func runWrapper() {
 
 	overlay := integration.NewOverlay()
 
+
+
 	// start background update check (async)
 	pendingUpdate = startBackgroundUpdateCheck()
 	updatePrinted := false
@@ -256,6 +258,12 @@ func runWrapper() {
 		shellPGID = spec.ShellPID
 	}
 	var isCommandActive atomic.Bool
+	var disableGhostText atomic.Bool
+	disableGhostText.Store(!config.Get().UI.GhostText)
+	config.AutoDetectConfigChange(func(cfg *config.Config) {
+		disableGhostText.Store(!cfg.UI.GhostText)
+	})
+	var renderOverlay func()
 	isExecuting := func() bool {
 		if isCommandActive.Load() {
 			return true
@@ -310,10 +318,6 @@ func runWrapper() {
 			}
 		}
 	}()
-
-	var disableGhostText atomic.Bool
-	disableGhostText.Store(!config.Get().UI.GhostText)
-	var renderOverlay func()
 
 	// listen for suggestion requests from shell scripts via the ipc pipe
 	go func() {
@@ -614,6 +618,21 @@ func runWrapper() {
 				b := inputSlice[i]
 				intercepted := false
 
+				if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.ToggleMenu); matched {
+					intercepted = true
+					suggestionsEnabled = !suggestionsEnabled
+					logger.Debugf("Intercepted ToggleMenu, suggestionsEnabled=%v", suggestionsEnabled)
+					if !suggestionsEnabled {
+						writeStdout([]byte(overlay.ClearAndDisable()))
+					} else {
+						shouldOverlayDraw = true
+					}
+					i += consumed - 1
+					continue
+				}
+
+
+
 				if b == '\033' {
 					// check for bracketed paste start/end
 					if i+5 < n && inputSlice[i+1] == '[' && inputSlice[i+2] == '2' && inputSlice[i+3] == '0' {
@@ -628,20 +647,6 @@ func runWrapper() {
 					}
 					// handle escape sequences like arrow keys and functional shortcuts
 					if i+2 < n && (inputSlice[i+1] == '[' || inputSlice[i+1] == 'O') {
-						// shift tab: hide/unhide menu dropdown
-						if inputSlice[i+1] == '[' && inputSlice[i+2] == 'Z' {
-							intercepted = true
-							suggestionsEnabled = !suggestionsEnabled
-							logger.Debugf("Intercepted Shift+Tab, suggestionsEnabled=%v", suggestionsEnabled)
-							if !suggestionsEnabled {
-								writeStdout([]byte(overlay.ClearAndDisable()))
-							} else {
-								shouldOverlayDraw = true
-							}
-							i += 2
-							continue
-						}
-
 						if overlay.IsVisible() && (inputSlice[i+2] == 'A' || inputSlice[i+2] == 'B') {
 							intercepted = true
 							userNavigated.Store(true)
@@ -722,24 +727,6 @@ func runWrapper() {
 							}
 							i += 2
 							continue
-						} else if !disableGhostText.Load() && inputSlice[i+2] == 'C' { // right arrow
-							bufferMu.Lock()
-							atEnd := (cursorOffset == 0)
-							ghostText := overlay.GetGhostText(naiveBuffer, atEnd)
-							bufferMu.Unlock()
-
-							if len(ghostText) > 0 {
-								intercepted = true
-								logger.Debugf("Intercepted Right Arrow (accepted ghost text: %q)", ghostText)
-								bufferMu.Lock()
-								naiveBuffer += ghostText
-								cursorOffset = 0
-								bufferMu.Unlock()
-								_, _ = ptmx.Write([]byte(ghostText))
-								shouldOverlayDraw = true
-								i += 2
-								continue
-							}
 						}
 					}
 
@@ -775,6 +762,29 @@ func runWrapper() {
 								i += 2
 								continue
 							}
+
+							bufferMu.Lock()
+							atEnd := (cursorOffset == 0)
+							ghostText := ""
+							if !disableGhostText.Load() {
+								ghostText = overlay.GetGhostText(naiveBuffer, atEnd)
+							}
+							bufferMu.Unlock()
+
+							if len(ghostText) > 0 {
+								intercepted = true
+								logger.Debugf("Intercepted Right Arrow (accepted ghost text: %q)", ghostText)
+								bufferMu.Lock()
+								naiveBuffer += ghostText
+								cursorOffset = 0
+								bufferMu.Unlock()
+								overlay.ClearGhostTextState()
+								_, _ = ptmx.Write([]byte(ghostText))
+								shouldOverlayDraw = true
+								i += 2
+								continue
+							}
+
 							bufferMu.Lock()
 							if naiveBuffer != "" || overlay.IsVisible() {
 								cursorOffset--
@@ -813,7 +823,8 @@ func runWrapper() {
 					continue
 				}
 
-				if b == 0x12 { // ctrl+r: toggle between command specs and command history
+				if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.ToggleMode); matched { // ctrl+r: toggle between command specs and command history
+					i += consumed - 1
 					intercepted = true
 					activeModeMu.Lock()
 					if activeMode == "spec" {
@@ -869,12 +880,33 @@ func runWrapper() {
 					}
 					renderMu.Unlock()
 
+					if cmdToSubmit == "" {
+						bufferMu.Lock()
+						cmdToSubmit = naiveBuffer
+						bufferMu.Unlock()
+					}
+
+					if strings.TrimSpace(cmdToSubmit) == "iris reload" {
+						if newCfg, err := config.Load(); err == nil {
+							config.Init(newCfg)
+							disableGhostText.Store(!newCfg.UI.GhostText)
+						}
+						// Clear the shell line with Ctrl+U, then echo message, then Enter
+						msg := "echo -e '\\033[32m✓ Iris configuration reloaded successfully.\\033[0m'\r"
+						_, _ = ptmx.Write(append([]byte{0x15}, []byte(msg)...))
+						bufferMu.Lock()
+						naiveBuffer = ""
+						cursorOffset = 0
+						bufferMu.Unlock()
+						disableGhostText.Store(false)
+						shouldOverlayDraw = false
+						userNavigated.Store(false)
+						continue
+					}
+
 					isCommandActive.Store(true)
 					_, _ = ptmx.Write([]byte{b})
 					bufferMu.Lock()
-					if cmdToSubmit == "" {
-						cmdToSubmit = naiveBuffer
-					}
 					lastSubmittedCommand = strings.TrimSpace(cmdToSubmit)
 					naiveBuffer = ""
 					cursorOffset = 0
@@ -930,12 +962,8 @@ func runWrapper() {
 						bufferMu.Unlock()
 
 						_, _ = ptmx.Write(append([]byte{0x15}, selected...))
-
-						overlay.ResetCursor() // this prevents when you tab, it switches between suggestions non-stop
-
-						shouldOverlayDraw = true // <- rerender after tab to choose, if you set to false,
-						// when you press tab continually, it will print all folder from menu suggestions
-						// and make the cursor jump to next line
+						overlay.ResetCursor()
+						shouldOverlayDraw = true
 						userNavigated.Store(false)
 					}
 					continue
@@ -1034,8 +1062,9 @@ func runWrapper() {
 						// track normal printable characters in the buffer for matching
 						if b >= 32 && b <= 126 {
 							// expand alias on space, but only when typing manually (not pasting)
+							// and only if expand-alias configuration is enabled
 							bufferMu.Lock()
-							isSpaceAlias := !inBracketedPaste && b == ' ' && naiveBuffer != "" && !strings.Contains(naiveBuffer, " ")
+							isSpaceAlias := config.Get().Core.ExpandAlias && !inBracketedPaste && b == ' ' && naiveBuffer != "" && !strings.Contains(naiveBuffer, " ")
 							var target string
 							var ok bool
 							if isSpaceAlias {

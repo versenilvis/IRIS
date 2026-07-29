@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -32,18 +33,20 @@ func (d Duration) MarshalText() ([]byte, error) {
 }
 
 type CoreConfig struct {
-	Version int    `toml:"version"`
-	Shell   string `toml:"shell"`
-	Mode    string `toml:"mode"`
-	Debug   bool   `toml:"debug"`
+	Version     int    `toml:"version"`
+	Shell       string `toml:"shell"`
+	Mode        string `toml:"mode"`
+	Debug       bool   `toml:"debug"`
+	ExpandAlias bool   `toml:"expand-alias"`
 }
 
 type UIConfig struct {
-	Style          string `toml:"style"`
-	GhostText      bool   `toml:"ghost-text"`
-	MaxSuggestions int    `toml:"max-suggestions"`
-	MaxHeight      int    `toml:"max-height"`
-	NerdFonts      bool   `toml:"nerd-fonts"`
+	Style           string `toml:"style"`
+	GhostText       bool   `toml:"ghost-text"`
+	ShowHiddenFiles bool   `toml:"hidden-files"`
+	MaxSuggestions  int    `toml:"max-suggestions"`
+	MaxHeight       int    `toml:"max-height"`
+	NerdFonts       bool   `toml:"nerd-fonts"`
 }
 
 type GitConfig struct {
@@ -55,6 +58,11 @@ type UpdaterConfig struct {
 	CheckOnStartup bool     `toml:"check-on-startup"`
 	Channel        string   `toml:"channel"`
 	CheckInterval  Duration `toml:"check-interval"`
+}
+
+type KeybindingsConfig struct {
+	ToggleMode string `toml:"toggle-mode"`
+	ToggleMenu string `toml:"toggle-menu"`
 }
 
 type SuggestOnEmptyConfig struct {
@@ -101,30 +109,62 @@ func (p *ProviderConfig) GetAPIKey() string {
 }
 
 type Config struct {
-	Core    CoreConfig    `toml:"core"`
-	UI      UIConfig      `toml:"ui"`
-	Git     GitConfig     `toml:"git"`
-	Updater UpdaterConfig `toml:"updater"`
-	AI      AIConfig      `toml:"ai"`
+	Core        CoreConfig        `toml:"core"`
+	UI          UIConfig          `toml:"ui"`
+	Git         GitConfig         `toml:"git"`
+	Updater     UpdaterConfig     `toml:"updater"`
+	AI          AIConfig          `toml:"ai"`
+	Keybindings KeybindingsConfig `toml:"keybindings"`
 }
 
 var (
-	activeConfig *Config
+	activeConfig atomic.Pointer[Config]
 	once         sync.Once
 )
 
 func Get() *Config {
 	once.Do(func() {
-		if activeConfig == nil {
-			activeConfig = DefaultConfig()
+		if activeConfig.Load() == nil {
+			activeConfig.Store(DefaultConfig())
 		}
 	})
-	return activeConfig
+	return activeConfig.Load()
 }
 
 func Init(cfg *Config) {
-	activeConfig = cfg
+	activeConfig.Store(cfg)
 	once.Do(func() {})
+}
+
+func AutoDetectConfigChange(onReload func(cfg *Config)) {
+	path, err := ConfigPath()
+	if err != nil {
+		return
+	}
+	go func() {
+		var lastMod time.Time
+		if info, err := os.Stat(path); err == nil {
+			lastMod = info.ModTime()
+		}
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			info, err := os.Stat(path)
+			if err == nil {
+				if !lastMod.IsZero() && info.ModTime().After(lastMod) {
+					lastMod = info.ModTime()
+					if newCfg, err := Load(); err == nil {
+						Init(newCfg)
+						if onReload != nil {
+							onReload(newCfg)
+						}
+					}
+				} else if lastMod.IsZero() {
+					lastMod = info.ModTime()
+				}
+			}
+		}
+	}()
 }
 
 func Load() (*Config, error) {

@@ -186,12 +186,18 @@ mode = "last"
 # enable debug logging
 debug = false
 
+# automatically expand aliases on space
+expand-alias = true
+
 [ui]
 # visual style: "modern" (icons, category pills, shortcut footer) or "classic" (minimalist, centered number, no icons)
 style = "modern"
 
 # enable Nerd Fonts icons in overlay menu
 nerd-fonts = true
+
+# show hidden files with dot prefix
+hidden-files = false
 
 # enable inline ghost text
 ghost-text = true
@@ -218,6 +224,12 @@ channel = "stable"
 
 # interval between update checks, e.g. "24h", "6h", "30m"
 check-interval = "24h"
+
+[keybindings]
+toggle_mode = "ctrl+r"
+toggle_menu = "shift+tab"
+select_suggestion = "tab"
+accept_suggestion = "right"
 `
 				if errWrite := os.WriteFile(path, []byte(defaultContent), 0644); errWrite == nil {
 					fmt.Printf("✓ Initialized default config file at %s\n", path)
