@@ -284,7 +284,7 @@ func runWrapper() {
 	config.AutoDetectConfigChange(func(cfg *config.Config) {
 		disableGhostText.Store(!cfg.UI.GhostText)
 	})
-	var renderOverlay func()
+	renderOverlay := func() {}
 	isExecuting := func() bool {
 		if isCommandActive.Load() {
 			return true
@@ -341,9 +341,7 @@ func runWrapper() {
 		}
 	}()
 
-	var disableGhostText atomic.Bool
-	disableGhostText.Store(!config.Get().UI.GhostText)
-	renderOverlay := func() {}
+
 
 	// listen for suggestion requests from shell scripts via the ipc pipe
 	go func() {
