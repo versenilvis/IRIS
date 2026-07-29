@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -297,11 +298,12 @@ func runWrapper() {
 		for {
 			n, err := ptmx.Read(buf)
 			if err != nil {
-				if err == io.EOF {
+				if err == io.EOF || errors.Is(err, syscall.EIO) || strings.Contains(err.Error(), "input/output error") {
 					restoreTerminal()
 					os.Exit(0)
 				}
-				continue
+				restoreTerminal()
+				os.Exit(0)
 			}
 			writeStdout(buf[:n])
 
