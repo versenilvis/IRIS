@@ -268,7 +268,7 @@ debug=true
 > [!IMPORTANT]
 > **Since IRIS logs everything you type, you should only enable debug mode when you need to report bugs**
 
-If IRIS crashes, it will automatically save a crash log and show the path on your terminal (`/home/{USER}/.iris/crash.log`). Or you can find the path to the latest crash log by running:
+If IRIS crashes, it will automatically save a crash log and show the path on your terminal (`~/.iris/crash.log`). Or you can find the path to the latest crash log by running:
 ```bash
 iris crash-log
 ```
