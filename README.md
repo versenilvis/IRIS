@@ -203,7 +203,7 @@ timeout_ms = 5000
 > Using `api_key_env` is recommended over hardcoding `api_key` in plain text to keep credentials out of configuration files.
 
 
-## Shortcuts
+## Default shortcuts
 
 | Shortcut                           | Action                  | Description                                                               |
 | :--------------------------------- | :---------------------- | :------------------------------------------------------------------------ |
