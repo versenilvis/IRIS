@@ -40,6 +40,14 @@ cd iris
 just reload
 ```
 
+### Uninstallation
+
+To completely uninstall Iris, remove all configurations, and clean up your shell integration files, simply run:
+
+```bash
+iris uninstall
+```
+
 ### Shell setup
 
 Add an alias to your shell configuration file to launch Iris easily:
