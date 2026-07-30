@@ -156,7 +156,7 @@ iris config show
 [core]
 version = 1
 shell = ""        # "zsh", "bash", "fish", or empty for auto-detection
-login = false     # run bash as a login shell; can also be enabled with iris --login
+login = false     # run the selected shell as a login shell; can also be enabled with iris --login
 mode = "last"     # "last", "spec", or "history"
 debug = false
 expand-alias = true

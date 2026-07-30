@@ -43,7 +43,7 @@ version = 1
 # override shell: "bash", "zsh", "fish", keep empty for auto detection
 shell = ""
 
-# run bash as a login shell
+# run the selected shell as a login shell
 login = false
 
 # startup mode: "last", "spec", "history"

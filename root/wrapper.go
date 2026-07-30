@@ -82,8 +82,8 @@ func saveMode(mode string) {
 	_ = config.SaveState(state)
 }
 
-func shellArgs(shellName string, login bool) []string {
-	if shellName == "bash" && login {
+func shellArgs(login bool) []string {
+	if login {
 		return []string{"--login"}
 	}
 	return nil
@@ -148,7 +148,7 @@ func runWrapper() {
 	adapter := shell.Current
 
 	ctx := context.Background()
-	c := exec.CommandContext(ctx, adapter.GetShellPath(), shellArgs(adapter.GetName(), config.Get().Core.Login)...)
+	c := exec.CommandContext(ctx, adapter.GetShellPath(), shellArgs(config.Get().Core.Login)...)
 	c.ExtraFiles = make([]*os.File, 11)
 	// pass write end of pipe to shell as fd 13 (since index 10 maps to 13)
 	c.ExtraFiles[10] = w

@@ -148,7 +148,7 @@ var setupCmd = &cobra.Command{
 
 		var shellName string
 		if len(args) > 0 {
-			shellName = args[0]
+			shellName = filepath.Base(args[0])
 		} else {
 			shellPath := os.Getenv("SHELL")
 			shellName = filepath.Base(shellPath)
@@ -208,7 +208,7 @@ version = 1
 # override shell: "bash", "zsh", "fish", keep empty for auto detection
 shell = ""
 
-# run bash as a login shell
+# run the selected shell as a login shell
 login = false
 
 # startup mode: "last", "spec", "history"

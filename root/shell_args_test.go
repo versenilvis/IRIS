@@ -7,21 +7,18 @@ import (
 
 func TestShellArgs(t *testing.T) {
 	tests := []struct {
-		name      string
-		shellName string
-		login     bool
-		want      []string
+		name  string
+		login bool
+		want  []string
 	}{
-		{name: "bash login", shellName: "bash", login: true, want: []string{"--login"}},
-		{name: "bash non-login", shellName: "bash", login: false},
-		{name: "zsh unchanged", shellName: "zsh", login: true},
-		{name: "fish unchanged", shellName: "fish", login: true},
+		{name: "login", login: true, want: []string{"--login"}},
+		{name: "non-login", login: false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := shellArgs(tt.shellName, tt.login); !reflect.DeepEqual(got, tt.want) {
-				t.Fatalf("shellArgs(%q, %v) = %v, want %v", tt.shellName, tt.login, got, tt.want)
+			if got := shellArgs(tt.login); !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("shellArgs(%v) = %v, want %v", tt.login, got, tt.want)
 			}
 		})
 	}

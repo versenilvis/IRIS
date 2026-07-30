@@ -57,7 +57,7 @@ It works exactly like coding editor suggestion menu drop down.`,
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&shellFlag, "shell", "s", "", "shell to use (bash, zsh, fish)")
-	rootCmd.PersistentFlags().BoolVar(&loginFlag, "login", false, "run bash as a login shell")
+	rootCmd.PersistentFlags().BoolVar(&loginFlag, "login", false, "run the selected shell as a login shell")
 	rootCmd.PersistentFlags().BoolVarP(&debugMode, "debug", "d", false, "enable debug logging to iris.log")
 
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
