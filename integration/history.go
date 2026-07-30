@@ -208,52 +208,33 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 	var results []HistResult
 	seenCmds := make(map[string]bool)
 
-	addMatches := func(q string, subcmdFilter bool) {
+	addMatches := func(q string) {
 		qLow := strings.ToLower(q)
-		queryFirstWord := ""
-		querySecondWord := ""
-		if strings.IndexByte(qLow, ' ') != -1 {
-			if fields := strings.Fields(qLow); len(fields) > 0 {
-				queryFirstWord = fields[0]
-				// find first non-flag token after the command as the subcommand
-				for _, f := range fields[1:] {
-					if !strings.HasPrefix(f, "-") {
-						querySecondWord = f
-						break
-					}
-				}
-			}
-		}
 
-		// extract pure prefix matches based strictly on recency order (historyCache is newest-first)
+		// extract pure substring matches (all words present) based strictly on recency order (historyCache is newest-first)
+		// this ensures that long commands with exact substrings are never truncated by the fuzzy searcher's limit
 		strictMatches := 0
+		words := strings.Fields(qLow)
+		if len(words) == 0 {
+			words = []string{qLow}
+		}
+		
 		for _, cmd := range historyCache {
 			if seenCmds[cmd] {
 				continue
 			}
-			fields := strings.Fields(cmd)
-			firstWordLow := ""
-			if len(fields) > 0 {
-				firstWordLow = strings.ToLower(fields[0])
+			
+			cmdLow := strings.ToLower(cmd)
+			matchAll := true
+			for _, w := range words {
+				if !strings.Contains(cmdLow, w) {
+					matchAll = false
+					break
+				}
 			}
 			
-			if queryFirstWord != "" {
-				if firstWordLow != queryFirstWord {
-					continue
-				}
-				if subcmdFilter && querySecondWord != "" {
-					if len(fields) < 2 {
-						continue
-					}
-					secondWordLow := strings.ToLower(fields[1])
-					if !strings.HasPrefix(secondWordLow, querySecondWord) {
-						continue
-					}
-				}
-			} else {
-				if !strings.HasPrefix(firstWordLow, qLow) {
-					continue
-				}
+			if !matchAll {
+				continue
 			}
 			
 			seenCmds[cmd] = true
@@ -275,8 +256,8 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 			}
 			
 			// filter out extremely weak fuzzy matches (e.g. random garbage typing that 
-			// loosely matches across a very long command). Valid matches usually score > 300.
-			if m.Score < 100 {
+			// loosely matches across a very long command)
+			if len(q) > 0 && m.Score/len(q) < 150 {
 				continue
 			}
 
@@ -289,18 +270,9 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 		}
 	}
 
-	addMatches(query, true)
+	addMatches(query)
 	for _, altQ := range alternativeQueries {
-		addMatches(altQ, true)
-	}
-
-	// fallback: if subcommand filter produced nothing, retry without it
-	// so typos like "git chckout" still surface fuzzy matches
-	if len(results) == 0 {
-		addMatches(query, false)
-		for _, altQ := range alternativeQueries {
-			addMatches(altQ, false)
-		}
+		addMatches(altQ)
 	}
 
 	getTier := func(cmd, q string) int {
