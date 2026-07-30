@@ -141,7 +141,7 @@ end
 ```
 ## Configuration guide
 
-Iris uses a clean TOML configuration file located at `~/.config/iris/config.toml`.
+IRIS uses a clean TOML configuration file located at `~/.config/iris/config.toml`.
 
 ### Creating & viewing config
 
@@ -267,6 +267,12 @@ debug=true
 
 > [!IMPORTANT]
 > **Since IRIS logs everything you type, you should only enable debug mode when you need to report bugs**
+
+If IRIS crashes, it will automatically save a crash log and show the path on your terminal (`/home/{USER}/.iris/crash.log`). Or you can find the path to the latest crash log by running:
+```bash
+iris crash-log
+```
+Please include this file when reporting a crash.
  
 ## Developer documentation
 
