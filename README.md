@@ -43,7 +43,7 @@ Run iris wherever you already work; your local machine, a remote server, or anyw
   <i>IRIS has AI suggestions like your code editor (API key/Local)</i>
 </div>
 
-## Why Iris instead of Fig
+## Why IRIS instead of Fig
 
 > [!IMPORTANT]
 > **[Fig](https://app.fig.io/) was officially sunset in September 2024 and migrated to Amazon Q Developer (which requires cloud authentication and proprietary bloat)**  
@@ -51,7 +51,7 @@ Run iris wherever you already work; your local machine, a remote server, or anyw
 
 ### How it compares
 
-| Feature                     | Iris                 | Fig              |
+| Feature                     | IRIS                 | Fig              |
 | :-------------------------- | :------------------- | :--------------- |
 | **Platforms**               | Linux, macOS         | macOS only       |
 | **Engine**                  | Native Go (TTY)      | Electron         |
@@ -66,7 +66,7 @@ Run iris wherever you already work; your local machine, a remote server, or anyw
 
 Shell plugins are great, but they also come with trade-offs. And also, not everyone use Zsh or Fish especially on SSH.
 
-| Feature                     | Iris                    | Shell plugins                |
+| Feature                     | IRIS                    | Shell plugins                |
 | :-------------------------- | :---------------------- | :--------------------------- |
 | **Installation**            | Single binary           | Plugin manager required      |
 | **Shell support**           | Most shells supported   | Usually shell-specific       |
@@ -75,14 +75,156 @@ Shell plugins are great, but they also come with trade-offs. And also, not every
 | **Tmux**                    | ✓                       | Depends on the shell         |
 | **Linux virtual terminals** | ✓                       | Depends on the shell         |
 
-## Installation
+## Install
+
+#### Dependencies
+
+- OS: Linux or macOS
+- Terminal emulator with ANSI color support
+- Go 1.24 or newer (if building from source)
+
+
+#### Method 1: Install script (recommended)
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/versenilvis/iris/main/scripts/install.sh | sh
 ```
 
+#### Method 2: Go install
+
+```bash
+go install github.com/versenilvis/iris/cmd/iris@latest
+```
+
+#### Method 3: Build from source (for developers)
+
+```bash
+git clone https://github.com/versenilvis/iris.git
+cd iris
+just reload
+```
+
 > [!WARNING]
 > Currently, Windows is not supported
+
+## Uninstall
+
+To completely uninstall IRIS, remove all configurations, and clean up your shell integration files, simply run:
+
+```bash
+iris uninstall
+```
+
+## Shell setup
+
+Add an alias to your shell configuration file to launch IRIS easily:
+
+**Zsh (`~/.zshrc`):**
+```zsh
+if command -v iris >/dev/null 2>&1; then
+    alias i="iris"
+fi
+```
+
+**Bash (`~/.bashrc`):**
+```bash
+if command -v iris >/dev/null 2>&1; then
+    alias i="iris"
+fi
+```
+
+**Fish (`~/.config/fish/config.fish`):**
+```fish
+if command -v iris >/dev/null 2>&1
+    alias i="iris"
+end
+```
+## Configuration guide
+
+Iris uses a clean TOML configuration file located at `~/.config/iris/config.toml`.
+
+### Creating & viewing config
+
+```bash
+iris config init
+iris config show
+```
+
+### Sample `config.toml`
+
+```toml
+[core]
+version = 1
+shell = ""        # "zsh", "bash", "fish", or empty for auto-detection
+mode = "last"     # "last", "spec", or "history"
+debug = false
+expand-alias = true
+
+[ui]
+style = "modern"  # "modern" or "classic"
+ghost-text = true
+hidden-files = false
+max-suggestions = 100
+max-height = 15
+nerd-fonts = true
+
+[keybindings]
+toggle-mode = "ctrl+r"
+toggle-menu = "ctrl+space"
+
+[git]
+filter-active-branch = true
+deduplicate-branches = true
+
+[updater]
+check-on-startup = true
+channel = "stable" # "stable" or "nightly"
+check-interval = "24h"
+
+[ai]
+enabled = false
+provider = "groq" # "groq" or "ollama"
+debounce_ms = 400
+
+# please use free subscription, that is enough for your daily usage
+[ai.providers.groq]
+endpoint = "https://api.groq.com/openai/v1/chat/completions"
+api_key_env = "GROQ_API_KEY" # or set api_key directly
+model = "llama-3.3-70b-versatile"
+timeout_ms = 3000
+
+[ai.providers.ollama]
+endpoint = "http://localhost:11434/v1/chat/completions"
+model = "qwen2.5-coder"
+timeout_ms = 5000
+```
+
+> [!NOTE]
+> Using `api_key_env` is recommended over hardcoding `api_key` in plain text to keep credentials out of configuration files.
+
+
+## Shortcuts
+
+| Shortcut                           | Action                  | Description                                                               |
+| :--------------------------------- | :---------------------- | :------------------------------------------------------------------------ |
+| <kbd>Shift</kbd> + <kbd>Tab</kbd>  | Toggle menu             | Show or hide the suggestion menu.                                         |
+| <kbd>Esc</kbd>                     | Hide menu               | Temporarily hide the menu until the next key press.                       |
+| <kbd>Tab</kbd>                     | Accept suggestion       | Insert the currently selected suggestion into the prompt.                 |
+| <kbd>Enter</kbd>                   | Execute command         | Close the menu and send the current command to the shell.                 |
+| <kbd>↑</kbd>                       | Navigate up / history   | Move the selection up, or open command history when the prompt is empty.  |
+| <kbd>↓</kbd>                       | Navigate down / history | Move the selection down, or open command history when the prompt is empty.|
+| <kbd>→</kbd>                       | Accept ghost text       | Accept the faded ghost text suggestion when the menu is open.             |
+| <kbd>←</kbd> / <kbd>→</kbd>        | Move cursor             | Move the cursor inside the input buffer. Disabled when the prompt is empty|
+| <kbd>Ctrl</kbd> + <kbd>R</kbd>     | Switch mode             | Toggle between `spec` and `history` mode.                                 |
+| <kbd>Ctrl</kbd> + <kbd>A</kbd>     | Beginning of line       | Move the cursor to the start of the command line.                         |
+| <kbd>Ctrl</kbd> + <kbd>E</kbd>     | End of line             | Move the cursor to the end of the command line.                           |
+| <kbd>Ctrl</kbd> + <kbd>L</kbd>     | Clear screen            | Clear the terminal while preserving the input buffer and redrawing the menu. |
+| <kbd>Ctrl</kbd> + <kbd>U</kbd>     | Clear command           | Remove the entire current command and close the menu.                     |
+| <kbd>Ctrl</kbd> + <kbd>C</kbd>     | Cancel command          | Send `SIGINT`, clear the input buffer, and close the menu.                |
+| <kbd>Ctrl</kbd> + <kbd>W</kbd>     | Delete word             | Delete the word immediately before the cursor.                            |
+
+> [!NOTE]
+> With <kbd>Ctrl</kbd> + <kbd>A</kbd>, <kbd>Ctrl</kbd> + <kbd>E</kbd>, <kbd>Ctrl</kbd> + <kbd>W</kbd>, <kbd>Ctrl</kbd> + <kbd>U</kbd>, <kbd>Ctrl</kbd> + <kbd>L</kbd>, and <kbd>Ctrl</kbd> + <kbd>C</kbd>: they belong to your shell by default. IRIS handles them directly in raw mode so your cursor and menu stay in sync
 
 ## Theme
 <div align="center">
@@ -108,13 +250,23 @@ curl -sSL https://raw.githubusercontent.com/versenilvis/iris/main/scripts/instal
   </tr>
 </table>
 
-## Docs
+## Reporting bugs
+> [!NOTE]
+> When submitting a bug report, please include:
+> - A detailed description of the bug and steps to reproduce it
+> - Relevant log files captured while running in debug mode
 
-- [Getting started](./docs/README.md#getting-started): dependencies, installation methods, and shell integration setup
-- [Shortcuts](./docs/README.md#shortcuts): core navigation, shortcuts table, mode switching, and ghost text
-- [Configuration guide](./docs/README.md#configuration-guide): TOML configuration settings including AI provider options
-- [Reporting bugs](./docs/README.md#reporting-bugs): debug mode, log inspection, and crash reporting
-- [Developer documentation](./docs/dev/README.md): system architecture overview, engine design, and contribution guide
+Run IRIS with debug mode:
+```bash
+iris -d
+```
+or `config.toml`:
+```toml
+debug=true
+```
+
+> [!IMPORTANT]
+> **Since IRIS logs everything you type, you should only enable debug mode when you need to report bugs**
  
 ## License
 
