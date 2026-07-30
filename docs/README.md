@@ -29,7 +29,7 @@ curl -sSL https://raw.githubusercontent.com/versenilvis/iris/main/scripts/instal
 #### Method 2: Go install
 
 ```bash
-go install github.com/versenilvis/iris@latest
+go install github.com/versenilvis/iris/cmd/iris@latest
 ```
 
 #### Method 3: Build from source
