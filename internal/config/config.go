@@ -35,6 +35,7 @@ func (d Duration) MarshalText() ([]byte, error) {
 type CoreConfig struct {
 	Version     int    `toml:"version"`
 	Shell       string `toml:"shell"`
+	Login       bool   `toml:"login"`
 	Mode        string `toml:"mode"`
 	Debug       bool   `toml:"debug"`
 	ExpandAlias bool   `toml:"expand-alias"`

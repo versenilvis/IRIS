@@ -12,6 +12,9 @@ func TestDefaultConfigAndState(t *testing.T) {
 	if cfg.Core.Version != 1 {
 		t.Errorf("expected version 1, got %d", cfg.Core.Version)
 	}
+	if cfg.Core.Login {
+		t.Errorf("expected login shell to be disabled by default")
+	}
 	if cfg.UI.MaxSuggestions != 100 {
 		t.Errorf("expected suggestions 100, got %d", cfg.UI.MaxSuggestions)
 	}
@@ -90,14 +93,23 @@ func TestValidationAndEnvironmentOverrides(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
+	// UserConfigDir follows HOME on macOS and XDG_CONFIG_HOME on Unix.
+	// Override both so the test cannot read or write the user's real config.
+	t.Setenv("HOME", tmpDir)
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 
-	configDir := filepath.Join(tmpDir, "iris")
+	configPath, err := ConfigPath()
+	if err != nil {
+		t.Fatalf("failed to get config path: %v", err)
+	}
+	configDir := filepath.Dir(configPath)
 	if mkErr := os.MkdirAll(configDir, 0755); mkErr != nil {
 		t.Fatalf("failed to create config dir: %v", mkErr)
 	}
-	configPath := filepath.Join(configDir, "config.toml")
 	tomlContent := `
+[core]
+login = true
+
 [ai]
 enabled = true
 provider = "groq"
@@ -131,6 +143,9 @@ model = "qwen-2.5-coder-32b"
 
 	if !cfg.Core.Debug {
 		t.Errorf("expected debug to be true")
+	}
+	if !cfg.Core.Login {
+		t.Errorf("expected login shell to be enabled from TOML")
 	}
 	if cfg.Core.Shell != "fish" {
 		t.Errorf("expected shell fish, got %q", cfg.Core.Shell)
@@ -178,6 +193,9 @@ func TestLoadSave(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
+	// UserConfigDir follows HOME on macOS and XDG_CONFIG_HOME on Unix.
+	// Override both so the test cannot read or write the user's real config.
+	t.Setenv("HOME", tmpDir)
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 
 	cfg, err := Load()
@@ -186,6 +204,7 @@ func TestLoadSave(t *testing.T) {
 	}
 
 	cfg.Core.Shell = "zsh"
+	cfg.Core.Login = true
 	cfg.UI.MaxHeight = 20
 
 	err = Save(cfg)
@@ -200,6 +219,9 @@ func TestLoadSave(t *testing.T) {
 
 	if loaded.Core.Shell != "zsh" {
 		t.Errorf("expected loaded shell to be zsh, got %q", loaded.Core.Shell)
+	}
+	if !loaded.Core.Login {
+		t.Errorf("expected loaded login shell setting to be true")
 	}
 	if loaded.UI.MaxHeight != 20 {
 		t.Errorf("expected loaded height to be 20, got %d", loaded.UI.MaxHeight)
@@ -250,5 +272,3 @@ func TestMigration(t *testing.T) {
 		t.Errorf("expected backup file update_state.json.bak to exist")
 	}
 }
-
-
