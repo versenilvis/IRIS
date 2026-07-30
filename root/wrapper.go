@@ -411,7 +411,6 @@ func runWrapper() {
 				lastSubmittedCommand = ""
 				bufferMu.Unlock()
 				if cmdToRecord != "" {
-					integration.RecordSessionCommand(cmdToRecord)
 					cwd := spec.GetCWD()
 					prevSkeleton, prevCwd := getPrevRecordedInfo()
 					currSkeleton := scoring.ExtractSkeleton(cmdToRecord)
@@ -943,13 +942,14 @@ func runWrapper() {
 						continue
 					}
 
-					isCommandActive.Store(true)
-					_, _ = ptmx.Write([]byte{b})
+					integration.RecordSessionCommand(cmdToSubmit)
 					bufferMu.Lock()
 					lastSubmittedCommand = strings.TrimSpace(cmdToSubmit)
 					naiveBuffer = ""
 					cursorOffset = 0
 					bufferMu.Unlock()
+					isCommandActive.Store(true)
+					_, _ = ptmx.Write([]byte{b})
 					disableGhostText.Store(false)
 					shouldOverlayDraw = false
 					userNavigated.Store(false)
