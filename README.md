@@ -60,7 +60,7 @@ Run iris wherever you already work; your local machine, a remote server, or anyw
 | **Remote SSH**              | TTY-native, portable | macOS GUI-bound  |
 | **Tmux**                    | ✓                    | Limited          |
 | **Linux virtual terminals** | ✓                    | -                |
-| **Memory**                  | < 15 MB              | Electron runtime |
+| **Memory**                  | Lightweight          | Electron runtime |
 
 ## Why not shell autocomplete plugins?
 
