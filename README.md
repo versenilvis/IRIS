@@ -268,6 +268,10 @@ debug=true
 > [!IMPORTANT]
 > **Since IRIS logs everything you type, you should only enable debug mode when you need to report bugs**
  
+## Developer documentation
+
+For system architecture overview, engine design, and contribution guide, please refer to the [Developer documentation](./docs/dev/README.md).
+
 ## License
 
 This project is licensed under the [0BSD License](LICENSE) - no strings attached. Meaning you can do whatever you want with it.
