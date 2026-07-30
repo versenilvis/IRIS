@@ -335,7 +335,7 @@ func (f *FrecencyStore) QueryLocal(ctx context.Context, cwd, prefix string, limi
 	var rows *sql.Rows
 	var err error
 	if prefix != "" {
-		rows, err = f.db.QueryContext(ctxTimeout, `SELECT cmd, cwd, count, last_used FROM history_entries WHERE cwd = ? AND cmd LIKE ?`, cwd, prefix+"%")
+		rows, err = f.db.QueryContext(ctxTimeout, `SELECT cmd, cwd, count, last_used FROM history_entries WHERE cwd = ? AND cmd LIKE ?`, cwd, "%"+prefix+"%")
 	} else {
 		rows, err = f.db.QueryContext(ctxTimeout, `SELECT cmd, cwd, count, last_used FROM history_entries WHERE cwd = ?`, cwd)
 	}
@@ -397,7 +397,7 @@ func (f *FrecencyStore) QueryGlobal(ctx context.Context, prefix string, limit in
 	var rows *sql.Rows
 	var err error
 	if prefix != "" {
-		rows, err = f.db.QueryContext(ctxTimeout, `SELECT cmd, cwd, count, last_used FROM history_entries WHERE cmd LIKE ?`, prefix+"%")
+		rows, err = f.db.QueryContext(ctxTimeout, `SELECT cmd, cwd, count, last_used FROM history_entries WHERE cmd LIKE ?`, "%"+prefix+"%")
 	} else {
 		rows, err = f.db.QueryContext(ctxTimeout, `SELECT cmd, cwd, count, last_used FROM history_entries`)
 	}
