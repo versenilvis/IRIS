@@ -209,7 +209,7 @@ version = 1
 shell = ""
 
 # run the selected shell as a login shell
-login = false
+shell-login = false
 
 # startup mode: "last", "spec", "history"
 # "last" = remember last mode used

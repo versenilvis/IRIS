@@ -12,7 +12,7 @@ func TestDefaultConfigAndState(t *testing.T) {
 	if cfg.Core.Version != 1 {
 		t.Errorf("expected version 1, got %d", cfg.Core.Version)
 	}
-	if cfg.Core.Login {
+	if cfg.Core.ShellLogin {
 		t.Errorf("expected login shell to be disabled by default")
 	}
 	if cfg.UI.MaxSuggestions != 100 {
@@ -108,7 +108,7 @@ func TestValidationAndEnvironmentOverrides(t *testing.T) {
 	}
 	tomlContent := `
 [core]
-login = true
+shell-login = true
 
 [ai]
 enabled = true
@@ -144,7 +144,7 @@ model = "qwen-2.5-coder-32b"
 	if !cfg.Core.Debug {
 		t.Errorf("expected debug to be true")
 	}
-	if !cfg.Core.Login {
+	if !cfg.Core.ShellLogin {
 		t.Errorf("expected login shell to be enabled from TOML")
 	}
 	if cfg.Core.Shell != "fish" {
@@ -204,7 +204,7 @@ func TestLoadSave(t *testing.T) {
 	}
 
 	cfg.Core.Shell = "zsh"
-	cfg.Core.Login = true
+	cfg.Core.ShellLogin = true
 	cfg.UI.MaxHeight = 20
 
 	err = Save(cfg)
@@ -220,7 +220,7 @@ func TestLoadSave(t *testing.T) {
 	if loaded.Core.Shell != "zsh" {
 		t.Errorf("expected loaded shell to be zsh, got %q", loaded.Core.Shell)
 	}
-	if !loaded.Core.Login {
+	if !loaded.Core.ShellLogin {
 		t.Errorf("expected loaded login shell setting to be true")
 	}
 	if loaded.UI.MaxHeight != 20 {

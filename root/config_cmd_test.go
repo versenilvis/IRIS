@@ -34,8 +34,8 @@ func TestConfigCommands(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read config file: %v", err)
 	}
-	if !strings.Contains(string(content), "login = false") {
-		t.Error("expected initialized config to include login = false")
+	if !strings.Contains(string(content), "shell-login = false") {
+		t.Error("expected initialized config to include shell-login = false")
 	}
 
 	buf := new(bytes.Buffer)

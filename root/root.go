@@ -50,29 +50,29 @@ It works exactly like coding editor suggestion menu drop down.`,
 			runWrapper()
 		},
 	}
-	shellFlag string
-	loginFlag bool
-	debugMode bool
+	shellFlag      string
+	shellLoginFlag bool
+	debugMode      bool
 )
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&shellFlag, "shell", "s", "", "shell to use (bash, zsh, fish)")
-	rootCmd.PersistentFlags().BoolVar(&loginFlag, "login", false, "run the selected shell as a login shell")
+	rootCmd.PersistentFlags().BoolVar(&shellLoginFlag, "shell-login", false, "run the selected shell as a login shell")
 	rootCmd.PersistentFlags().BoolVarP(&debugMode, "debug", "d", false, "enable debug logging to iris.log")
 
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		if shellFlag != "" {
 			config.Get().Core.Shell = shellFlag
 		}
-		if cmd.Flags().Changed("login") {
-			config.Get().Core.Login = loginFlag
+		if cmd.Flags().Changed("shell-login") {
+			config.Get().Core.ShellLogin = shellLoginFlag
 		}
 		logDir, err := config.CachePath()
 		if err == nil {
 			logger.Init(filepath.Join(logDir, "iris.log"), debugMode || config.Get().Core.Debug)
 			logger.Infof("IRIS session started: os=%s, arch=%s, go=%s, pid=%d", runtime.GOOS, runtime.GOARCH, runtime.Version(), os.Getpid())
 			cfg := config.Get()
-			logger.Debugf("IRIS loaded config: shell=%q, login=%v, mode=%q, ghost-text=%v, max-suggestions=%d", cfg.Core.Shell, cfg.Core.Login, cfg.Core.Mode, cfg.UI.GhostText, cfg.UI.MaxSuggestions)
+			logger.Debugf("IRIS loaded config: shell=%q, shell-login=%v, mode=%q, ghost-text=%v, max-suggestions=%d", cfg.Core.Shell, cfg.Core.ShellLogin, cfg.Core.Mode, cfg.UI.GhostText, cfg.UI.MaxSuggestions)
 		}
 	}
 }

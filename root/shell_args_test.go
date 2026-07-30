@@ -24,12 +24,12 @@ func TestShellArgs(t *testing.T) {
 	}
 }
 
-func TestLoginFlagIsRegistered(t *testing.T) {
-	flag := rootCmd.PersistentFlags().Lookup("login")
+func TestShellLoginFlagIsRegistered(t *testing.T) {
+	flag := rootCmd.PersistentFlags().Lookup("shell-login")
 	if flag == nil {
-		t.Fatal("expected --login flag to be registered")
+		t.Fatal("expected --shell-login flag to be registered")
 	}
 	if flag.DefValue != "false" {
-		t.Fatalf("expected --login to default to false, got %q", flag.DefValue)
+		t.Fatalf("expected --shell-login to default to false, got %q", flag.DefValue)
 	}
 }

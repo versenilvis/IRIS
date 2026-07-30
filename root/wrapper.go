@@ -148,7 +148,7 @@ func runWrapper() {
 	adapter := shell.Current
 
 	ctx := context.Background()
-	c := exec.CommandContext(ctx, adapter.GetShellPath(), shellArgs(config.Get().Core.Login)...)
+	c := exec.CommandContext(ctx, adapter.GetShellPath(), shellArgs(config.Get().Core.ShellLogin)...)
 	c.ExtraFiles = make([]*os.File, 11)
 	// pass write end of pipe to shell as fd 13 (since index 10 maps to 13)
 	c.ExtraFiles[10] = w
