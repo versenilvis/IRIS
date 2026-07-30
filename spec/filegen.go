@@ -103,7 +103,15 @@ func FileGenerator(filters ...string) GeneratorFunc {
 			}
 
 			fullPath := pathPrefix + name
-			if entry.IsDir() {
+
+			isDir := entry.IsDir()
+			if !isDir && entry.Type()&os.ModeSymlink != 0 {
+				if info, err := os.Stat(filepath.Join(dir, name)); err == nil && info.IsDir() {
+					isDir = true
+				}
+			}
+
+			if isDir {
 				if dirOnly || len(filterSet) == 0 {
 					results = append(results, Suggestion{
 						Cmd:      fullPath + "/",
@@ -115,7 +123,13 @@ func FileGenerator(filters ...string) GeneratorFunc {
 					subEntries, err := os.ReadDir(filepath.Join(dir, name))
 					if err == nil {
 						for _, subEntry := range subEntries {
-							if subEntry.IsDir() {
+							subIsDir := subEntry.IsDir()
+							if !subIsDir && subEntry.Type()&os.ModeSymlink != 0 {
+								if info, err := os.Stat(filepath.Join(dir, name, subEntry.Name())); err == nil && info.IsDir() {
+									subIsDir = true
+								}
+							}
+							if subIsDir {
 								continue
 							}
 							subName := subEntry.Name()
