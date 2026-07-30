@@ -386,6 +386,11 @@ func runWrapper() {
 		for scanner.Scan() {
 			query := scanner.Text()
 
+			if cwd, ok := strings.CutPrefix(query, "IRIS_CWD:"); ok {
+				spec.SetCWD(cwd)
+				continue
+			}
+
 			if query == "IRIS_CMD_START" {
 				isCommandActive.Store(true)
 				bufferMu.Lock()
