@@ -145,6 +145,55 @@ func TestFrecencyStore_SQLiteConfigurationAndContext(t *testing.T) {
 	}
 }
 
+func TestFrecencyStore_SubstringMatch(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "history.db")
+	store, err := NewFrecencyStore(dbPath)
+	if err != nil {
+		t.Fatalf("NewFrecencyStore failed: %v", err)
+	}
+	defer store.Close()
+
+	cwd := "/home/user/project"
+	_ = store.Record(context.Background(), "sudo chown -R www-data:www-data /var/www/html", cwd, 0)
+	_ = store.Record(context.Background(), "sudo systemctl restart nginx", cwd, 0)
+	_ = store.Record(context.Background(), "chmod +x script.sh", cwd, 0)
+
+	_ = store.Record(context.Background(), "echo hello world", cwd, 0)
+
+	// Test QueryLocal with substring
+	entries, err := store.QueryLocal(context.Background(), cwd, "cho", 10)
+	if err != nil {
+		t.Fatalf("QueryLocal failed: %v", err)
+	}
+	if len(entries) != 2 { // should match 'sudo chown...' and 'echo...' (has 'cho')
+		t.Fatalf("expected 2 entries for 'cho', got %d", len(entries))
+	}
+
+	foundChown := false
+	for _, e := range entries {
+		if e.Cmd == "sudo chown -R www-data:www-data /var/www/html" {
+			foundChown = true
+			break
+		}
+	}
+	if !foundChown {
+		t.Errorf("expected 'sudo chown...' to be found with substring 'cho'")
+	}
+
+	// Test QueryGlobal with substring
+	entriesGlobal, err := store.QueryGlobal(context.Background(), "chown", 10)
+	if err != nil {
+		t.Fatalf("QueryGlobal failed: %v", err)
+	}
+	if len(entriesGlobal) != 1 {
+		t.Fatalf("expected 1 entry for 'chown', got %d", len(entriesGlobal))
+	}
+	if entriesGlobal[0].Cmd != "sudo chown -R www-data:www-data /var/www/html" {
+		t.Errorf("expected 'sudo chown...' to be found with substring 'chown', got %s", entriesGlobal[0].Cmd)
+	}
+}
+
 func TestFrecencyStore_NilReceiver(t *testing.T) {
 	var nilStore *FrecencyStore
 	if err := nilStore.Record(context.Background(), "cmd", "cwd", 0); err != nil {

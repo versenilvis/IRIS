@@ -273,33 +273,11 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 			if seenCmds[m.Str] {
 				continue
 			}
-
-			// filter results by command name match
-			fields := strings.Fields(m.Str)
-			firstWord := m.Str
-			if len(fields) > 0 {
-				firstWord = fields[0]
-			}
-			firstWordLow := strings.ToLower(firstWord)
-
-			if queryFirstWord != "" {
-				if firstWordLow != queryFirstWord {
-					continue
-				}
-				// when query has a non-flag second token, filter by subcommand prefix
-				if subcmdFilter && querySecondWord != "" {
-					if len(fields) < 2 {
-						continue
-					}
-					secondWordLow := strings.ToLower(fields[1])
-					if !strings.HasPrefix(secondWordLow, querySecondWord) {
-						continue
-					}
-				}
-			} else {
-				if !strings.HasPrefix(firstWordLow, qLow) {
-					continue
-				}
+			
+			// filter out extremely weak fuzzy matches (e.g. random garbage typing that 
+			// loosely matches across a very long command). Valid matches usually score > 300.
+			if m.Score < 100 {
+				continue
 			}
 
 			seenCmds[m.Str] = true
