@@ -27,7 +27,7 @@ func TestConfigCommands(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get config path: %v", err)
 	}
-	if _, err := os.Stat(configPath); err != nil {
+	if _, statErr := os.Stat(configPath); statErr != nil {
 		t.Errorf("expected config file to be created at %s, but it was not", configPath)
 	}
 	content, err := os.ReadFile(configPath)
