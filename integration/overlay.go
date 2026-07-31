@@ -414,6 +414,29 @@ func truncateToWidth(s string, maxW int) string {
 	return sb.String()
 }
 
+// titledEdge renders one horizontal box edge (top or bottom) with styled
+// content embedded in the dash run. inner is the width between corners.
+// leftPad positions the content that many dashes from the left corner;
+// pass -1 to center the content (classic style).
+func titledEdge(left, right string, inner int, content string, border lipgloss.Style, leftPad int) string {
+	contentWidth := lipgloss.Width(content)
+	if content == "" {
+		return border.Render(left + strings.Repeat("─", inner) + right)
+	}
+	leftDash := leftPad
+	if leftPad < 0 {
+		leftDash = max((inner-contentWidth)/2, 0)
+	}
+	rightDash := inner - leftDash - contentWidth
+	if rightDash < 0 {
+		leftDash = max(leftDash+rightDash, 0)
+		rightDash = 0
+	}
+	return border.Render(left+strings.Repeat("─", leftDash)) +
+		content +
+		border.Render(strings.Repeat("─", rightDash)+right)
+}
+
 func (o *Overlay) GetGhostText(buffer string, cursorAtEnd bool) string {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -646,24 +669,13 @@ func (o *Overlay) draw() string {
 
 	scrollInfo := ""
 	if len(o.Items) > windowSize {
-		scrollInfo = fmt.Sprintf(" %d/%d ", o.Cursor+1, len(o.Items))
+		scrollInfo = scrollStyle.Render(fmt.Sprintf(" %d/%d ", o.Cursor+1, len(o.Items)))
 	}
-	leftDash := 3
-	if isClassic && scrollInfo != "" {
-		leftDash = (inner - len(scrollInfo)) / 2
+	scrollPad := 3
+	if isClassic {
+		scrollPad = -1 // centered
 	}
-	rightDash := inner - leftDash - len(scrollInfo)
-	if scrollInfo == "" {
-		leftDash = 0
-		rightDash = inner
-	}
-	fmt.Fprintf(&s, "%s%s%s%s%s",
-		border.Render("╭"),
-		border.Render(strings.Repeat("─", leftDash)),
-		scrollStyle.Render(scrollInfo),
-		border.Render(strings.Repeat("─", rightDash)),
-		border.Render("╮"),
-	)
+	s.WriteString(titledEdge("╭", "╮", inner, scrollInfo, border, scrollPad))
 
 	// left and right side border with item rows
 	descW := 24
@@ -794,23 +806,7 @@ func (o *Overlay) draw() string {
 		footerInfo = fmt.Sprintf(" %s%s • %s%s ", selectKey, acceptText, ctrlRKey, modeText)
 	}
 
-	footerRunes := lipgloss.Width(footerInfo)
-	rightDash = 2
-	leftDash = inner - footerRunes - rightDash
-	if footerInfo == "" {
-		leftDash = 0
-		rightDash = inner
-	}
-	if leftDash < 0 {
-		leftDash = 0
-	}
-	fmt.Fprintf(&s, "%s%s%s%s%s",
-		border.Render("╰"),
-		border.Render(strings.Repeat("─", leftDash)),
-		footerInfo,
-		border.Render(strings.Repeat("─", rightDash)),
-		border.Render("╯"),
-	)
+	s.WriteString(titledEdge("╰", "╯", inner, footerInfo, border, inner-lipgloss.Width(footerInfo)-2))
 
 	s.WriteString("\0338")
 	s.WriteString("\033[?7h")
