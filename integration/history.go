@@ -66,13 +66,17 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 	}
 
 	var histFile string
-	switch shellName {
-	case "zsh":
-		histFile = filepath.Join(shell.GetZshConfigDir(), ".zsh_history")
-	case "fish":
-		histFile = filepath.Join(shell.GetFishDataDir(), "fish_history")
-	default:
-		histFile = filepath.Join(home, ".bash_history")
+	if envHist := os.Getenv("HISTFILE"); envHist != "" {
+		histFile = envHist
+	} else {
+		switch shellName {
+		case "zsh":
+			histFile = filepath.Join(shell.GetZshConfigDir(), ".zsh_history")
+		case "fish":
+			histFile = filepath.Join(shell.GetFishDataDir(), "fish_history")
+		default:
+			histFile = filepath.Join(home, ".bash_history")
+		}
 	}
 
 	if info, err := os.Stat(histFile); err == nil {
