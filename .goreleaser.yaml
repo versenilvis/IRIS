@@ -67,6 +67,10 @@ brews:
       homepage: "https://github.com/versenilvis/iris"
       description: "A highly customizable, blazing fast and context-aware CLI autocomplete/navigation tool"
       license: "MIT"
+      caveats: |
+          To completely remove IRIS configurations and shell hooks,
+          please run 'iris uninstall' BEFORE removing this package, or manually
+          clean up ~/.config/iris and your shell RC files (e.g. ~/.zshrc).
       test: |
           system "#{bin}/iris", "--help"
 
