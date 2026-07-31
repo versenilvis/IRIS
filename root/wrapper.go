@@ -670,7 +670,226 @@ func runWrapper() {
 					continue
 				}
 
+				if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.ToggleMode); matched { // ctrl+r: toggle between command specs and command history
+					i += consumed - 1
+					intercepted = true
+					activeModeMu.Lock()
+					if activeMode == "spec" {
+						activeMode = "history"
+					} else {
+						activeMode = "spec"
+					}
+					saveMode(activeMode)
+					activeModeMu.Unlock()
+					logger.Debugf("Intercepted Ctrl+R, toggled mode to %q", activeMode)
+					if userNavigated.Load() {
+						bufferMu.Lock()
+						naiveBuffer = overlay.GetTypedQuery()
+						cursorOffset = 0
+						bufferMu.Unlock()
+						_, _ = ptmx.Write(append([]byte{0x15}, overlay.GetTypedQuery()...))
+					}
+					userNavigated.Store(false)
+					overlay.Show()
+					shouldOverlayDraw = true
+					continue
+				}
 
+				var isNavUp, isNavDown bool
+				var navConsumed int
+				if isNavUp, navConsumed = config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateUp); !isNavUp {
+					isNavDown, navConsumed = config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateDown)
+				}
+
+				if isNavUp || isNavDown {
+					if overlay.IsVisible() {
+						intercepted = true
+						userNavigated.Store(true)
+
+						arrowDir := "down"
+						if isNavUp {
+							arrowDir = "up"
+						}
+						moved, selectedCmd := overlay.MoveCursor(arrowDir)
+						if !moved {
+							i += navConsumed - 1
+							continue
+						}
+
+						bufferMu.Lock()
+						activeModeMu.RLock()
+						isHistMode := activeMode == "history"
+						activeModeMu.RUnlock()
+						var toWrite []byte
+						if isHistMode && selectedCmd != "" {
+							naiveBuffer = selectedCmd
+							cursorOffset = 0
+							toWrite = append([]byte{0x15}, selectedCmd...)
+						}
+						bufCopy := naiveBuffer
+						offsetCopy := cursorOffset
+						bufferMu.Unlock()
+
+						if len(toWrite) > 0 {
+							_, _ = ptmx.Write(toWrite)
+						}
+
+						var b strings.Builder
+						if !disableGhostText.Load() {
+							b.WriteString(overlay.RenderGhostText(bufCopy, true, offsetCopy == 0))
+						}
+						b.WriteString(overlay.Render())
+						writeStdout([]byte(b.String()))
+
+						i += navConsumed - 1
+						continue
+					} else if naiveBuffer == "" {
+						// up/down arrow on empty prompt
+						intercepted = true
+						activeModeMu.Lock()
+						activeMode = "history"
+						saveMode(activeMode)
+						activeModeMu.Unlock()
+
+						activeModeMu.RLock()
+						currentMode := activeMode
+						activeModeMu.RUnlock()
+						results := MergeResults("", currentMode)
+						if len(results) > 0 {
+							limit := min(len(results), 100)
+							var historyList []spec.Suggestion
+
+							if isNavUp {
+								for j := limit - 1; j >= 0; j-- {
+									historyList = append(historyList, results[j])
+								}
+							} else {
+								for j := range limit {
+									historyList = append(historyList, results[j])
+								}
+							}
+
+							selected := overlay.SetHistoryList(historyList, isNavUp)
+							if selected != "" {
+								bufferMu.Lock()
+								naiveBuffer = selected
+								cursorOffset = 0
+								bufferMu.Unlock()
+
+								userNavigated.Store(true)
+								writeStdout([]byte(overlay.Render()))
+								_, _ = ptmx.Write(append([]byte{0x15}, selected...))
+							}
+						}
+						i += navConsumed - 1
+						continue
+					}
+				}
+
+				if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.SelectSuggestion); matched && config.Get().Keybindings.SelectSuggestion != "" {
+					intercepted = true
+					if overlay.IsVisible() {
+						selected := overlay.GetCurrentCmd()
+						if selected != "" {
+							activeModeMu.RLock()
+							currentMode := activeMode
+							activeModeMu.RUnlock()
+							if currentMode == "spec" {
+								s := strings.TrimSpace(selected)
+								if strings.HasSuffix(s, "/") || strings.HasSuffix(s, "\\") {
+									selected = s
+								} else {
+									selected = s + " "
+								}
+							}
+							bufferMu.Lock()
+							naiveBuffer = selected
+							cursorOffset = 0
+							bufferMu.Unlock()
+							_, _ = ptmx.Write(append([]byte{0x15}, selected...))
+							
+							overlay.ClearGhostTextState()
+							userNavigated.Store(false)
+							writeStdout([]byte(overlay.Render()))
+						}
+					}
+					i += consumed - 1
+					continue
+				}
+
+				if b == 0x0d || b == 0x0a { // enter
+					intercepted = true
+					logger.Debugf("Intercepted Enter key")
+					
+					var selectedCmd string
+					var shouldAutoExecute bool
+					if config.Get().Core.AutoExecute && overlay.IsVisible() {
+						selectedCmd = overlay.GetCurrentCmd()
+						if selectedCmd != "" {
+							shouldAutoExecute = true
+						}
+					}
+
+					writeStdout([]byte(overlay.ClearAndDisable()))
+					SetCurrentAISuggestion(nil)
+					renderMu.Lock()
+					if renderTimer != nil {
+						renderTimer.Stop()
+						renderTimer = nil
+					}
+					renderMu.Unlock()
+
+					var cmdToSubmit string
+					if shouldAutoExecute {
+						activeModeMu.RLock()
+						currentMode := activeMode
+						activeModeMu.RUnlock()
+						if currentMode == "spec" {
+							s := strings.TrimSpace(selectedCmd)
+							if strings.HasSuffix(s, "/") || strings.HasSuffix(s, "\\") {
+								selectedCmd = s
+							} else {
+								selectedCmd = s + " "
+							}
+						}
+						// update the line first
+						_, _ = ptmx.Write(append([]byte{0x15}, selectedCmd...))
+						cmdToSubmit = selectedCmd
+					} else {
+						bufferMu.Lock()
+						cmdToSubmit = naiveBuffer
+						bufferMu.Unlock()
+					}
+
+					if strings.TrimSpace(cmdToSubmit) == "iris reload" {
+						if newCfg, err := config.Load(); err == nil {
+							config.Init(newCfg)
+							disableGhostText.Store(!newCfg.UI.GhostText)
+						}
+						msg := "echo -e '\\033[32m✓ Iris configuration reloaded successfully.\\033[0m'\r"
+						_, _ = ptmx.Write(append([]byte{0x15}, []byte(msg)...))
+						bufferMu.Lock()
+						naiveBuffer = ""
+						cursorOffset = 0
+						bufferMu.Unlock()
+						disableGhostText.Store(false)
+						shouldOverlayDraw = false
+						userNavigated.Store(false)
+						continue
+					}
+
+					isCommandActive.Store(true)
+					_, _ = ptmx.Write([]byte{b}) // forward enter to terminal
+					bufferMu.Lock()
+					lastSubmittedCommand = strings.TrimSpace(cmdToSubmit)
+					naiveBuffer = ""
+					cursorOffset = 0
+					bufferMu.Unlock()
+					disableGhostText.Store(false)
+					shouldOverlayDraw = false
+					userNavigated.Store(false)
+					continue
+				}
 
 				if b == '\033' {
 					// check for bracketed paste start/end
@@ -685,90 +904,6 @@ func runWrapper() {
 						}
 					}
 					// handle escape sequences like arrow keys and functional shortcuts
-					if i+2 < n && (inputSlice[i+1] == '[' || inputSlice[i+1] == 'O') {
-						if overlay.IsVisible() && (inputSlice[i+2] == 'A' || inputSlice[i+2] == 'B') {
-							intercepted = true
-							userNavigated.Store(true)
-
-							arrowDir := "down"
-							if inputSlice[i+2] == 'A' {
-								arrowDir = "up"
-							}
-							moved, selectedCmd := overlay.MoveCursor(arrowDir)
-							if !moved {
-								i += 2
-								continue
-							}
-
-							bufferMu.Lock()
-							activeModeMu.RLock()
-							isHistMode := activeMode == "history"
-							activeModeMu.RUnlock()
-							var toWrite []byte
-							if isHistMode && selectedCmd != "" {
-								naiveBuffer = selectedCmd
-								cursorOffset = 0
-								toWrite = append([]byte{0x15}, selectedCmd...)
-							}
-							bufCopy := naiveBuffer
-							offsetCopy := cursorOffset
-							bufferMu.Unlock()
-
-							if len(toWrite) > 0 {
-								_, _ = ptmx.Write(toWrite)
-							}
-
-							var b strings.Builder
-							if !disableGhostText.Load() {
-								b.WriteString(overlay.RenderGhostText(bufCopy, true, offsetCopy == 0))
-							}
-							b.WriteString(overlay.Render())
-							writeStdout([]byte(b.String()))
-
-							i += 2
-							continue
-						} else if !overlay.IsVisible() && naiveBuffer == "" && (inputSlice[i+2] == 'A' || inputSlice[i+2] == 'B') { // up/down arrow on empty prompt
-							intercepted = true
-							activeModeMu.Lock()
-							activeMode = "history"
-							saveMode(activeMode)
-							activeModeMu.Unlock()
-
-							activeModeMu.RLock()
-							currentMode := activeMode
-							activeModeMu.RUnlock()
-							results := MergeResults("", currentMode)
-							if len(results) > 0 {
-								limit := min(len(results), 100)
-								var historyList []spec.Suggestion
-
-								if inputSlice[i+2] == 'A' {
-									for j := limit - 1; j >= 0; j-- {
-										historyList = append(historyList, results[j])
-									}
-								} else {
-									for j := range limit {
-										historyList = append(historyList, results[j])
-									}
-								}
-
-								selected := overlay.SetHistoryList(historyList, inputSlice[i+2] == 'A')
-								if selected != "" {
-									bufferMu.Lock()
-									naiveBuffer = selected
-									cursorOffset = 0
-									bufferMu.Unlock()
-
-									userNavigated.Store(true)
-									writeStdout([]byte(overlay.Render()))
-									_, _ = ptmx.Write(append([]byte{0x15}, selected...))
-								}
-							}
-							i += 2
-							continue
-						}
-					}
-
 					// left/right arrow cursor tracking
 					isLeftRightArrow := false
 					if i+2 < n && (inputSlice[i+1] == '[' || inputSlice[i+1] == 'O') {
@@ -841,7 +976,10 @@ func runWrapper() {
 					if !intercepted {
 						writeStdout([]byte(overlay.ClearAndDisable()))
 						disableGhostText.Store(true)
-						if !isLeftRightArrow {
+						
+						// If it's a standalone ESC (n==1), don't clear the buffer because the user just wanted to hide the menu or enter vi-mode
+						isStandaloneEsc := n == 1 && b == '\033'
+						if !isLeftRightArrow && !isStandaloneEsc {
 							bufferMu.Lock()
 							naiveBuffer = ""
 							cursorOffset = 0
@@ -862,99 +1000,7 @@ func runWrapper() {
 					continue
 				}
 
-				if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.ToggleMode); matched { // ctrl+r: toggle between command specs and command history
-					i += consumed - 1
-					intercepted = true
-					activeModeMu.Lock()
-					if activeMode == "spec" {
-						activeMode = "history"
-					} else {
-						activeMode = "spec"
-					}
-					saveMode(activeMode)
-					activeModeMu.Unlock()
-					logger.Debugf("Intercepted Ctrl+R, toggled mode to %q", activeMode)
-					if userNavigated.Load() {
-						bufferMu.Lock()
-						naiveBuffer = overlay.GetTypedQuery()
-						cursorOffset = 0
-						bufferMu.Unlock()
-						_, _ = ptmx.Write(append([]byte{0x15}, overlay.GetTypedQuery()...))
-					}
-					userNavigated.Store(false)
-					overlay.Show()
-					shouldOverlayDraw = true
-					// enter: enter behavior is a bit different from tab suggestions in code editor
-					// I want it to execute the command anyway and ignore the suggestions
-					// it means only tab to select suggestions, and enter to execute
-					// enter is not used to select suggestions
-				} else if b == 0x0d || b == 0x0a {
-					intercepted = true
-					logger.Debugf("Intercepted Enter key, navigated=%v", overlay.GetUserNavigated())
-					var cmdToSubmit string
-					if overlay.IsVisible() && overlay.GetUserNavigated() {
-						selected := overlay.GetCurrentCmd()
-						if selected != "" {
-							cmdToSubmit = selected
-							activeModeMu.RLock()
-							currentMode := activeMode
-							activeModeMu.RUnlock()
-							if currentMode == "spec" {
-								s := strings.TrimSpace(selected)
-								if strings.HasSuffix(s, "/") || strings.HasSuffix(s, "\\") {
-									selected = s
-								} else {
-									selected = s + " "
-								}
-							}
-							_, _ = ptmx.Write(append([]byte{0x15}, selected...))
-						}
-					}
-					writeStdout([]byte(overlay.ClearAndDisable()))
-					SetCurrentAISuggestion(nil)
-					renderMu.Lock()
-					if renderTimer != nil {
-						renderTimer.Stop()
-						renderTimer = nil
-					}
-					renderMu.Unlock()
-
-					if cmdToSubmit == "" {
-						bufferMu.Lock()
-						cmdToSubmit = naiveBuffer
-						bufferMu.Unlock()
-					}
-
-					if strings.TrimSpace(cmdToSubmit) == "iris reload" {
-						if newCfg, err := config.Load(); err == nil {
-							config.Init(newCfg)
-							disableGhostText.Store(!newCfg.UI.GhostText)
-						}
-						// Clear the shell line with Ctrl+U, then echo message, then Enter
-						msg := "echo -e '\\033[32m✓ Iris configuration reloaded successfully.\\033[0m'\r"
-						_, _ = ptmx.Write(append([]byte{0x15}, []byte(msg)...))
-						bufferMu.Lock()
-						naiveBuffer = ""
-						cursorOffset = 0
-						bufferMu.Unlock()
-						disableGhostText.Store(false)
-						shouldOverlayDraw = false
-						userNavigated.Store(false)
-						continue
-					}
-
-					isCommandActive.Store(true)
-					_, _ = ptmx.Write([]byte{b})
-					bufferMu.Lock()
-					lastSubmittedCommand = strings.TrimSpace(cmdToSubmit)
-					naiveBuffer = ""
-					cursorOffset = 0
-					bufferMu.Unlock()
-					disableGhostText.Store(false)
-					shouldOverlayDraw = false
-					userNavigated.Store(false)
-					continue
-				} else if b == 0x03 || b == 0x15 { // ctrl+c, ctrl+u
+				if b == 0x03 || b == 0x15 { // ctrl+c, ctrl+u
 					intercepted = true
 					writeStdout([]byte(overlay.ClearAndDisable()))
 					SetCurrentAISuggestion(nil)
@@ -974,39 +1020,7 @@ func runWrapper() {
 					shouldOverlayDraw = false
 					userNavigated.Store(false)
 					continue
-				} else if b == 0x09 { // tab: select suggestions
-					intercepted = true
-					logger.Debugf("Intercepted Tab key, visible=%v", overlay.IsVisible())
-					if !overlay.IsVisible() {
-						shouldOverlayDraw = true
-					} else {
-						selected := overlay.GetCurrentCmd()
-						writeStdout([]byte(overlay.ClearAndDisable()))
-
-						activeModeMu.RLock()
-						currentMode := activeMode
-						activeModeMu.RUnlock()
-						if currentMode == "spec" {
-							s := strings.TrimSpace(selected)
-							if strings.HasSuffix(s, "/") || strings.HasSuffix(s, "\\") {
-								selected = s
-							} else {
-								selected = s + " "
-							}
-						}
-
-						bufferMu.Lock()
-						naiveBuffer = selected
-						cursorOffset = 0
-						bufferMu.Unlock()
-
-						_, _ = ptmx.Write(append([]byte{0x15}, selected...))
-						overlay.ResetCursor()
-						shouldOverlayDraw = true
-						userNavigated.Store(false)
-					}
-					continue
-				}
+				} // hardcoded tab logic removed
 
 				if !intercepted {
 					_, _ = ptmx.Write([]byte{b})
