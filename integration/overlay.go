@@ -15,7 +15,6 @@ import (
 )
 
 const (
-	boxWidth = 76 // total visual width, corners included
 	maxItems = 6
 )
 
@@ -569,6 +568,18 @@ func (o *Overlay) draw() string {
 	if err != nil || width <= 0 {
 		width = 120
 	}
+
+	boxWidth := config.Get().UI.MaxWidth
+	if boxWidth <= 0 {
+		boxWidth = 76 // Default if 0
+	}
+	if boxWidth > width {
+		boxWidth = width // Responsive: don't overflow
+	}
+	if boxWidth < 40 {
+		boxWidth = 40 // Minimum safe width
+	}
+
 	if targetCol+boxWidth > width {
 		targetCol = width - boxWidth
 	}

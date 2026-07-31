@@ -240,6 +240,9 @@ max-suggestions = 100
 # maximum height of the overlay
 max-height = 15
 
+# maximum width of the overlay (0 = responsive to terminal)
+max-width = 0
+
 [git]
 # hide current branch in checkout/switch list
 filter-active-branch = true

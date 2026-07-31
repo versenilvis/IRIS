@@ -47,6 +47,7 @@ type UIConfig struct {
 	ShowHiddenFiles bool   `toml:"hidden-files"`
 	MaxSuggestions  int    `toml:"max-suggestions"`
 	MaxHeight       int    `toml:"max-height"`
+	MaxWidth        int    `toml:"max-width"`
 	NerdFonts       bool   `toml:"nerd-fonts"`
 }
 

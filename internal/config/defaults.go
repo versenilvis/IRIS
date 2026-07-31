@@ -18,6 +18,7 @@ func DefaultConfig() *Config {
 			ShowHiddenFiles: false,
 			MaxSuggestions:  100,
 			MaxHeight:       15,
+			MaxWidth:        0, // 0 means no limit, fallback to terminal width
 			NerdFonts:       true,
 		},
 		Git: GitConfig{
