@@ -747,18 +747,24 @@ func runWrapper() {
 
 						i += navConsumed - 1
 						continue
-					} else if naiveBuffer == "" {
-						// up/down arrow on empty prompt
+					} else {
+						// up/down arrow or navigation key when overlay is closed
 						intercepted = true
 						activeModeMu.Lock()
-						activeMode = "history"
-						saveMode(activeMode)
+						if activeMode == "" {
+							activeMode = loadMode()
+						}
 						activeModeMu.Unlock()
 
 						activeModeMu.RLock()
 						currentMode := activeMode
 						activeModeMu.RUnlock()
-						results := MergeResults("", currentMode)
+
+						bufferMu.Lock()
+						bufQuery := naiveBuffer
+						bufferMu.Unlock()
+
+						results := MergeResults(bufQuery, currentMode)
 						if len(results) > 0 {
 							limit := min(len(results), 100)
 							var historyList []spec.Suggestion
@@ -791,8 +797,8 @@ func runWrapper() {
 				}
 
 				if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.SelectSuggestion); matched && config.Get().Keybindings.SelectSuggestion != "" {
-					intercepted = true
 					if overlay.IsVisible() {
+						intercepted = true
 						selected := overlay.GetCurrentCmd()
 						if selected != "" {
 							activeModeMu.RLock()
@@ -816,18 +822,22 @@ func runWrapper() {
 							userNavigated.Store(false)
 							writeStdout([]byte(overlay.Render()))
 						}
+						i += consumed - 1
+						continue
 					}
-					i += consumed - 1
-					continue
 				}
 
 				if b == 0x0d || b == 0x0a { // enter
 					intercepted = true
 					logger.Debugf("Intercepted Enter key")
+
+					if b == 0x0d && i+1 < n && inputSlice[i+1] == 0x0a {
+						i++ // consume trailing \n in \r\n to prevent matching ctrl+j
+					}
 					
 					var selectedCmd string
 					var shouldAutoExecute bool
-					if config.Get().Core.AutoExecute && overlay.IsVisible() {
+					if overlay.IsVisible() && (config.Get().Core.AutoExecute || userNavigated.Load()) {
 						selectedCmd = overlay.GetCurrentCmd()
 						if selectedCmd != "" {
 							shouldAutoExecute = true

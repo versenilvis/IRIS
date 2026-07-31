@@ -15,6 +15,9 @@ func MatchKey(input []byte, expected string) (matched bool, consumed int) {
 	expected = strings.ToLower(strings.TrimSpace(expected))
 	expected = strings.TrimPrefix(expected, "<")
 	expected = strings.TrimSuffix(expected, ">")
+	expected = strings.ReplaceAll(expected, "-", "+")
+	expected = strings.ReplaceAll(expected, "ctrk", "ctrl")
+	expected = strings.ReplaceAll(expected, "ctl", "ctrl")
 
 	if len(expected) == 1 {
 		if input[0] == expected[0] {
