@@ -41,6 +41,7 @@ aurs:
     - name: iris-bin
       package: |-
           install -Dm755 "./iris" "${pkgdir}/usr/bin/iris"
+      install: "scripts/aur.install"
       homepage: "https://github.com/versenilvis/iris"
       description: "A highly customizable, blazing fast and context-aware CLI autocomplete/navigation tool"
       maintainers:
@@ -79,6 +80,8 @@ nfpms:
       description: "A highly customizable, blazing fast and context-aware CLI autocomplete/navigation tool"
       license: "MIT"
       file_name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+      scripts:
+          prerm: "scripts/prerm.sh"
       formats:
           - deb
           - rpm
