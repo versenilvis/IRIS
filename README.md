@@ -96,7 +96,7 @@ Shell plugins are great, but they also come with trade-offs. And also, not every
 IRIS is available on the Arch User Repository. You can install it using your favorite AUR helper:
 
 ```bash
-yay -S iris
+yay -S iris-bin
 ```
 </details>
 

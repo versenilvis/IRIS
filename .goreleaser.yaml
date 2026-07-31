@@ -38,7 +38,7 @@ release:
         ```
 # AUR
 aurs:
-    - name: iris
+    - name: iris-bin
       package: |-
           install -Dm755 "./iris" "${pkgdir}/usr/bin/iris"
       homepage: "https://github.com/versenilvis/iris"
