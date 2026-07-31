@@ -16,6 +16,12 @@ func MatchKey(input []byte, expected string) (matched bool, consumed int) {
 	expected = strings.TrimPrefix(expected, "<")
 	expected = strings.TrimSuffix(expected, ">")
 
+	if len(expected) == 1 {
+		if input[0] == expected[0] {
+			return true, 1
+		}
+	}
+
 	if strings.HasPrefix(expected, "ctrl+") && len(expected) == 6 {
 		char := expected[5]
 		if char >= 'a' && char <= 'z' {

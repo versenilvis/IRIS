@@ -272,3 +272,29 @@ func TestMigration(t *testing.T) {
 		t.Errorf("expected backup file update_state.json.bak to exist")
 	}
 }
+
+func TestMatchKey(t *testing.T) {
+	tests := []struct {
+		input    []byte
+		expected string
+		matched  bool
+		consumed int
+	}{
+		{[]byte{0x19}, "ctrl+y", true, 1},
+		{[]byte{0x0b}, "ctrl+k", true, 1},
+		{[]byte{0x0a}, "ctrl+j", true, 1},
+		{[]byte{0x12}, "ctrl+r", true, 1},
+		{[]byte{'j'}, "j", true, 1},
+		{[]byte{'k'}, "k", true, 1},
+		{[]byte{0x09}, "tab", true, 1},
+		{[]byte{0x0d}, "enter", true, 1},
+		{[]byte{0x0d}, "ctrl+r", false, 0},
+	}
+
+	for _, tt := range tests {
+		m, c := MatchKey(tt.input, tt.expected)
+		if m != tt.matched || c != tt.consumed {
+			t.Errorf("MatchKey(%v, %q) = (%v, %d); want (%v, %d)", tt.input, tt.expected, m, c, tt.matched, tt.consumed)
+		}
+	}
+}
