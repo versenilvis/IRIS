@@ -6,6 +6,10 @@ import (
 )
 
 func ConfigPath() (string, error) {
+	configHome := os.Getenv("XDG_CONFIG_HOME")
+	if configHome != "" {
+		return filepath.Join(configHome, "iris", "config.toml"), nil
+	}
 	dir, err := os.UserConfigDir()
 	if err != nil {
 		return "", err
@@ -25,7 +29,19 @@ func StatePath() (string, error) {
 	return filepath.Join(dataHome, "iris", "state.toml"), nil
 }
 
+func HistoryDBPath() (string, error) {
+	statePath, err := StatePath()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(filepath.Dir(statePath), "history.db"), nil
+}
+
 func CachePath() (string, error) {
+	cacheHome := os.Getenv("XDG_CACHE_HOME")
+	if cacheHome != "" {
+		return filepath.Join(cacheHome, "iris"), nil
+	}
 	dir, err := os.UserCacheDir()
 	if err != nil {
 		return "", err

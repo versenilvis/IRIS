@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/versenilvis/iris/internal/config"
 	_ "modernc.org/sqlite"
 )
 
@@ -37,11 +38,11 @@ type FrecencyStore struct {
 
 func NewFrecencyStore(dbPath string) (*FrecencyStore, error) {
 	if dbPath == "" {
-		home, err := os.UserHomeDir()
+		var err error
+		dbPath, err = config.HistoryDBPath()
 		if err != nil {
 			return nil, err
 		}
-		dbPath = filepath.Join(home, ".local", "share", "iris", "history.db")
 	}
 
 	dir := filepath.Dir(dbPath)
