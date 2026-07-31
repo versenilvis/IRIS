@@ -82,6 +82,7 @@ nfpms:
       maintainer: "VERSE <sunnyone0901@gmail.com>"
       description: "A highly customizable, blazing fast and context-aware CLI autocomplete/navigation tool"
       license: "MIT"
+      file_name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
       formats:
           - deb
           - rpm
