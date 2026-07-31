@@ -8,6 +8,8 @@ import (
 )
 
 func TestFileGenerator(t *testing.T) {
+	SetCWD("")
+
 	// Setup mock files
 	tmp := t.TempDir()
 	_ = os.MkdirAll(filepath.Join(tmp, "src"), 0755)
@@ -91,4 +93,51 @@ func TestFileGenerator(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestGetCWDUsesShellReportedDirectory(t *testing.T) {
+	launcherDir := t.TempDir()
+	shellDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(shellDir, "from-shell.txt"), nil, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	oldWd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(launcherDir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		SetCWD("")
+		_ = os.Chdir(oldWd)
+	})
+
+	SetCWD(shellDir)
+	if got := GetCWD(); got != shellDir {
+		t.Fatalf("GetCWD() = %q, want shell-reported directory %q", got, shellDir)
+	}
+
+	results := FileGenerator()([]string{"cat", ""}, "cat ", "")
+	found := false
+	for _, result := range results {
+		if result.Cmd == "from-shell.txt" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("FileGenerator() did not read suggestions from shell directory %q", shellDir)
+	}
+}
+
+func TestSetCWDRejectsRelativePaths(t *testing.T) {
+	SetCWD("")
+	t.Cleanup(func() { SetCWD("") })
+
+	SetCWD("relative/path")
+	if got := GetCWD(); got == "relative/path" {
+		t.Fatalf("GetCWD() accepted relative shell directory %q", got)
+	}
 }

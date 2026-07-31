@@ -42,8 +42,14 @@ if [ -n "$IRIS_PID" ] && [ -n "$IRIS_FD" ]; then
     print -u $IRIS_FD -N -r -- "$LBUFFER" 2>/dev/null
   }
 
+  _iris_sync_cwd() {
+    print -u $IRIS_FD -N -r -- "IRIS_CWD:$PWD" 2>/dev/null
+  }
+
   _iris_precmd() {
-    print -u $IRIS_FD -N -r -- "IRIS_CMD_STOP" 2>/dev/null
+    local iris_exit_code=$?
+    _iris_sync_cwd
+    print -u $IRIS_FD -N -r -- "IRIS_CMD_STOP:$iris_exit_code" 2>/dev/null
   }
 
   _iris_preexec() {
@@ -56,6 +62,7 @@ if [ -n "$IRIS_PID" ] && [ -n "$IRIS_FD" ]; then
   add-zle-hook-widget line-pre-redraw _iris_send_lbuffer
   add-zsh-hook precmd _iris_precmd
   add-zsh-hook preexec _iris_preexec
+  add-zsh-hook chpwd _iris_sync_cwd
 fi
 `)
 		case "bash":
@@ -75,7 +82,9 @@ fi
 # Iris Autocomplete Hook
 if [ -n "$IRIS_PID" ] && [ -n "$IRIS_FD" ]; then
   _iris_bash_precmd() {
-    printf "IRIS_CMD_STOP\x00" >&$IRIS_FD 2>/dev/null
+    local iris_exit_code=$?
+    printf "IRIS_CWD:%%s\x00" "$PWD" >&$IRIS_FD 2>/dev/null
+    printf "IRIS_CMD_STOP:%%s\x00" "$iris_exit_code" >&$IRIS_FD 2>/dev/null
   }
 
   if [[ ";$PROMPT_COMMAND;" != *";_iris_bash_precmd;"* ]]; then
@@ -103,10 +112,15 @@ end
 # Iris Autocomplete Hook
 if set -q IRIS_PID; and set -q IRIS_FD
     function _iris_fish_postexec --on-event fish_postexec
-        echo -n -e "IRIS_CMD_STOP\x00" >&$IRIS_FD 2>/dev/null
+        set -l iris_exit_code $status
+        printf "IRIS_CWD:%%s\x00" "$PWD" >&$IRIS_FD 2>/dev/null
+        printf "IRIS_CMD_STOP:%%s\x00" "$iris_exit_code" >&$IRIS_FD 2>/dev/null
+    end
+    function _iris_fish_prompt --on-event fish_prompt
+        printf "IRIS_CWD:%%s\x00" "$PWD" >&$IRIS_FD 2>/dev/null
     end
     function _iris_fish_preexec --on-event fish_preexec
-        echo -n -e "IRIS_CMD_START\x00" >&$IRIS_FD 2>/dev/null
+        printf "IRIS_CMD_START\x00" >&$IRIS_FD 2>/dev/null
     end
 end
 `)

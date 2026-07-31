@@ -6,24 +6,49 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/versenilvis/iris/internal/config"
 )
 
-// for tracking current working dir
-var ShellPID int
+var (
+	// ShellPID tracks the underlying shell process.
+	ShellPID int
+
+	shellCWDMu sync.RWMutex
+	shellCWD   string
+)
+
+// SetCWD updates the working directory reported by the underlying shell.
+// Shell integrations call this whenever the prompt directory changes.
+func SetCWD(cwd string) {
+	if cwd != "" && !filepath.IsAbs(cwd) {
+		return
+	}
+
+	shellCWDMu.Lock()
+	shellCWD = cwd
+	shellCWDMu.Unlock()
+}
 
 // GetCWD returns the current working directory of the underlying shell
-// on Linux, it reads it from /proc/[pid]/cwd
+// reported by shell integration. Linux can also read it from /proc/[pid]/cwd.
 func GetCWD() string {
+	shellCWDMu.RLock()
+	cwd := shellCWD
+	shellCWDMu.RUnlock()
+	if cwd != "" {
+		return cwd
+	}
+
 	if ShellPID > 0 {
 		path := fmt.Sprintf("/proc/%d/cwd", ShellPID)
-		cwd, err := os.Readlink(path)
+		procCWD, err := os.Readlink(path)
 		if err == nil {
-			return cwd
+			return procCWD
 		}
 	}
-	cwd, _ := os.Getwd()
+	cwd, _ = os.Getwd()
 	return cwd
 }
 

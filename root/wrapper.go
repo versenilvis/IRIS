@@ -386,6 +386,11 @@ func runWrapper() {
 		for scanner.Scan() {
 			query := scanner.Text()
 
+			if cwd, ok := strings.CutPrefix(query, "IRIS_CWD:"); ok {
+				spec.SetCWD(cwd)
+				continue
+			}
+
 			if query == "IRIS_CMD_START" {
 				isCommandActive.Store(true)
 				bufferMu.Lock()
@@ -411,7 +416,6 @@ func runWrapper() {
 				lastSubmittedCommand = ""
 				bufferMu.Unlock()
 				if cmdToRecord != "" {
-					integration.RecordSessionCommand(cmdToRecord)
 					cwd := spec.GetCWD()
 					prevSkeleton, prevCwd := getPrevRecordedInfo()
 					currSkeleton := scoring.ExtractSkeleton(cmdToRecord)
@@ -878,13 +882,14 @@ func runWrapper() {
 						continue
 					}
 
-					isCommandActive.Store(true)
-					_, _ = ptmx.Write([]byte{b}) // forward enter to terminal
+					integration.RecordSessionCommand(cmdToSubmit)
 					bufferMu.Lock()
 					lastSubmittedCommand = strings.TrimSpace(cmdToSubmit)
 					naiveBuffer = ""
 					cursorOffset = 0
 					bufferMu.Unlock()
+					isCommandActive.Store(true)
+					_, _ = ptmx.Write([]byte{b}) // forward enter to terminal
 					disableGhostText.Store(false)
 					shouldOverlayDraw = false
 					userNavigated.Store(false)
@@ -999,7 +1004,6 @@ func runWrapper() {
 					}
 					continue
 				}
-
 				if b == 0x03 || b == 0x15 { // ctrl+c, ctrl+u
 					intercepted = true
 					writeStdout([]byte(overlay.ClearAndDisable()))
@@ -1020,7 +1024,7 @@ func runWrapper() {
 					shouldOverlayDraw = false
 					userNavigated.Store(false)
 					continue
-				} // hardcoded tab logic removed
+				}
 
 				if !intercepted {
 					_, _ = ptmx.Write([]byte{b})
