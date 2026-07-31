@@ -87,28 +87,7 @@ Shell plugins are great, but they also come with trade-offs. And also, not every
 > [!WARNING]
 > Currently, Windows is not supported
 
-#### Method 1: Install script (recommended)
-
-```bash
-curl -sSL https://raw.githubusercontent.com/versenilvis/iris/main/scripts/install.sh | sh
-```
-
-#### Method 2: Go install
-
-```bash
-go install github.com/versenilvis/iris/cmd/iris@latest
-```
-
-#### Method 3: Build from source (for developers)
-
-```bash
-git clone https://github.com/versenilvis/iris.git
-cd iris
-just reload
-```
-
-
-#### Method 4: Package managers
+#### Method 1: Package managers
 
 <details>
 <summary><b>Arch Linux (AUR)</b></summary>
@@ -161,22 +140,24 @@ If you are using Nix Flakes, you can consume this module directly without buildi
 <summary><b>Debian / Ubuntu (.deb)</b></summary>
 <br>
 
-Download the latest `.deb` package from the [Releases](https://github.com/versenilvis/iris/releases) page and run:
-
 ```bash
-sudo dpkg -i iris_*.deb
+curl -sLO https://github.com/versenilvis/iris/releases/latest/download/iris_linux_amd64.deb
+sudo dpkg -i iris_linux_amd64.deb
+rm iris_linux_amd64.deb
 ```
+*(For ARM64 architecture, replace `amd64` with `arm64`)*
 </details>
 
 <details>
 <summary><b>Fedora / RHEL (.rpm)</b></summary>
 <br>
 
-Download the latest `.rpm` package from the [Releases](https://github.com/versenilvis/iris/releases) page and run:
-
 ```bash
-sudo rpm -i iris_*.rpm
+curl -sLO https://github.com/versenilvis/iris/releases/latest/download/iris_linux_amd64.rpm
+sudo rpm -i iris_linux_amd64.rpm
+rm iris_linux_amd64.rpm
 ```
+*(For ARM64 architecture, replace `amd64` with `arm64`)*
 </details>
 
 <details>
@@ -205,6 +186,26 @@ asdf install iris latest
 asdf global iris latest
 ```
 </details>
+
+#### Method 2: Install script (recommended)
+
+```bash
+curl -sSL https://raw.githubusercontent.com/versenilvis/iris/main/scripts/install.sh | sh
+```
+
+#### Method 3: Go install
+
+```bash
+go install github.com/versenilvis/iris/cmd/iris@latest
+```
+
+#### Method 4: Build from source (for developers)
+
+```bash
+git clone https://github.com/versenilvis/iris.git
+cd iris
+just reload
+```
 
 ## Uninstall
 
