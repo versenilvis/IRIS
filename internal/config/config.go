@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type Duration time.Duration
@@ -96,6 +97,26 @@ type AIConfig struct {
 	SuggestOnEmpty SuggestOnEmptyConfig      `toml:"suggest_on_empty"`
 }
 
+type ThemeConfig struct {
+	Border     lipgloss.Color `toml:"border"`
+	Accent     lipgloss.Color `toml:"accent"`
+	Muted      lipgloss.Color `toml:"muted"`
+	Text       lipgloss.Color `toml:"text"`
+	TextSel    lipgloss.Color `toml:"text_sel"`
+	Match      lipgloss.Color `toml:"match"`
+	Desc       lipgloss.Color `toml:"desc"`
+	DescSel    lipgloss.Color `toml:"desc_sel"`
+	SelBg      lipgloss.Color `toml:"sel_bg"`
+	ScrollInfo lipgloss.Color `toml:"scroll_info"`
+	GhostText  lipgloss.Color `toml:"ghost_text"`
+	Sys        lipgloss.Color `toml:"sys"`
+	SysSel     lipgloss.Color `toml:"sys_sel"`
+	History    lipgloss.Color `toml:"hist"`
+	HistorySel lipgloss.Color `toml:"hist_sel"`
+	Alias      lipgloss.Color `toml:"alias"`
+	AliasSel   lipgloss.Color `toml:"alias_sel"`
+}
+
 func (c *AIConfig) GetActiveProvider() (ProviderConfig, bool) {
 	if c.Providers == nil {
 		return ProviderConfig{}, false
@@ -121,6 +142,7 @@ type Config struct {
 	Updater     UpdaterConfig     `toml:"updater"`
 	AI          AIConfig          `toml:"ai"`
 	Keybindings KeybindingsConfig `toml:"keybindings"`
+	Theme       ThemeConfig       `toml:"theme"`
 }
 
 var (

@@ -529,7 +529,7 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 
 	s.WriteString("\0337")
 	if ghostText != "" {
-		styled := lipgloss.NewStyle().Foreground(currentTheme.GhostText).Render(ghostText)
+		styled := lipgloss.NewStyle().Foreground(config.Get().Theme.GhostText).Render(ghostText)
 		s.WriteString(styled)
 	}
 	if padLen > 0 {
@@ -542,7 +542,7 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 }
 
 func renderMatchedTitle(title, typed string, selected bool, w int) string {
-	t := currentTheme
+	t := config.Get().Theme
 	textColor := t.Text
 	if selected {
 		textColor = t.TextSel
@@ -579,7 +579,7 @@ func (o *Overlay) draw() string {
 		return ""
 	}
 
-	t := currentTheme
+	t := config.Get().Theme
 	border := lipgloss.NewStyle().Foreground(t.Border)
 	scrollStyle := lipgloss.NewStyle().Foreground(t.ScrollInfo)
 
@@ -740,27 +740,27 @@ func (o *Overlay) draw() string {
 		} else {
 			switch it.Icon {
 			case "alias":
-				boxStyle := lipgloss.NewStyle().Background(lipgloss.Color("#2a2342")).Foreground(lipgloss.Color("#a277ff"))
+				boxStyle := lipgloss.NewStyle().Background(t.Alias).Foreground(t.Text)
 				if selected {
-					boxStyle = lipgloss.NewStyle().Background(lipgloss.Color("#a277ff")).Foreground(lipgloss.Color("#110f18")).Bold(true)
+					boxStyle = lipgloss.NewStyle().Background(t.AliasSel).Foreground(t.Text).Bold(true)
 				}
 				tag := boxStyle.Render(" alias ")
 				tw := lipgloss.Width(tag)
 				rem := max(descW-tw-1, 0)
 				desc = tag + bg.Render(" ") + bg.Foreground(descColor).Render(fixedWidth(it.Desc, rem))
 			case "history":
-				boxStyle := lipgloss.NewStyle().Background(lipgloss.Color("#1a2d36")).Foreground(lipgloss.Color("#61ffca"))
+				boxStyle := lipgloss.NewStyle().Background(t.History).Foreground(t.Text)
 				if selected {
-					boxStyle = lipgloss.NewStyle().Background(lipgloss.Color("#61ffca")).Foreground(lipgloss.Color("#110f18")).Bold(true)
+					boxStyle = lipgloss.NewStyle().Background(t.HistorySel).Foreground(t.Text).Bold(true)
 				}
 				tag := boxStyle.Render(" history ")
 				tw := lipgloss.Width(tag)
 				rem := max(descW-tw, 0)
 				desc = tag + bg.Render(strings.Repeat(" ", rem))
 			case "system":
-				boxStyle := lipgloss.NewStyle().Background(lipgloss.Color("#1e1d28")).Foreground(lipgloss.Color("#a277ff"))
+				boxStyle := lipgloss.NewStyle().Background(t.Sys).Foreground(t.Text)
 				if selected {
-					boxStyle = lipgloss.NewStyle().Background(lipgloss.Color("#a277ff")).Foreground(lipgloss.Color("#110f18")).Bold(true)
+					boxStyle = lipgloss.NewStyle().Background(t.SysSel).Foreground(t.Text).Bold(true)
 				}
 				tag := boxStyle.Render(" system ")
 				tw := lipgloss.Width(tag)
