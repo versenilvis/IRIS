@@ -10,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/versenilvis/iris/internal/config"
 	"github.com/versenilvis/iris/internal/logger"
 	"github.com/versenilvis/iris/spec"
@@ -369,49 +370,20 @@ func fixedWidth(s string, width int) string {
 	if visualWidth == width {
 		return s
 	}
-	if visualWidth < width {
-		return s + strings.Repeat(" ", width-visualWidth)
+	if visualWidth > width {
+		s = ansi.Truncate(s, width, "…")
 	}
-	var sb strings.Builder
-	currentWidth := 0
-	for _, r := range s {
-		rw := lipgloss.Width(string(r))
-		if currentWidth+rw > width-1 {
-			break
-		}
-		sb.WriteRune(r)
-		currentWidth += rw
+	if rem := width - lipgloss.Width(s); rem > 0 {
+		s += strings.Repeat(" ", rem)
 	}
-	sb.WriteString("…")
-	rem := width - lipgloss.Width(sb.String())
-	if rem > 0 {
-		sb.WriteString(strings.Repeat(" ", rem))
-	}
-	return sb.String()
+	return s
 }
 
 func truncateToWidth(s string, maxW int) string {
 	if maxW <= 0 {
 		return ""
 	}
-	if lipgloss.Width(s) <= maxW {
-		return s
-	}
-	if maxW == 1 {
-		return "…"
-	}
-	var sb strings.Builder
-	w := 0
-	for _, r := range s {
-		rw := lipgloss.Width(string(r))
-		if w+rw > maxW-1 { // leave 1 column for '…'
-			break
-		}
-		sb.WriteRune(r)
-		w += rw
-	}
-	sb.WriteRune('…')
-	return sb.String()
+	return ansi.Truncate(s, maxW, "…")
 }
 
 // titledEdge renders one horizontal box edge (top or bottom) with styled
@@ -469,7 +441,7 @@ func (o *Overlay) HideGhostTextSync() string {
 	defer o.mu.Unlock()
 	if o.LastGhostLen > 0 {
 		padLen := o.LastGhostLen + 4
-		res := "\0337" + strings.Repeat(" ", padLen) + "\0338"
+		res := ansi.SaveCursor + strings.Repeat(" ", padLen) + ansi.RestoreCursor
 		o.LastGhostLen = 0
 		return res
 	}
@@ -484,7 +456,7 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 		if o.LastGhostLen > 0 {
 			padLen := o.LastGhostLen + 4
 			o.LastGhostLen = 0
-			return "\0337" + strings.Repeat(" ", padLen) + "\0338"
+			return ansi.SaveCursor + strings.Repeat(" ", padLen) + ansi.RestoreCursor
 		}
 		return ""
 	}
@@ -527,7 +499,7 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 		padLen += 4
 	}
 
-	s.WriteString("\0337")
+	s.WriteString(ansi.SaveCursor)
 	if ghostText != "" {
 		styled := lipgloss.NewStyle().Foreground(currentTheme.GhostText).Render(ghostText)
 		s.WriteString(styled)
@@ -535,7 +507,7 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 	if padLen > 0 {
 		s.WriteString(strings.Repeat(" ", padLen))
 	}
-	s.WriteString("\0338")
+	s.WriteString(ansi.RestoreCursor)
 	o.LastGhostLen = ghostWidth
 
 	return s.String()
@@ -584,7 +556,7 @@ func (o *Overlay) draw() string {
 	scrollStyle := lipgloss.NewStyle().Foreground(t.ScrollInfo)
 
 	var s strings.Builder
-	s.WriteString("\033[?7l")
+	s.WriteString(ansi.ResetModeAutoWrap)
 
 	typedLen := len([]rune(o.TypedQuery))
 	targetCol := o.PromptLen + typedLen
@@ -613,7 +585,7 @@ func (o *Overlay) draw() string {
 	}
 	logger.Debugf("Overlay draw: pLen=%d, typedLen=%d, targetCol=%d, width=%d", o.PromptLen, typedLen, targetCol, width)
 
-	s.WriteString("\0337")
+	s.WriteString(ansi.SaveCursor)
 
 	windowSize := min(len(o.Items), maxItems)
 
@@ -642,17 +614,15 @@ func (o *Overlay) draw() string {
 	end := start + windowSize
 	totalLines := windowSize + 2
 
-	for range totalLines {
-		s.WriteByte('\n')
-	}
-	fmt.Fprintf(&s, "\033[%dA", totalLines)
+	s.WriteString(strings.Repeat("\n", totalLines))
+	s.WriteString(ansi.CursorUp(totalLines))
 
-	s.WriteString("\0337")
+	s.WriteString(ansi.SaveCursor)
 
 	moveToTarget := func() {
 		s.WriteString("\r")
 		if targetCol > 0 {
-			fmt.Fprintf(&s, "\033[%dC", targetCol)
+			s.WriteString(ansi.CursorForward(targetCol))
 		}
 	}
 
@@ -662,9 +632,9 @@ func (o *Overlay) draw() string {
 	isClassic := style == "classic" || style == "minimal" || style == "minimalist"
 
 	// top side border with scroll counter
-	s.WriteString("\0338")
-	fmt.Fprintf(&s, "\033[%dB", 1)
-	s.WriteString("\033[2K")
+	s.WriteString(ansi.RestoreCursor)
+	s.WriteString(ansi.CursorDown(1))
+	s.WriteString(ansi.EraseEntireLine)
 	moveToTarget()
 
 	scrollInfo := ""
@@ -693,9 +663,9 @@ func (o *Overlay) draw() string {
 	titleW = titleW - padGap - descW
 
 	for i := start; i < end; i++ {
-		s.WriteString("\0338")
-		fmt.Fprintf(&s, "\033[%dB", (i-start)+2)
-		s.WriteString("\033[2K")
+		s.WriteString(ansi.RestoreCursor)
+		s.WriteString(ansi.CursorDown((i - start) + 2))
+		s.WriteString(ansi.EraseEntireLine)
 		moveToTarget()
 
 		it := o.Items[i]
@@ -791,9 +761,9 @@ func (o *Overlay) draw() string {
 	}
 
 	// bottom side border with footer shortcut hints
-	s.WriteString("\0338")
-	fmt.Fprintf(&s, "\033[%dB", windowSize+2)
-	s.WriteString("\033[2K")
+	s.WriteString(ansi.RestoreCursor)
+	s.WriteString(ansi.CursorDown(windowSize + 2))
+	s.WriteString(ansi.EraseEntireLine)
 	moveToTarget()
 
 	footerInfo := ""
@@ -808,9 +778,21 @@ func (o *Overlay) draw() string {
 
 	s.WriteString(titledEdge("╰", "╯", inner, footerInfo, border, inner-lipgloss.Width(footerInfo)-2))
 
-	s.WriteString("\0338")
-	s.WriteString("\033[?7h")
+	s.WriteString(ansi.RestoreCursor)
+	s.WriteString(ansi.SetModeAutoWrap)
 	return s.String()
+}
+
+// clearLinesBelow erases n lines below the cursor, leaving the cursor where
+// it started. Caller is responsible for wrapping/resetting auto-wrap mode.
+func clearLinesBelow(s *strings.Builder, n int) {
+	s.WriteString(ansi.SaveCursor)
+	for i := range n {
+		s.WriteString(ansi.RestoreCursor)
+		s.WriteString(ansi.CursorDown(i + 1))
+		s.WriteString("\r" + ansi.EraseEntireLine)
+	}
+	s.WriteString(ansi.RestoreCursor)
 }
 
 func (o *Overlay) Clear() string {
@@ -818,17 +800,9 @@ func (o *Overlay) Clear() string {
 	defer o.mu.Unlock()
 
 	var s strings.Builder
-	s.WriteString("\033[?7l")
-	s.WriteString("\0337")
-
-	for i := range maxItems + 2 {
-		s.WriteString("\0338")
-		fmt.Fprintf(&s, "\033[%dB", i+1)
-		s.WriteString("\r\033[2K")
-	}
-
-	s.WriteString("\0338")
-	s.WriteString("\033[?7h")
+	s.WriteString(ansi.ResetModeAutoWrap)
+	clearLinesBelow(&s, maxItems+2)
+	s.WriteString(ansi.SetModeAutoWrap)
 	return s.String()
 }
 
@@ -848,25 +822,17 @@ func (o *Overlay) HideMenu(query string) string {
 	o.StartIdx = 0
 
 	var s strings.Builder
-	s.WriteString("\033[?7l")
+	s.WriteString(ansi.ResetModeAutoWrap)
 
 	if o.LastGhostLen > 0 {
-		s.WriteString("\0337")
+		s.WriteString(ansi.SaveCursor)
 		s.WriteString(strings.Repeat(" ", o.LastGhostLen+10))
-		s.WriteString("\0338")
+		s.WriteString(ansi.RestoreCursor)
 		o.LastGhostLen = 0
 	}
 
-	s.WriteString("\0337")
-
-	for i := range maxItems + 2 {
-		s.WriteString("\0338")
-		fmt.Fprintf(&s, "\033[%dB", i+1)
-		s.WriteString("\r\033[2K")
-	}
-
-	s.WriteString("\0338")
-	s.WriteString("\033[?7h")
+	clearLinesBelow(&s, maxItems+2)
+	s.WriteString(ansi.SetModeAutoWrap)
 	return s.String()
 }
 
@@ -886,24 +852,16 @@ func (o *Overlay) ClearAndDisable() string {
 	o.StartIdx = 0
 
 	var s strings.Builder
-	s.WriteString("\033[?7l")
+	s.WriteString(ansi.ResetModeAutoWrap)
 
 	if o.LastGhostLen > 0 {
-		s.WriteString("\0337")
+		s.WriteString(ansi.SaveCursor)
 		s.WriteString(strings.Repeat(" ", o.LastGhostLen+10))
-		s.WriteString("\0338")
+		s.WriteString(ansi.RestoreCursor)
 		o.LastGhostLen = 0
 	}
 
-	s.WriteString("\0337")
-
-	for i := range maxItems + 2 {
-		s.WriteString("\0338")
-		fmt.Fprintf(&s, "\033[%dB", i+1)
-		s.WriteString("\r\033[2K")
-	}
-
-	s.WriteString("\0338")
-	s.WriteString("\033[?7h")
+	clearLinesBelow(&s, maxItems+2)
+	s.WriteString(ansi.SetModeAutoWrap)
 	return s.String()
 }
