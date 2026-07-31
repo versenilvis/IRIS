@@ -577,7 +577,7 @@ func (o *Overlay) draw() string {
 	var s strings.Builder
 	s.WriteString(ansi.ResetModeAutoWrap)
 
-	typedLen := len([]rune(o.TypedQuery))
+	typedLen := lipgloss.Width(o.TypedQuery)
 	targetCol := o.PromptLen + typedLen
 
 	width := termWidth()
