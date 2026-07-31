@@ -32,6 +32,9 @@ checksum:
     algorithm: sha256
 
 release:
+    extra_files:
+        - glob: ./iris-*-vendor.tar.gz
+        - glob: ./iris-*-vendor.tar.gz.sha256
     footer: |
         ## Update
         ```bash

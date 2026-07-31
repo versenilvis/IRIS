@@ -44,6 +44,13 @@ jobs:
             - name: Run Tests
               run: go test -v ./...
 
+            - name: Create vendor tarball
+              if: startsWith(github.ref, 'refs/tags/v')
+              run: |
+                  go mod vendor
+                  tar -czf iris-${GITHUB_REF_NAME#v}-vendor.tar.gz vendor/
+                  sha256sum iris-${GITHUB_REF_NAME#v}-vendor.tar.gz > iris-${GITHUB_REF_NAME#v}-vendor.tar.gz.sha256
+
             - name: Run GoReleaser
               if: startsWith(github.ref, 'refs/tags/v')
               uses: goreleaser/goreleaser-action@v6
