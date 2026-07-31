@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-set -e
-ASDF_DOWNLOAD_PATH=$2
-ASDF_INSTALL_PATH=$3
+set -euo pipefail
+
+[ -n "$ASDF_INSTALL_PATH" ] || { echo "ASDF_INSTALL_PATH is required" >&2; exit 1; }
+[ -n "$ASDF_DOWNLOAD_PATH" ] || { echo "ASDF_DOWNLOAD_PATH is required" >&2; exit 1; }
 
 mkdir -p "$ASDF_INSTALL_PATH/bin"
 cp "$ASDF_DOWNLOAD_PATH/iris" "$ASDF_INSTALL_PATH/bin/iris"

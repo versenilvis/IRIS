@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-set -e
-ASDF_VERSION=$1
-ASDF_DOWNLOAD_PATH=$2
+set -euo pipefail
+
+[ -n "$ASDF_INSTALL_VERSION" ] || { echo "ASDF_INSTALL_VERSION is required" >&2; exit 1; }
+[ -n "$ASDF_DOWNLOAD_PATH" ] || { echo "ASDF_DOWNLOAD_PATH is required" >&2; exit 1; }
 
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
 ARCH=$(uname -m)
 
-if [ "$ARCH" = "x86_64" ]; then
-  ARCH="amd64"
-elif [ "$ARCH" = "aarch64" ]; then
-  ARCH="arm64"
-fi
+case "$ARCH" in
+  x86_64) ARCH="amd64" ;;
+  aarch64) ARCH="arm64" ;;
+esac
 
-URL="https://github.com/versenilvis/iris/releases/download/v${ASDF_VERSION}/iris_${OS}_${ARCH}.tar.gz"
+URL="https://github.com/versenilvis/iris/releases/download/v${ASDF_INSTALL_VERSION}/iris_${OS}_${ARCH}.tar.gz"
 
 echo "Downloading Iris from $URL"
 curl -sSL "$URL" -o "$ASDF_DOWNLOAD_PATH/iris.tar.gz"

@@ -5,9 +5,6 @@ packages:
     description: "A highly customizable, blazing fast and context-aware CLI autocomplete/navigation tool"
     asset: "iris_{{.OS}}_{{.Arch}}.{{.Format}}"
     format: tar.gz
-    overrides:
-      - goos: windows
-        format: zip
     bin:
       - iris
     checksum:

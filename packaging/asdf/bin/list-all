@@ -1,2 +1,6 @@
 #!/usr/bin/env bash
-git ls-remote --tags --refs "https://github.com/versenilvis/iris.git" | grep -o 'refs/tags/v[0-9].*' | cut -d/ -f3- | sed 's/^v//'
+git ls-remote --tags --refs "https://github.com/versenilvis/iris.git" \
+  | grep -o 'refs/tags/v[0-9].*' \
+  | cut -d/ -f3- \
+  | sed 's/^v//' \
+  | sort -V
