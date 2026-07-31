@@ -64,8 +64,11 @@ type UpdaterConfig struct {
 }
 
 type KeybindingsConfig struct {
-	ToggleMode string `toml:"toggle-mode"`
-	ToggleMenu string `toml:"toggle-menu"`
+	ToggleMode       string `toml:"toggle-mode"`
+	ToggleMenu       string `toml:"toggle-menu"`
+	SelectSuggestion string `toml:"select"`
+	NavigateUp       string `toml:"navigate-up"`
+	NavigateDown     string `toml:"navigate-down"`
 }
 
 type SuggestOnEmptyConfig struct {

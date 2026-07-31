@@ -13,6 +13,8 @@ func MatchKey(input []byte, expected string) (matched bool, consumed int) {
 	}
 
 	expected = strings.ToLower(strings.TrimSpace(expected))
+	expected = strings.TrimPrefix(expected, "<")
+	expected = strings.TrimSuffix(expected, ">")
 
 	if strings.HasPrefix(expected, "ctrl+") && len(expected) == 6 {
 		char := expected[5]
@@ -38,12 +40,24 @@ func MatchKey(input []byte, expected string) (matched bool, consumed int) {
 		if len(input) >= 3 && input[0] == 0x1b && input[1] == '[' && input[2] == 'Z' {
 			return true, 3
 		}
+	case "up":
+		if len(input) >= 3 && input[0] == 0x1b && (input[1] == '[' || input[1] == 'O') && input[2] == 'A' {
+			return true, 3
+		}
+	case "down":
+		if len(input) >= 3 && input[0] == 0x1b && (input[1] == '[' || input[1] == 'O') && input[2] == 'B' {
+			return true, 3
+		}
 	case "right":
 		// typically \033[C or \033OC
 		if len(input) >= 3 && input[0] == 0x1b && (input[1] == '[' || input[1] == 'O') && input[2] == 'C' {
 			return true, 3
 		}
-	case "enter":
+	case "left":
+		if len(input) >= 3 && input[0] == 0x1b && (input[1] == '[' || input[1] == 'O') && input[2] == 'D' {
+			return true, 3
+		}
+	case "enter", "cr", "return":
 		if input[0] == 0x0d || input[0] == 0x0a {
 			return true, 1
 		}

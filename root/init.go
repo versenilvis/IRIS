@@ -266,8 +266,9 @@ check-interval = "24h"
 [keybindings]
 toggle_mode = "ctrl+r"
 toggle_menu = "shift+tab"
-select_suggestion = "tab"
-accept_suggestion = "right"
+select = ""
+navigate-up = "up"
+navigate-down = "down"
 `
 				if errWrite := os.WriteFile(path, []byte(defaultContent), 0644); errWrite == nil {
 					fmt.Printf("✓ Initialized default config file at %s\n", path)
