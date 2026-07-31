@@ -125,6 +125,14 @@ func GetFishConfigDir() string {
 	return filepath.Join(home, ".config", "fish")
 }
 
+func GetFishDataDir() string {
+	if xdg := os.Getenv("XDG_DATA_HOME"); xdg != "" {
+		return filepath.Join(xdg, "fish")
+	}
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".local", "share", "fish")
+}
+
 func ScanPosixAliases(files []string) map[string]string {
 	aliases := make(map[string]string)
 	home, err := os.UserHomeDir()
