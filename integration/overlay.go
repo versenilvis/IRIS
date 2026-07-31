@@ -550,10 +550,12 @@ func renderMatchedTitle(title, typed string, selected bool, w int) string {
 		return base.Render(display)
 	}
 
-	typedRunes := []rune(typed)
-	displayRunes := []rune(display)
-	matchLen := min(len(typedRunes), len(displayRunes))
-	return match.Render(string(displayRunes[:matchLen])) + base.Render(string(displayRunes[matchLen:]))
+	// Split by display width, not rune count, so a typed prefix containing
+	// wide runes (CJK, emoji) highlights exactly the matching cells.
+	matchW := lipgloss.Width(typed)
+	highlighted := ansi.Truncate(display, matchW, "")
+	rest := strings.TrimPrefix(display, highlighted)
+	return match.Render(highlighted) + base.Render(rest)
 }
 
 func (o *Overlay) Render() string {
