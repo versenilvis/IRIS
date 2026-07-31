@@ -2,12 +2,14 @@ package integration
 
 import (
 	"fmt"
+	"image/color"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"unicode/utf8"
-	"github.com/charmbracelet/lipgloss"
+
+	"charm.land/lipgloss/v2"
 	"github.com/versenilvis/iris/internal/config"
 	"github.com/versenilvis/iris/internal/logger"
 	"github.com/versenilvis/iris/spec"
@@ -127,17 +129,17 @@ func ComputeCursorCol(data []byte) int {
 }
 
 type Theme struct {
-	Border     lipgloss.Color
-	Accent     lipgloss.Color
-	Muted      lipgloss.Color
-	Text       lipgloss.Color
-	TextSel    lipgloss.Color
-	Match      lipgloss.Color
-	Desc       lipgloss.Color
-	DescSel    lipgloss.Color
-	SelBg      lipgloss.Color
-	ScrollInfo lipgloss.Color
-	GhostText  lipgloss.Color
+	Border     color.Color
+	Accent     color.Color
+	Muted      color.Color
+	Text       color.Color
+	TextSel    color.Color
+	Match      color.Color
+	Desc       color.Color
+	DescSel    color.Color
+	SelBg      color.Color
+	ScrollInfo color.Color
+	GhostText  color.Color
 }
 
 var currentTheme = Theme{
