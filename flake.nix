@@ -1,6 +1,6 @@
 {
   inputs = {
-    systems.url = "github:nix-systems/default-linux";
+    systems.url = "github:nix-systems/default";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
   };
@@ -36,7 +36,7 @@
               doCheck = false;
 
               meta = with pkgs.lib; {
-                description = "A shell auto-completion tool that works like code editor's IntelliSense";
+                description = "A highly customizable, blazing fast and context-aware CLI autocomplete/navigation tool";
                 homepage = "https://github.com/versenilvis/iris";
                 license = licenses.mit;
                 mainProgram = "iris";
