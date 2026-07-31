@@ -155,23 +155,28 @@ iris config show
 ```toml
 [core]
 version = 1
-shell = ""        # "zsh", "bash", "fish", or empty for auto-detection
+shell = ""          # "zsh", "bash", "fish", or empty for auto-detection
 shell-login = false # run the selected shell as a login shell; can also be enabled with iris --shell-login
-mode = "last"     # "last", "spec", or "history"
+mode = "last"       # "last", "spec", or "history"
 debug = false
 expand-alias = true
+auto-execute = false
 
 [ui]
-style = "modern"  # "modern" or "classic"
+style = "modern"    # "modern" or "classic"
 ghost-text = true
 hidden-files = false
 max-suggestions = 100
 max-height = 15
+max-width = 0
 nerd-fonts = true
 
 [keybindings]
 toggle-mode = "ctrl+r"
-toggle-menu = "ctrl+space"
+toggle-menu = "shift+tab"
+select = "tab"
+navigate-up = "up"
+navigate-down = "down"
 
 [git]
 filter-active-branch = true
