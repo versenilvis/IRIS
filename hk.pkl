@@ -1,0 +1,41 @@
+amends "package://github.com/jdx/hk/releases/download/v1.50.0/hk@1.50.0#/Config.pkl"
+
+import "package://github.com/jdx/hk/releases/download/v1.50.0/hk@1.50.0#/Builtins.pkl"
+
+local linters = new {
+  ["pkl"] = Builtins.pkl
+}
+
+local formatter = new {
+  ["newlines"] = Builtins.newlines
+  ["fix-smart-quotes"] = Builtins.fix_smart_quotes
+  ["alejandra"] = (Builtins.alejandra) {
+    exclude = List("**/npins/default.nix")
+  }
+  ["pkl-format"] = Builtins.pkl_format
+  ["just-format"] = Builtins.just_format
+}
+
+hooks {
+  ["pre-commit"] {
+    fix = true
+    stash = "git"
+    steps {
+      ...linters
+      ...formatter
+    }
+  }
+  ["fix"] {
+    fix = true
+    steps {
+      ...linters
+      ...formatter
+    }
+  }
+  ["check"] {
+    steps {
+      ...linters
+      ...formatter
+    }
+  }
+}
