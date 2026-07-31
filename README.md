@@ -125,12 +125,22 @@ If you are using Nix Flakes, you can consume this module directly without buildi
 
 2. Then, use one of the following options to add IRIS to your system:
 
-   **Option A: Using Home Manager**
+   **Option A: Try without installing (ephemeral)**
+   ```bash
+   nix run github:versenilvis/iris
+   ```
+
+   **Option B: Install to your user profile**
+   ```bash
+   nix profile install github:versenilvis/iris
+   ```
+
+   **Option C: Using Home Manager**
    ```nix
    home.packages = [ inputs.iris.packages.${system}.default ];
    ```
 
-   **Option B: Without Home Manager**
+   **Option D: Without Home Manager (NixOS System)**
    ```nix
    environment.systemPackages = [ inputs.iris.packages.${system}.default ];
    ```
