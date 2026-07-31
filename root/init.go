@@ -264,8 +264,8 @@ channel = "stable"
 check-interval = "24h"
 
 [keybindings]
-toggle_mode = "ctrl+r"
-toggle_menu = "shift+tab"
+toggle-mode = "ctrl+r"
+toggle-menu = "shift+tab"
 select = "tab"
 navigate-up = "up"
 navigate-down = "down"
