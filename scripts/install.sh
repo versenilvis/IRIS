@@ -155,7 +155,7 @@ get_download_url() {
         err "GitHub API error (HTTP ${http_code}): ${msg}"
     fi
 
-    url=$(echo "${releases}" | grep "browser_download_url" | grep "${arch}" | head -1 | cut -d '"' -f 4)
+    url=$(echo "${releases}" | grep "browser_download_url" | grep "${arch}\.tar\.gz" | head -1 | cut -d '"' -f 4)
     echo "${url}"
 }
 
