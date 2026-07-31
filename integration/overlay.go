@@ -476,10 +476,7 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 	}
 
 	if ghostText != "" {
-		width, _, err := term.GetSize(int(os.Stdout.Fd()))
-		if err != nil || width <= 0 {
-			width = 120
-		}
+		width := termWidth()
 		cursorCol := o.PromptLen + lipgloss.Width(buffer)
 		availableCols := width - cursorCol
 		if availableCols <= 0 {
@@ -511,6 +508,16 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 	o.LastGhostLen = ghostWidth
 
 	return s.String()
+}
+
+// termWidth returns the terminal width, falling back to 120 when the size
+// can't be determined (e.g. stdout isn't a TTY in tests).
+func termWidth() int {
+	w, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil || w <= 0 {
+		return 120
+	}
+	return w
 }
 
 // sourceTag renders a pill-style source label (" alias ") with inverted
@@ -571,10 +578,7 @@ func (o *Overlay) draw() string {
 	typedLen := len([]rune(o.TypedQuery))
 	targetCol := o.PromptLen + typedLen
 
-	width, _, err := term.GetSize(int(os.Stdout.Fd()))
-	if err != nil || width <= 0 {
-		width = 120
-	}
+	width := termWidth()
 
 	boxWidth := config.Get().UI.MaxWidth
 	if boxWidth <= 0 {
