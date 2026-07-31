@@ -155,6 +155,16 @@ Then run:
 aqua i
 ```
 
+#### Method 6: asdf
+
+If you use [asdf](https://asdf-vm.com/), you can install IRIS via its plugin:
+
+```bash
+asdf plugin add iris https://github.com/versenilvis/asdf-iris.git
+asdf install iris latest
+asdf global iris latest
+```
+
 ## Uninstall
 
 To completely uninstall IRIS, remove all configurations, and clean up your shell integration files, simply run:

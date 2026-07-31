@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -e
+ASDF_DOWNLOAD_PATH=$2
+ASDF_INSTALL_PATH=$3
+
+mkdir -p "$ASDF_INSTALL_PATH/bin"
+cp "$ASDF_DOWNLOAD_PATH/iris" "$ASDF_INSTALL_PATH/bin/iris"
+chmod +x "$ASDF_INSTALL_PATH/bin/iris"
