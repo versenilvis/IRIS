@@ -84,6 +84,8 @@ Shell plugins are great, but they also come with trade-offs. And also, not every
 - Terminal emulator with ANSI color support
 - Go 1.24 or newer (if building from source)
 
+> [!WARNING]
+> Currently, Windows is not supported
 
 #### Method 1: Install script (recommended)
 
@@ -105,10 +107,34 @@ cd iris
 just reload
 ```
 
-> [!WARNING]
-> Currently, Windows is not supported
 
-#### Method 4: Nix Flakes
+#### Method 4: Package managers
+
+<details>
+<summary><b>Arch Linux (AUR)</b></summary>
+<br>
+
+IRIS is available on the Arch User Repository. You can install it using your favorite AUR helper:
+
+```bash
+yay -S iris
+```
+</details>
+
+<details>
+<summary><b>macOS / Linux (Homebrew)</b></summary>
+<br>
+
+Install IRIS via Homebrew tap:
+
+```bash
+brew install versenilvis/iris/iris
+```
+</details>
+
+<details>
+<summary><b>Nix Flakes</b></summary>
+<br>
 
 If you are using Nix Flakes, you can consume this module directly without building it manually.
 
@@ -121,26 +147,41 @@ If you are using Nix Flakes, you can consume this module directly without buildi
 2. Then, use one of the following options to add IRIS to your system:
 
    **Option A: Using Home Manager**
-
-   Add to your Home Manager configuration:
-
    ```nix
-   home.packages = [
-     inputs.iris.packages.${system}.default
-   ];
+   home.packages = [ inputs.iris.packages.${system}.default ];
    ```
 
    **Option B: Without Home Manager**
-
-   Add to your system configuration:
-
    ```nix
-   environment.systemPackages = [
-     inputs.iris.packages.${system}.default
-   ];
+   environment.systemPackages = [ inputs.iris.packages.${system}.default ];
    ```
+</details>
 
-#### Method 5: Aqua
+<details>
+<summary><b>Debian / Ubuntu (.deb)</b></summary>
+<br>
+
+Download the latest `.deb` package from the [Releases](https://github.com/versenilvis/iris/releases) page and run:
+
+```bash
+sudo dpkg -i iris_*.deb
+```
+</details>
+
+<details>
+<summary><b>Fedora / RHEL (.rpm)</b></summary>
+<br>
+
+Download the latest `.rpm` package from the [Releases](https://github.com/versenilvis/iris/releases) page and run:
+
+```bash
+sudo rpm -i iris_*.rpm
+```
+</details>
+
+<details>
+<summary><b>Aqua</b></summary>
+<br>
 
 If you use [aqua](https://aquaproj.github.io/), you can install IRIS by adding it to your `aqua.yaml`:
 
@@ -149,13 +190,12 @@ packages:
   - name: versenilvis/iris
 ```
 
-Then run:
+Then run `aqua i`.
+</details>
 
-```bash
-aqua i
-```
-
-#### Method 6: asdf
+<details>
+<summary><b>asdf</b></summary>
+<br>
 
 If you use [asdf](https://asdf-vm.com/), you can install IRIS via its plugin:
 
@@ -164,6 +204,7 @@ asdf plugin add iris https://github.com/versenilvis/asdf-iris.git
 asdf install iris latest
 asdf global iris latest
 ```
+</details>
 
 ## Uninstall
 
