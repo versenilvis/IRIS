@@ -1,0 +1,85 @@
+version: 2
+
+project_name: iris
+
+builds:
+    - env:
+          - CGO_ENABLED=0
+      goos:
+          - linux
+          - darwin
+          - windows
+      goarch:
+          - amd64
+          - arm64
+      ldflags:
+          - -s -w -X github.com/versenilvis/iris/root.Version={{.Version}}
+      flags:
+          - -trimpath
+      main: ./cmd/iris
+      binary: iris
+
+archives:
+    - format: tar.gz
+      name_template: >-
+          {{ .ProjectName }}_{{ .Os }}_{{ .Arch }}
+      format_overrides:
+          - goos: windows
+            format: zip
+
+checksum:
+    name_template: "checksums.txt"
+    algorithm: sha256
+
+release:
+    footer: |
+        ## Update
+        ```bash
+        iris update
+        ```
+# AUR
+aurs:
+    - name: iris
+      package: |-
+          install -Dm755 "./iris" "${pkgdir}/usr/bin/iris"
+      homepage: "https://github.com/versenilvis/iris"
+      description: "A highly customizable, blazing fast and context-aware CLI autocomplete/navigation tool"
+      maintainers:
+          - "VERSE <sunnyone0901@gmail.com>"
+      license: "MIT"
+      private_key: "{{ .Env.AUR_KEY }}"
+      git_url: "ssh://aur@aur.archlinux.org/iris.git"
+      commit_author:
+          name: "goreleaserbot"
+          email: "bot@goreleaser.com"
+      commit_msg_template: "AUR release {{ .Tag }}"
+      provides:
+          - iris
+      conflicts:
+          - iris-bin
+# Homebrew
+brews:
+    - repository:
+          owner: versenilvis
+          name: homebrew-iris
+          token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+      directory: Formula
+      homepage: "https://github.com/versenilvis/iris"
+      description: "A highly customizable, blazing fast and context-aware CLI autocomplete/navigation tool"
+      license: "MIT"
+      test: |
+          system "#{bin}/iris", "--help"
+
+# Debian/RPM
+nfpms:
+    - id: iris
+      package_name: iris
+      vendor: "versenilvis"
+      homepage: "https://github.com/versenilvis/iris"
+      maintainer: "VERSE <sunnyone0901@gmail.com>"
+      description: "A highly customizable, blazing fast and context-aware CLI autocomplete/navigation tool"
+      license: "MIT"
+      formats:
+          - deb
+          - rpm
+      bindir: /usr/bin
