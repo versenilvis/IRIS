@@ -513,6 +513,16 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 	return s.String()
 }
 
+// sourceTag renders a pill-style source label (" alias ") with inverted
+// colors when selected.
+func sourceTag(label, bgHex, fgHex string, selected bool) string {
+	style := lipgloss.NewStyle().Background(lipgloss.Color(bgHex)).Foreground(lipgloss.Color(fgHex))
+	if selected {
+		style = lipgloss.NewStyle().Background(lipgloss.Color(fgHex)).Foreground(lipgloss.Color("#110f18")).Bold(true)
+	}
+	return style.Render(" " + label + " ")
+}
+
 func renderMatchedTitle(title, typed string, selected bool, w int) string {
 	t := currentTheme
 	textColor := t.Text
@@ -710,31 +720,16 @@ func (o *Overlay) draw() string {
 		} else {
 			switch it.Icon {
 			case "alias":
-				boxStyle := lipgloss.NewStyle().Background(lipgloss.Color("#2a2342")).Foreground(lipgloss.Color("#a277ff"))
-				if selected {
-					boxStyle = lipgloss.NewStyle().Background(lipgloss.Color("#a277ff")).Foreground(lipgloss.Color("#110f18")).Bold(true)
-				}
-				tag := boxStyle.Render(" alias ")
-				tw := lipgloss.Width(tag)
-				rem := max(descW-tw-1, 0)
+				tag := sourceTag("alias", "#2a2342", "#a277ff", selected)
+				rem := max(descW-lipgloss.Width(tag)-1, 0)
 				desc = tag + bg.Render(" ") + bg.Foreground(descColor).Render(fixedWidth(it.Desc, rem))
 			case "history":
-				boxStyle := lipgloss.NewStyle().Background(lipgloss.Color("#1a2d36")).Foreground(lipgloss.Color("#61ffca"))
-				if selected {
-					boxStyle = lipgloss.NewStyle().Background(lipgloss.Color("#61ffca")).Foreground(lipgloss.Color("#110f18")).Bold(true)
-				}
-				tag := boxStyle.Render(" history ")
-				tw := lipgloss.Width(tag)
-				rem := max(descW-tw, 0)
+				tag := sourceTag("history", "#1a2d36", "#61ffca", selected)
+				rem := max(descW-lipgloss.Width(tag), 0)
 				desc = tag + bg.Render(strings.Repeat(" ", rem))
 			case "system":
-				boxStyle := lipgloss.NewStyle().Background(lipgloss.Color("#1e1d28")).Foreground(lipgloss.Color("#a277ff"))
-				if selected {
-					boxStyle = lipgloss.NewStyle().Background(lipgloss.Color("#a277ff")).Foreground(lipgloss.Color("#110f18")).Bold(true)
-				}
-				tag := boxStyle.Render(" system ")
-				tw := lipgloss.Width(tag)
-				rem := max(descW-tw, 0)
+				tag := sourceTag("system", "#1e1d28", "#a277ff", selected)
+				rem := max(descW-lipgloss.Width(tag), 0)
 				desc = tag + bg.Render(strings.Repeat(" ", rem))
 			default:
 				desc = bg.Foreground(descColor).Render(fixedWidth(it.Desc, descW))
