@@ -46,7 +46,7 @@ func DefaultConfig() *Config {
 		Keybindings: KeybindingsConfig{
 			ToggleMode:       "ctrl+r",
 			ToggleMenu:       "shift+tab",
-			SelectSuggestion: "",
+			SelectSuggestion: "tab",
 			NavigateUp:       "up",
 			NavigateDown:     "down",
 		},

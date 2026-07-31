@@ -191,6 +191,23 @@ func Load() (*Config, error) {
 
 	applyEnv(cfg)
 
+	// fallback for empty keybindings
+	if cfg.Keybindings.ToggleMode == "" {
+		cfg.Keybindings.ToggleMode = "ctrl+r"
+	}
+	if cfg.Keybindings.ToggleMenu == "" {
+		cfg.Keybindings.ToggleMenu = "shift+tab"
+	}
+	if cfg.Keybindings.SelectSuggestion == "" {
+		cfg.Keybindings.SelectSuggestion = "tab"
+	}
+	if cfg.Keybindings.NavigateUp == "" {
+		cfg.Keybindings.NavigateUp = "up"
+	}
+	if cfg.Keybindings.NavigateDown == "" {
+		cfg.Keybindings.NavigateDown = "down"
+	}
+
 	if err := validate(cfg); err != nil {
 		return cfg, fmt.Errorf("config: invalid value: %w", err)
 	}

@@ -266,7 +266,7 @@ check-interval = "24h"
 [keybindings]
 toggle_mode = "ctrl+r"
 toggle_menu = "shift+tab"
-select = ""
+select = "tab"
 navigate-up = "up"
 navigate-down = "down"
 `
