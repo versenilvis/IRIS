@@ -136,13 +136,15 @@ If you are using Nix Flakes, you can consume this module directly without buildi
    ```
 
    **Option C: Using Home Manager**
+   *(Ensure you pass `inputs` to modules via `extraSpecialArgs`)*
    ```nix
-   home.packages = [ inputs.iris.packages.${system}.default ];
+   home.packages = [ inputs.iris.packages.${pkgs.system}.default ];
    ```
 
    **Option D: Without Home Manager (NixOS System)**
+   *(Ensure you pass `inputs` to modules via `specialArgs`)*
    ```nix
-   environment.systemPackages = [ inputs.iris.packages.${system}.default ];
+   environment.systemPackages = [ inputs.iris.packages.${pkgs.system}.default ];
    ```
 </details>
 
