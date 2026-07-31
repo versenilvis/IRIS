@@ -140,6 +140,21 @@ If you are using Nix Flakes, you can consume this module directly without buildi
    ];
    ```
 
+#### Method 5: Aqua
+
+If you use [aqua](https://aquaproj.github.io/), you can install IRIS by adding it to your `aqua.yaml`:
+
+```yaml
+packages:
+  - name: versenilvis/iris
+```
+
+Then run:
+
+```bash
+aqua i
+```
+
 ## Uninstall
 
 To completely uninstall IRIS, remove all configurations, and clean up your shell integration files, simply run:

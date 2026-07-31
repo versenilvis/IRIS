@@ -1,0 +1,20 @@
+packages:
+  - type: github_release
+    repo_owner: versenilvis
+    repo_name: iris
+    description: "A highly customizable, blazing fast and context-aware CLI autocomplete/navigation tool"
+    asset: "iris_{{.OS}}_{{.Arch}}.{{.Format}}"
+    format: tar.gz
+    overrides:
+      - goos: windows
+        format: zip
+    bin:
+      - iris
+    checksum:
+      type: github_release
+      asset: checksums.txt
+      file_format: regexp
+      algorithm: sha256
+      pattern:
+        checksum: ^(\b[A-Fa-f0-9]{64}\b)
+        file: "^\\b[A-Fa-f0-9]{64}\\b\\s+(.*)$"
