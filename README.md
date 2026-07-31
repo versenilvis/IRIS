@@ -183,7 +183,8 @@ If you use [asdf](https://asdf-vm.com/), you can install IRIS via its plugin:
 ```bash
 asdf plugin add iris https://github.com/versenilvis/asdf-iris.git
 asdf install iris latest
-asdf global iris latest
+asdf set -u iris latest
+asdf current iris
 ```
 </details>
 
