@@ -3,4 +3,4 @@ git ls-remote --tags --refs "https://github.com/versenilvis/iris.git" \
   | grep -o 'refs/tags/v[0-9].*' \
   | cut -d/ -f3- \
   | sed 's/^v//' \
-  | sort -V
+  | sort -t. -k 1,1n -k 2,2n -k 3,3n
