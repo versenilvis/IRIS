@@ -221,6 +221,9 @@ debug = false
 # automatically expand aliases on space
 expand-alias = true
 
+# automatically execute command after accepting suggestion
+auto-execute = false
+
 [ui]
 # visual style: "modern" (icons, category pills, shortcut footer) or "classic" (minimalist, centered number, no icons)
 style = "modern"

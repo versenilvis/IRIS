@@ -11,6 +11,7 @@ func DefaultConfig() *Config {
 			Mode:        "last",
 			Debug:       false,
 			ExpandAlias: true,
+			AutoExecute: false,
 		},
 		UI: UIConfig{
 			Style:           "modern",

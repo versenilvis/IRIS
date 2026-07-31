@@ -39,6 +39,7 @@ type CoreConfig struct {
 	Mode        string `toml:"mode"`
 	Debug       bool   `toml:"debug"`
 	ExpandAlias bool   `toml:"expand-alias"`
+	AutoExecute bool   `toml:"auto-execute"`
 }
 
 type UIConfig struct {
