@@ -785,11 +785,11 @@ func (o *Overlay) draw() string {
 	footerInfo := ""
 	if !isClassic {
 		keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#a277ff")).Bold(true)
-		tabKey := keyStyle.Render("<Tab>")
+		selectKey := keyStyle.Render(config.FormatKeyName(config.Get().Keybindings.SelectSuggestion))
 		ctrlRKey := keyStyle.Render(config.FormatKeyName(config.Get().Keybindings.ToggleMode))
 		acceptText := lipgloss.NewStyle().Foreground(t.ScrollInfo).Render(" Accept")
 		modeText := lipgloss.NewStyle().Foreground(t.ScrollInfo).Render(" Mode")
-		footerInfo = fmt.Sprintf(" %s%s • %s%s ", tabKey, acceptText, ctrlRKey, modeText)
+		footerInfo = fmt.Sprintf(" %s%s • %s%s ", selectKey, acceptText, ctrlRKey, modeText)
 	}
 
 	footerRunes := lipgloss.Width(footerInfo)
