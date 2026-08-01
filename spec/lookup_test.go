@@ -6,6 +6,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/versenilvis/iris/spec/alias"
 )
 
 func TestLookup(t *testing.T) {
@@ -231,3 +233,66 @@ func TestLookup_NestedDirectoryTrailingSpace(t *testing.T) {
 		t.Errorf("expected hello.txt in results, got %v", results)
 	}
 }
+
+type mockGitProvider struct{}
+
+func (m *mockGitProvider) ToolName() string { return "git" }
+func (m *mockGitProvider) GetAliases(cwd string) []alias.AliasEntry {
+	return []alias.AliasEntry{
+		{
+			Name:      "co",
+			Expansion: "checkout",
+			Scope:     "global",
+		},
+		{
+			Name:      "recent",
+			Expansion: "!git for-each-ref --sort=committerdate --format='%(committerdate:relative) %(refname:short)' refs/heads/ | tail -10",
+			Scope:     "global",
+		},
+	}
+}
+
+func TestLookup_GitRecentAlias(t *testing.T) {
+	ResetRegistry()
+	Register(&Spec{
+		Name: "git",
+		Subcommands: []Subcommand{
+			{Name: "commit"},
+			{Name: "checkout", Options: []Option{{Name: "-b"}}},
+		},
+	})
+	alias.Register(&mockGitProvider{})
+
+	// Test Type 1: Standard subcommand alias 'git co' -> 'git checkout'
+	resultsCo := Lookup("git co ")
+	foundCo := false
+	for _, r := range resultsCo {
+		if strings.Contains(r.Cmd, "-b") {
+			foundCo = true
+			break
+		}
+	}
+	if !foundCo {
+		t.Errorf("expected '-b' option after expanding 'git co ', got %v", resultsCo)
+	}
+
+	// Test Type 2: Shell pipeline alias 'git rec' -> 'git recent'
+	resultsRec := Lookup("git rec")
+	foundRec := false
+	for _, r := range resultsRec {
+		if strings.Contains(r.Cmd, "git recent") {
+			foundRec = true
+			break
+		}
+	}
+	if !foundRec {
+		t.Errorf("expected 'git recent' suggestion for 'git rec', got %v", resultsRec)
+	}
+
+	// Test Type 2 expansion with trailing space: 'git recent ' should expand without returning 0/nil
+	resultsRecentSpace := Lookup("git recent ")
+	if len(resultsRecentSpace) == 0 {
+		t.Errorf("expected non-empty suggestions for 'git recent ', got 0 (possibly returned nil due to invalid subcommand/exclamation mark)")
+	}
+}
+
