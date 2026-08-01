@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"unicode/utf8"
 
 	"charm.land/lipgloss/v2"
@@ -18,8 +19,54 @@ import (
 )
 
 const (
-	maxItems = 6
+	// defaultMaxItems is the fallback row count when ui.max-height is unset or
+	// out of range.
+	defaultMaxItems = 6
+	// borderLines is the top and bottom border the box draws around its items.
+	borderLines = 2
 )
+
+// lastDrawnLines records the total height of the most recently drawn box, so a
+// box that shrinks -- ui.max-height is hot-reloaded, and the terminal can get
+// shorter -- is still fully erased. Clearing only the new, smaller height would
+// leave the surplus rows on screen.
+var lastDrawnLines atomic.Int32
+
+// menuItemRows is how many suggestion rows the overlay may show.
+//
+// ui.max-height is the height of the whole box, matching its name and the
+// comment `iris config init` writes, so the borders come out of that budget.
+// It is also clamped to the terminal: a box taller than the window can't be
+// scrolled back into view and would push the prompt off screen.
+func menuItemRows() int {
+	rows := config.Get().UI.MaxHeight
+	if rows < 3 || rows > 50 {
+		rows = defaultMaxItems + borderLines
+	}
+
+	if h := termHeight(); h > 0 {
+		// Leave a row for the prompt itself plus one of breathing room.
+		if avail := h - 2; rows > avail {
+			rows = avail
+		}
+	}
+
+	rows -= borderLines
+	if rows < 1 {
+		rows = 1
+	}
+	return rows
+}
+
+// clearRows is the number of lines a clear must erase: whatever is on screen
+// now, which may be taller than what the next draw will produce.
+func clearRows() int {
+	n := int(lastDrawnLines.Load())
+	if want := menuItemRows() + borderLines; want > n {
+		n = want
+	}
+	return n
+}
 
 func ComputeCursorCol(data []byte) int {
 	col := 0
@@ -520,6 +567,14 @@ func termWidth() int {
 	return w
 }
 
+func termHeight() int {
+	_, h, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil || h <= 0 {
+		return 0
+	}
+	return h
+}
+
 // sourceTag renders a pill-style source label (" alias ") with inverted
 // colors when selected.
 func sourceTag(label, bgHex, fgHex string, selected bool) string {
@@ -603,7 +658,7 @@ func (o *Overlay) draw() string {
 
 	s.WriteString(ansi.SaveCursor)
 
-	windowSize := min(len(o.Items), maxItems)
+	windowSize := min(len(o.Items), menuItemRows())
 
 	scrolloffUp := 1
 	if windowSize <= 3 {
@@ -628,7 +683,8 @@ func (o *Overlay) draw() string {
 
 	start := o.StartIdx
 	end := start + windowSize
-	totalLines := windowSize + 2
+	totalLines := windowSize + borderLines
+	lastDrawnLines.Store(int32(totalLines))
 
 	s.WriteString(strings.Repeat("\n", totalLines))
 	s.WriteString(ansi.CursorUp(totalLines))
@@ -802,7 +858,7 @@ func (o *Overlay) Clear() string {
 
 	var s strings.Builder
 	s.WriteString(ansi.ResetModeAutoWrap)
-	clearLinesBelow(&s, maxItems+2)
+	clearLinesBelow(&s, clearRows())
 	s.WriteString(ansi.SetModeAutoWrap)
 	return s.String()
 }
@@ -832,7 +888,7 @@ func (o *Overlay) HideMenu(query string) string {
 		o.LastGhostLen = 0
 	}
 
-	clearLinesBelow(&s, maxItems+2)
+	clearLinesBelow(&s, clearRows())
 	s.WriteString(ansi.SetModeAutoWrap)
 	return s.String()
 }
@@ -862,7 +918,7 @@ func (o *Overlay) ClearAndDisable() string {
 		o.LastGhostLen = 0
 	}
 
-	clearLinesBelow(&s, maxItems+2)
+	clearLinesBelow(&s, clearRows())
 	s.WriteString(ansi.SetModeAutoWrap)
 	return s.String()
 }
