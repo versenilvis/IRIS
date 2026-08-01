@@ -71,6 +71,21 @@ type KeybindingsConfig struct {
 	NavigateDown     string `toml:"navigate-down"`
 }
 
+type ZoxideConfig struct {
+	// ExtendCd adds zoxide's frecency database to `cd` completions.
+	//
+	// Without it `cd` only offers direct children of the current directory,
+	// because that is all the file generator walks -- so `cd proj` finds
+	// nothing unless you are already standing in the parent. With it, any
+	// directory zoxide has seen is reachable by name from anywhere, which is
+	// what `cd` is usually wanted for.
+	//
+	// Off by default: it shells out to zoxide, and the suggestions are absolute
+	// paths from outside the current directory, which is a real change in what
+	// `cd` offers.
+	ExtendCd bool `toml:"extend-cd"`
+}
+
 type SuggestOnEmptyConfig struct {
 	Enabled       bool `toml:"enabled"`
 	DebounceMS    int  `toml:"debounce_ms"`
@@ -120,6 +135,7 @@ type Config struct {
 	Git         GitConfig         `toml:"git"`
 	Updater     UpdaterConfig     `toml:"updater"`
 	AI          AIConfig          `toml:"ai"`
+	Zoxide      ZoxideConfig      `toml:"zoxide"`
 	Keybindings KeybindingsConfig `toml:"keybindings"`
 }
 

@@ -43,6 +43,9 @@ func DefaultConfig() *Config {
 				MinIntervalMS: 5000,
 			},
 		},
+		Zoxide: ZoxideConfig{
+			ExtendCd: false,
+		},
 		Keybindings: KeybindingsConfig{
 			ToggleMode:       "ctrl+r",
 			ToggleMenu:       "shift+tab",
