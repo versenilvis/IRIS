@@ -319,7 +319,7 @@ func Lookup(input string) []Suggestion {
 					if partial == "" || HasPrefix(a.Name, partial) {
 						priority := 70
 						switch a.Scope {
-						case "local", "worktree":
+						case "local", "worktree", "command":
 							priority = 85
 						case "system":
 							priority = 65

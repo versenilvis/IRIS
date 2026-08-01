@@ -130,13 +130,12 @@ func (p *GitProvider) parseOutput(out []byte, hasScope bool) []AliasEntry {
 			continue
 		}
 
-		scope := "local"
 		if hasScope {
 			idx := strings.IndexAny(line, " \t")
 			if idx == -1 {
 				continue
 			}
-			scope = line[:idx]
+			scope := line[:idx]
 			rest := strings.TrimSpace(line[idx:])
 			parts := strings.SplitN(rest, " ", 2)
 			if len(parts) == 2 {
@@ -154,7 +153,7 @@ func (p *GitProvider) parseOutput(out []byte, hasScope bool) []AliasEntry {
 				entries = append(entries, AliasEntry{
 					Name:      name,
 					Expansion: parts[1],
-					Scope:     scope,
+					Scope:     "",
 				})
 			}
 		}
