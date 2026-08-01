@@ -72,3 +72,10 @@ func TestGitProviderParseOutput(t *testing.T) {
 		t.Errorf("expected expansion 'checkout', got %q", entries[1].Expansion)
 	}
 }
+
+func TestGetProvider_UnregisteredCommand(t *testing.T) {
+	p := GetProvider("unregistered_command_xyz")
+	if p != nil {
+		t.Errorf("expected nil for unregistered command, got %v", p)
+	}
+}

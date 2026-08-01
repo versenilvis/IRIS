@@ -40,14 +40,9 @@ func (p *GitProvider) buildCacheKey(cwd string) string {
 	var sb strings.Builder
 	sb.WriteString(cwd)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-
-	// Check local config
-	cmd := exec.CommandContext(ctx, "git", "-C", cwd, "rev-parse", "--show-toplevel")
-	if gitDir, err := cmd.Output(); err == nil {
-		localConfig := filepath.Join(strings.TrimSpace(string(gitDir)), ".git", "config")
-		if info, err := os.Stat(localConfig); err == nil {
+	// Check local config via fast os.Stat traversal
+	if configPath := resolveGitConfigPath(cwd); configPath != "" {
+		if info, err := os.Stat(configPath); err == nil {
 			fmt.Fprintf(&sb, "|local:%s", info.ModTime().String())
 		}
 	}
@@ -61,6 +56,37 @@ func (p *GitProvider) buildCacheKey(cwd string) string {
 	}
 
 	return sb.String()
+}
+
+func resolveGitConfigPath(cwd string) string {
+	dir := cwd
+	for dir != "" {
+		gitPath := filepath.Join(dir, ".git")
+		info, err := os.Stat(gitPath)
+		if err == nil {
+			if info.IsDir() {
+				return filepath.Join(gitPath, "config")
+			}
+			content, errRead := os.ReadFile(gitPath)
+			if errRead == nil {
+				s := strings.TrimSpace(string(content))
+				if after, ok := strings.CutPrefix(s, "gitdir: "); ok {
+					gitDir := strings.TrimSpace(after)
+					if !filepath.IsAbs(gitDir) {
+						gitDir = filepath.Join(dir, gitDir)
+					}
+					return filepath.Join(gitDir, "config")
+				}
+			}
+			return filepath.Join(dir, ".git", "config")
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return ""
 }
 
 func (p *GitProvider) parse(cwd string) []AliasEntry {
