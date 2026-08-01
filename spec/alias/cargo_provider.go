@@ -1,6 +1,7 @@
 package alias
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -41,12 +42,12 @@ func (p *CargoProvider) buildCacheKey(cwd string) string {
 	for {
 		localConfig := filepath.Join(dir, ".cargo", "config.toml")
 		if info, err := os.Stat(localConfig); err == nil {
-			sb.WriteString("|local:" + info.ModTime().String())
+			fmt.Fprintf(&sb, "|local:%s", info.ModTime().String())
 			break
 		}
 		localConfig2 := filepath.Join(dir, ".cargo", "config")
 		if info, err := os.Stat(localConfig2); err == nil {
-			sb.WriteString("|local:" + info.ModTime().String())
+			fmt.Fprintf(&sb, "|local:%s", info.ModTime().String())
 			break
 		}
 
@@ -60,12 +61,12 @@ func (p *CargoProvider) buildCacheKey(cwd string) string {
 	if cargoHome := os.Getenv("CARGO_HOME"); cargoHome != "" {
 		globalConfig := filepath.Join(cargoHome, "config.toml")
 		if info, err := os.Stat(globalConfig); err == nil {
-			sb.WriteString("|global:" + info.ModTime().String())
+			fmt.Fprintf(&sb, "|global:%s", info.ModTime().String())
 		}
 	} else if home, err := os.UserHomeDir(); err == nil {
 		globalConfig := filepath.Join(home, ".cargo", "config.toml")
 		if info, err := os.Stat(globalConfig); err == nil {
-			sb.WriteString("|global:" + info.ModTime().String())
+			fmt.Fprintf(&sb, "|global:%s", info.ModTime().String())
 		}
 	}
 

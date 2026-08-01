@@ -2,11 +2,14 @@ package alias
 
 import (
 	"bytes"
+	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 )
 
 type GitProvider struct {
@@ -37,12 +40,15 @@ func (p *GitProvider) buildCacheKey(cwd string) string {
 	var sb strings.Builder
 	sb.WriteString(cwd)
 
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
 	// Check local config
-	cmd := exec.Command("git", "-C", cwd, "rev-parse", "--show-toplevel")
+	cmd := exec.CommandContext(ctx, "git", "-C", cwd, "rev-parse", "--show-toplevel")
 	if gitDir, err := cmd.Output(); err == nil {
 		localConfig := filepath.Join(strings.TrimSpace(string(gitDir)), ".git", "config")
 		if info, err := os.Stat(localConfig); err == nil {
-			sb.WriteString("|local:" + info.ModTime().String())
+			fmt.Fprintf(&sb, "|local:%s", info.ModTime().String())
 		}
 	}
 
@@ -50,7 +56,7 @@ func (p *GitProvider) buildCacheKey(cwd string) string {
 	if home, err := os.UserHomeDir(); err == nil {
 		globalConfig := filepath.Join(home, ".gitconfig")
 		if info, err := os.Stat(globalConfig); err == nil {
-			sb.WriteString("|global:" + info.ModTime().String())
+			fmt.Fprintf(&sb, "|global:%s", info.ModTime().String())
 		}
 	}
 
@@ -58,14 +64,19 @@ func (p *GitProvider) buildCacheKey(cwd string) string {
 }
 
 func (p *GitProvider) parse(cwd string) []AliasEntry {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
 	// Try with --show-scope first
-	cmd := exec.Command("git", "config", "--get-regexp", "--show-scope", "^alias\\.")
+	cmd := exec.CommandContext(ctx, "git", "config", "--get-regexp", "--show-scope", "^alias\\.")
 	cmd.Dir = cwd
 	out, err := cmd.Output()
 	hasScope := true
 	if err != nil {
+		ctx2, cancel2 := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel2()
 		// Fallback for older git
-		cmd = exec.Command("git", "config", "--get-regexp", "^alias\\.")
+		cmd = exec.CommandContext(ctx2, "git", "config", "--get-regexp", "^alias\\.")
 		cmd.Dir = cwd
 		out, err = cmd.Output()
 		hasScope = false
