@@ -318,8 +318,11 @@ func Lookup(input string) []Suggestion {
 				for _, a := range provider.GetAliases(cwd) {
 					if partial == "" || HasPrefix(a.Name, partial) {
 						priority := 70
-						if a.Scope == "local" || a.Scope == "worktree" {
-							priority = 75
+						switch a.Scope {
+						case "local", "worktree":
+							priority = 85
+						case "system":
+							priority = 65
 						}
 						results = append(results, Suggestion{
 							Cmd:      prefix + " " + a.Name,

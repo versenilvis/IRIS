@@ -297,14 +297,14 @@ func TestLookup_GitRecentAlias(t *testing.T) {
 		t.Errorf("expected 'git recent' suggestion for 'git rec', got %v", resultsRec)
 	}
 
-	// Test Local Scope Priority (Priority = 75)
+	// Test Local Scope Priority (Priority = 85)
 	resultsLocal := Lookup("git local")
 	foundLocal := false
 	for _, r := range resultsLocal {
 		if strings.Contains(r.Cmd, "git local-alias") {
 			foundLocal = true
-			if r.Priority != 75 {
-				t.Errorf("expected local alias priority 75, got %d", r.Priority)
+			if r.Priority != 85 {
+				t.Errorf("expected local alias priority 85, got %d", r.Priority)
 			}
 			break
 		}
