@@ -313,10 +313,34 @@ func TestLookup_GitRecentAlias(t *testing.T) {
 		t.Errorf("expected 'git local-alias' suggestion, got %v", resultsLocal)
 	}
 
-	// Test Type 2 expansion with trailing space: 'git recent ' should expand without returning 0/nil
+	// Test Type 2 expansion with trailing space: 'git recent ' (shell pipeline alias starting with !) should be skipped and return nil
 	resultsRecentSpace := Lookup("git recent ")
-	if len(resultsRecentSpace) == 0 {
-		t.Errorf("expected non-empty suggestions for 'git recent ', got 0 (possibly returned nil due to invalid subcommand/exclamation mark)")
+	if len(resultsRecentSpace) != 0 {
+		t.Errorf("expected 0 suggestions for shell pipeline alias 'git recent ', got %v", resultsRecentSpace)
+	}
+}
+
+func TestLookup_InvalidSubcommandAfterAliasExpansion(t *testing.T) {
+	ResetRegistry()
+	Register(&Spec{
+		Name: "git",
+		Subcommands: []Subcommand{
+			{Name: "commit"},
+			{Name: "status", Subcommands: []Subcommand{{Name: "porcelain"}}},
+		},
+	})
+	alias.Register(&mockGitProvider{})
+
+	// token beyond the alias expansion must be validated against the expanded subcommand
+	results := Lookup("git local-alias badcmd ")
+	if len(results) != 0 {
+		t.Errorf("expected 0 suggestions for invalid subcommand after alias expansion, got %v", results)
+	}
+
+	// expansion itself is still allowed even when it is not a registered subcommand
+	resultsOk := Lookup("git co ")
+	if len(resultsOk) == 0 {
+		t.Errorf("expected suggestions for expanded alias 'git co ', got none")
 	}
 }
 

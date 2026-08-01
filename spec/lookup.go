@@ -80,6 +80,7 @@ func Lookup(input string) []Suggestion {
 
 	// Expand tool aliases
 	isAliasExpanded := false
+	aliasExpansionEnd := 0
 	if len(tokens) > 2 {
 		rootCmdName := tokens[0]
 		if provider := alias.GetProvider(rootCmdName); provider != nil {
@@ -88,8 +89,10 @@ func Lookup(input string) []Suggestion {
 			subCmd := tokens[1]
 			for _, a := range toolAliases {
 				if a.Name == subCmd {
-					expansion := strings.TrimPrefix(a.Expansion, "!")
-					aliasTokens := Tokenize(expansion)
+					if strings.HasPrefix(a.Expansion, "!") {
+						return nil
+					}
+					aliasTokens := Tokenize(a.Expansion)
 					if len(aliasTokens) > 0 && aliasTokens[len(aliasTokens)-1] == "" {
 						aliasTokens = aliasTokens[:len(aliasTokens)-1]
 					}
@@ -102,6 +105,7 @@ func Lookup(input string) []Suggestion {
 					newTokens = append(newTokens, tokens[2:]...)
 					tokens = newTokens
 					isAliasExpanded = true
+					aliasExpansionEnd = len(aliasTokens)
 					break
 				}
 			}
@@ -183,7 +187,7 @@ func Lookup(input string) []Suggestion {
 			continue
 		}
 		// invalid subcommand word typed
-		if len(currentSubs) > 0 && !isAliasExpanded {
+		if len(currentSubs) > 0 && (!isAliasExpanded || depth > aliasExpansionEnd) {
 			return nil
 		}
 		break
