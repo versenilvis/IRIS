@@ -204,3 +204,38 @@ func TestClearRowsCoversShrunkBox(t *testing.T) {
 		t.Errorf("clearRows() after shrink = %d; want %d (the height still on screen)", got, tall)
 	}
 }
+
+func TestScrolloffIsSymmetric(t *testing.T) {
+	// The window kept a row of context above the highlight but none below, so
+	// paging down pinned it to the last visible row while paging up did not.
+	cfg := config.DefaultConfig()
+	cfg.UI.MaxHeight = 8 // 6 item rows
+	config.Init(cfg)
+
+	items := make([]spec.Suggestion, 20)
+	for i := range items {
+		items[i] = spec.Suggestion{Cmd: string(rune('a' + i))}
+	}
+
+	o := NewOverlay()
+	o.SetQueryAndItems("q", items)
+
+	window := menuItemRows()
+
+	// Walk down to the bottom, then back up, asserting the highlight never sits
+	// flush against an edge while there are still items past it.
+	for range len(items) - 1 {
+		o.MoveCursor("down")
+		o.Render()
+		if o.Cursor < len(items)-1 && o.Cursor == o.StartIdx+window-1 {
+			t.Fatalf("moving down: cursor %d pinned to last visible row (start %d, window %d)", o.Cursor, o.StartIdx, window)
+		}
+	}
+	for range len(items) - 1 {
+		o.MoveCursor("up")
+		o.Render()
+		if o.Cursor > 0 && o.Cursor == o.StartIdx {
+			t.Fatalf("moving up: cursor %d pinned to first visible row (start %d, window %d)", o.Cursor, o.StartIdx, window)
+		}
+	}
+}

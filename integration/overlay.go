@@ -660,16 +660,21 @@ func (o *Overlay) draw() string {
 
 	windowSize := min(len(o.Items), menuItemRows())
 
-	scrolloffUp := 1
+	// Keep a row of context on both sides of the highlight. Only the top had
+	// one: moving up scrolled a row early and left a row visible above, while
+	// moving down pinned the highlight to the very last row with nothing after
+	// it. The list therefore appeared to jump by different amounts depending on
+	// which way you were going.
+	scrolloff := 1
 	if windowSize <= 3 {
-		scrolloffUp = 0
+		scrolloff = 0
 	}
 
-	if o.Cursor < o.StartIdx+scrolloffUp {
-		o.StartIdx = o.Cursor - scrolloffUp
+	if o.Cursor < o.StartIdx+scrolloff {
+		o.StartIdx = o.Cursor - scrolloff
 	}
-	if o.Cursor >= o.StartIdx+windowSize {
-		o.StartIdx = o.Cursor - windowSize + 1
+	if o.Cursor > o.StartIdx+windowSize-1-scrolloff {
+		o.StartIdx = o.Cursor - windowSize + 1 + scrolloff
 	}
 	if o.StartIdx < 0 {
 		o.StartIdx = 0
