@@ -69,6 +69,15 @@ type KeybindingsConfig struct {
 	SelectSuggestion string `toml:"select"`
 	NavigateUp       string `toml:"navigate-up"`
 	NavigateDown     string `toml:"navigate-down"`
+	// NavigateClosed decides what the navigate keys do while the suggestion
+	// menu is closed: "history" browses iris' own merged history (the default),
+	// "shell" forwards the key to the shell instead.
+	//
+	// Forwarding matters when the navigate keys are left on the arrows and
+	// something else already owns them at the prompt -- atuin binds Up, for
+	// instance. Without it the only way to keep that binding is to move iris
+	// onto other keys, which costs arrow-key navigation of the menu entirely.
+	NavigateClosed string `toml:"navigate-closed"`
 }
 
 type SuggestOnEmptyConfig struct {
@@ -200,6 +209,9 @@ func Load() (*Config, error) {
 	}
 	if cfg.Keybindings.SelectSuggestion == "" {
 		cfg.Keybindings.SelectSuggestion = "tab"
+	}
+	if cfg.Keybindings.NavigateClosed == "" {
+		cfg.Keybindings.NavigateClosed = "history"
 	}
 	if cfg.Keybindings.NavigateUp == "" {
 		cfg.Keybindings.NavigateUp = "up"

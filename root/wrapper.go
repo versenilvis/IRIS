@@ -747,6 +747,11 @@ func runWrapper() {
 
 						i += navConsumed - 1
 						continue
+					} else if config.Get().Keybindings.NavigateClosed == "shell" {
+						// Menu is closed and this shell owns the key at the prompt --
+						// atuin binds Up, for one. Fall through without intercepting so
+						// the escape sequence is forwarded intact; claiming it here is
+						// what forces the navigate keys off the arrows entirely.
 					} else {
 						// up/down arrow or navigation key when overlay is closed
 						intercepted = true
