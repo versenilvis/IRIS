@@ -11,6 +11,25 @@ import (
 	"time"
 )
 
+// ReplaceLine builds the byte sequence that clears the shell's current input
+// line and types text in its place.
+//
+// The clear is ctrl+e then ctrl+u, not ctrl+u alone. ctrl+u is only
+// kill-whole-line under zsh's stock emacs keymap; `bindkey '^U'
+// backward-kill-line` is a common preference, and it is also what bash does by
+// default (unix-line-discard). Those kill from the cursor backwards, so with
+// the cursor mid-line everything to its right survived and collided with the
+// text typed next -- selecting a suggestion left the tail of the old buffer
+// interleaved through the new one.
+//
+// Moving to end-of-line first makes all three bindings equivalent: there is
+// nothing to the right left to preserve.
+func ReplaceLine(text []byte) []byte {
+	out := make([]byte, 0, len(text)+2)
+	out = append(out, 0x05, 0x15) // ctrl+e (end-of-line), ctrl+u (kill)
+	return append(out, text...)
+}
+
 // Adapter defines the behavior for different shell environments
 type Adapter interface {
 	GetName() string
@@ -44,7 +63,7 @@ func (b *BashAdapter) GetEnv(fd int, pid int) []string {
 	return append(os.Environ(), "IRIS_FD="+fmt.Sprint(fd), "IRIS_PID="+fmt.Sprint(pid))
 }
 func (b *BashAdapter) PrepareSelectSequence(selected string) []byte {
-	return append([]byte{0x15}, []byte(selected)...)
+	return ReplaceLine([]byte(selected))
 }
 func (b *BashAdapter) ScanAliases() map[string]string {
 	return ScanPosixAliases([]string{".bashrc", ".bash_profile", ".bash_aliases"})
@@ -59,7 +78,7 @@ func (z *ZshAdapter) GetEnv(fd int, pid int) []string {
 	return append(os.Environ(), "IRIS_FD="+fmt.Sprint(fd), "IRIS_PID="+fmt.Sprint(pid))
 }
 func (z *ZshAdapter) PrepareSelectSequence(selected string) []byte {
-	return append([]byte{0x15}, []byte(selected)...)
+	return ReplaceLine([]byte(selected))
 }
 func (z *ZshAdapter) ScanAliases() map[string]string {
 	envSet := os.Getenv("ZDOTDIR") != ""
@@ -110,7 +129,7 @@ func (f *FishAdapter) GetEnv(fd int, pid int) []string {
 	return append(os.Environ(), "IRIS_FD="+fmt.Sprint(fd), "IRIS_PID="+fmt.Sprint(pid))
 }
 func (f *FishAdapter) PrepareSelectSequence(selected string) []byte {
-	return append([]byte{0x15}, []byte(selected)...)
+	return ReplaceLine([]byte(selected))
 }
 func (f *FishAdapter) ScanAliases() map[string]string {
 	// fish uses 'alias' command in config.fish or separate function files
