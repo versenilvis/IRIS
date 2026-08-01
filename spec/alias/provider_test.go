@@ -42,3 +42,33 @@ t = ["test", "--", "--nocapture"]
 		}
 	}
 }
+
+func TestGitProviderParseOutput(t *testing.T) {
+	outputWithScope := []byte("global\talias.recent !git for-each-ref --sort=committerdate --format=\"%(committerdate:relative) %(refname:short)\" refs/heads/ | tail -10\nlocal\talias.co checkout\n")
+	p := &GitProvider{}
+	entries := p.parseOutput(outputWithScope, true)
+
+	if len(entries) != 2 {
+		t.Fatalf("expected 2 entries, got %d: %v", len(entries), entries)
+	}
+
+	if entries[0].Name != "recent" {
+		t.Errorf("expected name 'recent', got %q", entries[0].Name)
+	}
+	if entries[0].Scope != "global" {
+		t.Errorf("expected scope 'global', got %q", entries[0].Scope)
+	}
+	if entries[0].Expansion != "!git for-each-ref --sort=committerdate --format=\"%(committerdate:relative) %(refname:short)\" refs/heads/ | tail -10" {
+		t.Errorf("unexpected expansion: %q", entries[0].Expansion)
+	}
+
+	if entries[1].Name != "co" {
+		t.Errorf("expected name 'co', got %q", entries[1].Name)
+	}
+	if entries[1].Scope != "local" {
+		t.Errorf("expected scope 'local', got %q", entries[1].Scope)
+	}
+	if entries[1].Expansion != "checkout" {
+		t.Errorf("expected expansion 'checkout', got %q", entries[1].Expansion)
+	}
+}

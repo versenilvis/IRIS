@@ -73,23 +73,32 @@ func (p *GitProvider) parse(cwd string) []AliasEntry {
 			return nil
 		}
 	}
+	return p.parseOutput(out, hasScope)
+}
 
+func (p *GitProvider) parseOutput(out []byte, hasScope bool) []AliasEntry {
 	var entries []AliasEntry
 	lines := strings.Split(string(bytes.TrimSpace(out)), "\n")
 	for _, line := range lines {
+		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
-		
+
 		scope := "local"
 		if hasScope {
-			parts := strings.SplitN(line, " ", 3)
-			if len(parts) >= 3 {
-				scope = parts[0]
-				name := strings.TrimPrefix(parts[1], "alias.")
+			idx := strings.IndexAny(line, " \t")
+			if idx == -1 {
+				continue
+			}
+			scope = line[:idx]
+			rest := strings.TrimSpace(line[idx:])
+			parts := strings.SplitN(rest, " ", 2)
+			if len(parts) == 2 {
+				name := strings.TrimPrefix(parts[0], "alias.")
 				entries = append(entries, AliasEntry{
 					Name:      name,
-					Expansion: parts[2],
+					Expansion: parts[1],
 					Scope:     scope,
 				})
 			}

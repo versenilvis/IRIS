@@ -296,3 +296,28 @@ func TestLookup_GitRecentAlias(t *testing.T) {
 	}
 }
 
+func TestLookup_RealGitProvider(t *testing.T) {
+	ResetRegistry()
+	Register(&Spec{
+		Name: "git",
+	})
+	cwd, _ := os.Getwd()
+	provider := &alias.GitProvider{}
+	aliases := provider.GetAliases(cwd)
+	t.Logf("Real Git aliases: %v", aliases)
+	alias.Register(provider)
+
+	results := Lookup("git rec")
+	t.Logf("Lookup('git rec') results: %v", results)
+	found := false
+	for _, r := range results {
+		if strings.Contains(r.Cmd, "recent") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected 'git recent' in results for real GitProvider, got %v", results)
+	}
+}
+
