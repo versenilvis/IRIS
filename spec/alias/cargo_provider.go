@@ -43,12 +43,10 @@ func (p *CargoProvider) buildCacheKey(cwd string) string {
 		localConfig := filepath.Join(dir, ".cargo", "config.toml")
 		if info, err := os.Stat(localConfig); err == nil {
 			fmt.Fprintf(&sb, "|local:%s", info.ModTime().String())
-			break
 		}
 		localConfig2 := filepath.Join(dir, ".cargo", "config")
 		if info, err := os.Stat(localConfig2); err == nil {
 			fmt.Fprintf(&sb, "|local:%s", info.ModTime().String())
-			break
 		}
 
 		parent := filepath.Dir(dir)
