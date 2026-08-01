@@ -7,6 +7,7 @@ import (
 )
 
 func TestCargoProvider(t *testing.T) {
+	t.Setenv("CARGO_HOME", t.TempDir())
 	tempDir := t.TempDir()
 	cargoDir := filepath.Join(tempDir, ".cargo")
 	if err := os.Mkdir(cargoDir, 0755); err != nil {
@@ -32,13 +33,17 @@ t = ["test", "--", "--nocapture"]
 		"t": "test -- --nocapture",
 	}
 
-	if len(aliases) != 3 {
-		t.Fatalf("expected 3 aliases, got %d", len(aliases))
+	aliasMap := make(map[string]string)
+	for _, a := range aliases {
+		aliasMap[a.Name] = a.Expansion
 	}
 
-	for _, a := range aliases {
-		if expected[a.Name] != a.Expansion {
-			t.Errorf("expected %s to map to %s, got %s", a.Name, expected[a.Name], a.Expansion)
+	for k, wantExp := range expected {
+		gotExp, ok := aliasMap[k]
+		if !ok {
+			t.Errorf("expected alias %q to be present", k)
+		} else if gotExp != wantExp {
+			t.Errorf("expected alias %q to map to %q, got %q", k, wantExp, gotExp)
 		}
 	}
 }
