@@ -267,6 +267,7 @@ func TestLookup_GitRecentAlias(t *testing.T) {
 		},
 	})
 	alias.Register(&mockGitProvider{})
+	t.Cleanup(alias.Reset)
 
 	// Test Type 1: Standard subcommand alias 'git co' -> 'git checkout'
 	resultsCo := Lookup("git co ")
@@ -349,11 +350,31 @@ func TestLookup_RealGitProvider(t *testing.T) {
 	Register(&Spec{
 		Name: "git",
 	})
+	alias.Reset()
+
+	// Isolate from the developer's real git configuration by pointing HOME at a temp dir
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	if err := os.WriteFile(filepath.Join(home, ".gitconfig"), []byte("[alias]\nrecent = for-each-ref --sort=committerdate refs/heads\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
 	cwd, _ := os.Getwd()
 	provider := &alias.GitProvider{}
 	aliases := provider.GetAliases(cwd)
 	t.Logf("Real Git aliases: %v", aliases)
+	foundAlias := false
+	for _, a := range aliases {
+		if a.Name == "recent" {
+			foundAlias = true
+			break
+		}
+	}
+	if !foundAlias {
+		t.Skipf("git unavailable or could not read isolated config, got aliases: %v", aliases)
+	}
 	alias.Register(provider)
+	t.Cleanup(alias.Reset)
 
 	results := Lookup("git rec")
 	t.Logf("Lookup('git rec') results: %v", results)
