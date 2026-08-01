@@ -317,11 +317,15 @@ func Lookup(input string) []Suggestion {
 				cwd := GetCWD()
 				for _, a := range provider.GetAliases(cwd) {
 					if partial == "" || HasPrefix(a.Name, partial) {
+						priority := 70
+						if a.Scope == "local" || a.Scope == "worktree" {
+							priority = 75
+						}
 						results = append(results, Suggestion{
 							Cmd:      prefix + " " + a.Name,
 							Desc:     "Alias for: " + a.Expansion,
 							Icon:     rootCmdName,
-							Priority: 70,
+							Priority: priority,
 							Source:   "alias",
 						})
 					}

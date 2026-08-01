@@ -249,6 +249,11 @@ func (m *mockGitProvider) GetAliases(cwd string) []alias.AliasEntry {
 			Expansion: "!git for-each-ref --sort=committerdate --format='%(committerdate:relative) %(refname:short)' refs/heads/ | tail -10",
 			Scope:     "global",
 		},
+		{
+			Name:      "local-alias",
+			Expansion: "status",
+			Scope:     "local",
+		},
 	}
 }
 
@@ -282,11 +287,30 @@ func TestLookup_GitRecentAlias(t *testing.T) {
 	for _, r := range resultsRec {
 		if strings.Contains(r.Cmd, "git recent") {
 			foundRec = true
+			if r.Priority != 70 {
+				t.Errorf("expected global alias priority 70, got %d", r.Priority)
+			}
 			break
 		}
 	}
 	if !foundRec {
 		t.Errorf("expected 'git recent' suggestion for 'git rec', got %v", resultsRec)
+	}
+
+	// Test Local Scope Priority (Priority = 75)
+	resultsLocal := Lookup("git local")
+	foundLocal := false
+	for _, r := range resultsLocal {
+		if strings.Contains(r.Cmd, "git local-alias") {
+			foundLocal = true
+			if r.Priority != 75 {
+				t.Errorf("expected local alias priority 75, got %d", r.Priority)
+			}
+			break
+		}
+	}
+	if !foundLocal {
+		t.Errorf("expected 'git local-alias' suggestion, got %v", resultsLocal)
 	}
 
 	// Test Type 2 expansion with trailing space: 'git recent ' should expand without returning 0/nil
