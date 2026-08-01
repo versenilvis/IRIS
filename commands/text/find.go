@@ -10,6 +10,13 @@ func init() {
 		Description: "search for files",
 		Generator:   spec.FileGenerator("/"),
 		Options: []spec.Option{
+			// BSD find; these came from a second `find` spec in commands/fs that
+			// silently overwrote or was overwritten by this one depending on
+			// package init order.
+			{Name: "-E", Description: "Permit find to be safely used in conjunction with xargs"},
+			{Name: "-d", Description: "Cause find to perform a depth-first traversal"},
+			{Name: "-f", Description: "Specify a file hierarch for find to traverse"},
+			{Name: "-s", Description: "Cause find to traverse the file hierarchies in lexicographical order"},
 			{Name: "-name", Description: "match by name"},
 			{Name: "-iname", Description: "match by name (case insensitive)"},
 			{Name: "-type", Description: "match by type (f=file, d=dir, l=link)"},

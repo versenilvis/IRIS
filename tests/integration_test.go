@@ -50,3 +50,14 @@ func TestIntegration_ZoxideMultiWord(t *testing.T) {
 		}
 	})
 }
+
+// TestNoDuplicateSpecNames guards the whole registry. Specs register from
+// init() across many packages, so a name defined twice is resolved by package
+// init order and nothing reports it. `find` was defined in two packages, and
+// the definition that lost happened to be the one carrying the file generator.
+func TestNoDuplicateSpecNames(t *testing.T) {
+	if dups := spec.DuplicateNames(); len(dups) > 0 {
+		t.Errorf("spec names registered more than once: %v\n"+
+			"which definition survives depends on package init order; merge them into one", dups)
+	}
+}
