@@ -79,3 +79,40 @@ func TestGetProvider_UnregisteredCommand(t *testing.T) {
 		t.Errorf("expected nil for unregistered command, got %v", p)
 	}
 }
+
+func TestResolveGitConfigPath_WalkUp(t *testing.T) {
+	tempDir := t.TempDir()
+	gitDir := filepath.Join(tempDir, ".git")
+	_ = os.Mkdir(gitDir, 0755)
+	configPath := filepath.Join(gitDir, "config")
+	_ = os.WriteFile(configPath, []byte("[alias]\nst = status"), 0644)
+
+	subDir := filepath.Join(tempDir, "a", "b", "c")
+	_ = os.MkdirAll(subDir, 0755)
+
+	resolved := resolveGitConfigPath(subDir)
+	if resolved != configPath {
+		t.Errorf("expected %q, got %q", configPath, resolved)
+	}
+}
+
+func TestResolveGitConfigPath_WorktreeFile(t *testing.T) {
+	tempDir := t.TempDir()
+	mainGitDir := filepath.Join(tempDir, "mainrepo", ".git")
+	_ = os.MkdirAll(mainGitDir, 0755)
+	mainConfig := filepath.Join(mainGitDir, "config")
+	_ = os.WriteFile(mainConfig, []byte("[alias]\nst = status"), 0644)
+
+	wtDir := filepath.Join(tempDir, "wt")
+	_ = os.MkdirAll(wtDir, 0755)
+	wtGitFile := filepath.Join(wtDir, ".git")
+	_ = os.WriteFile(wtGitFile, []byte("gitdir: "+mainGitDir), 0644)
+
+	wtSubDir := filepath.Join(wtDir, "sub")
+	_ = os.MkdirAll(wtSubDir, 0755)
+
+	resolved := resolveGitConfigPath(wtSubDir)
+	if resolved != mainConfig {
+		t.Errorf("expected %q, got %q", mainConfig, resolved)
+	}
+}
