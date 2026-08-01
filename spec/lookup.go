@@ -8,6 +8,7 @@ import (
 
 	"github.com/versenilvis/iris/integration/shell"
 	"github.com/versenilvis/iris/internal/logger"
+	"github.com/versenilvis/iris/spec/alias"
 )
 
 var (
@@ -74,6 +75,30 @@ func Lookup(input string) []Suggestion {
 				aliasTokens = aliasTokens[:len(aliasTokens)-1]
 			}
 			tokens = append(aliasTokens, tokens[1:]...)
+		}
+	}
+
+	// Expand tool aliases
+	if len(tokens) > 2 {
+		rootCmdName := tokens[0]
+		if provider := alias.GetProvider(rootCmdName); provider != nil {
+			cwd := GetCWD()
+			toolAliases := provider.GetAliases(cwd)
+			subCmd := tokens[1]
+			for _, a := range toolAliases {
+				if a.Name == subCmd {
+					aliasTokens := Tokenize(a.Expansion)
+					if len(aliasTokens) > 0 && aliasTokens[len(aliasTokens)-1] == "" {
+						aliasTokens = aliasTokens[:len(aliasTokens)-1]
+					}
+					newTokens := make([]string, 0, len(tokens)-1+len(aliasTokens))
+					newTokens = append(newTokens, tokens[0])
+					newTokens = append(newTokens, aliasTokens...)
+					newTokens = append(newTokens, tokens[2:]...)
+					tokens = newTokens
+					break
+				}
+			}
 		}
 	}
 
@@ -278,6 +303,23 @@ func Lookup(input string) []Suggestion {
 				results = append(results, Suggestion{
 					Cmd: prefix + " " + sub.Name, Desc: sub.Description, Icon: rootCmdName, Priority: sub.Priority,
 				})
+			}
+		}
+
+		if depth == 1 {
+			if provider := alias.GetProvider(rootCmdName); provider != nil {
+				cwd := GetCWD()
+				for _, a := range provider.GetAliases(cwd) {
+					if partial == "" || HasPrefix(a.Name, partial) {
+						results = append(results, Suggestion{
+							Cmd:      prefix + " " + a.Name,
+							Desc:     "Alias for: " + a.Expansion,
+							Icon:     rootCmdName,
+							Priority: 70,
+							Source:   "alias",
+						})
+					}
+				}
 			}
 		}
 	}
