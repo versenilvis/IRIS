@@ -128,6 +128,7 @@ func runWrapper() {
 	var bufferMu sync.Mutex
 	var userNavigated atomic.Bool
 	var renderMenuNow func()
+	var intercepted bool
 
 	r, w, err := os.Pipe() // pipe for ipc communication from shell to iris
 	if err != nil {
@@ -309,6 +310,92 @@ func runWrapper() {
 			return false
 		}
 		return pgrp != shellPGID
+	}
+
+	// Shared handler for configured navigation keys (e.g. ctrl+j / ctrl+k).
+	// Moves the overlay cursor when visible, otherwise opens history/spec
+	// list and selects the next item in the requested direction.
+	handleNavKey := func(dir string) {
+		intercepted = true
+		userNavigated.Store(true)
+
+		if overlay.IsVisible() {
+			arrowDir := "down"
+			if dir == "up" {
+				arrowDir = "up"
+			}
+			moved, selectedCmd := overlay.MoveCursor(arrowDir)
+			if !moved {
+				return
+			}
+
+			bufferMu.Lock()
+			activeModeMu.RLock()
+			isHistMode := activeMode == "history"
+			activeModeMu.RUnlock()
+			var toWrite []byte
+			if isHistMode && selectedCmd != "" {
+				naiveBuffer = selectedCmd
+				cursorOffset = 0
+				toWrite = append([]byte{0x15}, selectedCmd...)
+			}
+			bufCopy := naiveBuffer
+			offsetCopy := cursorOffset
+			bufferMu.Unlock()
+
+			if len(toWrite) > 0 {
+				_, _ = ptmx.Write(toWrite)
+			}
+
+			var b strings.Builder
+			if !disableGhostText.Load() {
+				b.WriteString(overlay.RenderGhostText(bufCopy, true, offsetCopy == 0))
+			}
+			b.WriteString(overlay.Render())
+			writeStdout([]byte(b.String()))
+		} else {
+			activeModeMu.Lock()
+			if activeMode == "" {
+				activeMode = loadMode()
+			}
+			activeModeMu.Unlock()
+
+			activeModeMu.RLock()
+			currentMode := activeMode
+			activeModeMu.RUnlock()
+
+			bufferMu.Lock()
+			bufQuery := naiveBuffer
+			bufferMu.Unlock()
+
+			results := MergeResults(bufQuery, currentMode)
+			if len(results) > 0 {
+				limit := min(len(results), 100)
+				var historyList []spec.Suggestion
+
+				if dir == "up" {
+					for j := limit - 1; j >= 0; j-- {
+						historyList = append(historyList, results[j])
+					}
+				} else {
+					for j := range limit {
+						historyList = append(historyList, results[j])
+					}
+				}
+
+				selected := overlay.SetHistoryList(historyList, dir == "up")
+				if selected != "" {
+					bufferMu.Lock()
+					naiveBuffer = selected
+					cursorOffset = 0
+					bufferMu.Unlock()
+
+					userNavigated.Store(true)
+					writeStdout([]byte(overlay.Render()))
+					_, _ = ptmx.Write(append([]byte{0x15}, selected...))
+				}
+			}
+		}
 	}
 
 	// bridge pty output to actual stdout
@@ -654,39 +741,35 @@ func runWrapper() {
 				continue
 			}
 
-			logger.Debugf("Stdin raw input: bytes=%q, hex=%x", inputSlice[:n], inputSlice[:n])
-
 			shouldOverlayDraw := false
 			for i := 0; i < n; i++ {
 				b := inputSlice[i]
-				intercepted := false
+				intercepted = false
 
-				if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.ToggleMenu); matched {
-					intercepted = true
-					suggestionsEnabled = !suggestionsEnabled
-					logger.Debugf("Intercepted ToggleMenu, suggestionsEnabled=%v", suggestionsEnabled)
-					if !suggestionsEnabled {
-						writeStdout([]byte(overlay.ClearAndDisable()))
-					} else {
-						shouldOverlayDraw = true
-					}
-					i += consumed - 1
-					continue
+			if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.ToggleMenu); matched {
+				intercepted = true
+				suggestionsEnabled = !suggestionsEnabled
+				if !suggestionsEnabled {
+					writeStdout([]byte(overlay.ClearAndDisable()))
+				} else {
+					shouldOverlayDraw = true
 				}
+				i += consumed - 1
+				continue
+			}
 
-				if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.ToggleMode); matched { // ctrl+r: toggle between command specs and command history
-					i += consumed - 1
-					intercepted = true
-					activeModeMu.Lock()
-					if activeMode == "spec" {
-						activeMode = "history"
-					} else {
-						activeMode = "spec"
-					}
-					saveMode(activeMode)
-					activeModeMu.Unlock()
-					logger.Debugf("Intercepted Ctrl+R, toggled mode to %q", activeMode)
-					if userNavigated.Load() {
+			if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.ToggleMode); matched { // ctrl+r: toggle between command specs and command history
+				i += consumed - 1
+				intercepted = true
+				activeModeMu.Lock()
+				if activeMode == "spec" {
+					activeMode = "history"
+				} else {
+					activeMode = "spec"
+				}
+			saveMode(activeMode)
+			activeModeMu.Unlock()
+			if userNavigated.Load() {
 						bufferMu.Lock()
 						naiveBuffer = overlay.GetTypedQuery()
 						cursorOffset = 0
@@ -699,139 +782,57 @@ func runWrapper() {
 					continue
 				}
 
-				var isNavUp, isNavDown bool
-				var navConsumed int
-				if isNavUp, navConsumed = config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateUp); !isNavUp {
-					isNavDown, navConsumed = config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateDown)
+			var isNavUp, isNavDown bool
+			var navConsumed int
+			if isNavUp, navConsumed = config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateUp); !isNavUp {
+				isNavDown, navConsumed = config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateDown)
+			}
+
+			if isNavUp || isNavDown {
+				arrowDir := "down"
+				if isNavUp {
+					arrowDir = "up"
 				}
+				handleNavKey(arrowDir)
+				i += navConsumed - 1
+				continue
+			}
 
-				if isNavUp || isNavDown {
-					if overlay.IsVisible() {
-						intercepted = true
-						userNavigated.Store(true)
-
-						arrowDir := "down"
-						if isNavUp {
-							arrowDir = "up"
-						}
-						moved, selectedCmd := overlay.MoveCursor(arrowDir)
-						if !moved {
-							i += navConsumed - 1
-							continue
-						}
-
-						bufferMu.Lock()
-						activeModeMu.RLock()
-						isHistMode := activeMode == "history"
-						activeModeMu.RUnlock()
-						var toWrite []byte
-						if isHistMode && selectedCmd != "" {
-							naiveBuffer = selectedCmd
-							cursorOffset = 0
-							toWrite = append([]byte{0x15}, selectedCmd...)
-						}
-						bufCopy := naiveBuffer
-						offsetCopy := cursorOffset
-						bufferMu.Unlock()
-
-						if len(toWrite) > 0 {
-							_, _ = ptmx.Write(toWrite)
-						}
-
-						var b strings.Builder
-						if !disableGhostText.Load() {
-							b.WriteString(overlay.RenderGhostText(bufCopy, true, offsetCopy == 0))
-						}
-						b.WriteString(overlay.Render())
-						writeStdout([]byte(b.String()))
-
-						i += navConsumed - 1
-						continue
-					} else {
-						// up/down arrow or navigation key when overlay is closed
-						intercepted = true
-						activeModeMu.Lock()
-						if activeMode == "" {
-							activeMode = loadMode()
-						}
-						activeModeMu.Unlock()
-
+			if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.SelectSuggestion); matched && config.Get().Keybindings.SelectSuggestion != "" {
+				if overlay.IsVisible() {
+					intercepted = true
+					selected := overlay.GetCurrentCmd()
+					if selected != "" {
 						activeModeMu.RLock()
 						currentMode := activeMode
 						activeModeMu.RUnlock()
-
-						bufferMu.Lock()
-						bufQuery := naiveBuffer
-						bufferMu.Unlock()
-
-						results := MergeResults(bufQuery, currentMode)
-						if len(results) > 0 {
-							limit := min(len(results), 100)
-							var historyList []spec.Suggestion
-
-							if isNavUp {
-								for j := limit - 1; j >= 0; j-- {
-									historyList = append(historyList, results[j])
-								}
+						if currentMode == "spec" {
+							s := strings.TrimSpace(selected)
+							if strings.HasSuffix(s, "/") || strings.HasSuffix(s, "\\") {
+								selected = s
 							} else {
-								for j := range limit {
-									historyList = append(historyList, results[j])
-								}
-							}
-
-							selected := overlay.SetHistoryList(historyList, isNavUp)
-							if selected != "" {
-								bufferMu.Lock()
-								naiveBuffer = selected
-								cursorOffset = 0
-								bufferMu.Unlock()
-
-								userNavigated.Store(true)
-								writeStdout([]byte(overlay.Render()))
-								_, _ = ptmx.Write(append([]byte{0x15}, selected...))
+								selected = s + " "
 							}
 						}
-						i += navConsumed - 1
-						continue
+						bufferMu.Lock()
+						naiveBuffer = selected
+						cursorOffset = 0
+						bufferMu.Unlock()
+						_, _ = ptmx.Write(append([]byte{0x15}, selected...))
+
+						overlay.ClearGhostTextState()
+						userNavigated.Store(false)
+						writeStdout([]byte(overlay.Render()))
 					}
+					i += consumed - 1
+					continue
 				}
+			}
 
-				if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.SelectSuggestion); matched && config.Get().Keybindings.SelectSuggestion != "" {
-					if overlay.IsVisible() {
-						intercepted = true
-						selected := overlay.GetCurrentCmd()
-						if selected != "" {
-							activeModeMu.RLock()
-							currentMode := activeMode
-							activeModeMu.RUnlock()
-							if currentMode == "spec" {
-								s := strings.TrimSpace(selected)
-								if strings.HasSuffix(s, "/") || strings.HasSuffix(s, "\\") {
-									selected = s
-								} else {
-									selected = s + " "
-								}
-							}
-							bufferMu.Lock()
-							naiveBuffer = selected
-							cursorOffset = 0
-							bufferMu.Unlock()
-							_, _ = ptmx.Write(append([]byte{0x15}, selected...))
-							
-							overlay.ClearGhostTextState()
-							userNavigated.Store(false)
-							writeStdout([]byte(overlay.Render()))
-						}
-						i += consumed - 1
-						continue
-					}
-				}
+			if b == 0x0d || b == 0x0a { // enter
+				intercepted = true
 
-				if b == 0x0d || b == 0x0a { // enter
-					intercepted = true
-					logger.Debugf("Intercepted Enter key")
-
-					if b == 0x0d && i+1 < n && inputSlice[i+1] == 0x0a {
+				if b == 0x0d && i+1 < n && inputSlice[i+1] == 0x0a {
 						i++ // consume trailing \n in \r\n to prevent matching ctrl+j
 					}
 					
@@ -918,6 +919,22 @@ func runWrapper() {
 							continue
 						}
 					}
+
+					isNavUp, navConsumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateUp)
+					if !isNavUp {
+						isNavDown, navConsumed = config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateDown)
+					}
+				if isNavUp || isNavDown {
+					intercepted = true
+					arrowDir := "down"
+					if isNavUp {
+						arrowDir = "up"
+					}
+					handleNavKey(arrowDir)
+						i += navConsumed - 1
+						continue
+					}
+
 					// handle escape sequences like arrow keys and functional shortcuts
 					// left/right arrow cursor tracking
 					isLeftRightArrow := false
@@ -960,10 +977,9 @@ func runWrapper() {
 							}
 							bufferMu.Unlock()
 
-							if len(ghostText) > 0 {
-								intercepted = true
-								logger.Debugf("Intercepted Right Arrow (accepted ghost text: %q)", ghostText)
-								bufferMu.Lock()
+						if len(ghostText) > 0 {
+							intercepted = true
+							bufferMu.Lock()
 								naiveBuffer += ghostText
 								cursorOffset = 0
 								bufferMu.Unlock()
@@ -991,8 +1007,7 @@ func runWrapper() {
 					if !intercepted {
 						writeStdout([]byte(overlay.ClearAndDisable()))
 						disableGhostText.Store(true)
-						
-						// If it's a standalone ESC (n==1), don't clear the buffer because the user just wanted to hide the menu or enter vi-mode
+
 						isStandaloneEsc := n == 1 && b == '\033'
 						if !isLeftRightArrow && !isStandaloneEsc {
 							bufferMu.Lock()
@@ -1002,7 +1017,6 @@ func runWrapper() {
 						}
 
 						_, _ = ptmx.Write([]byte{b})
-						// skip remaining bytes of the escape sequence to avoid misinterpretation
 						for j := i + 1; j < n; j++ {
 							char := inputSlice[j]
 							_, _ = ptmx.Write([]byte{char})
@@ -1036,8 +1050,8 @@ func runWrapper() {
 					continue
 				}
 
-				if !intercepted {
-					_, _ = ptmx.Write([]byte{b})
+		if !intercepted {
+			_, _ = ptmx.Write([]byte{b})
 					// we handle line editing keys manually to keep naiveBuffer in sync
 					// since terminal is in raw mode, we must update our state for every change
 					switch b {
