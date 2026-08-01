@@ -13,9 +13,10 @@ import (
 )
 
 type GitProvider struct {
-	cacheKey string
-	cached   []AliasEntry
-	mu       sync.Mutex
+	cacheKey  string
+	cached    []AliasEntry
+	lastCheck time.Time
+	mu        sync.Mutex
 }
 
 func (p *GitProvider) ToolName() string {
@@ -23,9 +24,16 @@ func (p *GitProvider) ToolName() string {
 }
 
 func (p *GitProvider) GetAliases(cwd string) []AliasEntry {
-	key := p.buildCacheKey(cwd)
 	p.mu.Lock()
 	defer p.mu.Unlock()
+
+	now := time.Now()
+	if p.cached != nil && now.Sub(p.lastCheck) < 2*time.Second {
+		return p.cached
+	}
+
+	key := p.buildCacheKey(cwd)
+	p.lastCheck = now
 
 	if p.cacheKey != "" && p.cacheKey == key {
 		return p.cached
