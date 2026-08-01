@@ -179,3 +179,25 @@ func TestScanPosixAliasesHandlesSourceCycle(t *testing.T) {
 		t.Errorf("ScanPosixAliases() = %v; want %v", got, expected)
 	}
 }
+func TestParseAliasesKeepsNestedQuotes(t *testing.T) {
+	// strings.Trim with a cutset strips greedily, so a value ending in a quote
+	// lost it. With core.expand-alias on the target is typed back into the
+	// prompt, so this left an unbalanced quote on the command line.
+	input := `
+alias gwip="git add --all && git commit -am 'WIP'"
+alias shrug="echo '¯\_(ツ)_/¯' | pbcopy"
+alias plain=mcd
+alias spaced='git status -sb'
+`
+	expected := map[string]string{
+		"gwip":   "git add --all && git commit -am 'WIP'",
+		"shrug":  `echo '¯\_(ツ)_/¯' | pbcopy`,
+		"plain":  "mcd",
+		"spaced": "git status -sb",
+	}
+
+	got := ParseAliases(input)
+	if !reflect.DeepEqual(got, expected) {
+		t.Errorf("ParseAliases() = %#v; want %#v", got, expected)
+	}
+}

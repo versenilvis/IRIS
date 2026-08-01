@@ -337,7 +337,7 @@ func parseAliasLine(line string, aliases map[string]string) {
 			continue
 		}
 		key := strings.TrimSpace(before)
-		val := strings.Trim(strings.TrimSpace(after), `"'`)
+		val := unquoteAliasValue(strings.TrimSpace(after))
 		if key != "" && val != "" {
 			aliases[key] = val
 		}
@@ -454,6 +454,27 @@ func expandConfigPath(raw string) (string, bool) {
 		return "", false
 	}
 	return filepath.Clean(path), true
+}
+
+// unquoteAliasValue removes one matched pair of surrounding quotes.
+//
+// strings.Trim takes a cutset and strips greedily from both ends, so a value
+// whose last character is itself a quote lost it:
+//
+//	alias gwip="git add --all && git commit -am 'WIP'"
+//	  -> git add --all && git commit -am 'WIP
+//
+// That is not only a wrong description in the menu. With core.expand-alias on,
+// the target is typed back into the prompt when the alias is expanded, so the
+// user was left holding a command line with an unbalanced quote.
+func unquoteAliasValue(s string) string {
+	if len(s) < 2 {
+		return s
+	}
+	if (s[0] == '"' && s[len(s)-1] == '"') || (s[0] == '\'' && s[len(s)-1] == '\'') {
+		return s[1 : len(s)-1]
+	}
+	return s
 }
 
 func SplitAliasTokens(s string) []string {
