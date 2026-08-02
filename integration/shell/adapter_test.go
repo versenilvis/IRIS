@@ -48,3 +48,27 @@ func TestSplitAliasTokens(t *testing.T) {
 		})
 	}
 }
+func TestReplaceLineMovesToEndBeforeKilling(t *testing.T) {
+	// ctrl+u alone is only kill-whole-line under zsh's stock emacs keymap.
+	// Under `bindkey '^U' backward-kill-line` (and bash's default
+	// unix-line-discard) it kills backwards from the cursor, so anything to the
+	// right of the cursor survived and collided with the text typed next.
+	// Prefixing ctrl+e makes the three equivalent.
+	got := ReplaceLine([]byte("cd config/"))
+
+	if len(got) < 2 || got[0] != 0x05 || got[1] != 0x15 {
+		t.Fatalf("ReplaceLine() = %q; want it to start with ctrl+e, ctrl+u", got)
+	}
+	if string(got[2:]) != "cd config/" {
+		t.Errorf("ReplaceLine() payload = %q; want %q", got[2:], "cd config/")
+	}
+}
+func TestPrepareSelectSequenceUsesReplaceLine(t *testing.T) {
+	for _, a := range []Adapter{&ZshAdapter{}, &BashAdapter{}, &FishAdapter{}} {
+		got := a.PrepareSelectSequence("git status")
+		want := ReplaceLine([]byte("git status"))
+		if string(got) != string(want) {
+			t.Errorf("%s PrepareSelectSequence() = %q; want %q", a.GetName(), got, want)
+		}
+	}
+}

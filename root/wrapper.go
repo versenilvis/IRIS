@@ -691,7 +691,7 @@ func runWrapper() {
 						naiveBuffer = overlay.GetTypedQuery()
 						cursorOffset = 0
 						bufferMu.Unlock()
-						_, _ = ptmx.Write(append([]byte{0x15}, overlay.GetTypedQuery()...))
+						_, _ = ptmx.Write(shell.ReplaceLine([]byte(overlay.GetTypedQuery())))
 					}
 					userNavigated.Store(false)
 					overlay.Show()
@@ -728,7 +728,7 @@ func runWrapper() {
 						if isHistMode && selectedCmd != "" {
 							naiveBuffer = selectedCmd
 							cursorOffset = 0
-							toWrite = append([]byte{0x15}, selectedCmd...)
+							toWrite = shell.ReplaceLine([]byte(selectedCmd))
 						}
 						bufCopy := naiveBuffer
 						offsetCopy := cursorOffset
@@ -747,6 +747,11 @@ func runWrapper() {
 
 						i += navConsumed - 1
 						continue
+					} else if config.Get().Keybindings.NavigateClosed == "shell" {
+						// Menu is closed and this shell owns the key at the prompt --
+						// atuin binds Up, for one. Fall through without intercepting so
+						// the escape sequence is forwarded intact; claiming it here is
+						// what forces the navigate keys off the arrows entirely.
 					} else {
 						// up/down arrow or navigation key when overlay is closed
 						intercepted = true
@@ -788,7 +793,7 @@ func runWrapper() {
 
 								userNavigated.Store(true)
 								writeStdout([]byte(overlay.Render()))
-								_, _ = ptmx.Write(append([]byte{0x15}, selected...))
+								_, _ = ptmx.Write(shell.ReplaceLine([]byte(selected)))
 							}
 						}
 						i += navConsumed - 1
@@ -816,7 +821,7 @@ func runWrapper() {
 							naiveBuffer = selected
 							cursorOffset = 0
 							bufferMu.Unlock()
-							_, _ = ptmx.Write(append([]byte{0x15}, selected...))
+							_, _ = ptmx.Write(shell.ReplaceLine([]byte(selected)))
 							
 							overlay.ClearGhostTextState()
 							userNavigated.Store(false)
@@ -867,7 +872,7 @@ func runWrapper() {
 							}
 						}
 						// update the line first
-						_, _ = ptmx.Write(append([]byte{0x15}, selectedCmd...))
+						_, _ = ptmx.Write(shell.ReplaceLine([]byte(selectedCmd)))
 						cmdToSubmit = selectedCmd
 					} else {
 						bufferMu.Lock()
@@ -881,7 +886,7 @@ func runWrapper() {
 							disableGhostText.Store(!newCfg.UI.GhostText)
 						}
 						msg := "echo -e '\\033[32m✓ Iris configuration reloaded successfully.\\033[0m'\r"
-						_, _ = ptmx.Write(append([]byte{0x15}, []byte(msg)...))
+						_, _ = ptmx.Write(shell.ReplaceLine([]byte(msg)))
 						bufferMu.Lock()
 						naiveBuffer = ""
 						cursorOffset = 0
@@ -1141,7 +1146,7 @@ func runWrapper() {
 
 							if isSpaceAlias && ok {
 								// clear the current alias and replace it with the full command
-								_, _ = ptmx.Write(append([]byte{0x15}, target+" "...))
+								_, _ = ptmx.Write(shell.ReplaceLine([]byte(target + " ")))
 								bufferMu.Lock()
 								naiveBuffer = target + " "
 								cursorOffset = 0
