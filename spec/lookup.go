@@ -52,6 +52,9 @@ func Lookup(input string) []Suggestion {
 	}
 
 	tokens := Tokenize(input)
+	originalTokens := append([]string(nil), tokens...)
+	originalPrefix := ""
+	expandedPrefix := ""
 
 	if len(tokens) == 1 && tokens[0] == "" {
 		return topLevelSuggestions("", aliases)
@@ -106,6 +109,10 @@ func Lookup(input string) []Suggestion {
 					tokens = newTokens
 					isAliasExpanded = true
 					aliasExpansionEnd = len(aliasTokens)
+					expandedPrefix = strings.Join(tokens[:1+aliasExpansionEnd], " ")
+					if len(originalTokens) >= 2 {
+						originalPrefix = strings.Join(originalTokens[:2], " ")
+					}
 					break
 				}
 			}
@@ -361,6 +368,14 @@ func Lookup(input string) []Suggestion {
 			results = append(results, Suggestion{
 				Cmd: linePrefix + " " + opt.Name, Desc: opt.Description, Icon: rootCmdName, Priority: optPriority,
 			})
+		}
+	}
+
+	if isAliasExpanded && expandedPrefix != "" && originalPrefix != "" {
+		for i := range results {
+			if strings.HasPrefix(results[i].Cmd, expandedPrefix) {
+				results[i].Cmd = originalPrefix + strings.TrimPrefix(results[i].Cmd, expandedPrefix)
+			}
 		}
 	}
 
