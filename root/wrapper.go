@@ -823,6 +823,7 @@ func runWrapper() {
 						overlay.ClearGhostTextState()
 						userNavigated.Store(false)
 						writeStdout([]byte(overlay.Render()))
+						renderOverlay()
 					}
 					i += consumed - 1
 					continue
