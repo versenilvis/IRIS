@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -90,6 +91,16 @@ func buildCobraCacheKey(binKey string, args []string, partial string) string {
 	return sb.String()
 }
 
+// newProbeCmd builds and isolates the `__complete` probe command.
+// starts the child in its own session so it has no controlling terminal
+// and therefore won't affect the user's tty in the case of programs that
+// don't respect `__complete`.
+func newProbeCmd(ctx context.Context, binName string, args []string) *exec.Cmd {
+	cmd := exec.CommandContext(ctx, binName, args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	return cmd
+}
+
 // QueryCobraComplete calls `binName __complete <args> <partial>` and returns
 // structured suggestions cached per binary mtime, args, and partial.
 // returns nil if the binary is not Cobra-based or times out.
@@ -113,7 +124,8 @@ func QueryCobraComplete(binName string, args []string, partial string) []Suggest
 
 	cmdArgs := append([]string{"__complete"}, args...)
 	cmdArgs = append(cmdArgs, partial)
-	out, err := exec.CommandContext(ctx, binName, cmdArgs...).Output()
+	probe := newProbeCmd(ctx, binName, cmdArgs)
+	out, err := probe.Output()
 	if err != nil {
 		return nil
 	}
