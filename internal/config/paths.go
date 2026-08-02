@@ -17,6 +17,18 @@ func ConfigPath() (string, error) {
 	return filepath.Join(dir, "iris", "config.toml"), nil
 }
 
+func ThemePath() (string, error) {
+	configHome := os.Getenv("XDG_CONFIG_HOME")
+	if configHome != "" {
+		return filepath.Join(configHome, "iris", "themes"), nil
+	}
+	dir, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "iris", "themes"), nil
+}
+
 func StatePath() (string, error) {
 	dataHome := os.Getenv("XDG_DATA_HOME")
 	if dataHome == "" {

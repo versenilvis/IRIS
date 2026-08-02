@@ -2,8 +2,6 @@ package config
 
 import (
 	"time"
-
-	"github.com/charmbracelet/lipgloss"
 )
 
 func DefaultConfig() *Config {
@@ -25,6 +23,7 @@ func DefaultConfig() *Config {
 			MaxHeight:       15,
 			MaxWidth:        0, // 0 means no limit, fallback to terminal width
 			NerdFonts:       true,
+			Theme:           "iris",
 		},
 		Git: GitConfig{
 			FilterActiveBranch:  true,
@@ -53,19 +52,6 @@ func DefaultConfig() *Config {
 			SelectSuggestion: "tab",
 			NavigateUp:       "up",
 			NavigateDown:     "down",
-		},
-		Theme: ThemeConfig{
-			Border:     lipgloss.Color("#a277ff"),
-			Accent:     lipgloss.Color("#61ffca"),
-			Muted:      lipgloss.Color("#6d6a7f"),
-			Text:       lipgloss.Color("#edecee"),
-			TextSel:    lipgloss.Color("#ffffff"),
-			Match:      lipgloss.Color("#61ffca"),
-			Desc:       lipgloss.Color("#9692a8"),
-			DescSel:    lipgloss.Color("#edecee"),
-			SelBg:      lipgloss.Color("#3d375e"),
-			ScrollInfo: lipgloss.Color("#a277ff"),
-			GhostText:  lipgloss.Color("#4B4A4C"),
 		},
 	}
 }
