@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/x/ansi"
 	"github.com/versenilvis/iris/spec"
 )
 
@@ -124,5 +125,36 @@ func TestHideMenu_PreservesTypedQueryForAI(t *testing.T) {
 	}
 	if !o.IsVisible() || len(o.Items) == 0 || o.Items[0].Cmd != aiSugg.Cmd {
 		t.Fatalf("Expected AI suggestion to be injected into Items[0] and Visible=true")
+	}
+}
+
+func TestRenderMatchedTitle_ASCII(t *testing.T) {
+	out := renderMatchedTitle("git status", "git", false, 40)
+	stripped := ansi.Strip(out)
+	if stripped != "git status"+strings.Repeat(" ", 30) {
+		t.Fatalf("unexpected content: %q", stripped)
+	}
+	if !strings.Contains(out, "git") {
+		t.Fatalf("missing match segment: %q", out)
+	}
+}
+
+func TestRenderMatchedTitle_WideRunes(t *testing.T) {
+	out := renderMatchedTitle("日記を表示する", "日記", false, 20)
+	stripped := ansi.Strip(out)
+	if !strings.HasPrefix(stripped, "日記を表示する") {
+		t.Fatalf("content mangled: %q", stripped)
+	}
+	// split must occur after 日記 (width 4), not mid-grapheme
+	if !strings.Contains(stripped, "を") {
+		t.Fatalf("lost remainder: %q", stripped)
+	}
+}
+
+func TestRenderMatchedTitle_CaseInsensitive(t *testing.T) {
+	out := renderMatchedTitle("GitHub CLI", "git", false, 40)
+	stripped := ansi.Strip(out)
+	if !strings.HasPrefix(stripped, "GitHub CLI") {
+		t.Fatalf("case-insensitive match mangled content: %q", stripped)
 	}
 }

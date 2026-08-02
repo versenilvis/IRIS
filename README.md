@@ -141,7 +141,7 @@ If you are using Nix Flakes, you can consume this module directly without buildi
 
    **Option B: Install to your user profile**
    ```bash
-   nix profile install github:versenilvis/iris
+   nix profile add github:versenilvis/iris
    ```
 
    **Option C: Using Home Manager**
