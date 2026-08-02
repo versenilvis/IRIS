@@ -2,7 +2,9 @@ package spec
 
 import (
 	"context"
+	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -147,13 +149,7 @@ func TestNewProbeCmd_Setsid(t *testing.T) {
 // if newProbeCmd actually denies it access to tty
 func TestNewProbeCmd_NoControllingTerminal(t *testing.T) {
 	dir := t.TempDir()
-	resultPath := filepath.Join(dir, "result")
-	script := "#!/bin/sh\n" +
-		"if exec 3<>/dev/tty 2>/dev/null; then\n" +
-		"  echo opened > " + resultPath + "\n" +
-		"else\n" +
-		"  echo denied > " + resultPath + "\n" +
-		"fi\n"
+	script := "#!/bin/sh\nexec 3<>/dev/tty"
 
 	binPath := filepath.Join(dir, "ttyprobe")
 	if err := os.WriteFile(binPath, []byte(script), 0o755); err != nil {
@@ -162,14 +158,11 @@ func TestNewProbeCmd_NoControllingTerminal(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	_ = newProbeCmd(ctx, binPath, nil).Run()
+	runErr := newProbeCmd(ctx, binPath, nil).Run()
 
-	out, err := os.ReadFile(resultPath)
-	if err != nil {
-		t.Fatalf("probe script did not run: %v", err)
-	}
-	if got := string(out); got != "denied\n" {
-		t.Errorf("expected probe to be denied a controlling terminal, got %q", got)
+	var exitErr *exec.ExitError
+	if !errors.As(runErr, &exitErr) {
+		t.Fatalf("expected probe script to exit nonzero after failing to open /dev/tty, got %v", runErr)
 	}
 }
 
