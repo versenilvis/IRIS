@@ -69,6 +69,7 @@ type KeybindingsConfig struct {
 	SelectSuggestion string `toml:"select"`
 	NavigateUp       string `toml:"navigate-up"`
 	NavigateDown     string `toml:"navigate-down"`
+	NavigateRight    string `toml:"navigate-right"`
 }
 
 type SuggestOnEmptyConfig struct {
@@ -206,6 +207,9 @@ func Load() (*Config, error) {
 	}
 	if cfg.Keybindings.NavigateDown == "" {
 		cfg.Keybindings.NavigateDown = "down"
+	}
+	if cfg.Keybindings.NavigateRight == "" {
+		cfg.Keybindings.NavigateRight = "right"
 	}
 
 	if err := validate(cfg); err != nil {

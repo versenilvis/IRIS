@@ -283,6 +283,7 @@ toggle-menu = "shift+tab"
 select = "tab"
 navigate-up = "up"
 navigate-down = "down"
+navigate-right = "right"
 `
 				if errWrite := os.WriteFile(path, []byte(defaultContent), 0644); errWrite == nil {
 					fmt.Printf("✓ Initialized default config file at %s\n", path)
