@@ -25,7 +25,10 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 	// add suggestion helper to deduplicate
 	addSuggestion := func(s spec.Suggestion) {
 		normalizedCmd := strings.TrimSpace(s.Cmd)
-		if normalizedCmd == "" || normalizedCmd == normalizedQuery {
+		if normalizedCmd == "" {
+			return
+		}
+		if s.Source != "alias" && normalizedCmd == normalizedQuery {
 			return
 		}
 		if s.Source == "" {

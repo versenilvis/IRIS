@@ -48,6 +48,20 @@ func TestMergeResults(t *testing.T) {
 			t.Errorf("Expected promoted source 'ai', got %q", res[0].Source)
 		}
 	})
+
+	t.Run("Tool Alias Preserved When Matching Query", func(t *testing.T) {
+		res := MergeResults("git co", "default")
+		foundCo := false
+		for _, r := range res {
+			if r.Cmd == "git co" {
+				foundCo = true
+				break
+			}
+		}
+		if !foundCo {
+			t.Errorf("expected 'git co' alias suggestion in results for query 'git co', got %v", res)
+		}
+	})
 }
 
 func TestPrevRecordedCommandState(t *testing.T) {
