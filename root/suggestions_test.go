@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/versenilvis/iris/spec"
+	"github.com/versenilvis/iris/spec/alias"
 )
 
 func TestMergeResults(t *testing.T) {
@@ -50,6 +51,8 @@ func TestMergeResults(t *testing.T) {
 	})
 
 	t.Run("Tool Alias Preserved When Matching Query", func(t *testing.T) {
+		alias.Register(&mockGitProvider{})
+		defer alias.Reset()
 		res := MergeResults("git co", "default")
 		foundCo := false
 		for _, r := range res {
