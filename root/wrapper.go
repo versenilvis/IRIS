@@ -961,31 +961,8 @@ func runWrapper() {
 							bufferMu.Unlock()
 							isLeftRightArrow = true
 						} else if inputSlice[i+2] == 'C' {
-							if config.Get().Keybindings.NavigateRight == "" {
-								if !intercepted {
-									writeStdout([]byte(overlay.ClearAndDisable()))
-									disableGhostText.Store(true)
-									isStandaloneEsc := n == 1 && b == ''
-									if !isStandaloneEsc {
-										bufferMu.Lock()
-										naiveBuffer = ""
-										cursorOffset = 0
-										bufferMu.Unlock()
-									}
-									_, _ = ptmx.Write([]byte{b})
-									for j := i + 1; j < n; j++ {
-										char := inputSlice[j]
-										_, _ = ptmx.Write([]byte{char})
-										i = j
-										if (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || char == '~' {
-											break
-										}
-									}
-								}
-								continue
-							}
-							navConsumed := 0
-							if matched, nc := config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateRight); !matched {
+							_, navConsumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateRight)
+							if navConsumed == 0 {
 								if !intercepted {
 									writeStdout([]byte(overlay.ClearAndDisable()))
 									disableGhostText.Store(true)
@@ -1007,8 +984,6 @@ func runWrapper() {
 									}
 								}
 								continue
-							} else {
-								navConsumed = nc
 							}
 							i += navConsumed - 1
 							intercepted = true
