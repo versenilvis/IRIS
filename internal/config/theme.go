@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"os"
 	"reflect"
 
@@ -62,9 +61,7 @@ func LoadTheme(filePath string) {
 
 	data, err := os.ReadFile(filePath)
 	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			// unreadable for other reasons, still use defaults
-		}
+		// missing or unreadable file: use defaults
 		return
 	}
 

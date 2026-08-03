@@ -288,10 +288,11 @@ func runWrapper() {
 	var isCommandActive atomic.Bool
 	var disableGhostText atomic.Bool
 	disableGhostText.Store(!config.Get().UI.GhostText)
+	renderOverlay := func() {}
 	config.AutoDetectConfigChange(func(cfg *config.Config) {
 		disableGhostText.Store(!cfg.UI.GhostText)
+		renderOverlay()
 	})
-	renderOverlay := func() {}
 	isExecuting := func() bool {
 		if isCommandActive.Load() {
 			// for bash: no preexec/precmd hooks, so fall back to TIOCGPGRP to detect when shell returns
