@@ -8,6 +8,7 @@ import (
 
 	"github.com/versenilvis/iris/integration/shell"
 	"github.com/versenilvis/iris/internal/logger"
+	"github.com/versenilvis/iris/spec/alias"
 )
 
 var (
@@ -51,6 +52,9 @@ func Lookup(input string) []Suggestion {
 	}
 
 	tokens := Tokenize(input)
+	originalTokens := append([]string(nil), tokens...)
+	originalPrefix := ""
+	expandedPrefix := ""
 
 	if len(tokens) == 1 && tokens[0] == "" {
 		return topLevelSuggestions("", aliases)
@@ -74,6 +78,44 @@ func Lookup(input string) []Suggestion {
 				aliasTokens = aliasTokens[:len(aliasTokens)-1]
 			}
 			tokens = append(aliasTokens, tokens[1:]...)
+		}
+	}
+
+	// Expand tool aliases
+	isAliasExpanded := false
+	aliasExpansionEnd := 0
+	if len(tokens) > 2 {
+		rootCmdName := tokens[0]
+		if provider := alias.GetProvider(rootCmdName); provider != nil {
+			cwd := GetCWD()
+			toolAliases := provider.GetAliases(cwd)
+			subCmd := tokens[1]
+			for _, a := range toolAliases {
+				if a.Name == subCmd {
+					if strings.HasPrefix(a.Expansion, "!") {
+						return nil
+					}
+					aliasTokens := Tokenize(a.Expansion)
+					if len(aliasTokens) > 0 && aliasTokens[len(aliasTokens)-1] == "" {
+						aliasTokens = aliasTokens[:len(aliasTokens)-1]
+					}
+					if len(aliasTokens) > 0 && aliasTokens[0] == rootCmdName {
+						aliasTokens = aliasTokens[1:]
+					}
+					newTokens := make([]string, 0, len(tokens)-1+len(aliasTokens))
+					newTokens = append(newTokens, tokens[0])
+					newTokens = append(newTokens, aliasTokens...)
+					newTokens = append(newTokens, tokens[2:]...)
+					tokens = newTokens
+					isAliasExpanded = true
+					aliasExpansionEnd = len(aliasTokens)
+					expandedPrefix = strings.Join(tokens[:1+aliasExpansionEnd], " ")
+					if len(originalTokens) >= 2 {
+						originalPrefix = strings.Join(originalTokens[:2], " ")
+					}
+					break
+				}
+			}
 		}
 	}
 
@@ -152,7 +194,7 @@ func Lookup(input string) []Suggestion {
 			continue
 		}
 		// invalid subcommand word typed
-		if len(currentSubs) > 0 {
+		if len(currentSubs) > 0 && (!isAliasExpanded || depth > aliasExpansionEnd) {
 			return nil
 		}
 		break
@@ -280,6 +322,30 @@ func Lookup(input string) []Suggestion {
 				})
 			}
 		}
+
+		if depth == 1 {
+			if provider := alias.GetProvider(rootCmdName); provider != nil {
+				cwd := GetCWD()
+				for _, a := range provider.GetAliases(cwd) {
+					if partial == "" || HasPrefix(a.Name, partial) {
+						priority := 70
+						switch a.Scope {
+						case "local", "worktree", "command":
+							priority = 85
+						case "system":
+							priority = 65
+						}
+						results = append(results, Suggestion{
+							Cmd:      prefix + " " + a.Name,
+							Desc:     "Alias for: " + a.Expansion,
+							Icon:     rootCmdName,
+							Priority: priority,
+							Source:   "alias",
+						})
+					}
+				}
+			}
+		}
 	}
 
 	usedOpts := make(map[string]bool)
@@ -302,6 +368,14 @@ func Lookup(input string) []Suggestion {
 			results = append(results, Suggestion{
 				Cmd: linePrefix + " " + opt.Name, Desc: opt.Description, Icon: rootCmdName, Priority: optPriority,
 			})
+		}
+	}
+
+	if isAliasExpanded && expandedPrefix != "" && originalPrefix != "" {
+		for i := range results {
+			if strings.HasPrefix(results[i].Cmd, expandedPrefix) {
+				results[i].Cmd = originalPrefix + strings.TrimPrefix(results[i].Cmd, expandedPrefix)
+			}
 		}
 	}
 

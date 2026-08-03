@@ -289,12 +289,60 @@ func TestMatchKey(t *testing.T) {
 		{[]byte{0x09}, "tab", true, 1},
 		{[]byte{0x0d}, "enter", true, 1},
 		{[]byte{0x0d}, "ctrl+r", false, 0},
+		{[]byte("\x1b[106;4u"), "ctrl+j", true, 8},
+		{[]byte("\x1b[106;5u"), "ctrl+j", true, 8},
+		{[]byte("\x1b[107;4u"), "ctrl+k", true, 8},
+		{[]byte("\x1b[107;12u"), "ctrl+k", true, 9},
+		{[]byte("\x1b[106;1u"), "ctrl+j", false, 0},
+		{[]byte("\x1b[97;4u"), "ctrl+a", true, 7},
+		{[]byte("\x1b[106;4U"), "ctrl+j", false, 0},
+		{[]byte("\x1b[106u"), "ctrl+j", false, 0},
 	}
 
 	for _, tt := range tests {
 		m, c := MatchKey(tt.input, tt.expected)
 		if m != tt.matched || c != tt.consumed {
 			t.Errorf("MatchKey(%v, %q) = (%v, %d); want (%v, %d)", tt.input, tt.expected, m, c, tt.matched, tt.consumed)
+		}
+	}
+}
+
+// TestMatchKey_EnterReserved verifies that the Enter key (0x0d '\\r') can never
+// be claimed by another keybinding. In a raw terminal Ctrl+M and the
+// Enter/Return key are byte-identical (both 0x0d), so a "ctrl+m" keybinding
+// must not shadow Enter, otherwise line submission (the Enter key) breaks.
+func TestMatchKey_EnterReserved(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    []byte
+		expected string
+		matched  bool
+		consumed int
+	}{
+		{"ctrl+m must not match the Enter byte", []byte{0x0d}, "ctrl+m", false, 0},
+		{"ctrl+m must not match Ctrl+M as a generic binding", []byte{0x0d}, "ctrl+m", false, 0},
+		// other ctrl keys are still distinguishable from Enter and keep working
+		{"ctrl+n unaffected", []byte{0x0e}, "ctrl+n", true, 1},
+		{"ctrl+p unaffected", []byte{0x10}, "ctrl+p", true, 1},
+		{"ctrl+j (0x0a) remains a distinct binding", []byte{0x0a}, "ctrl+j", true, 1},
+	}
+
+	for _, tt := range tests {
+		m, c := MatchKey(tt.input, tt.expected)
+		if m != tt.matched || c != tt.consumed {
+			t.Errorf("%s: MatchKey(%v, %q) = (%v, %d); want (%v, %d)", tt.name, tt.input, tt.expected, m, c, tt.matched, tt.consumed)
+		}
+	}
+}
+
+// TestMatchKey_NavKeybindingsNoLongerHijackEnter is a regression guard: with a
+// user-configured navigation (or any) keybinding set to "ctrl+m", pressing the
+// Enter key must NOT be swallowed by that keybinding check.
+func TestMatchKey_NavKeybindingsNoLongerHijackEnter(t *testing.T) {
+	kb := []string{"ctrl+m", "ctrl+m", "<ctrl-m>", "CTRL+M"}
+	for _, expected := range kb {
+		if m, _ := MatchKey([]byte{0x0d}, expected); m {
+			t.Errorf("MatchKey(enter{0x0d}, %q) matched; Enter must remain reserved", expected)
 		}
 	}
 }

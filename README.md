@@ -302,6 +302,7 @@ toggle-menu = "shift+tab"
 select = "tab"
 navigate-up = "up"
 navigate-down = "down"
+navigate-right = "right"
 
 [git]
 filter-active-branch = true

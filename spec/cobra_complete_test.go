@@ -1,7 +1,13 @@
 package spec
 
 import (
+	"context"
+	"errors"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestParseCobraOutput_ValidCobra(t *testing.T) {
@@ -128,6 +134,35 @@ func TestLookup_CobraKubectl(t *testing.T) {
 			break
 		}
 		t.Logf("  - Cmd: %-30s | Source: %-15s | Priority: %d | Desc: %s", r.Cmd, r.Source, r.Priority, r.Desc)
+	}
+}
+
+func TestNewProbeCmd_Setsid(t *testing.T) {
+	cmd := newProbeCmd(context.Background(), "true", nil)
+	if cmd.SysProcAttr == nil || !cmd.SysProcAttr.Setsid {
+		t.Fatalf("expected probe command to set Setsid: true, got %+v", cmd.SysProcAttr)
+	}
+}
+
+// TestNewProbeCmd_NoControllingTerminal writes a small script
+// and runs it to check
+// if newProbeCmd actually denies it access to tty
+func TestNewProbeCmd_NoControllingTerminal(t *testing.T) {
+	dir := t.TempDir()
+	script := "#!/bin/sh\nexec 3<>/dev/tty"
+
+	binPath := filepath.Join(dir, "ttyprobe")
+	if err := os.WriteFile(binPath, []byte(script), 0o755); err != nil {
+		t.Fatalf("failed to write probe script: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	runErr := newProbeCmd(ctx, binPath, nil).Run()
+
+	var exitErr *exec.ExitError
+	if !errors.As(runErr, &exitErr) {
+		t.Fatalf("expected probe script to exit nonzero after failing to open /dev/tty, got %v", runErr)
 	}
 }
 

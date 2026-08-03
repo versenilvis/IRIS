@@ -563,13 +563,23 @@ func (o *Overlay) draw() string {
 		boxWidth = 40 // Minimum safe width
 	}
 
+	// ComputeCursorCol returns the total visual width, not the column on the
+	// current line. When the prompt is wider than the terminal the cursor has
+	// wrapped, so using PromptLen directly overflows the screen and the box
+	// lands at the wrong horizontal position.
+	totalCol := o.PromptLen + typedLen
+	cursorCol := totalCol
+	if width > 0 {
+		cursorCol = totalCol % width
+	}
+	targetCol := cursorCol
 	if targetCol+boxWidth > width {
 		targetCol = width - boxWidth
 	}
 	if targetCol < 0 {
 		targetCol = 0
 	}
-	logger.Debugf("Overlay draw: pLen=%d, typedLen=%d, targetCol=%d, width=%d", o.PromptLen, typedLen, targetCol, width)
+	logger.Debugf("Overlay draw: pLen=%d, typedLen=%d, totalCol=%d, cursorCol=%d, targetCol=%d, width=%d", o.PromptLen, typedLen, totalCol, cursorCol, targetCol, width)
 
 	s.WriteString(ansi.SaveCursor)
 
