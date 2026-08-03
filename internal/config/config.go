@@ -143,30 +143,47 @@ func Init(cfg *Config) {
 }
 
 func AutoDetectConfigChange(onReload func(cfg *Config)) {
-	path, err := ConfigPath()
+	cfgPath, err := ConfigPath()
 	if err != nil {
 		return
 	}
+	themePath, _ := ThemePath()
+
 	go func() {
-		var lastMod time.Time
-		if info, err := os.Stat(path); err == nil {
-			lastMod = info.ModTime()
+		statMod := func(p string) time.Time {
+			if info, err := os.Stat(p); err == nil {
+				return info.ModTime()
+			}
+			return time.Time{}
 		}
+		cfgLast := statMod(cfgPath)
+		themeLast := statMod(themePath)
 		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 		for range ticker.C {
-			info, err := os.Stat(path)
-			if err == nil {
-				if !lastMod.IsZero() && info.ModTime().After(lastMod) {
-					lastMod = info.ModTime()
-					if newCfg, err := Load(); err == nil {
-						Init(newCfg)
-						if onReload != nil {
-							onReload(newCfg)
-						}
+			changed := false
+			cfgMod := statMod(cfgPath)
+			if !cfgLast.IsZero() && cfgMod.After(cfgLast) {
+				cfgLast = cfgMod
+				changed = true
+			} else if cfgLast.IsZero() {
+				cfgLast = cfgMod
+			}
+			if themePath != "" {
+				themeMod := statMod(themePath)
+				if !themeLast.IsZero() && (themeMod.After(themeLast) || themeMod.IsZero()) {
+					themeLast = themeMod
+					changed = true
+				} else if themeLast.IsZero() {
+					themeLast = themeMod
+				}
+			}
+			if changed {
+				if newCfg, err := Load(); err == nil {
+					Init(newCfg)
+					if onReload != nil {
+						onReload(newCfg)
 					}
-				} else if lastMod.IsZero() {
-					lastMod = info.ModTime()
 				}
 			}
 		}
