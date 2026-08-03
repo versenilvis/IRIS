@@ -9,23 +9,25 @@ import (
 )
 
 var defaultTheme = ThemeStyles{
-	Border:     "#A277FF",
-	Accent:     "#61FFCA",
-	Muted:      "#77738A",
-	Text:       "#EDECEE",
-	TextSel:    "#FFFFFF",
-	Match:      "#72FFD3",
-	Desc:       "#A7A3B8",
-	DescSel:    "#FFFFFF",
-	SelBg:      "#4A426D",
-	ScrollInfo: "#B58CFF",
-	GhostText:  "#66636F",
-	History:    "#3BAE96",
-	HistorySel: "#61FFCA",
-	Sys:        "#B9576C",
-	SysSel:     "#FF677D",
-	Alias:      "#74A965",
-	AliasSel:   "#A6FF8F",
+	Border:     "#a277ff",
+	Accent:     "#61ffca",
+	Muted:      "#6d6a7f",
+	Text:       "#edecee",
+	TextSel:    "#ffffff",
+	Key:        "#a277ff",
+	Match:      "#61ffca",
+	Desc:       "#9692a8",
+	DescSel:    "#edecee",
+	SelBg:      "#3d375e",
+	SelText:    "#110f18",
+	ScrollInfo: "#a277ff",
+	GhostText:  "#4B4A4C",
+	History:    "#1a2d36",
+	HistorySel: "#61ffca",
+	Sys:        "#1e1d28",
+	SysSel:     "#a277ff",
+	Alias:      "#2a2342",
+	AliasSel:   "#a277ff",
 }
 
 var Theme = defaultTheme
@@ -36,10 +38,12 @@ type ThemeStyles struct {
 	Muted      string `toml:"muted"`
 	Text       string `toml:"text"`
 	TextSel    string `toml:"text_sel"`
+	Key        string `toml:"key"`
 	Match      string `toml:"match"`
 	Desc       string `toml:"desc"`
 	DescSel    string `toml:"desc_sel"`
 	SelBg      string `toml:"sel_bg"`
+	SelText    string `toml:"sel_text"`
 	ScrollInfo string `toml:"scroll_info"`
 	GhostText  string `toml:"ghost_text"`
 	Sys        string `toml:"sys"`

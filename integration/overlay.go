@@ -487,16 +487,6 @@ func termWidth() int {
 	return w
 }
 
-// sourceTag renders a pill-style source label (" alias ") with inverted
-// colors when selected.
-func sourceTag(label, bgHex, fgHex string, selected bool) string {
-	style := lipgloss.NewStyle().Background(lipgloss.Color(bgHex)).Foreground(lipgloss.Color(fgHex))
-	if selected {
-		style = lipgloss.NewStyle().Background(lipgloss.Color(fgHex)).Foreground(lipgloss.Color("#110f18")).Bold(true)
-	}
-	return style.Render(" " + label + " ")
-}
-
 func renderMatchedTitle(title, typed string, selected bool, w int) string {
 	t := config.Theme
 	textColor := t.Text
@@ -693,27 +683,27 @@ func (o *Overlay) draw() string {
 		} else {
 			switch it.Icon {
 			case "alias":
-				boxStyle := lipgloss.NewStyle().Background(lipgloss.Color(t.Alias)).Foreground(lipgloss.Color(t.Text))
+				boxStyle := lipgloss.NewStyle().Background(lipgloss.Color(t.Alias)).Foreground(lipgloss.Color(t.AliasSel))
 				if selected {
-					boxStyle = lipgloss.NewStyle().Background(lipgloss.Color(t.AliasSel)).Foreground(lipgloss.Color(t.Text)).Bold(true)
+					boxStyle = lipgloss.NewStyle().Background(lipgloss.Color(t.AliasSel)).Foreground(lipgloss.Color(t.SelText)).Bold(true)
 				}
 				tag := boxStyle.Render(" alias ")
 				tw := lipgloss.Width(tag)
 				rem := max(descW-tw-1, 0)
 				desc = tag + bg.Render(" ") + bg.Foreground(lipgloss.Color(descColor)).Render(fixedWidth(it.Desc, rem))
 			case "history":
-				boxStyle := lipgloss.NewStyle().Background(lipgloss.Color(t.History)).Foreground(lipgloss.Color(t.Text))
+				boxStyle := lipgloss.NewStyle().Background(lipgloss.Color(t.History)).Foreground(lipgloss.Color(t.HistorySel))
 				if selected {
-					boxStyle = lipgloss.NewStyle().Background(lipgloss.Color(t.HistorySel)).Foreground(lipgloss.Color(t.Text)).Bold(true)
+					boxStyle = lipgloss.NewStyle().Background(lipgloss.Color(t.HistorySel)).Foreground(lipgloss.Color(t.SelText)).Bold(true)
 				}
 				tag := boxStyle.Render(" history ")
 				tw := lipgloss.Width(tag)
 				rem := max(descW-tw, 0)
 				desc = tag + bg.Render(strings.Repeat(" ", rem))
 			case "system":
-				boxStyle := lipgloss.NewStyle().Background(lipgloss.Color(t.Sys)).Foreground(lipgloss.Color(t.Text))
+				boxStyle := lipgloss.NewStyle().Background(lipgloss.Color(t.Sys)).Foreground(lipgloss.Color(t.SysSel))
 				if selected {
-					boxStyle = lipgloss.NewStyle().Background(lipgloss.Color(t.SysSel)).Foreground(lipgloss.Color(t.Text)).Bold(true)
+					boxStyle = lipgloss.NewStyle().Background(lipgloss.Color(t.SysSel)).Foreground(lipgloss.Color(t.SelText)).Bold(true)
 				}
 				tag := boxStyle.Render(" system ")
 				tw := lipgloss.Width(tag)
@@ -751,7 +741,7 @@ func (o *Overlay) draw() string {
 
 	footerInfo := ""
 	if !isClassic {
-		keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Match)).Bold(true)
+		keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Key)).Bold(true)
 		selectKey := keyStyle.Render(config.FormatKeyName(config.Get().Keybindings.SelectSuggestion))
 		ctrlRKey := keyStyle.Render(config.FormatKeyName(config.Get().Keybindings.ToggleMode))
 		acceptText := lipgloss.NewStyle().Foreground(lipgloss.Color(t.ScrollInfo)).Render(" Accept")
