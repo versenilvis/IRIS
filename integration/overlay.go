@@ -469,7 +469,7 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 
 	s.WriteString(ansi.SaveCursor)
 	if ghostText != "" {
-		styled := lipgloss.NewStyle().Foreground(lipgloss.Color(config.Theme.GhostText)).Render(ghostText)
+		styled := lipgloss.NewStyle().Foreground(lipgloss.Color(config.Theme().GhostText)).Render(ghostText)
 		s.WriteString(styled)
 	}
 	if padLen > 0 {
@@ -492,7 +492,7 @@ func termWidth() int {
 }
 
 func renderMatchedTitle(title, typed string, selected bool, w int) string {
-	t := config.Theme
+	t := config.Theme()
 	textColor := t.Text
 	if selected {
 		textColor = t.TextSel
@@ -531,7 +531,7 @@ func (o *Overlay) draw() string {
 		return ""
 	}
 
-	t := config.Theme
+	t := config.Theme()
 	border := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Border))
 	scrollStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(t.ScrollInfo))
 

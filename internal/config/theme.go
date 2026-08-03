@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"reflect"
+	"sync"
 
 	"github.com/BurntSushi/toml"
 )
@@ -29,7 +30,16 @@ var defaultTheme = ThemeStyles{
 	AliasSel:   "#a277ff",
 }
 
-var Theme = defaultTheme
+var (
+	themeMu     sync.RWMutex
+	themeStyles = defaultTheme
+)
+
+func Theme() ThemeStyles {
+	themeMu.RLock()
+	defer themeMu.RUnlock()
+	return themeStyles
+}
 
 type ThemeStyles struct {
 	Border     string `toml:"border"`
@@ -57,7 +67,10 @@ type ThemeStyles struct {
 // Missing file - use defaults silently
 // Missing/empty fields - fall back to the default value for that field
 func LoadTheme(filePath string) {
-	Theme = defaultTheme
+	themeMu.Lock()
+	defer themeMu.Unlock()
+
+	themeStyles = defaultTheme
 
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -70,7 +83,7 @@ func LoadTheme(filePath string) {
 		return
 	}
 
-	applyThemeWithFallback(&Theme, t, defaultTheme)
+	applyThemeWithFallback(&themeStyles, t, defaultTheme)
 }
 
 // applyThemeWithFallback copies non-empty string fields from src into dst,
