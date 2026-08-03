@@ -19,8 +19,8 @@ func applyEnv(cfg *Config) {
 		cfg.Core.Mode = val
 	}
 	if val := os.Getenv("IRIS_UI_GHOST_TEXT"); val != "" {
-		if b, err := strconv.ParseBool(val); err == nil {
-			cfg.UI.GhostText = b
+		if i, err := strconv.Atoi(val); err == nil {
+			cfg.UI.GhostText = GhostTextMode(i)
 		}
 	}
 	if val := os.Getenv("IRIS_UI_MAX_SUGGESTIONS"); val != "" {

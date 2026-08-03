@@ -67,21 +67,20 @@ func MatchKey(input []byte, expected string) (matched bool, consumed int) {
 			return true, 3
 		}
 	case "up":
-		if len(input) >= 3 && input[0] == 0x1b && (input[1] == '[' || input[1] == 'O') && input[2] == 'A' {
-			return true, 3
+		if m, c, d := MatchArrowKey(input); m && d == "up" {
+			return m, c
 		}
 	case "down":
-		if len(input) >= 3 && input[0] == 0x1b && (input[1] == '[' || input[1] == 'O') && input[2] == 'B' {
-			return true, 3
+		if m, c, d := MatchArrowKey(input); m && d == "down" {
+			return m, c
 		}
 	case "right":
-		// typically \033[C or \033OC
-		if len(input) >= 3 && input[0] == 0x1b && (input[1] == '[' || input[1] == 'O') && input[2] == 'C' {
-			return true, 3
+		if m, c, d := MatchArrowKey(input); m && d == "right" {
+			return m, c
 		}
 	case "left":
-		if len(input) >= 3 && input[0] == 0x1b && (input[1] == '[' || input[1] == 'O') && input[2] == 'D' {
-			return true, 3
+		if m, c, d := MatchArrowKey(input); m && d == "left" {
+			return m, c
 		}
 	case "enter", "cr", "return":
 		if input[0] == 0x0d || input[0] == 0x0a {
@@ -135,6 +134,108 @@ func matchKittyCtrl(input []byte, expectedASCII int) (matched bool, consumed int
 	}
 
 	return true, uIdx + 1
+}
+
+// MatchArrowKey matches terminal escape sequences for arrow keys.
+// Supports three formats:
+//   - Standard CSI: ESC [ A/B/C/D or ESC O A/B/C/D
+//   - Parameterized CSI: ESC [ <params> A/B/C/D (e.g., ESC [ 1;3A)
+//   - CSI u protocol: ESC [ <keycode> ; <modifiers> u (e.g., ESC [ 107 ; 133 u)
+//
+// Returns matched=true if the byte sequence is an arrow key, and consumed=number of bytes to consume.
+func MatchArrowKey(input []byte) (matched bool, consumed int, direction string) {
+	if len(input) < 3 || input[0] != 0x1b {
+		return false, 0, ""
+	}
+
+	// Standard and parameterized CSI / SS3 arrow keys: ESC [ ... A/B/C/D or ESC O ... A/B/C/D
+	if input[1] == '[' || input[1] == 'O' {
+		switch input[1] {
+		case '[':
+			// Find the final terminating byte (A/B/C/D).
+			// CSI parameter bytes are 0x30-0x3f (digits, ;, etc.),
+			// intermediate bytes are 0x20-0x2f, final byte is 0x40-0x7e.
+			for i := 2; i < len(input); i++ {
+				c := input[i]
+				if c == 'A' || c == 'B' || c == 'C' || c == 'D' {
+					dir := ""
+					switch c {
+					case 'A':
+						dir = "up"
+					case 'B':
+						dir = "down"
+					case 'C':
+						dir = "right"
+					case 'D':
+						dir = "left"
+					}
+					return true, i + 1, dir
+				}
+				if c < 0x20 || c > 0x7e {
+					break
+				}
+				if c >= 0x40 && c <= 0x7e && c != 'A' && c != 'B' && c != 'C' && c != 'D' {
+					break
+				}
+			}
+		case 'O':
+			// SS3 form: ESC O A/B/C/D
+			if len(input) >= 3 {
+				switch input[2] {
+				case 'A':
+					return true, 3, "up"
+				case 'B':
+					return true, 3, "down"
+				case 'C':
+					return true, 3, "right"
+				case 'D':
+					return true, 3, "left"
+				}
+			}
+		}
+	}
+
+	// CSI u protocol (modify keyboard protocol): ESC [ <keycode> ; <modifiers> u
+	// Arrow key keycodes: Up=107, Down=108, Right=106, Left=105 (when modifier bits are set)
+	// Also: Up=4134?, Down=4133?, etc. — depends on terminal. Common mapping:
+	// modifier=2 (Shift): Up=57357, etc. For simplicity, handle both 3-digit and 5-digit keycodes.
+	if len(input) >= 6 && input[1] == '[' {
+		// Find the 'u' terminator
+		uIdx := -1
+		for i := 2; i < len(input); i++ {
+			if input[i] == 'u' {
+				uIdx = i
+				break
+			}
+			if (input[i] < '0' || input[i] > '9') && input[i] != ';' {
+				break
+			}
+		}
+		if uIdx > 0 {
+			body := string(input[2:uIdx])
+			parts := strings.Split(body, ";")
+			if len(parts) == 2 {
+				keycode, err := strconv.Atoi(parts[0])
+				if err != nil {
+					return false, 0, ""
+				}
+				mod, _ := strconv.Atoi(parts[1])
+				_ = mod // modifiers don't change which arrow key
+				switch keycode {
+				case 105, 4133: // left
+					return true, uIdx + 1, "left"
+				case 106, 4134: // right (fish sends 1;129 but that's parameterized CSI, not CSI u)
+					return true, uIdx + 1, "right"
+				case 107, 4135: // up
+					return true, uIdx + 1, "up"
+				case 108, 4136: // down
+					return true, uIdx + 1, "down"
+				}
+			}
+		}
+	}
+
+	return false, 0, ""
 }
 
 // FormatKeyName takes a config key string like "ctrl+r" and formats it for UI display, e.g. "<Ctrl+R>".

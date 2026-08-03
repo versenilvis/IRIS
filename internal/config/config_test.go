@@ -127,7 +127,7 @@ model = "qwen-2.5-coder-32b"
 	t.Setenv("IRIS_CORE_DEBUG", "true")
 	t.Setenv("IRIS_CORE_SHELL", "fish")
 	t.Setenv("IRIS_CORE_MODE", "history")
-	t.Setenv("IRIS_UI_GHOST_TEXT", "false")
+	t.Setenv("IRIS_UI_GHOST_TEXT", "0")
 	t.Setenv("IRIS_UI_MAX_SUGGESTIONS", "250")
 	t.Setenv("IRIS_UI_MAX_HEIGHT", "25")
 	t.Setenv("IRIS_UPDATER_CHANNEL", "nightly")
@@ -153,8 +153,8 @@ model = "qwen-2.5-coder-32b"
 	if cfg.Core.Mode != "history" {
 		t.Errorf("expected mode history, got %q", cfg.Core.Mode)
 	}
-	if cfg.UI.GhostText {
-		t.Errorf("expected ghost text to be false")
+	if cfg.UI.GhostText != 0 {
+		t.Errorf("expected ghost text to be off")
 	}
 	if cfg.UI.MaxSuggestions != 250 {
 		t.Errorf("expected max suggestions 250, got %d", cfg.UI.MaxSuggestions)
