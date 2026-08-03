@@ -126,6 +126,12 @@ func runWrapper() {
 	var lastSubmittedCommand string
 	cursorOffset := 0
 	var bufferMu sync.Mutex
+	resetBuffer := func() {
+		bufferMu.Lock()
+		naiveBuffer = ""
+		cursorOffset = 0
+		bufferMu.Unlock()
+	}
 	var userNavigated atomic.Bool
 	var renderMenuNow func()
 	var intercepted bool
@@ -287,9 +293,6 @@ func runWrapper() {
 	var isCommandActive atomic.Bool
 	var disableGhostText atomic.Bool
 	disableGhostText.Store(config.Get().UI.GhostText == 0)
-	if shellName == "fish" {
-		logger.Debugf("Fish init: GhostText=%d, disableGhostText=%v, shell=%s", config.Get().UI.GhostText, disableGhostText.Load(), shellName)
-	}
 	config.AutoDetectConfigChange(func(cfg *config.Config) {
 		disableGhostText.Store(cfg.UI.GhostText == 0)
 	})
@@ -485,10 +488,7 @@ func runWrapper() {
 
 			if query == "IRIS_CMD_START" {
 				isCommandActive.Store(true)
-				bufferMu.Lock()
-				naiveBuffer = ""
-				cursorOffset = 0
-				bufferMu.Unlock()
+				resetBuffer()
 				writeStdout([]byte(overlay.ClearAndDisable()))
 				SetCurrentAISuggestion(nil)
 				continue
@@ -696,18 +696,8 @@ func runWrapper() {
 		overlay.SetUserNavigated(navCopy)
 		if !disableGhostText.Load() {
 			ghostText := overlay.RenderGhostText(bufCopy, navCopy, offsetCopy == 0)
-			if shellName == "fish" {
-				logger.Debugf("Fish ghost text: bufCopy='%s', navCopy=%v, offset=%d, ghostText='%s', visible=%v, typedQuery='%s'",
-					bufCopy, navCopy, offsetCopy, ghostText, overlay.IsVisible(), overlay.GetTypedQuery())
-			}
 			b.WriteString(ghostText)
-		} else {
-			if shellName == "fish" {
-				logger.Debugf("Fish ghost text DISABLED: disableGhostText=%v, GhostText config=%d", disableGhostText.Load(), config.Get().UI.GhostText)
-			}
 		}
-		currentCmd := overlay.GetCurrentCmd()
-		logger.Debugf("RenderOverlay nav: %v, typedQuery: '%s', currentCmd: '%s'", navCopy, overlay.GetTypedQuery(), currentCmd)
 		if !suggestionsEnabled && config.Get().UI.GhostText == 2 {
 			// mode 2 with menu toggled off: suppress the menu box but keep ghost
 			// text. Clear() erases any previously-drawn box without resetting
@@ -728,9 +718,6 @@ func runWrapper() {
 			// the menu is off but a command is not executing, keep rendering so
 			// ghost text stays alive. Bail out only when executing or in modes 0/1.
 			if isExecuting() || config.Get().UI.GhostText != 2 {
-				if shellName == "fish" {
-					logger.Debugf("Fish renderOverlay skipped: suggestionsEnabled=%v, isExecuting=%v", suggestionsEnabled, isExecuting())
-				}
 				if renderTimer != nil {
 					renderTimer.Stop()
 					renderTimer = nil
@@ -740,9 +727,6 @@ func runWrapper() {
 		}
 
 		if userNavigated.Load() {
-			if shellName == "fish" {
-				logger.Debugf("Fish renderOverlay skipped: userNavigated=true")
-			}
 			return
 		}
 
@@ -782,10 +766,6 @@ func runWrapper() {
 			for i := 0; i < n; i++ {
 				b := inputSlice[i]
 				intercepted = false
-
-				if shellName == "fish" && b == 0x1b {
-					logger.Debugf("Fish input at i=%d: byte=0x1b ESC, remaining=% x", i, inputSlice[i:min(i+5, n)])
-				}
 
 				if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.ToggleMenu); matched {
 					intercepted = true
@@ -832,12 +812,6 @@ func runWrapper() {
 				var navConsumed int
 				if isNavUp, navConsumed = config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateUp); !isNavUp {
 					isNavDown, navConsumed = config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateDown)
-				}
-
-				if shellName == "fish" && (b == 0x1b && i+2 < n) {
-					logger.Debugf("Fish nav check: isNavUp=%v, isNavDown=%v, navConsumed=%d, seq=0x%02x 0x%02x 0x%02x, navUp=%q, navDown=%q",
-						isNavUp, isNavDown, navConsumed, inputSlice[i], inputSlice[i+1], inputSlice[i+2],
-						config.Get().Keybindings.NavigateUp, config.Get().Keybindings.NavigateDown)
 				}
 
 				if isNavUp || isNavDown {
@@ -936,24 +910,15 @@ func runWrapper() {
 						}
 						msg := "echo -e '\\033[32m✓ Iris configuration reloaded successfully.\\033[0m'\r"
 						_, _ = ptmx.Write(append([]byte{0x15}, []byte(msg)...))
-						bufferMu.Lock()
-						naiveBuffer = ""
-						cursorOffset = 0
-						bufferMu.Unlock()
+						resetBuffer()
 						disableGhostText.Store(false)
-						if shellName == "fish" {
-							logger.Debugf("Fish disableGhostText=false (after reload)")
-						}
 						shouldOverlayDraw = false
 						userNavigated.Store(false)
 						continue
 					}
 
 					integration.RecordSessionCommand(cmdToSubmit)
-					bufferMu.Lock()
-					naiveBuffer = ""
-					cursorOffset = 0
-					bufferMu.Unlock()
+					resetBuffer()
 					isCommandActive.Store(true)
 					_, _ = ptmx.Write([]byte{b}) // forward enter to terminal
 					disableGhostText.Store(false)
@@ -968,31 +933,14 @@ func runWrapper() {
 						if (inputSlice[i+4] == '0' || inputSlice[i+4] == '1') && inputSlice[i+5] == '~' {
 							intercepted = true
 							inBracketedPaste = inputSlice[i+4] == '0'
-							logger.Debugf("Intercepted bracketed paste event inPaste=%v", inBracketedPaste)
 							_, _ = ptmx.Write(inputSlice[i : i+6])
 							i += 5
 							continue
 						}
 					}
 
-					isNavUp, navConsumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateUp)
-					if !isNavUp {
-						isNavDown, navConsumed = config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateDown)
-					}
-					if isNavUp || isNavDown {
-						intercepted = true
-						arrowDir := "down"
-						if isNavUp {
-							arrowDir = "up"
-						}
-						handleNavKey(arrowDir)
-						i += navConsumed - 1
-						continue
-					}
-
 					// handle escape sequences like arrow keys and functional shortcuts
 					// left/right arrow cursor tracking (handles standard, parameterized CSI, and CSI u protocol)
-					isLeftRightArrow := false
 					if arrowMatched, arrowConsumed, arrowDir := config.MatchArrowKey(inputSlice[i:]); arrowMatched && (arrowDir == "left" || arrowDir == "right") {
 						// Right arrow accepts the inline ghost text when one is showing and the
 						// cursor is at the end (like an editor). This is gated by the configured
@@ -1023,18 +971,12 @@ func runWrapper() {
 						continue
 					}
 					if !intercepted {
-						if shellName == "fish" {
-							logger.Debugf("Fish unhandled escape: b=0x%02x('%c'), inputSlice[%d:%d]=% x, isLeftRightArrow=%v", b, b, i, n, inputSlice[i:n], isLeftRightArrow)
-						}
 						isStandaloneEsc := n == 1 && b == '\033'
 						if !isStandaloneEsc {
 							writeStdout([]byte(overlay.ClearAndDisable()))
 						}
-						if !isLeftRightArrow && !isStandaloneEsc {
-							bufferMu.Lock()
-							naiveBuffer = ""
-							cursorOffset = 0
-							bufferMu.Unlock()
+						if !isStandaloneEsc {
+							resetBuffer()
 						}
 
 						_, _ = ptmx.Write([]byte{b})
@@ -1061,10 +1003,7 @@ func runWrapper() {
 					renderMu.Unlock()
 					isCommandActive.Store(false)
 					_, _ = ptmx.Write([]byte{b})
-					bufferMu.Lock()
-					naiveBuffer = ""
-					cursorOffset = 0
-					bufferMu.Unlock()
+					resetBuffer()
 					disableGhostText.Store(false)
 					shouldOverlayDraw = false
 					userNavigated.Store(false)
@@ -1149,10 +1088,7 @@ func runWrapper() {
 						userNavigated.Store(false)
 					case '\r', '\n', 0x03, 0x15: // enter, ctrl+c, ctrl+u: clear buffer on line reset
 						inBracketedPaste = false
-						bufferMu.Lock()
-						naiveBuffer = ""
-						cursorOffset = 0
-						bufferMu.Unlock()
+						resetBuffer()
 						activeModeMu.Lock()
 						activeMode = loadMode()
 						activeModeMu.Unlock()

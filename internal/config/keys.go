@@ -5,9 +5,6 @@ import (
 	"strings"
 )
 
-// MatchKey matches a sequence of terminal bytes against a configured key string.
-// Key strings can be e.g. "ctrl+r", "tab", "shift+tab", "right".
-// Returns matched=true if the byte sequence matches the configured key, and consumed=number of bytes to consume.
 // splitModArrow splits a binding like "ctrl+up" into its modifier and arrow
 // direction. Returns ok=false unless the string is "<modifier>+<arrow>".
 func splitModArrow(s string) (mod, dir string, ok bool) {
@@ -59,17 +56,44 @@ func arrowIsCtrl(input []byte) bool {
 	return arrowModifier(input)&4 != 0
 }
 
+// normalizeKey canonicalizes a configured key string: trims, lowercases, and
+// maps common spelling variants ("-", "<>", "ctrk", "ctl") to a canonical
+// "+"-separated binding.
+func normalizeKey(key string) string {
+	key = strings.ToLower(strings.TrimSpace(key))
+	key = strings.TrimPrefix(key, "<")
+	key = strings.TrimSuffix(key, ">")
+	key = strings.ReplaceAll(key, "-", "+")
+	key = strings.ReplaceAll(key, "ctrk", "ctrl")
+	key = strings.ReplaceAll(key, "ctl", "ctrl")
+	return key
+}
+
+// arrowDirection maps a CSI/SS3 arrow termination byte (A/B/C/D) to its
+// direction name. Returns "" for a byte that is not an arrow terminator.
+func arrowDirection(c byte) string {
+	switch c {
+	case 'A':
+		return "up"
+	case 'B':
+		return "down"
+	case 'C':
+		return "right"
+	case 'D':
+		return "left"
+	}
+	return ""
+}
+
+// MatchKey matches a sequence of terminal bytes against a configured key string.
+// Key strings can be e.g. "ctrl+r", "tab", "shift+tab", "right".
+// Returns matched=true if the byte sequence matches the configured key, and consumed=number of bytes to consume.
 func MatchKey(input []byte, expected string) (matched bool, consumed int) {
 	if len(input) == 0 {
 		return false, 0
 	}
 
-	expected = strings.ToLower(strings.TrimSpace(expected))
-	expected = strings.TrimPrefix(expected, "<")
-	expected = strings.TrimSuffix(expected, ">")
-	expected = strings.ReplaceAll(expected, "-", "+")
-	expected = strings.ReplaceAll(expected, "ctrk", "ctrl")
-	expected = strings.ReplaceAll(expected, "ctl", "ctrl")
+	expected = normalizeKey(expected)
 
 	if len(expected) == 1 {
 		if input[0] == expected[0] {
@@ -135,20 +159,8 @@ func MatchKey(input []byte, expected string) (matched bool, consumed int) {
 		if len(input) >= 3 && input[0] == 0x1b && input[1] == '[' && input[2] == 'Z' {
 			return true, 3
 		}
-	case "up":
-		if m, c, d := MatchArrowKey(input); m && d == "up" {
-			return m, c
-		}
-	case "down":
-		if m, c, d := MatchArrowKey(input); m && d == "down" {
-			return m, c
-		}
-	case "right":
-		if m, c, d := MatchArrowKey(input); m && d == "right" {
-			return m, c
-		}
-	case "left":
-		if m, c, d := MatchArrowKey(input); m && d == "left" {
+	case "up", "down", "left", "right":
+		if m, c, d := MatchArrowKey(input); m && d == expected {
 			return m, c
 		}
 	case "enter", "cr", "return":
@@ -163,46 +175,50 @@ func MatchKey(input []byte, expected string) (matched bool, consumed int) {
 // matchKittyCtrl matches the kitty keyboard protocol CSI sequence for Ctrl+<letter>.
 // Format: ESC [ <keycode> ; <modifiers> <action>
 // For Ctrl+<letter>: keycode is the ASCII code of the letter, modifiers must have bit 2 (value 4) set, action is 'u'.
-func matchKittyCtrl(input []byte, expectedASCII int) (matched bool, consumed int) {
+// parseCSIU parses a kitty/CSI-u sequence ESC [ <keycode> ; <modifier> u and
+// returns the keycode, modifier, and bytes consumed (the 'u' index + 1).
+// ok=false if the input is not a well-formed CSI-u sequence.
+func parseCSIU(input []byte) (keycode, modifier, consumed int, ok bool) {
 	if len(input) < 6 || input[0] != 0x1b || input[1] != '[' {
-		return false, 0
+		return 0, 0, 0, false
 	}
-
 	uIdx := -1
 	for i := 2; i < len(input); i++ {
 		if input[i] == 'u' {
 			uIdx = i
 			break
 		}
+		if (input[i] < '0' || input[i] > '9') && input[i] != ';' {
+			break
+		}
 	}
-	if uIdx == -1 {
-		return false, 0
+	if uIdx <= 0 {
+		return 0, 0, 0, false
 	}
-
-	body := string(input[2:uIdx])
-	parts := strings.Split(body, ";")
+	parts := strings.Split(string(input[2:uIdx]), ";")
 	if len(parts) != 2 {
-		return false, 0
+		return 0, 0, 0, false
 	}
-
 	keycode, err := strconv.Atoi(parts[0])
 	if err != nil {
-		return false, 0
+		return 0, 0, 0, false
 	}
-	modifiers, err := strconv.Atoi(parts[1])
+	modifier, err = strconv.Atoi(parts[1])
 	if err != nil {
+		return 0, 0, 0, false
+	}
+	return keycode, modifier, uIdx + 1, true
+}
+
+// matchKittyCtrl matches the kitty keyboard protocol CSI sequence for Ctrl+<letter>.
+// Format: ESC [ <keycode> ; <modifiers> u, where keycode is the ASCII code of
+// the letter and the Ctrl modifier bit (value 4) is set.
+func matchKittyCtrl(input []byte, expectedASCII int) (matched bool, consumed int) {
+	keycode, modifier, consumed, ok := parseCSIU(input)
+	if !ok || modifier&4 == 0 || keycode != expectedASCII {
 		return false, 0
 	}
-
-	if modifiers&4 == 0 {
-		return false, 0
-	}
-
-	if keycode != expectedASCII {
-		return false, 0
-	}
-
-	return true, uIdx + 1
+	return true, consumed
 }
 
 // MatchArrowKey matches terminal escape sequences for arrow keys.
@@ -226,39 +242,21 @@ func MatchArrowKey(input []byte) (matched bool, consumed int, direction string) 
 			// intermediate bytes are 0x20-0x2f, final byte is 0x40-0x7e.
 			for i := 2; i < len(input); i++ {
 				c := input[i]
-				if c == 'A' || c == 'B' || c == 'C' || c == 'D' {
-					dir := ""
-					switch c {
-					case 'A':
-						dir = "up"
-					case 'B':
-						dir = "down"
-					case 'C':
-						dir = "right"
-					case 'D':
-						dir = "left"
-					}
+				if dir := arrowDirection(c); dir != "" {
 					return true, i + 1, dir
 				}
 				if c < 0x20 || c > 0x7e {
 					break
 				}
-				if c >= 0x40 && c <= 0x7e && c != 'A' && c != 'B' && c != 'C' && c != 'D' {
+				if c >= 0x40 && c <= 0x7e && arrowDirection(c) == "" {
 					break
 				}
 			}
 		case 'O':
 			// SS3 form: ESC O A/B/C/D
 			if len(input) >= 3 {
-				switch input[2] {
-				case 'A':
-					return true, 3, "up"
-				case 'B':
-					return true, 3, "down"
-				case 'C':
-					return true, 3, "right"
-				case 'D':
-					return true, 3, "left"
+				if dir := arrowDirection(input[2]); dir != "" {
+					return true, 3, dir
 				}
 			}
 		}
@@ -268,39 +266,16 @@ func MatchArrowKey(input []byte) (matched bool, consumed int, direction string) 
 	// Arrow key keycodes: Up=107, Down=108, Right=106, Left=105 (when modifier bits are set)
 	// Also: Up=4134?, Down=4133?, etc. — depends on terminal. Common mapping:
 	// modifier=2 (Shift): Up=57357, etc. For simplicity, handle both 3-digit and 5-digit keycodes.
-	if len(input) >= 6 && input[1] == '[' {
-		// Find the 'u' terminator
-		uIdx := -1
-		for i := 2; i < len(input); i++ {
-			if input[i] == 'u' {
-				uIdx = i
-				break
-			}
-			if (input[i] < '0' || input[i] > '9') && input[i] != ';' {
-				break
-			}
-		}
-		if uIdx > 0 {
-			body := string(input[2:uIdx])
-			parts := strings.Split(body, ";")
-			if len(parts) == 2 {
-				keycode, err := strconv.Atoi(parts[0])
-				if err != nil {
-					return false, 0, ""
-				}
-				mod, _ := strconv.Atoi(parts[1])
-				_ = mod // modifiers don't change which arrow key
-				switch keycode {
-				case 105, 4133: // left
-					return true, uIdx + 1, "left"
-				case 106, 4134: // right (fish sends 1;129 but that's parameterized CSI, not CSI u)
-					return true, uIdx + 1, "right"
-				case 107, 4135: // up
-					return true, uIdx + 1, "up"
-				case 108, 4136: // down
-					return true, uIdx + 1, "down"
-				}
-			}
+	if keycode, _, consumed, ok := parseCSIU(input); ok {
+		switch keycode {
+		case 105, 4133: // left
+			return true, consumed, "left"
+		case 106, 4134: // right (fish sends 1;129 but that's parameterized CSI, not CSI u)
+			return true, consumed, "right"
+		case 107, 4135: // up
+			return true, consumed, "up"
+		case 108, 4136: // down
+			return true, consumed, "down"
 		}
 	}
 
