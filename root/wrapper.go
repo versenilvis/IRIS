@@ -825,9 +825,10 @@ func runWrapper() {
 							userNavigated.Store(false)
 							writeStdout([]byte(overlay.Render()))
 						}
-						i += consumed - 1
-						continue
 					}
+					// always consume the full binding atomically, even when the overlay is hidden
+					i += consumed - 1
+					continue
 				}
 
 				if b == 0x0d || b == 0x0a { // enter
