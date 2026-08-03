@@ -8,6 +8,57 @@ import (
 // MatchKey matches a sequence of terminal bytes against a configured key string.
 // Key strings can be e.g. "ctrl+r", "tab", "shift+tab", "right".
 // Returns matched=true if the byte sequence matches the configured key, and consumed=number of bytes to consume.
+// splitModArrow splits a binding like "ctrl+up" into its modifier and arrow
+// direction. Returns ok=false unless the string is "<modifier>+<arrow>".
+func splitModArrow(s string) (mod, dir string, ok bool) {
+	i := strings.IndexByte(s, '+')
+	if i <= 0 {
+		return "", "", false
+	}
+	dir = s[i+1:]
+	switch dir {
+	case "up", "down", "left", "right":
+		return s[:i], dir, true
+	}
+	return "", "", false
+}
+
+// arrowModifier extracts the modifier parameter from a parameterized CSI arrow
+// sequence (ESC [ <col> ; <mod> <A-D>) or a kitty CSI-u sequence (ESC [ <key> ;
+// <mod> u). It returns 0 for plain arrows with no modifier parameter.
+func arrowModifier(input []byte) int {
+	if len(input) < 4 || input[1] != '[' {
+		return 0
+	}
+	lastSemi := -1
+	end := len(input)
+	for j := 2; j < len(input); j++ {
+		c := input[j]
+		if c == 'A' || c == 'B' || c == 'C' || c == 'D' || c == 'u' {
+			end = j
+			break
+		}
+		if c == ';' {
+			lastSemi = j
+		}
+	}
+	if lastSemi == -1 {
+		return 0
+	}
+	mod, err := strconv.Atoi(strings.Trim(string(input[lastSemi+1:end]), " "))
+	if err != nil {
+		return 0
+	}
+	return mod
+}
+
+// arrowIsCtrl reports whether an arrow sequence carries the Ctrl modifier,
+// using the common arrow-modifier encoding where the Ctrl bit has value 4
+// (so mod&4 != 0). Covers xterm parameterized arrows and kitty CSI-u.
+func arrowIsCtrl(input []byte) bool {
+	return arrowModifier(input)&4 != 0
+}
+
 func MatchKey(input []byte, expected string) (matched bool, consumed int) {
 	if len(input) == 0 {
 		return false, 0
@@ -42,14 +93,32 @@ func MatchKey(input []byte, expected string) (matched bool, consumed int) {
 			if input[0] == targetByte {
 				return true, 1
 			}
-		// Some terminals (foot, kitty, etc.) send kitty keyboard protocol
-		// escape sequences for Ctrl+letter instead of raw control bytes:
-		// CSI <keycode> ; <modifiers> <action>
-		// where modifiers include Ctrl=4 and action='u' means press.
-		if matched, consumed := matchKittyCtrl(input, int(char)); matched {
-			return matched, consumed
+			// Some terminals (foot, kitty, etc.) send kitty keyboard protocol
+			// escape sequences for Ctrl+letter instead of raw control bytes:
+			// CSI <keycode> ; <modifiers> <action>
+			// where modifiers include Ctrl=4 and action='u' means press.
+			if matched, consumed := matchKittyCtrl(input, int(char)); matched {
+				return matched, consumed
+			}
 		}
+	}
+
+	// Modifier + arrow-key bindings, e.g. "ctrl+up"/"ctrl+down"/"ctrl+left"/"ctrl+right".
+	// Plain "up"/"down"/"left"/"right" bindings (in the switch below) match an arrow
+	// of that direction regardless of modifier; a modifier-prefixed binding only
+	// matches when the arrow carries that modifier.
+	if mod, dir, ok := splitModArrow(expected); ok {
+		m, c, adir := MatchArrowKey(input)
+		if !m || adir != dir {
+			return false, 0
 		}
+		switch mod {
+		case "ctrl":
+			if arrowIsCtrl(input) {
+				return true, c
+			}
+		}
+		return false, 0
 	}
 
 	switch expected {

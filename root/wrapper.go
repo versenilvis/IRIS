@@ -833,24 +833,7 @@ func runWrapper() {
 				if isNavUp, navConsumed = config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateUp); !isNavUp {
 					isNavDown, navConsumed = config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateDown)
 				}
-				// Also match standard arrow key sequences so they always work for navigation
-				// regardless of the configured navigate-up/navigate-down keybindings
-				if !isNavUp && !isNavDown && i+2 < n && inputSlice[i] == 0x1b && (inputSlice[i+1] == '[' || inputSlice[i+1] == 'O') {
-					switch inputSlice[i+2] {
-					case 'A':
-						isNavUp = true
-						navConsumed = 3
-						if shellName == "fish" {
-							logger.Debugf("Fish matched up arrow")
-						}
-					case 'B':
-						isNavDown = true
-						navConsumed = 3
-						if shellName == "fish" {
-							logger.Debugf("Fish matched down arrow")
-						}
-					}
-				}
+
 				if shellName == "fish" && (b == 0x1b && i+2 < n) {
 					logger.Debugf("Fish nav check: isNavUp=%v, isNavDown=%v, navConsumed=%d, seq=0x%02x 0x%02x 0x%02x, navUp=%q, navDown=%q",
 						isNavUp, isNavDown, navConsumed, inputSlice[i], inputSlice[i+1], inputSlice[i+2],
@@ -1007,126 +990,46 @@ func runWrapper() {
 						continue
 					}
 
-					// Arrow key fallback for up/down arrows (handles fish's modified escape sequences
-					// like \033[107;133u or \033[1;129A)
-					if arrowMatched, arrowConsumed, arrowDir := config.MatchArrowKey(inputSlice[i:]); arrowMatched && (arrowDir == "up" || arrowDir == "down") {
-						intercepted = true
-						if shellName == "fish" {
-							logger.Debugf("Fish up/down arrow fallback: dir=%s, seq=% x", arrowDir, inputSlice[i:i+arrowConsumed])
-						}
-						handleNavKey(arrowDir)
-						i += arrowConsumed - 1
-						continue
-					}
-
 					// handle escape sequences like arrow keys and functional shortcuts
 					// left/right arrow cursor tracking (handles standard, parameterized CSI, and CSI u protocol)
 					isLeftRightArrow := false
 					if arrowMatched, arrowConsumed, arrowDir := config.MatchArrowKey(inputSlice[i:]); arrowMatched && (arrowDir == "left" || arrowDir == "right") {
-						isLeftRightArrow = true
-
-						if arrowDir == "left" {
-							bufferMu.Lock()
-							isEmptyQuery := naiveBuffer == "" && (!overlay.IsVisible() || overlay.GetTypedQuery() == "")
-							bufferMu.Unlock()
-							if isEmptyQuery {
-								// No buffer/overlay to navigate; pass the left arrow through to the
-								// shell so the cursor moves normally.
-								_, _ = ptmx.Write(inputSlice[i : i+arrowConsumed])
-								i += arrowConsumed - 1
-								continue
-							}
-							bufferMu.Lock()
-							if naiveBuffer != "" || overlay.IsVisible() {
-								cursorOffset++
-								if cursorOffset > len(naiveBuffer) {
-									cursorOffset = len(naiveBuffer)
-								}
-								shouldOverlayDraw = true
-								userNavigated.Store(false)
-							}
-							bufferMu.Unlock()
-							i += arrowConsumed - 1
-						} else { // right arrow
-							_, navConsumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateRight)
-							if navConsumed == 0 {
-								if !intercepted {
-									if shellName == "fish" {
-										logger.Debugf("Fish right-arrow not intercepted: inputSlice=% x", inputSlice[:n])
-									}
-									writeStdout([]byte(overlay.ClearAndDisable()))
-									isStandaloneEsc := n == 1 && b == '\033'
-									if !isStandaloneEsc {
-										bufferMu.Lock()
-										naiveBuffer = ""
-										cursorOffset = 0
-										bufferMu.Unlock()
-									}
-									_, _ = ptmx.Write([]byte{b})
-									for j := i + 1; j < n; j++ {
-										char := inputSlice[j]
-										_, _ = ptmx.Write([]byte{char})
-										i = j
-										if (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || char == '~' {
-											break
-										}
-									}
-								}
-								i += arrowConsumed - 1
-								continue
-							}
-							intercepted = true
-							bufferMu.Lock()
-							isEmptyQuery := naiveBuffer == "" && (!overlay.IsVisible() || overlay.GetTypedQuery() == "")
-							bufferMu.Unlock()
-							if isEmptyQuery {
-								// No buffer/overlay to navigate; pass the right arrow through to
-								// the shell so the cursor moves normally (right-arrow pass-through).
-								_, _ = ptmx.Write(inputSlice[i : i+arrowConsumed])
-								i += arrowConsumed - 1
-								continue
-							}
-							i += arrowConsumed - 1
-
-							bufferMu.Lock()
-							atEnd := (cursorOffset == 0)
-							ghostText := ""
-							if !disableGhostText.Load() {
-								ghostText = overlay.GetGhostText(naiveBuffer, atEnd)
-							}
-							bufferMu.Unlock()
-
-							if len(ghostText) > 0 {
+						// Right arrow accepts the inline ghost text when one is showing and the
+						// cursor is at the end (like an editor). This is gated by the configured
+						// navigate-right binding: if it's "ctrl+right" only Ctrl+Right accepts
+						// ghost text and plain Right passes through. Otherwise Left/Right pass
+						// through to the shell so the cursor moves natively (including word-jumps
+						// on Ctrl+arrows). IRIS never hijacks cursor movement here.
+						if arrowDir == "right" {
+							if rightNav, _ := config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateRight); rightNav {
 								bufferMu.Lock()
-								naiveBuffer += ghostText
-								cursorOffset = 0
+								buf := naiveBuffer
 								bufferMu.Unlock()
-								overlay.ClearGhostTextState()
-								_, _ = ptmx.Write([]byte(ghostText))
-								shouldOverlayDraw = true
-								continue
-							}
-
-							bufferMu.Lock()
-							if naiveBuffer != "" || overlay.IsVisible() {
-								cursorOffset--
-								if cursorOffset < 0 {
-									cursorOffset = 0
+								ghostText := overlay.GetGhostText(buf, true)
+								if ghostText != "" {
+									bufferMu.Lock()
+									naiveBuffer += ghostText
+									bufferMu.Unlock()
+									overlay.ClearGhostTextState()
+									_, _ = ptmx.Write([]byte(ghostText))
+									shouldOverlayDraw = true
+									i += arrowConsumed - 1
+									continue
 								}
-								shouldOverlayDraw = true
-								userNavigated.Store(false)
 							}
-							bufferMu.Unlock()
 						}
+						_, _ = ptmx.Write(inputSlice[i : i+arrowConsumed])
+						i += arrowConsumed - 1
+						continue
 					}
-
 					if !intercepted {
 						if shellName == "fish" {
 							logger.Debugf("Fish unhandled escape: b=0x%02x('%c'), inputSlice[%d:%d]=% x, isLeftRightArrow=%v", b, b, i, n, inputSlice[i:n], isLeftRightArrow)
 						}
-						writeStdout([]byte(overlay.ClearAndDisable()))
-
 						isStandaloneEsc := n == 1 && b == '\033'
+						if !isStandaloneEsc {
+							writeStdout([]byte(overlay.ClearAndDisable()))
+						}
 						if !isLeftRightArrow && !isStandaloneEsc {
 							bufferMu.Lock()
 							naiveBuffer = ""
