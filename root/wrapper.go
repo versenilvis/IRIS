@@ -749,8 +749,9 @@ func runWrapper() {
 
 						i += navConsumed - 1
 						continue
-					} else {
-						// up/down arrow or navigation key when overlay is closed
+					} else if suggestionsEnabled {
+						// hidden-overlay history navigation (only when suggestions are enabled;
+						// otherwise let the navigation keys pass through to the shell)
 						intercepted = true
 						activeModeMu.Lock()
 						if activeMode == "" {
