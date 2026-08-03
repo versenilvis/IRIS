@@ -288,10 +288,11 @@ func runWrapper() {
 	var isCommandActive atomic.Bool
 	var disableGhostText atomic.Bool
 	disableGhostText.Store(!config.Get().UI.GhostText)
-	renderOverlay := func() {}
+	var renderOverlayFn atomic.Value // holds func()
+	renderOverlayFn.Store(func() {})
 	config.AutoDetectConfigChange(func(cfg *config.Config) {
 		disableGhostText.Store(!cfg.UI.GhostText)
-		renderOverlay()
+		renderOverlayFn.Load().(func())()
 	})
 	isExecuting := func() bool {
 		if isCommandActive.Load() {
@@ -479,7 +480,7 @@ func runWrapper() {
 			cursorOffset = 0
 			bufferMu.Unlock()
 
-			renderOverlay()
+			renderOverlayFn.Load().(func())()
 		}
 		if err := scanner.Err(); err != nil {
 			logger.Errorf("IPC scanner error: %v", err)
@@ -565,7 +566,7 @@ func runWrapper() {
 				}
 				SetCurrentAISuggestion(sugg)
 				if overlay.InjectAISuggestion(*sugg) {
-					renderOverlay()
+					renderOverlayFn.Load().(func())()
 				}
 			})
 		}
@@ -607,7 +608,7 @@ func runWrapper() {
 		writeStdout([]byte(b.String()))
 	}
 
-	renderOverlay = func() {
+	renderOverlayFn.Store(func() {
 		renderMu.Lock()
 		defer renderMu.Unlock()
 
@@ -632,9 +633,9 @@ func runWrapper() {
 			renderMu.Unlock()
 			renderMenuNow()
 		})
-	}
+	})
 
-	renderOverlay()
+	renderOverlayFn.Load().(func())()
 
 	// reads from stdin and decides what to forward or intercept
 	// for most cases, I just handle the already have terminal shortcuts
@@ -1174,7 +1175,7 @@ func runWrapper() {
 				}
 			}
 			if shouldOverlayDraw {
-				renderOverlay()
+				renderOverlayFn.Load().(func())()
 			}
 		}
 	}
