@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -47,14 +48,7 @@ func WriteThemeFiles(path string) error {
 			return err
 		}
 
-		themeFile, err := os.Create(filepath.Join(path, file.Name()))
-		if err != nil {
-			return err
-		}
-
-		defer themeFile.Close()
-		_, err = themeFile.Write(data)
-		if err != nil {
+		if err := os.WriteFile(filepath.Join(path, file.Name()), data, 0644); err != nil {
 			return err
 		}
 	}
@@ -64,12 +58,23 @@ func WriteThemeFiles(path string) error {
 
 func SetThemeFile(path string, theme string) error {
 	var themeStyles ThemeStyles
-	_, err := toml.DecodeFile(filepath.Join(path, theme+".toml"), &themeStyles)
+
+	data, err := os.ReadFile(filepath.Join(path, theme+".toml"))
 	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		data, err = assets.Themes.ReadFile("themes/" + theme + ".toml")
+		if err != nil {
+			return err
+		}
+	}
+
+	if _, err := toml.Decode(string(data), &themeStyles); err != nil {
 		return err
 	}
 
 	Theme = themeStyles
-
 	return nil
 }
+
