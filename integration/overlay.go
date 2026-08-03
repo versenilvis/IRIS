@@ -444,7 +444,11 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 
 	if ghostText != "" {
 		width := termWidth()
-		cursorCol := o.PromptLen + lipgloss.Width(buffer)
+		totalCol := o.PromptLen + lipgloss.Width(buffer)
+		cursorCol := totalCol
+		if width > 0 {
+			cursorCol = totalCol % width
+		}
 		availableCols := width - cursorCol
 		if availableCols <= 0 {
 			ghostText = ""
@@ -535,9 +539,18 @@ func (o *Overlay) draw() string {
 	s.WriteString(ansi.ResetModeAutoWrap)
 
 	typedLen := lipgloss.Width(o.TypedQuery)
-	targetCol := o.PromptLen + typedLen
-
 	width := termWidth()
+
+	// ComputeCursorCol returns the total visual width, not the column on the
+	// current line. When the prompt is wider than the terminal the cursor has
+	// wrapped, so using PromptLen directly overflows the screen and the box
+	// lands at the wrong horizontal position.
+	totalCol := o.PromptLen + typedLen
+	cursorCol := totalCol
+	if width > 0 {
+		cursorCol = totalCol % width
+	}
+	targetCol := cursorCol
 
 	boxWidth := config.Get().UI.MaxWidth
 	if boxWidth <= 0 {
