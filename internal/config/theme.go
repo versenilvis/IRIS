@@ -3,13 +3,32 @@ package config
 import (
 	"errors"
 	"os"
-	"path/filepath"
+	"reflect"
 
 	"github.com/BurntSushi/toml"
-	"github.com/versenilvis/iris/assets"
 )
 
-var Theme ThemeStyles
+var defaultTheme = ThemeStyles{
+	Border:     "#A277FF",
+	Accent:     "#61FFCA",
+	Muted:      "#77738A",
+	Text:       "#EDECEE",
+	TextSel:    "#FFFFFF",
+	Match:      "#72FFD3",
+	Desc:       "#A7A3B8",
+	DescSel:    "#FFFFFF",
+	SelBg:      "#4A426D",
+	ScrollInfo: "#B58CFF",
+	GhostText:  "#66636F",
+	History:    "#3BAE96",
+	HistorySel: "#61FFCA",
+	Sys:        "#B9576C",
+	SysSel:     "#FF677D",
+	Alias:      "#74A965",
+	AliasSel:   "#A6FF8F",
+}
+
+var Theme = defaultTheme
 
 type ThemeStyles struct {
 	Border     string `toml:"border"`
@@ -31,50 +50,41 @@ type ThemeStyles struct {
 	AliasSel   string `toml:"alias_sel"`
 }
 
-func WriteThemeFiles(path string) error {
-	embedThemeDir := "themes"
-	files, err := assets.Themes.ReadDir(embedThemeDir)
-	if err != nil {
-		return err
-	}
+// LoadTheme reads theme.toml at filePath
+// Missing file - use defaults silently
+// Missing/empty fields - fall back to the default value for that field
+func LoadTheme(filePath string) {
+	Theme = defaultTheme
 
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-
-		data, err := assets.Themes.ReadFile(embedThemeDir + "/" + file.Name())
-		if err != nil {
-			return err
-		}
-
-		if err := os.WriteFile(filepath.Join(path, file.Name()), data, 0644); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func SetThemeFile(path string, theme string) error {
-	var themeStyles ThemeStyles
-
-	data, err := os.ReadFile(filepath.Join(path, theme+".toml"))
+	data, err := os.ReadFile(filePath)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
-			return err
+			// unreadable for other reasons, still use defaults
 		}
-		data, err = assets.Themes.ReadFile("themes/" + theme + ".toml")
-		if err != nil {
-			return err
-		}
+		return
 	}
 
-	if _, err := toml.Decode(string(data), &themeStyles); err != nil {
-		return err
+	var t ThemeStyles
+	if _, err := toml.Decode(string(data), &t); err != nil {
+		return
 	}
 
-	Theme = themeStyles
-	return nil
+	applyThemeWithFallback(&Theme, t, defaultTheme)
 }
 
+// applyThemeWithFallback copies non-empty string fields from src into dst,
+// using def for any field that is empty in src
+func applyThemeWithFallback(dst *ThemeStyles, src, def ThemeStyles) {
+	dv := reflect.ValueOf(dst).Elem()
+	sv := reflect.ValueOf(src)
+	dv2 := reflect.ValueOf(def)
+
+	for i := range dv.NumField() {
+		sf := sv.Field(i).String()
+		if sf != "" {
+			dv.Field(i).SetString(sf)
+		} else {
+			dv.Field(i).SetString(dv2.Field(i).String())
+		}
+	}
+}

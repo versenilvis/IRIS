@@ -20,13 +20,13 @@ func ConfigPath() (string, error) {
 func ThemePath() (string, error) {
 	configHome := os.Getenv("XDG_CONFIG_HOME")
 	if configHome != "" {
-		return filepath.Join(configHome, "iris", "themes"), nil
+		return filepath.Join(configHome, "iris", "theme.toml"), nil
 	}
 	dir, err := os.UserConfigDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, "iris", "themes"), nil
+	return filepath.Join(dir, "iris", "theme.toml"), nil
 }
 
 func StatePath() (string, error) {

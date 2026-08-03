@@ -50,7 +50,6 @@ type UIConfig struct {
 	MaxHeight       int    `toml:"max-height"`
 	MaxWidth        int    `toml:"max-width"`
 	NerdFonts       bool   `toml:"nerd-fonts"`
-	Theme           string `toml:"theme"`
 }
 
 type GitConfig struct {
@@ -190,20 +189,8 @@ func Load() (*Config, error) {
 		}
 	}
 
-	themePath, err := ThemePath()
-	if err == nil {
-		if _, statErr := os.Stat(themePath); statErr != nil {
-			_ = os.MkdirAll(themePath, 0755)
-			err = WriteThemeFiles(themePath)
-			if err != nil {
-				return cfg, fmt.Errorf("config: write theme files %s: %w", themePath, err)
-			}
-		}
-	}
-
-	err = SetThemeFile(themePath, cfg.UI.Theme)
-	if err != nil {
-		return cfg, fmt.Errorf("config: set theme %s: %w", themePath, err)
+	if themePath, err := ThemePath(); err == nil {
+		LoadTheme(themePath)
 	}
 
 	applyEnv(cfg)

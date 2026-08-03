@@ -23,7 +23,6 @@ func DefaultConfig() *Config {
 			MaxHeight:       15,
 			MaxWidth:        0, // 0 means no limit, fallback to terminal width
 			NerdFonts:       true,
-			Theme:           "iris",
 		},
 		Git: GitConfig{
 			FilterActiveBranch:  true,
