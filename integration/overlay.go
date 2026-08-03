@@ -545,13 +545,6 @@ func (o *Overlay) draw() string {
 	// current line. When the prompt is wider than the terminal the cursor has
 	// wrapped, so using PromptLen directly overflows the screen and the box
 	// lands at the wrong horizontal position.
-	totalCol := o.PromptLen + typedLen
-	cursorCol := totalCol
-	if width > 0 {
-		cursorCol = totalCol % width
-	}
-	targetCol := cursorCol
-
 	boxWidth := config.Get().UI.MaxWidth
 	if boxWidth <= 0 {
 		boxWidth = 76 // Default if 0

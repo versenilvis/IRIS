@@ -276,8 +276,6 @@ func runWrapper() {
 
 	overlay := integration.NewOverlay()
 
-
-
 	// start background update check (async)
 	pendingUpdate = startBackgroundUpdateCheck()
 	updatePrinted := false
@@ -293,7 +291,9 @@ func runWrapper() {
 	renderOverlayFn.Store(func() {})
 	config.AutoDetectConfigChange(func(cfg *config.Config) {
 		disableGhostText.Store(!cfg.UI.GhostText)
-		renderOverlayFn.Load().(func())()
+		if renderer, ok := renderOverlayFn.Load().(func()); ok {
+			renderer()
+		}
 	})
 	isExecuting := func() bool {
 		if isCommandActive.Load() {
@@ -314,14 +314,16 @@ func runWrapper() {
 		return pgrp != shellPGID
 	}
 
+	suggestionsEnabled := true
+
 	// Shared handler for configured navigation keys (e.g. ctrl+j / ctrl+k).
 	// Moves the overlay cursor when visible, otherwise opens history/spec
 	// list and selects the next item in the requested direction.
 	handleNavKey := func(dir string) {
-		intercepted = true
-		userNavigated.Store(true)
-
 		if overlay.IsVisible() {
+			intercepted = true
+			userNavigated.Store(true)
+
 			arrowDir := "down"
 			if dir == "up" {
 				arrowDir = "up"
@@ -355,7 +357,12 @@ func runWrapper() {
 			}
 			b.WriteString(overlay.Render())
 			writeStdout([]byte(b.String()))
-		} else {
+		} else if suggestionsEnabled {
+			// hidden-overlay history navigation only when suggestions are enabled;
+			// otherwise let the navigation keys pass through to the shell
+			intercepted = true
+			userNavigated.Store(true)
+
 			activeModeMu.Lock()
 			if activeMode == "" {
 				activeMode = loadMode()
@@ -444,8 +451,6 @@ func runWrapper() {
 			}
 		}
 	}()
-
-
 
 	// listen for suggestion requests from shell scripts via the ipc pipe
 	go func() {
@@ -567,14 +572,15 @@ func runWrapper() {
 			cursorOffset = 0
 			bufferMu.Unlock()
 
-			renderOverlayFn.Load().(func())()
+			if renderer, ok := renderOverlayFn.Load().(func()); ok {
+				renderer()
+			}
 		}
 		if err := scanner.Err(); err != nil {
 			logger.Errorf("IPC scanner error: %v", err)
 		}
 	}()
 
-	suggestionsEnabled := true
 	activeModeMu.Lock()
 	activeMode = loadMode()
 	activeModeMu.Unlock()
@@ -653,7 +659,9 @@ func runWrapper() {
 				}
 				SetCurrentAISuggestion(sugg)
 				if overlay.InjectAISuggestion(*sugg) {
-					renderOverlayFn.Load().(func())()
+					if renderer, ok := renderOverlayFn.Load().(func()); ok {
+						renderer()
+					}
 				}
 			})
 		}
@@ -722,7 +730,9 @@ func runWrapper() {
 		})
 	})
 
-	renderOverlayFn.Load().(func())()
+	if renderer, ok := renderOverlayFn.Load().(func()); ok {
+		renderer()
+	}
 
 	// reads from stdin and decides what to forward or intercept
 	// for most cases, I just handle the already have terminal shortcuts
@@ -748,30 +758,30 @@ func runWrapper() {
 				b := inputSlice[i]
 				intercepted = false
 
-			if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.ToggleMenu); matched {
-				intercepted = true
-				suggestionsEnabled = !suggestionsEnabled
-				if !suggestionsEnabled {
-					writeStdout([]byte(overlay.ClearAndDisable()))
-				} else {
-					shouldOverlayDraw = true
+				if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.ToggleMenu); matched {
+					intercepted = true
+					suggestionsEnabled = !suggestionsEnabled
+					if !suggestionsEnabled {
+						writeStdout([]byte(overlay.ClearAndDisable()))
+					} else {
+						shouldOverlayDraw = true
+					}
+					i += consumed - 1
+					continue
 				}
-				i += consumed - 1
-				continue
-			}
 
-			if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.ToggleMode); matched { // ctrl+r: toggle between command specs and command history
-				i += consumed - 1
-				intercepted = true
-				activeModeMu.Lock()
-				if activeMode == "spec" {
-					activeMode = "history"
-				} else {
-					activeMode = "spec"
-				}
-			saveMode(activeMode)
-			activeModeMu.Unlock()
-			if userNavigated.Load() {
+				if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.ToggleMode); matched { // ctrl+r: toggle between command specs and command history
+					i += consumed - 1
+					intercepted = true
+					activeModeMu.Lock()
+					if activeMode == "spec" {
+						activeMode = "history"
+					} else {
+						activeMode = "spec"
+					}
+					saveMode(activeMode)
+					activeModeMu.Unlock()
+					if userNavigated.Load() {
 						bufferMu.Lock()
 						naiveBuffer = overlay.GetTypedQuery()
 						cursorOffset = 0
@@ -784,45 +794,21 @@ func runWrapper() {
 					continue
 				}
 
-			var isNavUp, isNavDown bool
-			var navConsumed int
-			if isNavUp, navConsumed = config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateUp); !isNavUp {
-				isNavDown, navConsumed = config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateDown)
-			}
+				var isNavUp, isNavDown bool
+				var navConsumed int
+				if isNavUp, navConsumed = config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateUp); !isNavUp {
+					isNavDown, navConsumed = config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateDown)
+				}
 
-						i += navConsumed - 1
-						continue
-					} else if suggestionsEnabled {
-						// hidden-overlay history navigation (only when suggestions are enabled;
-						// otherwise let the navigation keys pass through to the shell)
-						intercepted = true
-						activeModeMu.Lock()
-						if activeMode == "" {
-							activeMode = loadMode()
-						}
-						activeModeMu.Unlock()
-
-			if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.SelectSuggestion); matched && config.Get().Keybindings.SelectSuggestion != "" {
-				if overlay.IsVisible() {
-					intercepted = true
-					selected := overlay.GetCurrentCmd()
-					if selected != "" {
-						activeModeMu.RLock()
-						currentMode := activeMode
-						activeModeMu.RUnlock()
-						if currentMode == "spec" {
-							s := strings.TrimSpace(selected)
-							if strings.HasSuffix(s, "/") || strings.HasSuffix(s, "\\") {
-								selected = s
-							} else {
-								selected = s + " "
-							}
-						}
-						bufferMu.Lock()
-						naiveBuffer = selected
-						cursorOffset = 0
-						bufferMu.Unlock()
-						_, _ = ptmx.Write(append([]byte{0x15}, selected...))
+				if isNavUp || isNavDown {
+					arrowDir := "down"
+					if isNavUp {
+						arrowDir = "up"
+					}
+					handleNavKey(arrowDir)
+					i += navConsumed - 1
+					continue
+				}
 
 				if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.SelectSuggestion); matched && config.Get().Keybindings.SelectSuggestion != "" {
 					if overlay.IsVisible() {
@@ -845,7 +831,7 @@ func runWrapper() {
 							cursorOffset = 0
 							bufferMu.Unlock()
 							_, _ = ptmx.Write(append([]byte{0x15}, selected...))
-							
+
 							overlay.ClearGhostTextState()
 							userNavigated.Store(false)
 							writeStdout([]byte(overlay.Render()))
@@ -855,15 +841,13 @@ func runWrapper() {
 					i += consumed - 1
 					continue
 				}
-			}
+				if b == 0x0d || b == 0x0a { // enter
+					intercepted = true
 
-			if b == 0x0d || b == 0x0a { // enter
-				intercepted = true
-
-				if b == 0x0d && i+1 < n && inputSlice[i+1] == 0x0a {
+					if b == 0x0d && i+1 < n && inputSlice[i+1] == 0x0a {
 						i++ // consume trailing \n in \r\n to prevent matching ctrl+j
 					}
-					
+
 					var selectedCmd string
 					var shouldAutoExecute bool
 					if overlay.IsVisible() && (config.Get().Core.AutoExecute || userNavigated.Load()) {
@@ -952,13 +936,13 @@ func runWrapper() {
 					if !isNavUp {
 						isNavDown, navConsumed = config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateDown)
 					}
-				if isNavUp || isNavDown {
-					intercepted = true
-					arrowDir := "down"
-					if isNavUp {
-						arrowDir = "up"
-					}
-					handleNavKey(arrowDir)
+					if isNavUp || isNavDown {
+						intercepted = true
+						arrowDir := "down"
+						if isNavUp {
+							arrowDir = "up"
+						}
+						handleNavKey(arrowDir)
 						i += navConsumed - 1
 						continue
 					}
@@ -1100,8 +1084,8 @@ func runWrapper() {
 					continue
 				}
 
-		if !intercepted {
-			_, _ = ptmx.Write([]byte{b})
+				if !intercepted {
+					_, _ = ptmx.Write([]byte{b})
 					// we handle line editing keys manually to keep naiveBuffer in sync
 					// since terminal is in raw mode, we must update our state for every change
 					switch b {
@@ -1237,7 +1221,9 @@ func runWrapper() {
 				}
 			}
 			if shouldOverlayDraw {
-				renderOverlayFn.Load().(func())()
+				if renderer, ok := renderOverlayFn.Load().(func()); ok {
+					renderer()
+				}
 			}
 		}
 	}
