@@ -365,6 +365,10 @@ timeout_ms = 5000
   😺 <i>Kitty terminal</i>
 </div>
 
+> [!TIP]
+> **We keep all available theme templates in the `themes/` directory**
+> **Feel free to create your own theme or contribute a new color scheme by adding it to this directory**
+
 IRIS has theme TOML configuration file located at `~/.config/iris/theme.toml`
 
 ### Creating theme config
