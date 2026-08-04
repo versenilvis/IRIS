@@ -49,16 +49,18 @@ func arrowModifier(input []byte) int {
 	return mod
 }
 
-// arrowIsCtrl reports whether an arrow sequence carries the Ctrl modifier,
-// using the common arrow-modifier encoding where the Ctrl bit has value 4
-// (so mod&4 != 0). Covers xterm parameterized arrows and kitty CSI-u.
+// arrowIsCtrl reports whether an arrow sequence carries the Ctrl modifier.
+// The modifier parameter uses the xterm/kitty "1 + bitmask" encoding, where
+// the Ctrl bit has value 4, so the base offset of 1 is subtracted before
+// testing the bit. Covers xterm parameterized arrows and kitty CSI-u.
 func arrowIsCtrl(input []byte) bool {
-	return arrowModifier(input)&4 != 0
+	mod := arrowModifier(input)
+	if mod == 0 {
+		return false
+	}
+	return (mod-1)&4 != 0
 }
 
-// normalizeKey canonicalizes a configured key string: trims, lowercases, and
-// maps common spelling variants ("-", "<>", "ctrk", "ctl") to a canonical
-// "+"-separated binding.
 func normalizeKey(key string) string {
 	key = strings.ToLower(strings.TrimSpace(key))
 	key = strings.TrimPrefix(key, "<")
@@ -69,8 +71,6 @@ func normalizeKey(key string) string {
 	return key
 }
 
-// arrowDirection maps a CSI/SS3 arrow termination byte (A/B/C/D) to its
-// direction name. Returns "" for a byte that is not an arrow terminator.
 func arrowDirection(c byte) string {
 	switch c {
 	case 'A':
