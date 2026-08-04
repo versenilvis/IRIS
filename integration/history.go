@@ -125,7 +125,6 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 					if len(parts) == 2 {
 						cmd = parts[1]
 					}
-					cmd = sanitizeUTF8(cmd)
 				} else if shellName == "bash" {
 					if strings.HasPrefix(line, "#") && len(line) > 1 {
 						isTimestamp := true
