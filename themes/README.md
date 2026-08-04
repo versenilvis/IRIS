@@ -57,7 +57,7 @@
   </td>
 </table>
 
-### [Catppuccin Latte](./catppuccin-latte].toml)
+### [Catppuccin Latte](./catppuccin-latte.toml)
 <table>
   <td>
     <img width="1205" height="422" alt="image" src="https://github.com/user-attachments/assets/587810e7-6010-45f0-b7ca-f29da9fa8b28" />
