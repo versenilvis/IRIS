@@ -293,8 +293,13 @@ func runWrapper() {
 	var isCommandActive atomic.Bool
 	var disableGhostText atomic.Bool
 	disableGhostText.Store(config.Get().UI.GhostText == 0)
+	var renderOverlayFn atomic.Value // holds func()
+	renderOverlayFn.Store(func() {})
 	config.AutoDetectConfigChange(func(cfg *config.Config) {
 		disableGhostText.Store(cfg.UI.GhostText == 0)
+		if renderer, ok := renderOverlayFn.Load().(func()); ok {
+			renderer()
+		}
 	})
 	isExecuting := func() bool {
 		if isCommandActive.Load() {
@@ -585,7 +590,7 @@ func runWrapper() {
 		}
 	}()
 
-	suggestionsEnabled := config.Get().UI.GhostText != 2
+	suggestionsEnabled = config.Get().UI.GhostText != 2
 	activeModeMu.Lock()
 	activeMode = loadMode()
 	activeModeMu.Unlock()
@@ -861,7 +866,9 @@ func runWrapper() {
 							overlay.ClearGhostTextState()
 							userNavigated.Store(false)
 							writeStdout([]byte(overlay.Render()))
-							renderOverlay()
+							if renderer, ok := renderOverlayFn.Load().(func()); ok {
+								renderer()
+							}
 						}
 						i += consumed - 1
 						continue
