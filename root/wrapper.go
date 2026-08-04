@@ -296,7 +296,6 @@ func runWrapper() {
 	config.AutoDetectConfigChange(func(cfg *config.Config) {
 		disableGhostText.Store(cfg.UI.GhostText == 0)
 	})
-	renderOverlay := func() {}
 	isExecuting := func() bool {
 		if isCommandActive.Load() {
 			// for bash: no preexec/precmd hooks, so fall back to TIOCGPGRP to detect when shell returns
@@ -322,14 +321,16 @@ func runWrapper() {
 		return executing
 	}
 
+	suggestionsEnabled := true
+
 	// Shared handler for configured navigation keys (e.g. ctrl+j / ctrl+k).
 	// Moves the overlay cursor when visible, otherwise opens history/spec
 	// list and selects the next item in the requested direction.
 	handleNavKey := func(dir string) {
-		intercepted = true
-		userNavigated.Store(true)
-
 		if overlay.IsVisible() {
+			intercepted = true
+			userNavigated.Store(true)
+
 			arrowDir := "down"
 			if dir == "up" {
 				arrowDir = "up"
@@ -363,7 +364,12 @@ func runWrapper() {
 			}
 			b.WriteString(overlay.Render())
 			writeStdout([]byte(b.String()))
-		} else {
+		} else if suggestionsEnabled {
+			// hidden-overlay history navigation only when suggestions are enabled;
+			// otherwise let the navigation keys pass through to the shell
+			intercepted = true
+			userNavigated.Store(true)
+
 			activeModeMu.Lock()
 			if activeMode == "" {
 				activeMode = loadMode()
@@ -570,7 +576,9 @@ func runWrapper() {
 			cursorOffset = 0
 			bufferMu.Unlock()
 
-			renderOverlay()
+			if renderer, ok := renderOverlayFn.Load().(func()); ok {
+				renderer()
+			}
 		}
 		if err := scanner.Err(); err != nil {
 			logger.Errorf("IPC scanner error: %v", err)
@@ -661,7 +669,9 @@ func runWrapper() {
 				}
 				SetCurrentAISuggestion(sugg)
 				if overlay.InjectAISuggestion(*sugg) {
-					renderOverlay()
+					if renderer, ok := renderOverlayFn.Load().(func()); ok {
+						renderer()
+					}
 				}
 			})
 		}
@@ -709,7 +719,7 @@ func runWrapper() {
 		writeStdout([]byte(b.String()))
 	}
 
-	renderOverlay = func() {
+	renderOverlayFn.Store(func() {
 		renderMu.Lock()
 		defer renderMu.Unlock()
 
@@ -739,9 +749,11 @@ func runWrapper() {
 			renderMu.Unlock()
 			renderMenuNow()
 		})
-	}
+	})
 
-	renderOverlay()
+	if renderer, ok := renderOverlayFn.Load().(func()); ok {
+		renderer()
+	}
 
 	// reads from stdin and decides what to forward or intercept
 	// for most cases, I just handle the already have terminal shortcuts
@@ -1149,7 +1161,9 @@ func runWrapper() {
 				}
 			}
 			if shouldOverlayDraw {
-				renderOverlay()
+				if renderer, ok := renderOverlayFn.Load().(func()); ok {
+					renderer()
+				}
 			}
 		}
 	}

@@ -1,6 +1,8 @@
 package config
 
-import "time"
+import (
+	"time"
+)
 
 func DefaultConfig() *Config {
 	return &Config{
