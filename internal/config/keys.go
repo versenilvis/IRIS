@@ -262,23 +262,6 @@ func MatchArrowKey(input []byte) (matched bool, consumed int, direction string) 
 		}
 	}
 
-	// CSI u protocol (modify keyboard protocol): ESC [ <keycode> ; <modifiers> u
-	// Arrow key keycodes: Up=107, Down=108, Right=106, Left=105 (when modifier bits are set)
-	// Also: Up=4134?, Down=4133?, etc. — depends on terminal. Common mapping:
-	// modifier=2 (Shift): Up=57357, etc. For simplicity, handle both 3-digit and 5-digit keycodes.
-	if keycode, _, consumed, ok := parseCSIU(input); ok {
-		switch keycode {
-		case 105, 4133: // left
-			return true, consumed, "left"
-		case 106, 4134: // right (fish sends 1;129 but that's parameterized CSI, not CSI u)
-			return true, consumed, "right"
-		case 107, 4135: // up
-			return true, consumed, "up"
-		case 108, 4136: // down
-			return true, consumed, "down"
-		}
-	}
-
 	return false, 0, ""
 }
 
