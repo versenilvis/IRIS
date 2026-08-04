@@ -918,6 +918,9 @@ func runWrapper() {
 					}
 
 					integration.RecordSessionCommand(cmdToSubmit)
+					bufferMu.Lock()
+					lastSubmittedCommand = strings.TrimSpace(cmdToSubmit)
+					bufferMu.Unlock()
 					resetBuffer()
 					isCommandActive.Store(true)
 					_, _ = ptmx.Write([]byte{b}) // forward enter to terminal
