@@ -94,6 +94,12 @@ fi
 
 `)
 		case "fish":
+			// Disable fish's own autosuggestions only when iris ghost text is
+			// enabled; otherwise leave the user's fish suggestions alone.
+			disableFishAutosuggest := ""
+			if cfg, err := config.Load(); err == nil && cfg.UI.GhostText != 0 {
+				disableFishAutosuggest = "    set -g fish_autosuggestion_enabled 0\n"
+			}
 			fmt.Printf(`
 # Iris Autostart Hook
 if set -q TMUX; and set -q IRIS_PID
@@ -111,8 +117,7 @@ end
 
 # Iris Autocomplete Hook
 if set -q IRIS_PID; and set -q IRIS_FD
-    set -g fish_autosuggestion_enabled 0
-    function _iris_fish_postexec --on-event fish_postexec
+%s    function _iris_fish_postexec --on-event fish_postexec
         set -l iris_exit_code $status
         printf "IRIS_CWD:%%s\x00" "$PWD" >&$IRIS_FD 2>/dev/null
         printf "IRIS_CMD_STOP:%%s\x00" "$iris_exit_code" >&$IRIS_FD 2>/dev/null
@@ -124,7 +129,7 @@ if set -q IRIS_PID; and set -q IRIS_FD
         printf "IRIS_CMD_START\x00" >&$IRIS_FD 2>/dev/null
     end
 end
-`)
+`, disableFishAutosuggest)
 		}
 	},
 }
