@@ -10,11 +10,11 @@ func ConfigPath() (string, error) {
 	if configHome != "" {
 		return filepath.Join(configHome, "iris", "config.toml"), nil
 	}
-	dir, err := os.UserConfigDir()
+	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, "iris", "config.toml"), nil
+	return filepath.Join(home, ".config", "iris", "config.toml"), nil
 }
 
 func ThemePath() (string, error) {
@@ -22,11 +22,11 @@ func ThemePath() (string, error) {
 	if configHome != "" {
 		return filepath.Join(configHome, "iris", "theme.toml"), nil
 	}
-	dir, err := os.UserConfigDir()
+	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, "iris", "theme.toml"), nil
+	return filepath.Join(home, ".config", "iris", "theme.toml"), nil
 }
 
 func StatePath() (string, error) {
