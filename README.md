@@ -266,7 +266,7 @@ end
 ```
 ## Configuration guide
 
-IRIS uses a clean TOML configuration file located at `~/.config/iris/config.toml`.
+IRIS uses a clean TOML configuration file located at `~/.config/iris/config.toml`
 
 ### Creating & viewing config
 
@@ -365,8 +365,41 @@ timeout_ms = 5000
   😺 <i>Kitty terminal</i>
 </div>
 
+IRIS has theme TOML configuration file located at `~/.config/iris/theme.toml`
+
+### Creating theme config
+
+```bash
+iris theme init
+```
+
+### Default theme
+IRIS automatically falls back to the default theme if `theme.toml` is missing, empty, or contains missing configuration options
+
+```toml
+border = "#a277ff"
+accent = "#61ffca"
+muted = "#6d6a7f"
+text = "#edecee"
+text_sel = "#ffffff"
+key = "#a277ff"
+match = "#61ffca"
+desc = "#9692a8"
+desc_sel = "#edecee"
+sel_bg = "#3d375e"
+sel_text = "#110f18"
+scroll_info = "#a277ff"
+ghost_text = "#4B4A4C"
+sys = "#1e1d28"
+sys_sel = "#a277ff"
+hist = "#1a2d36"
+hist_sel = "#61ffca"
+alias = "#2a2342"
+alias_sel = "#a277ff"
+```
+
 > [!NOTE]
-> Currently, IRIS doesn't have custom theme but it does have 2 basic styles
+> IRIS also has 2 basic styles
 
 <table>
   <tr>
