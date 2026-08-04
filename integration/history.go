@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/versenilvis/fuzzy"
 	"github.com/versenilvis/iris/integration/shell"
@@ -49,6 +50,21 @@ type HistResult struct {
 
 func init() {
 	idMapCache = make(map[string]int)
+}
+
+func sanitizeUTF8(s string) string {
+	if utf8.ValidString(s) {
+		return s
+	}
+	var result strings.Builder
+	for _, r := range s {
+		if r == utf8.RuneError {
+			result.WriteRune('�')
+		} else {
+			result.WriteRune(r)
+		}
+	}
+	return result.String()
 }
 
 func SearchHistory(query string, aliases map[string]string) ([]HistResult, error) {
@@ -109,6 +125,7 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 					if len(parts) == 2 {
 						cmd = parts[1]
 					}
+					cmd = sanitizeUTF8(cmd)
 				} else if shellName == "bash" {
 					if strings.HasPrefix(line, "#") && len(line) > 1 {
 						isTimestamp := true
@@ -132,6 +149,7 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 
 				cmd = strings.TrimSpace(cmd)
 				if cmd != "" {
+					cmd = sanitizeUTF8(cmd)
 					allCmds = append(allCmds, cmd)
 				}
 			}
