@@ -952,11 +952,12 @@ func runWrapper() {
 						// through to the shell so the cursor moves natively (including word-jumps
 						// on Ctrl+arrows). IRIS never hijacks cursor movement here.
 						if arrowDir == "right" {
-							if rightNav, _ := config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateRight); rightNav {
+							if rightNav, _ := config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateRight); rightNav && config.Get().Keybindings.NavigateRight != "" {
 								bufferMu.Lock()
 								buf := naiveBuffer
+								cursorAtEnd := cursorOffset == 0
 								bufferMu.Unlock()
-								ghostText := overlay.GetGhostText(buf, true)
+								ghostText := overlay.GetGhostText(buf, cursorAtEnd)
 								if ghostText != "" {
 									bufferMu.Lock()
 									naiveBuffer += ghostText

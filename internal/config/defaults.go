@@ -49,6 +49,7 @@ func DefaultConfig() *Config {
 			SelectSuggestion: "tab",
 			NavigateUp:       "up",
 			NavigateDown:     "down",
+			NavigateRight:    "right",
 		},
 	}
 }
