@@ -43,7 +43,7 @@ It works exactly like coding editor suggestion menu drop down.`,
 						_ = os.WriteFile(argsFile, []byte(strings.Join(os.Args[1:], "\n")), 0600)
 					}
 					_ = syscall.Kill(pid, syscall.SIGUSR1)
-					fmt.Println("\r\033[K\033[36m[IRIS] Sent reload signal to parent session.\033[0m")
+					writeStdout([]byte("\r\033[K\033[36m[IRIS] Sent reload signal to parent session.\033[0m\n"))
 					return
 				}
 			}
@@ -92,15 +92,7 @@ func runWatchdog() {
 		}
 	}
 
-	// save original terminal settings in parent process if Stdin is a terminal
-	var watchdogOldState *term.State
-	if term.IsTerminal(int(cmdStdin.Fd())) {
-		var errState error
-		watchdogOldState, errState = term.MakeRaw(int(cmdStdin.Fd()))
-		if errState == nil {
-			_ = term.Restore(int(cmdStdin.Fd()), watchdogOldState)
-		}
-	}
+	// prepare watchdog pipe for stderr monitoring
 
 	r, w, err := os.Pipe()
 	if err != nil {
@@ -156,10 +148,16 @@ func runWatchdog() {
 					suppress = true
 					printedLen := len(currentContent) - n
 					if triggerIdx > printedLen {
-						_, _ = origStderr.Write(currentContent[printedLen:triggerIdx])
+						_, errW := origStderr.Write(currentContent[printedLen:triggerIdx])
+						if errW != nil {
+							break
+						}
 					}
 				} else {
-					_, _ = origStderr.Write(tempBuf[:n])
+					_, errWrite := origStderr.Write(tempBuf[:n])
+					if errWrite != nil {
+						break
+					}
 				}
 			}
 		}
@@ -174,10 +172,7 @@ func runWatchdog() {
 		content := stderrBuf.Bytes()
 		if bytes.Contains(content, []byte("panic:")) || bytes.Contains(content, []byte("fatal error:")) {
 			WriteCrashLog(string(content))
-			// restore terminal state if watchdog saved it
-			if watchdogOldState != nil {
-				_ = term.Restore(int(cmdStdin.Fd()), watchdogOldState)
-			}
+			restoreTerminal()
 			printCrashNotice()
 			startRescueShell()
 			os.Exit(2)
@@ -194,12 +189,12 @@ func runWatchdog() {
 // runOriginal runs the normal command execution
 func runOriginal() {
 	if os.Getenv("IRIS_RELOADED") == "true" {
-		fmt.Printf("\r\033[K\033[35m[IRIS] reloading...\033[0m\n")
+		writeStdout([]byte("\r\033[K\033[35m[IRIS] reloading...\033[0m\n"))
 		_ = os.Unsetenv("IRIS_RELOADED")
 	}
 
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		writeStdout([]byte(err.Error() + "\n"))
 		os.Exit(1)
 	}
 }

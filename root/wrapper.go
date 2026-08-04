@@ -110,10 +110,14 @@ func writeStdout(data []byte) {
 // restoreTerminal restores the terminal state if needed
 func restoreTerminal() {
 	oldStateMu.Lock()
-	defer oldStateMu.Unlock()
-	if oldState != nil {
-		_ = term.Restore(oldStateFd, oldState)
-		oldState = nil
+	st := oldState
+	fd := oldStateFd
+	oldState = nil
+	oldStateMu.Unlock()
+	if st != nil {
+		if err := term.Restore(fd, st); err != nil {
+			logger.Debugf("term.Restore error: %v (fd=%d)", err, fd)
+		}
 	}
 }
 
@@ -191,12 +195,7 @@ func runWrapper() {
 		oldStateFd = int(stdinFile.Fd())
 		logger.Debugf("Terminal set to raw mode successfully")
 		defer func() {
-			oldStateMu.Lock()
-			defer oldStateMu.Unlock()
-			if oldState != nil {
-				_ = term.Restore(int(stdinFile.Fd()), oldState)
-				oldState = nil
-			}
+			restoreTerminal()
 		}()
 	} else {
 		logger.Warnf("stdinFile is not a terminal, skipping raw mode")
@@ -252,7 +251,7 @@ func runWrapper() {
 					if linkErr == nil {
 						_ = os.Chdir(cwd)
 					}
-					_ = syscall.Kill(c.Process.Pid, syscall.SIGKILL)
+					_ = syscall.Kill(c.Process.Pid, syscall.SIGTERM)
 					_ = ptmx.Close()
 				}
 
@@ -275,7 +274,10 @@ func runWrapper() {
 				} else {
 					execArgs = os.Args
 				}
-				_ = syscall.Exec(exe, execArgs, os.Environ())
+				execErr := syscall.Exec(exe, execArgs, os.Environ())
+				if execErr != nil {
+					logger.Errorf("SIGUSR1 reload syscall.Exec error: %v (exe=%s, args=%v)", execErr, exe, execArgs)
+				}
 			}
 		}
 	}()
@@ -436,7 +438,7 @@ func runWrapper() {
 			n, err := ptmx.Read(buf)
 			if err != nil {
 				restoreTerminal()
-				if err == io.EOF || errors.Is(err, syscall.EIO) || strings.Contains(err.Error(), "input/output error") {
+				if err == io.EOF || errors.Is(err, syscall.EIO) || errors.Is(err, syscall.EINVAL) || errors.Is(err, os.ErrInvalid) || strings.Contains(err.Error(), "input/output error") || strings.Contains(err.Error(), "invalid argument") {
 					os.Exit(0)
 				}
 				logger.Errorf("Unexpected PTY read error: %v", err)
@@ -626,8 +628,12 @@ func runWrapper() {
 		navCopy := userNavigated.Load()
 
 		runes := []rune(bufCopy)
+		var queryForSearch string
 		if offsetCopy > 0 && offsetCopy <= len(runes) {
 			bufCopy = string(runes[:len(runes)-offsetCopy])
+			queryForSearch = naiveBuffer
+		} else {
+			queryForSearch = bufCopy
 		}
 
 		aiMu.Lock()
@@ -688,8 +694,8 @@ func runWrapper() {
 				writeStdout([]byte(overlay.ClearAndDisable()))
 				return
 			}
-			logger.Debugf("Render query: '%s', mode: %s", bufCopy, modeCopy)
-			results := MergeResults(bufCopy, modeCopy)
+			logger.Debugf("Render query: '%s', mode: %s", queryForSearch, modeCopy)
+			results := MergeResults(queryForSearch, modeCopy)
 			logger.Debugf("Render results found: %d", len(results))
 
 			if len(results) == 0 || (len(results) == 1 && strings.TrimSpace(results[0].Cmd) == strings.TrimSpace(bufCopy) && !strings.HasSuffix(bufCopy, " ")) {
@@ -971,10 +977,15 @@ func runWrapper() {
 						// through to the shell so the cursor moves natively (including word-jumps
 						// on Ctrl+arrows). IRIS never hijacks cursor movement here.
 						if arrowDir == "right" {
-							if rightNav, _ := config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateRight); rightNav && config.Get().Keybindings.NavigateRight != "" {
+							navBinding := config.Get().Keybindings.NavigateRight
+							rightNav, _ := config.MatchKey(inputSlice[i:], navBinding)
+							// Allow ghost text acceptance if the sequence matches configured navigateRight
+							// OR if navigateRight is set to "ctrl+right" / "ctrl-right" and the user pressed plain Right arrow
+							isRightArrowAccept := rightNav || (strings.EqualFold(navBinding, "right") || navBinding == "") || (strings.Contains(strings.ToLower(navBinding), "ctrl") && inputSlice[i] == '\033' && len(inputSlice[i:]) >= 3 && inputSlice[i+1] == '[' && inputSlice[i+2] == 'C')
+							if isRightArrowAccept {
 								bufferMu.Lock()
 								buf := naiveBuffer
-								cursorAtEnd := cursorOffset == 0
+								cursorAtEnd := cursorOffset == 0 && !userNavigated.Load()
 								bufferMu.Unlock()
 								ghostText := overlay.GetGhostText(buf, cursorAtEnd)
 								if ghostText != "" {
@@ -992,6 +1003,9 @@ func runWrapper() {
 						}
 						_, _ = ptmx.Write(inputSlice[i : i+arrowConsumed])
 						i += arrowConsumed - 1
+						userNavigated.Store(true)
+						overlay.SetUserNavigated(true)
+						shouldOverlayDraw = true
 						continue
 					}
 					if !intercepted {

@@ -28,6 +28,7 @@ func TestShellLoginFlagIsRegistered(t *testing.T) {
 	flag := rootCmd.PersistentFlags().Lookup("shell-login")
 	if flag == nil {
 		t.Fatal("expected --shell-login flag to be registered")
+		return
 	}
 	if flag.DefValue != "false" {
 		t.Fatalf("expected --shell-login to default to false, got %q", flag.DefValue)
