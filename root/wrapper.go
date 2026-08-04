@@ -153,14 +153,26 @@ func runWrapper() {
 	c.ExtraFiles = make([]*os.File, 11)
 	// pass write end of pipe to shell as fd 13 (since index 10 maps to 13)
 	c.ExtraFiles[10] = w
-	c.Env = adapter.GetEnv(13, os.Getpid())
 
-	ptmx, err := pty.Start(c)
+	ptmx, tts, err := pty.Open()
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "[IRIS] failed to start PTY: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "[IRIS] failed to open PTY: %v\n", err)
 		return
 	}
 	defer func() { _ = ptmx.Close() }()
+
+	c.Stdin, c.Stdout, c.Stderr = tts, tts, tts
+	c.SysProcAttr = &syscall.SysProcAttr{Setsid: true, Setctty: true}
+	// the shell compares its own tty against this to tell whether the inherited
+	// IRIS_* vars belong to it or leaked in from an outer terminal
+	c.Env = append(adapter.GetEnv(13, os.Getpid()), "IRIS_TTY="+tts.Name())
+
+	if err = c.Start(); err != nil {
+		_ = tts.Close()
+		_, _ = fmt.Fprintf(os.Stderr, "[IRIS] failed to start shell: %v\n", err)
+		return
+	}
+	_ = tts.Close()
 
 	stdinFile := os.Stdin
 	if !term.IsTerminal(int(stdinFile.Fd())) {

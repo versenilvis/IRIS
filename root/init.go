@@ -25,10 +25,10 @@ For example, add this to your ~/.zshrc:
 		case "zsh":
 			fmt.Printf(`
 # Iris Autostart Hook
-if [ -n "$TMUX" ] && [ -n "$IRIS_PID" ]; then
-    if ps -o comm= -p $PPID 2>/dev/null | grep -q "tmux"; then
-        unset IRIS_PID IRIS_IS_CHILD IRIS_FD
-    fi
+# a multiplexer pane inherits IRIS_* but runs on its own tty, so those vars
+# point at an iris that is not driving this terminal
+if [ -n "$IRIS_PID" ] && [ "$IRIS_PID" != "$PPID" ] && [ "${TTY:-$(tty 2>/dev/null)}" != "$IRIS_TTY" ]; then
+    unset IRIS_PID IRIS_IS_CHILD IRIS_FD IRIS_TTY
 fi
 
 if [ -z "$IRIS_PID" ] && [ -z "$IRIS_RESCUE" ]; then
@@ -68,10 +68,10 @@ fi
 		case "bash":
 			fmt.Printf(`
 # Iris Autostart Hook
-if [ -n "$TMUX" ] && [ -n "$IRIS_PID" ]; then
-    if ps -o comm= -p $PPID 2>/dev/null | grep -q "tmux"; then
-        unset IRIS_PID IRIS_IS_CHILD IRIS_FD
-    fi
+# a multiplexer pane inherits IRIS_* but runs on its own tty, so those vars
+# point at an iris that is not driving this terminal
+if [ -n "$IRIS_PID" ] && [ "$IRIS_PID" != "$PPID" ] && [ "$(tty 2>/dev/null)" != "$IRIS_TTY" ]; then
+    unset IRIS_PID IRIS_IS_CHILD IRIS_FD IRIS_TTY
 fi
 
 if [ -z "$IRIS_PID" ] && [ -z "$IRIS_RESCUE" ]; then
@@ -96,11 +96,16 @@ fi
 		case "fish":
 			fmt.Printf(`
 # Iris Autostart Hook
-if set -q TMUX; and set -q IRIS_PID
-    if ps -o comm= -p $PPID 2>/dev/null | grep -q "tmux"
+# a multiplexer pane inherits IRIS_* but runs on its own tty, so those vars
+# point at an iris that is not driving this terminal
+if set -q IRIS_PID
+    set -l iris_ppid (ps -o ppid= -p $fish_pid 2>/dev/null | string trim)
+    set -l iris_cur_tty (tty 2>/dev/null)
+    if test "$IRIS_PID" != "$iris_ppid"; and test "$iris_cur_tty" != "$IRIS_TTY"
         set -e IRIS_PID
         set -e IRIS_IS_CHILD
         set -e IRIS_FD
+        set -e IRIS_TTY
     end
 end
 
