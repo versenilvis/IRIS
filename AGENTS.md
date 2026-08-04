@@ -128,7 +128,7 @@
 - Run `go vet ./...` to make sure there is no suspicious constructs, structural mistakes, and high-probability bugs
 - Run `go fix ./...` to modernize all Go code
 
-## CommitS
+## Commits
 - If the agent is the one who commits, make sure follow the conventional commits style
 - The commit should be as short as possible, but enough to describe changes
 ---
