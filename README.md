@@ -366,7 +366,7 @@ timeout_ms = 5000
 </div>
 
 > [!TIP]
-> **We keep all available theme templates in the `themes/` directory**
+> **We keep all available theme templates in the `themes/` directory**  
 > **Feel free to create your own theme or contribute a new color scheme by adding it to this directory**
 
 IRIS has theme TOML configuration file located at `~/.config/iris/theme.toml`
