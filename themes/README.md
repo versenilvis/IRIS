@@ -27,3 +27,42 @@
   </td>
 </table>
 
+### [Catppuccin Mocha](./catppuccin-mocha.toml)
+<table>
+  <td>
+    <img width="1283" height="414" alt="image" src="https://github.com/user-attachments/assets/01d9581b-cebe-4fac-870b-0fa52bd3398d" />
+  </td>
+  <td>
+    <img width="1272" height="437" alt="image" src="https://github.com/user-attachments/assets/a2edcb00-6f40-4d49-bf63-9f4dac9a1f27" />
+  </td>
+</table>
+
+### [Catppuccin Macchiato](./catppuccin-macchiato.toml)
+<table>
+  <td>
+    <img width="1203" height="432" alt="image" src="https://github.com/user-attachments/assets/cabf1405-bd6b-47a8-a9b8-dfbf391944dd" />
+  </td>
+  <td>
+    <img width="1259" height="445" alt="image" src="https://github.com/user-attachments/assets/e03aa500-a2c4-4c30-b839-62a4ca5e0e0d" />
+  </td>
+</table>
+
+### [Catppuccin Frappé](./catppuccin-frappe.toml)
+<table>
+  <td>
+    <img width="1219" height="437" alt="image" src="https://github.com/user-attachments/assets/4aa0daa8-56c4-4548-8cba-426a2561de70" />
+  </td>
+  <td>
+    <img width="1200" height="437" alt="image" src="https://github.com/user-attachments/assets/feba0246-3cc7-466d-8f53-ff27e7601002" />
+  </td>
+</table>
+
+### [Catppuccin Latte](./catppuccin-latte].toml)
+<table>
+  <td>
+    <img width="1205" height="422" alt="image" src="https://github.com/user-attachments/assets/587810e7-6010-45f0-b7ca-f29da9fa8b28" />
+  </td>
+  <td>
+    <img width="1203" height="421" alt="image" src="https://github.com/user-attachments/assets/49b4f397-b3a0-4a3b-84ae-56eb85a7096a" />
+  </td>
+</table>
