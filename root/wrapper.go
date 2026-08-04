@@ -961,8 +961,9 @@ func runWrapper() {
 								if ghostText != "" {
 									bufferMu.Lock()
 									naiveBuffer += ghostText
+									cursorOffset = 0
 									bufferMu.Unlock()
-									overlay.ClearGhostTextState()
+									writeStdout([]byte(overlay.HideGhostTextSync()))
 									_, _ = ptmx.Write([]byte(ghostText))
 									shouldOverlayDraw = true
 									i += arrowConsumed - 1
