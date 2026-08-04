@@ -29,12 +29,13 @@ func RecordSessionCommand(cmd string) {
 	if cmd == "" {
 		return
 	}
+	cmd = sanitizeUTF8(cmd)
 	mu.Lock()
 	defer mu.Unlock()
-	
+
 	sessionHistoryMu.Lock()
 	defer sessionHistoryMu.Unlock()
-	
+
 	if len(sessionHistory) > 0 && sessionHistory[len(sessionHistory)-1] == cmd {
 		return
 	}
@@ -239,12 +240,12 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 		if len(words) == 0 {
 			words = []string{qLow}
 		}
-		
+
 		for _, cmd := range historyCache {
 			if seenCmds[cmd] {
 				continue
 			}
-			
+
 			cmdLow := strings.ToLower(cmd)
 			matchAll := true
 			for _, w := range words {
@@ -253,11 +254,11 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 					break
 				}
 			}
-			
+
 			if !matchAll {
 				continue
 			}
-			
+
 			seenCmds[cmd] = true
 			results = append(results, HistResult{
 				ID:         idMapCache[cmd],
@@ -275,8 +276,8 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 			if seenCmds[m.Str] {
 				continue
 			}
-			
-			// filter out extremely weak fuzzy matches (e.g. random garbage typing that 
+
+			// filter out extremely weak fuzzy matches (e.g. random garbage typing that
 			// loosely matches across a very long command)
 			if len(q) > 0 && m.Score/len(q) < 150 {
 				continue
