@@ -90,14 +90,14 @@ func FetchLatestVersion() (string, error) {
 func IsNewer(current, latest string) bool {
 	c := strings.TrimPrefix(current, "v")
 	l := strings.TrimPrefix(latest, "v")
-
+	channel := config.Get().Updater.Channel
 	// dev builds or empty versions never trigger an update
 	if c == "" || c == "dev" || l == "" || l == "dev" {
 		return false
 	}
 
 	// nightly builds are never shown as stable update targets
-	if config.Get().Updater.Channel != "nightly" && strings.Contains(l, "-nightly.") {
+	if channel != "nightly" && strings.Contains(l, "-nightly.") {
 		return false
 	}
 
@@ -122,6 +122,10 @@ func IsNewer(current, latest string) bool {
 		if lv < cv {
 			return false
 		}
+	}
+
+	if channel == "nightly" && strings.Contains(l, "-nightly.") && c != l {
+		return true
 	}
 
 	// if all parts are equal, the one with more parts is newer (e.g. 1.0.1 > 1.0)
@@ -245,9 +249,17 @@ var updateCmd = &cobra.Command{
 
 		// download and replace the binary using the install script
 		installScript := "https://raw.githubusercontent.com/versenilvis/iris/main/scripts/install.sh"
-		fmt.Printf("running: curl -sSL %s | sh\n\n", installScript)
+		command := "curl -sSL " + installScript + " | sh"
+		runningPrefix := ""
+		if config.Get().Updater.Channel == "nightly" {
+			runningPrefix = fmt.Sprintf("IRIS_RELEASE_TAG=%s ", latest)
+		}
+		fmt.Printf("running: %s%s\n\n", runningPrefix, command)
 
-		cmdRun := exec.Command("sh", "-c", "curl -sSL "+installScript+" | sh")
+		cmdRun := exec.Command("sh", "-c", command)
+		if config.Get().Updater.Channel == "nightly" {
+			cmdRun.Env = append(os.Environ(), "IRIS_RELEASE_TAG="+latest)
+		}
 		cmdRun.Stdout = os.Stdout
 		cmdRun.Stderr = os.Stderr
 		cmdRun.Stdin = os.Stdin

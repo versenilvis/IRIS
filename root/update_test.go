@@ -10,27 +10,41 @@ import (
 )
 
 func TestIsNewer(t *testing.T) {
+	originalConfig := config.Get()
+	t.Cleanup(func() {
+		config.Init(originalConfig)
+	})
+
 	tests := []struct {
 		current string
 		latest  string
+		channel string
 		want    bool
 	}{
-		{"v1.0.0", "v1.0.1", true},
-		{"v1.0.1", "v1.0.0", false},
-		{"v1.0.0", "v1.0.0", false},
-		{"v1.2.3", "v1.2.4", true},
-		{"v1.2.0", "v1.1.9", false},
-		{"dev", "v1.0.0", false}, // dev never updates
-		{"v1.0.0", "dev", false},
-		{"", "v1.0.0", false},
-		{"v1.0.0", "v1.1.0-nightly.8cb1f47", false}, // nightly never triggers update
-		{"v1.1.0-nightly.abc", "v1.2.0", true},      // but if you are on nightly, you can update to stable
+		{"v1.0.0", "v1.0.1", "stable", true},
+		{"v1.0.1", "v1.0.0", "stable", false},
+		{"v1.0.0", "v1.0.0", "stable", false},
+		{"v1.2.3", "v1.2.4", "stable", true},
+		{"v1.2.0", "v1.1.9", "stable", false},
+		{"dev", "v1.0.0", "stable", false}, // dev never updates
+		{"v1.0.0", "dev", "stable", false},
+		{"", "v1.0.0", "stable", false},
+		{"v1.0.0", "v1.1.0-nightly.8cb1f47", "stable", false},          // nightly never triggers update
+		{"v1.1.0-nightly.abc", "v1.2.0", "stable", true},               // but if you are on nightly, you can update to stable
+		{"v1.1.0-nightly.abc", "v1.1.0-nightly.def", "nightly", true},  // nightly can update to newer nightly
+		{"v1.1.0-nightly.abc", "v1.1.0-nightly.abc", "nightly", false}, // same nightly is not newer
 	}
 
 	for _, tt := range tests {
-		if got := IsNewer(tt.current, tt.latest); got != tt.want {
-			t.Errorf("IsNewer(%q, %q) = %v; want %v", tt.current, tt.latest, got, tt.want)
-		}
+		t.Run(tt.current+"_"+tt.latest+"_"+tt.channel, func(t *testing.T) {
+			cfg := config.DefaultConfig()
+			cfg.Updater.Channel = tt.channel
+			config.Init(cfg)
+
+			if got := IsNewer(tt.current, tt.latest); got != tt.want {
+				t.Errorf("IsNewer(%q, %q, %q) = %v; want %v", tt.current, tt.latest, tt.channel, got, tt.want)
+			}
+		})
 	}
 }
 

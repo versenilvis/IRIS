@@ -5,6 +5,7 @@ REPO="versenilvis/iris"
 BIN_DIR="${BIN_DIR:-/usr/local/bin}"
 # allow overriding the GitHub API base URL for local testing
 IRIS_API_URL="${IRIS_API_URL:-https://api.github.com}"
+IRIS_RELEASE_TAG="${IRIS_RELEASE_TAG:-}"
 
 main() {
     echo "Installing iris..."
@@ -123,18 +124,22 @@ get_arch() {
 
 get_download_url() {
     arch="$1"
+    release_path="/releases/latest"
+    if [ -n "${IRIS_RELEASE_TAG}" ]; then
+        release_path="/releases/tags/${IRIS_RELEASE_TAG}"
+    fi
 
     if command -v curl >/dev/null 2>&1; then
         http_response=$(curl -sL -w "\n%{http_code}" \
             ${GITHUB_TOKEN:+-H "Authorization: Bearer ${GITHUB_TOKEN}"} \
-            "${IRIS_API_URL}/repos/${REPO}/releases/latest")
+            "${IRIS_API_URL}/repos/${REPO}${release_path}")
         http_code=$(echo "${http_response}" | tail -1)
         releases=$(echo "${http_response}" | sed '$d')
     elif command -v wget >/dev/null 2>&1; then
         tmp_headers=$(mktemp)
         releases=$(wget -S -qO- \
             ${GITHUB_TOKEN:+--header "Authorization: Bearer ${GITHUB_TOKEN}"} \
-            "${IRIS_API_URL}/repos/${REPO}/releases/latest" 2>"$tmp_headers" || true)
+            "${IRIS_API_URL}/repos/${REPO}${release_path}" 2>"$tmp_headers" || true)
         http_code=$(grep "HTTP/" "$tmp_headers" | tail -1 | sed -e 's/^[[:space:]]*//' | cut -d' ' -f2)
         [ -z "${http_code}" ] && http_code="000"
         rm -f "$tmp_headers"
