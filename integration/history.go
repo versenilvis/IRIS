@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/versenilvis/fuzzy"
 	"github.com/versenilvis/iris/integration/shell"
@@ -28,12 +29,13 @@ func RecordSessionCommand(cmd string) {
 	if cmd == "" {
 		return
 	}
+	cmd = sanitizeUTF8(cmd)
 	mu.Lock()
 	defer mu.Unlock()
-	
+
 	sessionHistoryMu.Lock()
 	defer sessionHistoryMu.Unlock()
-	
+
 	if len(sessionHistory) > 0 && sessionHistory[len(sessionHistory)-1] == cmd {
 		return
 	}
@@ -49,6 +51,21 @@ type HistResult struct {
 
 func init() {
 	idMapCache = make(map[string]int)
+}
+
+func sanitizeUTF8(s string) string {
+	if utf8.ValidString(s) {
+		return s
+	}
+	var result strings.Builder
+	for _, r := range s {
+		if r == utf8.RuneError {
+			result.WriteRune('�')
+		} else {
+			result.WriteRune(r)
+		}
+	}
+	return result.String()
 }
 
 func SearchHistory(query string, aliases map[string]string) ([]HistResult, error) {
@@ -132,6 +149,7 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 
 				cmd = strings.TrimSpace(cmd)
 				if cmd != "" {
+					cmd = sanitizeUTF8(cmd)
 					allCmds = append(allCmds, cmd)
 				}
 			}
@@ -222,12 +240,12 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 		if len(words) == 0 {
 			words = []string{qLow}
 		}
-		
+
 		for _, cmd := range historyCache {
 			if seenCmds[cmd] {
 				continue
 			}
-			
+
 			cmdLow := strings.ToLower(cmd)
 			matchAll := true
 			for _, w := range words {
@@ -236,11 +254,11 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 					break
 				}
 			}
-			
+
 			if !matchAll {
 				continue
 			}
-			
+
 			seenCmds[cmd] = true
 			results = append(results, HistResult{
 				ID:         idMapCache[cmd],
@@ -258,8 +276,8 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 			if seenCmds[m.Str] {
 				continue
 			}
-			
-			// filter out extremely weak fuzzy matches (e.g. random garbage typing that 
+
+			// filter out extremely weak fuzzy matches (e.g. random garbage typing that
 			// loosely matches across a very long command)
 			if len(q) > 0 && m.Score/len(q) < 150 {
 				continue

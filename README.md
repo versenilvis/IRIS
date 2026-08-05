@@ -50,7 +50,7 @@ Run iris wherever you already work; your local machine, a remote server, or anyw
 ## Why IRIS instead of Fig
 
 > [!IMPORTANT]
-> **[Fig](https://app.fig.io/) was officially sunset in September 2024 and migrated to Amazon Q Developer (which requires cloud authentication and proprietary bloat)**
+> **[Fig](https://app.fig.io/) was officially sunset in September 2024 and migrated to Amazon Q Developer (which requires cloud authentication and proprietary bloat)**  
 > **IRIS is the lightweight, open-source, zero-telemetry alternative built purely on native Go and TTY with no accounts, no GUI app, and no background daemons required**
 
 ### How it compares
@@ -242,28 +242,26 @@ iris uninstall
 > [!WARNING]
 > **IRIS may cause visual conflicts and keybinding overlaps with other shell autosuggestion plugins or third-party completion tools. To prevent this, please disable them safely (e.g., zsh-autosuggestions, zsh-autocomplete, atuin, flyline, ...)**
 
-Add an alias to your shell configuration file to launch IRIS easily:
+> [!NOTE]
+> **This is already added from installation script, but if your shell config is missing it, please add manually**
+
+To automatically start IRIS every time you open a new shell session, add the init command to your shell config:
 
 **Zsh (`~/.zshrc`):**
 ```zsh
-if command -v iris >/dev/null 2>&1; then
-    alias i="iris"
-fi
+eval "$(iris init zsh)"
 ```
 
 **Bash (`~/.bashrc`):**
 ```bash
-if command -v iris >/dev/null 2>&1; then
-    alias i="iris"
-fi
+eval "$(iris init bash)"
 ```
 
 **Fish (`~/.config/fish/config.fish`):**
 ```fish
-if command -v iris >/dev/null 2>&1
-    alias i="iris"
-end
+iris init fish | source
 ```
+
 ## Configuration guide
 
 IRIS uses a clean TOML configuration file located at `~/.config/iris/config.toml`
