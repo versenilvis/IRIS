@@ -186,6 +186,12 @@ func (o *Overlay) GetTypedQuery() string {
 	return o.TypedQuery
 }
 
+func (o *Overlay) SetTypedQuery(q string) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.TypedQuery = q
+}
+
 func (o *Overlay) GetCurrentCmd() string {
 	o.mu.Lock()
 	defer o.mu.Unlock()

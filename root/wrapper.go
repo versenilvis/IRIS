@@ -365,6 +365,8 @@ func runWrapper() {
 				_, _ = ptmx.Write(toWrite)
 			}
 
+			overlay.SetTypedQuery(bufCopy)
+
 			var b strings.Builder
 			if !disableGhostText.Load() {
 				b.WriteString(overlay.RenderGhostText(bufCopy, true, offsetCopy == 0))
@@ -689,30 +691,27 @@ func runWrapper() {
 		aiMu.Unlock()
 
 		var b strings.Builder
-		if !navCopy {
-			if bufCopy == "" && !overlay.IsVisible() {
-				writeStdout([]byte(overlay.ClearAndDisable()))
-				return
-			}
-			logger.Debugf("Render query: '%s', mode: %s", queryForSearch, modeCopy)
-			results := MergeResults(queryForSearch, modeCopy)
-			logger.Debugf("Render results found: %d", len(results))
-
-			if len(results) == 0 || (len(results) == 1 && strings.TrimSpace(results[0].Cmd) == strings.TrimSpace(bufCopy) && !strings.HasSuffix(bufCopy, " ")) {
-				b.WriteString(overlay.HideMenu(bufCopy))
-				writeStdout([]byte(b.String()))
-				return
-			}
-
-			if overlay.IsVisible() {
-				b.WriteString(overlay.Clear())
-			}
-			overlay.SetQueryAndItems(bufCopy, results)
-		} else {
-			if overlay.IsVisible() {
-				b.WriteString(overlay.Clear())
-			}
+		if bufCopy == "" && !overlay.IsVisible() {
+			writeStdout([]byte(overlay.ClearAndDisable()))
+			return
 		}
+		logger.Debugf("Render query: '%s', mode: %s", queryForSearch, modeCopy)
+		results := MergeResults(queryForSearch, modeCopy)
+		logger.Debugf("Render results found: %d", len(results))
+
+		if len(results) == 0 || (len(results) == 1 && strings.TrimSpace(results[0].Cmd) == strings.TrimSpace(bufCopy) && !strings.HasSuffix(bufCopy, " ")) {
+			b.WriteString(overlay.HideMenu(bufCopy))
+			if !disableGhostText.Load() {
+				b.WriteString(overlay.RenderGhostText(bufCopy, navCopy, offsetCopy == 0))
+			}
+			writeStdout([]byte(b.String()))
+			return
+		}
+
+		if overlay.IsVisible() {
+			b.WriteString(overlay.Clear())
+		}
+		overlay.SetQueryAndItems(bufCopy, results)
 
 		overlay.SetUserNavigated(navCopy)
 		if !disableGhostText.Load() {
@@ -745,10 +744,6 @@ func runWrapper() {
 				}
 				return
 			}
-		}
-
-		if userNavigated.Load() {
-			return
 		}
 
 		if renderTimer != nil {
@@ -970,19 +965,9 @@ func runWrapper() {
 					// handle escape sequences like arrow keys and functional shortcuts
 					// left/right arrow cursor tracking (handles standard, parameterized CSI, and CSI u protocol)
 					if arrowMatched, arrowConsumed, arrowDir := config.MatchArrowKey(inputSlice[i:]); arrowMatched && (arrowDir == "left" || arrowDir == "right") {
-						// Right arrow accepts the inline ghost text when one is showing and the
-						// cursor is at the end (like an editor). This is gated by the configured
-						// navigate-right binding: if it's "ctrl+right" only Ctrl+Right accepts
-						// ghost text and plain Right passes through. Otherwise Left/Right pass
-						// through to the shell so the cursor moves natively (including word-jumps
-						// on Ctrl+arrows). IRIS never hijacks cursor movement here.
+						logger.Debugf("Matched arrow key: dir=%s, consumed=%d, slice=%q", arrowDir, arrowConsumed, string(inputSlice[i:i+arrowConsumed]))
 						if arrowDir == "right" {
-							navBinding := config.Get().Keybindings.NavigateRight
-							rightNav, _ := config.MatchKey(inputSlice[i:], navBinding)
-							// Allow ghost text acceptance if the sequence matches configured navigateRight
-							// OR if navigateRight is set to "ctrl+right" / "ctrl-right" and the user pressed plain Right arrow
-							isRightArrowAccept := rightNav || (strings.EqualFold(navBinding, "right") || navBinding == "") || (strings.Contains(strings.ToLower(navBinding), "ctrl") && inputSlice[i] == '\033' && len(inputSlice[i:]) >= 3 && inputSlice[i+1] == '[' && inputSlice[i+2] == 'C')
-							if isRightArrowAccept {
+							if rightNav, _ := config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateRight); rightNav && config.Get().Keybindings.NavigateRight != "" {
 								bufferMu.Lock()
 								buf := naiveBuffer
 								cursorAtEnd := cursorOffset == 0 && !userNavigated.Load()
@@ -1003,12 +988,30 @@ func runWrapper() {
 						}
 						_, _ = ptmx.Write(inputSlice[i : i+arrowConsumed])
 						i += arrowConsumed - 1
+						bufferMu.Lock()
+						runes := []rune(naiveBuffer)
+						oldOffset := cursorOffset
+						switch arrowDir {
+						case "left":
+							if cursorOffset < len(runes) {
+								cursorOffset++
+							}
+						case "right":
+							if cursorOffset > 0 {
+								cursorOffset--
+							}
+						}
+						newOffset := cursorOffset
+						bufferMu.Unlock()
+						logger.Debugf("Arrow key %s processed: naiveBuf=%q, offset: %d -> %d", arrowDir, naiveBuffer, oldOffset, newOffset)
 						userNavigated.Store(true)
 						overlay.SetUserNavigated(true)
+						overlay.ClearGhostTextState()
 						shouldOverlayDraw = true
 						continue
 					}
 					if !intercepted {
+						logger.Debugf("Unintercepted key byte: 0x%02x (%q), n=%d", b, string(inputSlice[i:min(n, i+8)]), n)
 						isStandaloneEsc := n == 1 && b == '\033'
 						if !isStandaloneEsc {
 							writeStdout([]byte(overlay.ClearAndDisable()))
