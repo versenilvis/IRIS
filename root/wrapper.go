@@ -117,6 +117,13 @@ func restoreTerminal() {
 	}
 }
 
+func syncProcessCWD(cwd string) {
+	if !filepath.IsAbs(cwd) {
+		return
+	}
+	_ = os.Chdir(cwd)
+}
+
 // runWrapper sets up the pty environment, launches the shell,
 // and manages the main input loop to provide real-time suggestions
 // it handles raw terminal mode to intercept keystrokes and
@@ -482,6 +489,7 @@ func runWrapper() {
 
 			if cwd, ok := strings.CutPrefix(query, "IRIS_CWD:"); ok {
 				spec.SetCWD(cwd)
+				syncProcessCWD(cwd)
 				continue
 			}
 
