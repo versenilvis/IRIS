@@ -55,11 +55,14 @@ jobs:
             cd ..
           done
 
-      - name: Delete existing nightly release
+      - name: Delete previous nightly releases
+        # each run tags as v<version>-nightly.<sha>, a different name every
+        # time, so leftover nightly tags pile up and skew goreleaser's
+        # previous-tag detection for the next stable changelog
         run: |
-          gh release delete nightly --yes 2>/dev/null || true
-          git tag -d nightly 2>/dev/null || true
-          git push origin --delete nightly 2>/dev/null || true
+          for tag in $(git tag --list "v*-nightly.*"); do
+            gh release delete "$tag" --yes --cleanup-tag 2>/dev/null || true
+          done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
