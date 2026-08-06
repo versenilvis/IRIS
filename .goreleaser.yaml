@@ -2,6 +2,13 @@ version: 2
 
 project_name: iris
 
+git:
+    # nightly tags share the version stream and can land on the same commit
+    # as a stable tag, which would make goreleaser diff the changelog against
+    # a nightly instead of the real previous stable release
+    ignore_tags:
+        - "*-nightly.*"
+
 builds:
     - env:
           - CGO_ENABLED=0
