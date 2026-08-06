@@ -899,6 +899,9 @@ func runWrapper() {
 						naiveBuffer = ""
 						cursorOffset = 0
 						bufferMu.Unlock()
+						activeModeMu.Lock()
+						activeMode = loadMode()
+						activeModeMu.Unlock()
 						disableGhostText.Store(false)
 						shouldOverlayDraw = false
 						userNavigated.Store(false)
@@ -911,6 +914,9 @@ func runWrapper() {
 					naiveBuffer = ""
 					cursorOffset = 0
 					bufferMu.Unlock()
+					activeModeMu.Lock()
+					activeMode = loadMode()
+					activeModeMu.Unlock()
 					isCommandActive.Store(true)
 					_, _ = ptmx.Write([]byte{b}) // forward enter to terminal
 					disableGhostText.Store(false)
@@ -1078,6 +1084,9 @@ func runWrapper() {
 					naiveBuffer = ""
 					cursorOffset = 0
 					bufferMu.Unlock()
+					activeModeMu.Lock()
+					activeMode = loadMode()
+					activeModeMu.Unlock()
 					disableGhostText.Store(false)
 					shouldOverlayDraw = false
 					userNavigated.Store(false)
@@ -1159,19 +1168,6 @@ func runWrapper() {
 						userNavigated.Store(false)
 					case 0x0c: // ctrl+l: clear screen but keep buffer and redraw menu
 						shouldOverlayDraw = true
-						userNavigated.Store(false)
-					case '\r', '\n', 0x03, 0x15: // enter, ctrl+c, ctrl+u: clear buffer on line reset
-						inBracketedPaste = false
-						bufferMu.Lock()
-						naiveBuffer = ""
-						cursorOffset = 0
-						bufferMu.Unlock()
-						activeModeMu.Lock()
-						activeMode = loadMode()
-						activeModeMu.Unlock()
-						disableGhostText.Store(false)
-						writeStdout([]byte(overlay.ClearAndDisable()))
-						SetCurrentAISuggestion(nil)
 						userNavigated.Store(false)
 					default:
 						// track normal printable characters in the buffer for matching
