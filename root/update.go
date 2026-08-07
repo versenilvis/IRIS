@@ -3,6 +3,7 @@ package root
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -25,9 +26,41 @@ type updateResult struct {
 // pendingUpdate is set by the background goroutine and consumed once after the first IRIS_CMD_STOP
 var pendingUpdate chan updateResult
 
+// ErrRateLimited is returned when the GitHub API responds 403/429.
+var ErrRateLimited = errors.New("rate limited by GitHub API")
+
+func newGitHubRequestContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), 5*time.Second)
+}
+
+// fetchGitHubBody performs a GET against endpoint with the headers GitHub's
+// API expects and returns the raw response body.
+func fetchGitHubBody(ctx context.Context, endpoint string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests {
+		return nil, ErrRateLimited
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	return io.ReadAll(resp.Body)
+}
+
 // FetchLatestVersion hits the GitHub Releases API and returns the latest tag name
 func FetchLatestVersion() (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := newGitHubRequestContext()
 	defer cancel()
 
 	endpoint := os.Getenv("IRIS_UPDATE_URL")
@@ -39,23 +72,7 @@ func FetchLatestVersion() (string, error) {
 		}
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(resp.Body)
+	body, err := fetchGitHubBody(ctx, endpoint)
 	if err != nil {
 		return "", err
 	}

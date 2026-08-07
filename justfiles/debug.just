@@ -18,6 +18,40 @@ debug-update version="v1.99.0":
     kill $SERVER_PID 2>/dev/null
     rm -rf "$tmp"
 
+# test the changelog command (fetch, grouping, cache, rate limiting)
+# usage: just debug-changelog v1.99.0
+[group('debug')]
+debug-changelog version="v1.99.0":
+    #!/bin/sh
+    tmp=$(mktemp -d)
+    body='## Changelog\n### Bug fixes\n* abc1234  fix something\n\n## Update\n```bash\niris update\n```\n'
+    printf '[{"tag_name":"%s","published_at":"2026-01-01T00:00:00Z","body":"%s","prerelease":false},{"tag_name":"v0.0.1","published_at":"2025-12-01T00:00:00Z","body":"## Changelog\\n### Documentation\\n* def5678  older release\\n","prerelease":false}]' "{{version}}" "$body" > "$tmp/response.json"
+    python3 -m http.server 19997 --directory "$tmp" 2>/dev/null &
+    SERVER_PID=$!
+    sleep 0.3
+
+    # isolate the changelog cache so this doesn't read or write the real
+    # ~/.cache/iris/changelog-cache.json
+    export XDG_CACHE_HOME="$tmp/cache"
+
+    echo "--- testing iris changelog (latest only) ---"
+    IRIS_CHANGELOG_URL="http://localhost:19997/response.json" ./iris changelog
+
+    echo ""
+    echo "--- testing iris changelog -n 2 ---"
+    IRIS_CHANGELOG_URL="http://localhost:19997/response.json" ./iris changelog -n 2
+
+    echo ""
+    echo "--- testing cache hit (server killed, should still work) ---"
+    kill $SERVER_PID 2>/dev/null
+    IRIS_CHANGELOG_URL="http://localhost:19997/response.json" ./iris changelog
+
+    echo ""
+    echo "--- testing --refresh with no server (should error, not hang) ---"
+    IRIS_CHANGELOG_URL="http://localhost:19997/response.json" ./iris changelog --refresh
+
+    rm -rf "$tmp"
+
 # test the in-session update notification banner (requires iris.zsh hook to be active)
 # usage: just debug-notify v1.99.0
 [group('debug')]
