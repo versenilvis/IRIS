@@ -63,10 +63,7 @@ jobs:
                   AUR_KEY: ${{ secrets.AUR_KEY }}
                   HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
 
-            # nightly tags also match refs/tags/v*, but only stable releases
-            # get a CHANGELOG.md entry. output goes outside the checkout so
-            # switching branches below can't discard it as an uncommitted
-            # working-tree change
+            # nightly tags also match refs/tags/v*, so they're excluded below
             - name: Generate CHANGELOG.md
               if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-nightly.')
               uses: orhun/git-cliff-action@v4
@@ -77,11 +74,7 @@ jobs:
             - name: Commit CHANGELOG.md
               if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-nightly.')
               run: |
-                  # check out main explicitly rather than staying on the tag's
-                  # detached HEAD, so this can't lose a fast-forward race if
-                  # main advanced after the tag was cut - git-cliff reads tags
-                  # from git log history, not the worktree, so generating
-                  # against the tag checkout above doesn't affect its output
+                  # avoids a fast-forward race against the tag's detached HEAD
                   git fetch origin main
                   git checkout -B main origin/main
                   cp /tmp/CHANGELOG.md CHANGELOG.md

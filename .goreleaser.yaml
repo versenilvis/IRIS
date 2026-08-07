@@ -41,9 +41,7 @@ changelog:
         - title: "Documentation"
           regexp: '(?i)^.*?docs?(\(.+\))?!?:.+$'
           order: 4
-        # anything else (chore, build, ci, test, unconventional messages)
-        # matches no group above and is silently dropped rather than
-        # leaking an unreviewed heading into the release notes
+        # unmatched types (chore, build, ci, test, ...) are silently dropped
 
 builds:
     - env:

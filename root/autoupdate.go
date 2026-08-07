@@ -14,9 +14,6 @@ import (
 
 const installScriptURL = "https://raw.githubusercontent.com/versenilvis/iris/main/scripts/install.sh"
 
-// resolveInstallScriptURL returns IRIS_INSTALL_URL when set (used by
-// just debug-autoupdate to point at a local mock instead of the real
-// script), falling back to the real install script otherwise.
 func resolveInstallScriptURL() string {
 	if url := os.Getenv("IRIS_INSTALL_URL"); url != "" {
 		return url
@@ -24,14 +21,8 @@ func resolveInstallScriptURL() string {
 	return installScriptURL
 }
 
-// performUpdate downloads and installs the given version via the install
-// script. Interactive mode (iris update) streams output to the real
-// terminal as before, with no timeout - the user is watching and can
-// Ctrl+C. Non-interactive mode (the background auto-updater) captures
-// output instead, since the wrapper's terminal is in raw mode for the
-// whole session and streaming installer output there would corrupt the
-// display, and bounds it with a timeout so a hung install can't block
-// future checks indefinitely.
+// non-interactive output is captured, not streamed - the wrapper's terminal
+// is in raw mode, so streaming installer output would corrupt the display
 func performUpdate(latest string, interactive bool) (output string, err error) {
 	ctx := context.Background()
 	if !interactive {
@@ -65,15 +56,8 @@ const (
 	autoUpdateGiveUp
 )
 
-// decideAutoUpdateAction is a pure function over the current updater state,
-// so the attempt/escalate/give-up ladder can be unit tested without
-// touching the network or filesystem.
-//
-// mode 0 (off) and a version the user already declined both fall back to a
-// plain notify. mode 2 (always confirm) never auto-installs silently and
-// never gives up - it just keeps asking. mode 1 (auto) escalates per
-// target version: attempt 1 installs silently, attempt 2 asks first,
-// attempt 3+ gives up and tells the user to run `iris update` themselves.
+// mode 1 escalates per target version: attempt 1 installs silently, attempt
+// 2 asks first, attempt 3+ gives up. mode 2 always asks, never gives up
 func decideAutoUpdateAction(mode int, latest string, st config.UpdaterState) autoUpdateAction {
 	if mode == 0 {
 		return autoUpdateNotifyOnly
@@ -99,10 +83,6 @@ func decideAutoUpdateAction(mode int, latest string, st config.UpdaterState) aut
 	}
 }
 
-// pendingAutoUpdateConfirm/-Version coordinate the confirm prompt between
-// the background checker goroutine (which prints the prompt) and the
-// keystroke-reading goroutine (which intercepts the y/n response). Neither
-// side blocks on the other.
 var (
 	pendingAutoUpdateConfirm atomic.Bool
 	pendingAutoUpdateVersion atomic.Value
@@ -113,9 +93,8 @@ func armAutoUpdateConfirm(version string) {
 	pendingAutoUpdateConfirm.Store(true)
 }
 
-// handleAutoUpdateConfirmKey consumes one byte while a confirm prompt is
-// pending. It reports whether the byte was consumed - callers must not
-// fall through to normal key handling when true.
+// reports whether the byte was consumed - callers must not fall through
+// to normal key handling when true
 func handleAutoUpdateConfirmKey(b byte) bool {
 	if !pendingAutoUpdateConfirm.Load() {
 		return false

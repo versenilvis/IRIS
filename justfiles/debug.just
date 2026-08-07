@@ -59,14 +59,8 @@ debug-notify version="v1.99.0":
     IRIS_PID="" IRIS_MOCK_LATEST_VERSION="{{version}}" ./iris
 
 # test the background auto-updater's escalation ladder (silent install,
-# then repeated failures escalating to a confirm-worthy state, then giving
-# up rather than looping forever). fully offline: mocks the release API,
-# the install script fetch, and the release asset, and never touches the
-# real ~/.config, ~/.local/share, or install location.
-#
-# the confirm-prompt UI itself is interactive (needs a real terminal with
-# iris shell hooks active) and isn't exercised here - this recipe verifies
-# the state machine driving it instead, by inspecting state.toml directly.
+# then repeated failures escalating to confirm, then giving up). fully
+# offline - mocks the release API, install script, and release asset.
 # usage: just debug-autoupdate
 [group('debug')]
 debug-autoupdate:
@@ -100,9 +94,7 @@ debug-autoupdate:
     cp scripts/install.sh "$TMP/install.sh"
     printf '#!/bin/sh\nexit 1\n' > "$TMP/install-fail.sh"
 
-    # --- mock server: release JSON for IRIS_UPDATE_URL, the install
-    # script itself for IRIS_INSTALL_URL, install.sh's own GitHub API
-    # lookup for IRIS_API_URL, and the tarball it downloads ---
+    # --- mock server: release JSON, install script, and the tarball ---
     python3 -c 'import sys, textwrap; exec(textwrap.dedent(r"""
     import os, sys
     from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -166,9 +158,7 @@ debug-autoupdate:
     auto-update = 1
     CFGEOF
 
-    # each call is a fresh process = a fresh check cycle, since
-    # check-interval is 0s. everything lives under $TMP - nothing touches
-    # the real ~/.config, ~/.local/share, or an install path.
+    # fresh process = fresh check cycle, since check-interval is 0s
     run_check() {
         HOME="$TMP/home" \
         XDG_CONFIG_HOME="$TMP/cfg" \

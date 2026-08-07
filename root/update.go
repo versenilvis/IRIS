@@ -43,8 +43,6 @@ func newGitHubRequestContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), 5*time.Second)
 }
 
-// fetchGitHubBody performs a GET against endpoint with the headers GitHub's
-// API expects and returns the raw response body.
 func fetchGitHubBody(ctx context.Context, endpoint string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -234,9 +232,7 @@ func startBackgroundUpdateCheck() chan updateResult {
 			case autoUpdateInstallSilently:
 				state.Updater.AutoUpdateTarget = latest
 				state.Updater.AutoUpdateAttempt = 1
-				// write before installing: a crash mid-install still counts
-				// as an attempt, so a wedged install escalates next time
-				// instead of silently retrying forever
+				// write before installing so a crash still counts as an attempt
 				_ = config.SaveState(state)
 				if _, installErr := performUpdate(latest, false); installErr == nil {
 					state.Updater.AutoUpdateTarget = ""
@@ -284,9 +280,6 @@ func startBackgroundUpdateCheck() chan updateResult {
 	return ch
 }
 
-// changelogSummaryLines pulls up to max bullet messages out of a GoReleaser
-// changelog body (see the `changelog:` block in .goreleaser.yaml), dropping
-// the sha and group heading - just enough for a one-shot notice line.
 func changelogSummaryLines(body string, max int) []string {
 	var lines []string
 	for line := range strings.SplitSeq(body, "\n") {
@@ -307,8 +300,6 @@ func changelogSummaryLines(body string, max int) []string {
 	return lines
 }
 
-// printUpdateNotice writes the one-time update message to stdout, along
-// with a short changelog summary when notes are available
 func printUpdateNotice(latest, notes string) {
 	var b strings.Builder
 	fmt.Fprintf(&b,

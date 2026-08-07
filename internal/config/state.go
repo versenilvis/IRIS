@@ -11,10 +11,7 @@ import (
 type UpdaterState struct {
 	LastCheckTime time.Time `toml:"last-check-time"`
 	SeenVersion   string    `toml:"seen-version"`
-	// auto-update loop guard: which version the last auto-install attempt
-	// targeted, how many consecutive attempts have been made against it
-	// (used to escalate to a confirm prompt, then give up), and any version
-	// the user explicitly declined so it's never re-prompted
+	// auto-update escalation ladder state, see decideAutoUpdateAction
 	AutoUpdateTarget  string `toml:"auto-update-target"`
 	AutoUpdateAttempt int    `toml:"auto-update-attempt"`
 	DeclinedVersion   string `toml:"declined-version"`

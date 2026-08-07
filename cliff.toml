@@ -23,13 +23,8 @@ footer = ""
 conventional_commits = true
 filter_unconventional = true
 split_commits = false
-# only match clean stable tags (v0.5.1), never nightly tags
-# (v0.5.1-nightly.7a97ea9) - excluding nightlies via `ignore_tags` instead
-# of `tag_pattern` was tried first, but git-cliff merges an ignored tag's
-# commits forward into whatever tag is next in its internal ordering
-# rather than the correct ancestor, which silently misattributed commits
-# across release boundaries whenever a nightly tag landed on the same
-# commit range as a stable one (this repo's nightly tags always do)
+# stable tags only - `ignore_tags` was tried first but git-cliff merges an
+# ignored tag's commits into the wrong release when nightly and stable tags share a commit range
 tag_pattern = "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
 sort_commits = "oldest"
 
@@ -46,8 +41,6 @@ commit_parsers = [
     { message = "(?i)^ci", skip = true },
     { message = "(?i)^test", skip = true },
     { message = "(?i)^style", skip = true },
-    # catch-all: anything not matched above (unconventional or unlisted
-    # types like historical "pkg:" commits) is dropped rather than
-    # leaking an unreviewed group heading into the changelog
+    # catch-all: unlisted types (e.g. historical "pkg:") drop instead of leaking a stray group
     { message = ".*", skip = true },
 ]
