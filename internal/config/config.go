@@ -61,6 +61,8 @@ type UpdaterConfig struct {
 	CheckOnStartup bool     `toml:"check-on-startup"`
 	Channel        string   `toml:"channel"`
 	CheckInterval  Duration `toml:"check-interval"`
+	// AutoUpdate: 0 = off (default), 1 = auto-install, 2 = always confirm first
+	AutoUpdate int `toml:"auto-update"`
 }
 
 type KeybindingsConfig struct {
@@ -279,6 +281,10 @@ func validate(cfg *Config) error {
 	validChannels := map[string]bool{"stable": true, "nightly": true}
 	if !validChannels[cfg.Updater.Channel] {
 		return fmt.Errorf("updater.channel: invalid value %q (want: stable|nightly)", cfg.Updater.Channel)
+	}
+
+	if cfg.Updater.AutoUpdate < 0 || cfg.Updater.AutoUpdate > 2 {
+		return fmt.Errorf("updater.auto-update: invalid value %d (want: 0=off, 1=auto, 2=confirm)", cfg.Updater.AutoUpdate)
 	}
 
 	if cfg.UI.MaxSuggestions < 1 || cfg.UI.MaxSuggestions > 500 {

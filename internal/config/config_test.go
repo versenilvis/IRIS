@@ -186,6 +186,24 @@ model = "qwen-2.5-coder-32b"
 	}
 }
 
+func TestValidateAutoUpdateRange(t *testing.T) {
+	cfg := DefaultConfig()
+
+	for _, valid := range []int{0, 1, 2} {
+		cfg.Updater.AutoUpdate = valid
+		if err := validate(cfg); err != nil {
+			t.Errorf("expected auto-update=%d to be valid, got error: %v", valid, err)
+		}
+	}
+
+	for _, invalid := range []int{-1, 3} {
+		cfg.Updater.AutoUpdate = invalid
+		if err := validate(cfg); err == nil {
+			t.Errorf("expected auto-update=%d to be rejected", invalid)
+		}
+	}
+}
+
 func TestLoadSave(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "iris-config-test")
 	if err != nil {

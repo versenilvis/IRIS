@@ -282,6 +282,9 @@ channel = "stable"
 # interval between update checks, e.g. "24h", "6h", "30m"
 check-interval = "24h"
 
+# 0 = off (default, notify only), 1 = auto-install, 2 = always confirm first
+auto-update = 0
+
 [keybindings]
 toggle-mode = "ctrl+r"
 toggle-menu = "shift+tab"

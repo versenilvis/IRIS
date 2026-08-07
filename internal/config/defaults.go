@@ -32,6 +32,7 @@ func DefaultConfig() *Config {
 			CheckOnStartup: true,
 			Channel:        "stable",
 			CheckInterval:  Duration(24 * time.Hour),
+			AutoUpdate:     0,
 		},
 		AI: AIConfig{
 			Enabled:       false,
@@ -59,8 +60,11 @@ func DefaultState() *State {
 	return &State{
 		LastMode: "spec",
 		Updater: UpdaterState{
-			LastCheckTime: time.Time{},
-			SeenVersion:   "",
+			LastCheckTime:     time.Time{},
+			SeenVersion:       "",
+			AutoUpdateTarget:  "",
+			AutoUpdateAttempt: 0,
+			DeclinedVersion:   "",
 		},
 	}
 }

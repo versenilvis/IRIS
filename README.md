@@ -310,6 +310,7 @@ deduplicate-branches = true
 check-on-startup = true
 channel = "stable" # "stable" or "nightly"
 check-interval = "24h"
+auto-update = 0 # 0 = off, 1 = auto-install, 2 = always confirm first
 
 [ai]
 enabled = false
