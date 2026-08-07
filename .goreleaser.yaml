@@ -14,6 +14,37 @@ git:
     # already has them and fails with 422 already_exists
     prerelease_suffix: "-nightly"
 
+changelog:
+    use: git
+    sort: asc
+    abbrev: 7
+    format: "{{ .SHA }}  {{ .Message }}"
+    filters:
+        # these would otherwise fall under the "Bug fixes" group below since
+        # they start with `fix`, but they're infra-only and not user-facing
+        exclude:
+            - "(?i)^fix\\(ci\\)"
+            - "(?i)^fix\\(release\\)"
+    groups:
+        - title: "Features"
+          regexp: '(?i)^.*?feat(\(.+\))?!?:.+$'
+          order: 0
+        - title: "Bug fixes"
+          regexp: '(?i)^.*?fix(\(.+\))?!?:.+$'
+          order: 1
+        - title: "Performance"
+          regexp: '(?i)^.*?perf(\(.+\))?!?:.+$'
+          order: 2
+        - title: "Refactors"
+          regexp: '(?i)^.*?refactor(\(.+\))?!?:.+$'
+          order: 3
+        - title: "Documentation"
+          regexp: '(?i)^.*?docs?(\(.+\))?!?:.+$'
+          order: 4
+        # anything else (chore, build, ci, test, unconventional messages)
+        # matches no group above and is silently dropped rather than
+        # leaking an unreviewed heading into the release notes
+
 builds:
     - env:
           - CGO_ENABLED=0
