@@ -33,7 +33,7 @@ jobs:
           IFS='.' read -r major minor patch <<< "$VERSION_NUM"
           patch=$((patch + 1))
           NEXT_BASE="v${major}.${minor}.${patch}"
-          SHORT=$(git rev-parse --short HEAD)
+          SHORT=$(git rev-parse --short=6 HEAD)
           echo "version=${NEXT_BASE}-nightly.${SHORT}" >> $GITHUB_OUTPUT
           echo "short_sha=${SHORT}" >> $GITHUB_OUTPUT
           echo "subject=$(git log -1 --format=%s)" >> $GITHUB_OUTPUT
