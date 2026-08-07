@@ -345,16 +345,16 @@ timeout_ms = 5000
 | <kbd>↓</kbd>                       | Navigate down / history | Move the selection down, or open command history when the prompt is empty.|
 | <kbd>→</kbd>                       | Accept ghost text       | Accept the faded ghost text suggestion when the menu is open.             |
 | <kbd>←</kbd> / <kbd>→</kbd>        | Move cursor             | Move the cursor inside the input buffer. Disabled when the prompt is empty|
-| <kbd>Ctrl/⌘</kbd> + <kbd>R</kbd>     | Switch mode             | Toggle between `spec` and `history` mode.                                 |
-| <kbd>Ctrl/⌘</kbd> + <kbd>A</kbd>     | Beginning of line       | Move the cursor to the start of the command line.                         |
-| <kbd>Ctrl/⌘</kbd> + <kbd>E</kbd>     | End of line             | Move the cursor to the end of the command line.                           |
-| <kbd>Ctrl/⌘</kbd> + <kbd>L</kbd>     | Clear screen            | Clear the terminal while preserving the input buffer and redrawing the menu. |
-| <kbd>Ctrl/⌘</kbd> + <kbd>U</kbd>     | Clear command           | Remove the entire current command and close the menu.                     |
-| <kbd>Ctrl/⌘</kbd> + <kbd>C</kbd>     | Cancel command          | Send `SIGINT`, clear the input buffer, and close the menu.                |
-| <kbd>Ctrl/⌘</kbd> + <kbd>W</kbd>     | Delete word             | Delete the word immediately before the cursor.                            |
+| <kbd>Ctrl</kbd> + <kbd>R</kbd>     | Switch mode             | Toggle between `spec` and `history` mode.                                 |
+| <kbd>Ctrl</kbd> + <kbd>A</kbd>     | Beginning of line       | Move the cursor to the start of the command line.                         |
+| <kbd>Ctrl</kbd> + <kbd>E</kbd>     | End of line             | Move the cursor to the end of the command line.                           |
+| <kbd>Ctrl</kbd> + <kbd>L</kbd>     | Clear screen            | Clear the terminal while preserving the input buffer and redrawing the menu. |
+| <kbd>Ctrl</kbd> + <kbd>U</kbd>     | Clear command           | Remove the entire current command and close the menu.                     |
+| <kbd>Ctrl</kbd> + <kbd>C</kbd>     | Cancel command          | Send `SIGINT`, clear the input buffer, and close the menu.                |
+| <kbd>Ctrl</kbd> + <kbd>W</kbd>     | Delete word             | Delete the word immediately before the cursor.                            |
 
 > [!NOTE]
-> With <kbd>Ctrl/⌘</kbd> + <kbd>A</kbd>, <kbd>Ctrl/⌘</kbd> + <kbd>E</kbd>, <kbd>Ctrl/⌘</kbd> + <kbd>W</kbd>, <kbd>Ctrl/⌘</kbd> + <kbd>U</kbd>, <kbd>Ctrl/⌘</kbd> + <kbd>L</kbd>, and <kbd>Ctrl/⌘</kbd> + <kbd>C</kbd>: they belong to your shell by default. IRIS handles them directly in raw mode so your cursor and menu stay in sync
+> With <kbd>Ctrl</kbd> + <kbd>A</kbd>, <kbd>Ctrl</kbd> + <kbd>E</kbd>, <kbd>Ctrl</kbd> + <kbd>W</kbd>, <kbd>Ctrl</kbd> + <kbd>U</kbd>, <kbd>Ctrl</kbd> + <kbd>L</kbd>, and <kbd>Ctrl</kbd> + <kbd>C</kbd>: they belong to your shell by default. IRIS handles them directly in raw mode so your cursor and menu stay in sync
 
 ## Theme
 

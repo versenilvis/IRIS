@@ -121,6 +121,13 @@ func restoreTerminal() {
 	}
 }
 
+func syncProcessCWD(cwd string) {
+	if !filepath.IsAbs(cwd) {
+		return
+	}
+	_ = os.Chdir(cwd)
+}
+
 // runWrapper sets up the pty environment, launches the shell,
 // and manages the main input loop to provide real-time suggestions
 // it handles raw terminal mode to intercept keystrokes and
@@ -163,14 +170,26 @@ func runWrapper() {
 	c.ExtraFiles = make([]*os.File, 11)
 	// pass write end of pipe to shell as fd 13 (since index 10 maps to 13)
 	c.ExtraFiles[10] = w
-	c.Env = adapter.GetEnv(13, os.Getpid())
 
-	ptmx, err := pty.Start(c)
+	ptmx, tts, err := pty.Open()
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "[IRIS] failed to start PTY: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "[IRIS] failed to open PTY: %v\n", err)
 		return
 	}
 	defer func() { _ = ptmx.Close() }()
+
+	c.Stdin, c.Stdout, c.Stderr = tts, tts, tts
+	c.SysProcAttr = &syscall.SysProcAttr{Setsid: true, Setctty: true}
+	// the shell compares its own tty against this to tell whether the inherited
+	// IRIS_* vars belong to it or leaked in from an outer terminal
+	c.Env = append(adapter.GetEnv(13, os.Getpid()), "IRIS_TTY="+tts.Name())
+
+	if err = c.Start(); err != nil {
+		_ = tts.Close()
+		_, _ = fmt.Fprintf(os.Stderr, "[IRIS] failed to start shell: %v\n", err)
+		return
+	}
+	_ = tts.Close()
 
 	stdinFile := os.Stdin
 	if !term.IsTerminal(int(stdinFile.Fd())) {
@@ -498,6 +517,7 @@ func runWrapper() {
 
 			if cwd, ok := strings.CutPrefix(query, "IRIS_CWD:"); ok {
 				spec.SetCWD(cwd)
+				syncProcessCWD(cwd)
 				continue
 			}
 
@@ -931,6 +951,9 @@ func runWrapper() {
 						msg := "echo -e '\\033[32m✓ Iris configuration reloaded successfully.\\033[0m'\r"
 						_, _ = ptmx.Write(append([]byte{0x15}, []byte(msg)...))
 						resetBuffer()
+						activeModeMu.Lock()
+						activeMode = loadMode()
+						activeModeMu.Unlock()
 						disableGhostText.Store(false)
 						shouldOverlayDraw = false
 						userNavigated.Store(false)
@@ -942,6 +965,9 @@ func runWrapper() {
 					lastSubmittedCommand = strings.TrimSpace(cmdToSubmit)
 					bufferMu.Unlock()
 					resetBuffer()
+					activeModeMu.Lock()
+					activeMode = loadMode()
+					activeModeMu.Unlock()
 					isCommandActive.Store(true)
 					_, _ = ptmx.Write([]byte{b}) // forward enter to terminal
 					disableGhostText.Store(false)
@@ -1044,7 +1070,17 @@ func runWrapper() {
 					renderMu.Unlock()
 					isCommandActive.Store(false)
 					_, _ = ptmx.Write([]byte{b})
+<<<<<<< HEAD
 					resetBuffer()
+=======
+					bufferMu.Lock()
+					naiveBuffer = ""
+					cursorOffset = 0
+					bufferMu.Unlock()
+					activeModeMu.Lock()
+					activeMode = loadMode()
+					activeModeMu.Unlock()
+>>>>>>> upstream/main
 					disableGhostText.Store(false)
 					shouldOverlayDraw = false
 					userNavigated.Store(false)
@@ -1127,6 +1163,7 @@ func runWrapper() {
 					case 0x0c: // ctrl+l: clear screen but keep buffer and redraw menu
 						shouldOverlayDraw = true
 						userNavigated.Store(false)
+<<<<<<< HEAD
 					case '\r', '\n', 0x03, 0x15: // enter, ctrl+c, ctrl+u: clear buffer on line reset
 						inBracketedPaste = false
 						resetBuffer()
@@ -1137,6 +1174,8 @@ func runWrapper() {
 						writeStdout([]byte(overlay.ClearAndDisable()))
 						SetCurrentAISuggestion(nil)
 						userNavigated.Store(false)
+=======
+>>>>>>> upstream/main
 					default:
 						// track normal printable characters in the buffer for matching
 						if b >= 32 && b <= 126 {
