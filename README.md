@@ -229,6 +229,21 @@ cd iris
 just reload
 ```
 
+## Update
+
+```bash
+iris update
+```
+
+Checks for and installs the latest release. To see what's changed first:
+
+```bash
+iris changelog       # latest release
+iris changelog -n 3  # last 3 releases
+```
+
+IRIS can also check for and install updates on its own - see `updater.auto-update` in the [configuration guide](#configuration-guide) below.
+
 ## Uninstall
 
 To completely uninstall IRIS, remove all configurations, and clean up your shell integration files, simply run:

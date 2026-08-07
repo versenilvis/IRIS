@@ -21,7 +21,7 @@ We use `just` as our primary command runner. Recipes are organized into modular 
 - `justfiles/test.just` (`[test]` group): `test`, `lint`, `analyze` (alias `ana`)
 - `justfiles/gen.just` (`[gen]` group): `gen-docs`
 - `justfiles/pkg.just` (`[pkg]` group): `pkg`
-- `justfiles/debug.just` (`[debug]` group): `debug`, `debug-update`, `debug-notify`, `debug-install`
+- `justfiles/debug.just` (`[debug]` group): `debug`, `debug-update`, `debug-changelog`, `debug-notify`, `debug-install`, `debug-autoupdate`
 
 Run `just -l` to quickly view all available recipes organized by group.
 
