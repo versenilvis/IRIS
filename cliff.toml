@@ -1,0 +1,53 @@
+[changelog]
+header = "# Changelog\n\nAll notable changes to this project are documented in this file.\n\n"
+body = """
+{% if version %}\
+## [{{ version }}](https://github.com/versenilvis/iris/releases/tag/{{ version }}) - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+## [Unreleased]
+{% endif %}\
+{{ "\n" }}\
+{% for group, commits in commits | group_by(attribute="group") %}\
+### {{ group | upper_first }}
+{{ "\n" }}\
+{% for commit in commits %}\
+- {{ commit.message | upper_first }} ({{ commit.id | truncate(length=7, end="") }})
+{% endfor %}\
+{{ "\n" }}\
+{% endfor %}\
+"""
+trim = true
+footer = ""
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+split_commits = false
+# only match clean stable tags (v0.5.1), never nightly tags
+# (v0.5.1-nightly.7a97ea9) - excluding nightlies via `ignore_tags` instead
+# of `tag_pattern` was tried first, but git-cliff merges an ignored tag's
+# commits forward into whatever tag is next in its internal ordering
+# rather than the correct ancestor, which silently misattributed commits
+# across release boundaries whenever a nightly tag landed on the same
+# commit range as a stable one (this repo's nightly tags always do)
+tag_pattern = "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+sort_commits = "oldest"
+
+commit_parsers = [
+    { message = "(?i)^feat", group = "Features" },
+    { message = "(?i)^fix\\(ci\\)", skip = true },
+    { message = "(?i)^fix\\(release\\)", skip = true },
+    { message = "(?i)^fix", group = "Bug fixes" },
+    { message = "(?i)^perf", group = "Performance" },
+    { message = "(?i)^refactor", group = "Refactors" },
+    { message = "(?i)^docs?", group = "Documentation" },
+    { message = "(?i)^chore", skip = true },
+    { message = "(?i)^build", skip = true },
+    { message = "(?i)^ci", skip = true },
+    { message = "(?i)^test", skip = true },
+    { message = "(?i)^style", skip = true },
+    # catch-all: anything not matched above (unconventional or unlisted
+    # types like historical "pkg:" commits) is dropped rather than
+    # leaking an unreviewed group heading into the changelog
+    { message = ".*", skip = true },
+]
