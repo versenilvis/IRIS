@@ -11,4 +11,4 @@ uncomplete = "uncomplete"
 edn = "edn"
 
 [files]
-extend-exclude = ["internal/scoring/scorer_test.go"]
+extend-exclude = ["internal/scoring/scorer_test.go", "CHANGELOG.md"]
