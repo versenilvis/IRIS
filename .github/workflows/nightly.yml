@@ -35,6 +35,8 @@ jobs:
           NEXT_BASE="v${major}.${minor}.${patch}"
           SHORT=$(git rev-parse --short HEAD)
           echo "version=${NEXT_BASE}-nightly.${SHORT}" >> $GITHUB_OUTPUT
+          echo "short_sha=${SHORT}" >> $GITHUB_OUTPUT
+          echo "subject=$(git log -1 --format=%s)" >> $GITHUB_OUTPUT
 
       - name: Build Binaries
         run: |
@@ -71,12 +73,18 @@ jobs:
         with:
           tag_name: ${{ steps.version.outputs.version }}
           name: ${{ steps.version.outputs.version }}
+          # shaped like GoReleaser's changelog groups so `iris changelog` renders it
           body: |
             # 🌙 **Nightly build** - `${{ steps.version.outputs.version }}`
-            Nightly release from commit: ${{ github.sha }}
 
-            # Update: 
-            `iris update`
+            ### Nightly
+
+            * ${{ steps.version.outputs.short_sha }}  ${{ steps.version.outputs.subject }}
+
+            ## Update
+            ```bash
+            iris update
+            ```
 
             > install manually, this build will **not** trigger an update notification
           files: dist/*.tar.gz
