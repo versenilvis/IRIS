@@ -11,7 +11,7 @@ body = """
 ### {{ group | upper_first }}
 {{ "\n" }}\
 {% for commit in commits %}\
-- {{ commit.message | upper_first }} ({{ commit.id | truncate(length=6, end="") }})
+- {{ commit.message | upper_first }} ({{ commit.id }})
 {% endfor %}\
 {{ "\n" }}\
 {% endfor %}\

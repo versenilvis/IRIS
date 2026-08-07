@@ -6,400 +6,421 @@ All notable changes to this project are documented in this file.
 
 ### Bug fixes
 
-- Follow the shell working directory in the wrapper process (#129) (4a4ab3c)
+- Follow the shell working directory in the wrapper process (#129) (4a4ab3c102067f7a24f737987e80fbb7cedbe86c)
+- Fall back to raw body for nightly releases (005ed5ae469953eec4d20d91fe647cb42151b98b)
+- Invalidate cache when the updater channel changes (5845fcb0511b3a6b6bfae2cadba3735e244e3331)
+- Only strip GoReleaser's exact heading, not real content (a8779d56e67beb859caaee3af7371bbdb829ef77)
+
+### Documentation
+
+- Document changelog and auto-update (80ee178932a7d2b1b75dd516e9b95aee035c05b5)
+
+### Features
+
+- Generate CHANGELOG.md with git-cliff (6f9a2b9500535a70f08b2bd47949d9e560122013)
+- Group release notes by commit type (0421ed853b79759ba6e215a95288c9f5a72ef9c3)
+- Add changelog command (5745dc7ca46872076d3f9369d85fb3743db856e5)
+- Show changelog in update notification (27e7453ab27998c0ffd643cb8821c0a56c998989)
+- Add auto-update option (db2055a4c3e50a11099a5a32c881c5241014bfc9)
+- Auto install updates in background (359480d77c065f783761ee86e988eaee58c1ec31)
+- Shape nightly changelog like stable release groups (ae39b4731f381d2e5f192b805e49a57f463f38e7)
+- Render release notes with glamour (8b2dba99fa0022016d7d731ef617fb2aaa1868f8)
+- Compact rendering and per-version lookup (445553b15180dff0af5113e8a89be55442f54d64)
 
 ## [v0.5.2](https://github.com/versenilvis/iris/releases/tag/v0.5.2) - 2026-08-06
 
 ### Bug fixes
 
-- Start iris in multiplexer panes instead of inheriting a dead one (#120) (fc1634b)
+- Start iris in multiplexer panes instead of inheriting a dead one (#120) (fc1634b00799b2c88ef8f02710da1e5e39787e7d)
 
 ## [v0.5.1](https://github.com/versenilvis/iris/releases/tag/v0.5.1) - 2026-08-06
 
 ### Bug fixes
 
-- Mode doesn't work correctly (#128) (7a97ea9)
+- Mode doesn't work correctly (#128) (7a97ea9016a40693f89115be089b4b8e6ad58c2d)
 
 ### Documentation
 
-- Remove ⌘ (ce40433)
+- Remove ⌘ (ce404335ed8114c64a2d7068dcd1ea2437a751d2)
 
 ## [v0.5.0](https://github.com/versenilvis/iris/releases/tag/v0.5.0) - 2026-08-06
 
 ### Bug fixes
 
-- Update stale vendorHash after lipgloss v2 upgrade (#99) (476ca39)
-- Support kitty keyboard protocol for ctrl keybindings (#101) (d669e97)
-- Isolate __complete probe from the controlling terminal (#111) (0b77c93)
-- Make Right Arrow configurable and correct overlay positioning (#110) (dfaa051)
-- Handle non-ascii characters command (#118) (75aa1fb)
-- Update nightly releases (#125) (0595ddd)
+- Update stale vendorHash after lipgloss v2 upgrade (#99) (476ca3946b5e129471663a9269d1481b22fd4963)
+- Support kitty keyboard protocol for ctrl keybindings (#101) (d669e97423a7ca9326d17b1289d06ba90942bd77)
+- Isolate __complete probe from the controlling terminal (#111) (0b77c9334b218eb1d7249983ceae424904ebe071)
+- Make Right Arrow configurable and correct overlay positioning (#110) (dfaa051f31671eaf45b0bd0bc5a2694df00e3db0)
+- Handle non-ascii characters command (#118) (75aa1fbe383c05e33ca10c13798225af2c23cdf3)
+- Update nightly releases (#125) (0595ddd4b903639464b6248be60de3c76ed77738)
 
 ### Documentation
 
-- Add navigate-right config (b79d25a)
-- Theme config and list of theme templates (#116) (b5734b4)
-- Add themes directory reference (3a97efa)
-- AI guide (#117) (30619a8)
-- Add auto-start setup instructions (53f1045)
-- Small note in shell config and fix line space (994ff83)
+- Add navigate-right config (b79d25a0827805a5eaed12ca56b022e5e9e97969)
+- Theme config and list of theme templates (#116) (b5734b4e85dfb3cf6654300b42663adbb6ace231)
+- Add themes directory reference (3a97efad183a59d46dbd3f7b7aa2f64a4e2eb118)
+- AI guide (#117) (30619a862182371d3654989cc4d273eba381f0f5)
+- Add auto-start setup instructions (53f104577f5b7f5a0c398b061b03e77f74c0f71a)
+- Small note in shell config and fix line space (994ff836752bf4c5246a3aec236dd597421dccf0)
 
 ### Features
 
-- Adopt x/ansi instead of hand rolling escape sequences (#96) (df42c95)
-- Support tool aliases (#107) (6faa2e3)
-- Add theme customization (#81) (b14b26e)
+- Adopt x/ansi instead of hand rolling escape sequences (#96) (df42c95fa935d647fe27fad4414630e606951187)
+- Support tool aliases (#107) (6faa2e3274b71c9056f3b8d8445f2d3fc7e609ff)
+- Add theme customization (#81) (b14b26e663fe0c5b6144d46370c2ea6bb2d956e4)
 
 ### Refactors
 
-- Use XDG config for all platforms (#119) (d299d1c)
+- Use XDG config for all platforms (#119) (d299d1c7c7c66394c6a260451410f87b6559ac9c)
 
 ## [v0.4.21](https://github.com/versenilvis/iris/releases/tag/v0.4.21) - 2026-07-31
 
 ### Documentation
 
-- Reorder badge and description (23bd718)
+- Reorder badge and description (23bd7188990253500bfd142bc8213c886d7be78a)
 
 ### Features
 
-- Support for XDG base directories (#95) (bf75dc2)
-- Upgrade to lipgloss v2 (#94) (efc49ba)
+- Support for XDG base directories (#95) (bf75dc239bd2432c10c3e36bc313b5407c23807f)
+- Upgrade to lipgloss v2 (#94) (efc49bacfe7249880e3d2d2410abc43df51f5c18)
 
 ## [v0.4.20](https://github.com/versenilvis/iris/releases/tag/v0.4.20) - 2026-07-31
 
 ### Bug fixes
 
-- Dynamic select key ui component (#90) (8a1cec3)
+- Dynamic select key ui component (#90) (8a1cec331aff82cb7c9463be77240c1775eeb8df)
 
 ## [v0.4.19](https://github.com/versenilvis/iris/releases/tag/v0.4.19) - 2026-07-31
 
 ### Bug fixes
 
-- Resolve enter key submission and keybinding issues (#89) (235a7f9)
+- Resolve enter key submission and keybinding issues (#89) (235a7f98ea2cac3f9c546955dc0b70097c9e442f)
 
 ## [v0.4.15](https://github.com/versenilvis/iris/releases/tag/v0.4.15) - 2026-07-31
 
 ### Bug fixes
 
-- Respect zdotdir config (#83) (e9e50c7)
+- Respect zdotdir config (#83) (e9e50c7dea0186efe45e86a194fa8327e9c8d441)
 
 ## [v0.4.14](https://github.com/versenilvis/iris/releases/tag/v0.4.14) - 2026-07-31
 
 ### Bug fixes
 
-- Sync config_cmd.go template with init.go template (9663788)
+- Sync config_cmd.go template with init.go template (9663788de65b06767ab21a9f5ac1c41386364c55)
 
 ## [v0.4.13](https://github.com/versenilvis/iris/releases/tag/v0.4.13) - 2026-07-31
 
 ### Documentation
 
-- Warning about potential conflicts (4421d6e)
+- Warning about potential conflicts (4421d6e6a53cc3ed43a2688abac16f9d46535772)
 
 ### Features
 
-- Ui width, auto exec, selection and navigation configs (#80) (a885c74)
+- Ui width, auto exec, selection and navigation configs (#80) (a885c7462abaacb44607df11bbf6fa3b37c4ccd3)
 
 ## [v0.4.12](https://github.com/versenilvis/iris/releases/tag/v0.4.12) - 2026-07-31
 
 ### Bug fixes
 
-- Arrow up history entries (#77) (cee756e)
-- Sync shell working directory for suggestions (#78) (9f43fcb)
+- Arrow up history entries (#77) (cee756e2c110f98681f3e9f4283e44bf1963999b)
+- Sync shell working directory for suggestions (#78) (9f43fcb3527d5a72c108d53ccc381cb5fd7943f9)
 
 ## [v0.4.11](https://github.com/versenilvis/iris/releases/tag/v0.4.11) - 2026-07-30
 
 ### Features
 
-- Add shell login option (#75) (2573ad7)
+- Add shell login option (#75) (2573ad73b4dd55932248f54558ff0e31d6fb349e)
 
 ## [v0.4.10](https://github.com/versenilvis/iris/releases/tag/v0.4.10) - 2026-07-30
 
 ### Bug fixes
 
-- Substring fuzzy search (#74) (37182f7)
+- Substring fuzzy search (#74) (37182f72127b6ebf134edaae22c7d87b0a491b4c)
 
 ### Documentation
 
-- Move user guide to top level readme (#70) (0049256)
+- Move user guide to top level readme (#70) (004925684443b7f250a8174a0286a99b638590b7)
 
 ## [v0.4.9](https://github.com/versenilvis/iris/releases/tag/v0.4.9) - 2026-07-30
 
 ### Bug fixes
 
-- Show symbolic links in suggestion (#69) (979bd6f)
+- Show symbolic links in suggestion (#69) (979bd6f5d608b9b5f34efc682a940190fd9a99ce)
 
 ## [v0.4.8](https://github.com/versenilvis/iris/releases/tag/v0.4.8) - 2026-07-29
 
 ### Bug fixes
 
-- Iris stops working after exec a command in bash (#66) (812d73b)
+- Iris stops working after exec a command in bash (#66) (812d73b42a27f920ed08a1bbc1c2fd83c13c3a74)
 
 ## [v0.4.7](https://github.com/versenilvis/iris/releases/tag/v0.4.7) - 2026-07-29
 
 ### Bug fixes
 
-- Stdin handling and exit command (#58) (d73921e)
+- Stdin handling and exit command (#58) (d73921e4199330e8996056f639d68fd9c3c62781)
 
 ## [v0.4.6](https://github.com/versenilvis/iris/releases/tag/v0.4.6) - 2026-07-29
 
 ### Features
 
-- Add some more config options (#64) (d6cfb9c)
+- Add some more config options (#64) (d6cfb9c90981db34a188744d95f4352261f33332)
 
 ## [v0.4.5](https://github.com/versenilvis/iris/releases/tag/v0.4.5) - 2026-07-28
 
 ### Features
 
-- Add Nix flake for NixOS support (#52) (69fb779)
+- Add Nix flake for NixOS support (#52) (69fb77910deab604ae16d1f4752ccb0972c70a8f)
 
 ## [v0.4.4](https://github.com/versenilvis/iris/releases/tag/v0.4.4) - 2026-07-28
 
 ### Bug fixes
 
-- ZDOTDIR and XDG_CONFIG_HOME config detecting (#51) (ebb0bea)
+- ZDOTDIR and XDG_CONFIG_HOME config detecting (#51) (ebb0bead7dce702c3e111ed7c1ed4e5f86ee6eb9)
 
 ## [v0.4.3](https://github.com/versenilvis/iris/releases/tag/v0.4.3) - 2026-07-28
 
 ### Bug fixes
 
-- Set hex color for ghost text instead of hardcoded ANSI bright-black (#49) (6f488c0)
+- Set hex color for ghost text instead of hardcoded ANSI bright-black (#49) (6f488c02cd79219eb33c16c72fa8f90a0dd2315e)
 
 ## [v0.4.2](https://github.com/versenilvis/iris/releases/tag/v0.4.2) - 2026-07-28
 
 ### Bug fixes
 
-- Ranking (#46) (93061c8)
+- Ranking (#46) (93061c89cab1c0191d429af9f822c72afadef017)
 
 ## [v0.4.0](https://github.com/versenilvis/iris/releases/tag/v0.4.0) - 2026-07-27
 
 ### Bug fixes
 
-- Fuzzy search not working (#44) (84f2c8f)
+- Fuzzy search not working (#44) (84f2c8f49a82a197a36eae3fdaa3ee1af4ec05c5)
 
 ### Documentation
 
-- Update docs (#43) (078e5e8)
+- Update docs (#43) (078e5e817c276b65fafda158007210b6d77b0ab2)
 
 ### Features
 
-- Transition workflow learning and fix history UX (#39) (6ffb9f8)
-- Better suggestion with cobra's cli __complete subcmd (#40) (c4e9bcd)
-- Better file path suggestions (#41) (27e0792)
+- Transition workflow learning and fix history UX (#39) (6ffb9f83f21ee71d40ad77c9feb1cd494584e316)
+- Better suggestion with cobra's cli __complete subcmd (#40) (c4e9bcdd88cdb3db818549e2974e58a46ab543f2)
+- Better file path suggestions (#41) (27e0792560cb2217f6c88485c78fb5c54399bbcb)
 
 ### Refactors
 
-- Split justfile into small files (#42) (1540b96)
+- Split justfile into small files (#42) (1540b9655af472345a7c8ef2e5b109c23758fe37)
 
 ## [v0.3.3](https://github.com/versenilvis/iris/releases/tag/v0.3.3) - 2026-07-14
 
 ### Bug fixes
 
-- Skip alias expansion on paste (#38) (85ac76e)
+- Skip alias expansion on paste (#38) (85ac76e85a276890b8924ab73d733d22431aab04)
 
 ### Features
 
-- Scoring and frecency (#37) (860b475)
+- Scoring and frecency (#37) (860b475b53e285cb2f80b16a4bb27b4cb4cfcc92)
 
 ## [v0.3.1](https://github.com/versenilvis/iris/releases/tag/v0.3.1) - 2026-07-13
 
 ### Bug fixes
 
-- Enhance prompt (#36) (f54e97a)
+- Enhance prompt (#36) (f54e97a6c0f3e8003f00f43ae3b07d647f90a942)
 
 ### Refactors
 
-- Better project structure (#35) (1e04949)
+- Better project structure (#35) (1e049492421aa2b10cfcc584ac585d800d1883eb)
 
 ## [v0.3.0](https://github.com/versenilvis/iris/releases/tag/v0.3.0) - 2026-07-11
 
 ### Documentation
 
-- Add showcase for kitty terminal (#33) (4728ca0)
+- Add showcase for kitty terminal (#33) (4728ca0c7f8202094e5956655550e64355063b03)
 
 ### Features
 
-- AI suggestion (#34) (94c8af7)
+- AI suggestion (#34) (94c8af7b1d4408caddf1c6ed323defdc1867d037)
 
 ### Refactors
 
-- Separate commands and its core into two folders (#32) (ebde9ba)
+- Separate commands and its core into two folders (#32) (ebde9ba68f72194ba0358aef2bca3ce8690617d0)
 
 ## [v0.2.8](https://github.com/versenilvis/iris/releases/tag/v0.2.8) - 2026-07-04
 
 ### Bug fixes
 
-- Cannot update in dev mode (#31) (6b98455)
+- Cannot update in dev mode (#31) (6b98455957303045071073738ac7a000feefa97c)
 
 ## [v0.2.7](https://github.com/versenilvis/iris/releases/tag/v0.2.7) - 2026-07-04
 
 ### Documentation
 
-- Update to latest config and commands (#28) (34f49ed)
+- Update to latest config and commands (#28) (34f49ed690aae3e232ac95f5a5c8f5dbf8614fce)
 
 ### Features
 
-- More commands (#30) (2ef3c90)
+- More commands (#30) (2ef3c9081904885111d1880fb41df50c6d784fd7)
 
 ## [v0.2.6](https://github.com/versenilvis/iris/releases/tag/v0.2.6) - 2026-07-03
 
 ### Bug fixes
 
-- Remove old binary before cp to avoid Text file busy error (#27) (ffb2b99)
+- Remove old binary before cp to avoid Text file busy error (#27) (ffb2b991a08d1a9a39b522d3db6f07577ea7a183)
 
 ## [v0.2.5](https://github.com/versenilvis/iris/releases/tag/v0.2.5) - 2026-07-03
 
 ### Bug fixes
 
-- Actually execute install script when updating (#26) (37b0651)
+- Actually execute install script when updating (#26) (37b0651651459c62d0677fbb22026e446084d2d2)
 
 ## [v0.2.4](https://github.com/versenilvis/iris/releases/tag/v0.2.4) - 2026-07-03
 
 ### Features
 
-- Allow passing specific shell to setup command (#25) (ee1ef2d)
+- Allow passing specific shell to setup command (#25) (ee1ef2dd733607f74125c28e8385e562f90ca38c)
 
 ## [v0.2.3](https://github.com/versenilvis/iris/releases/tag/v0.2.3) - 2026-07-03
 
 ### Bug fixes
 
-- Allow left/right movement after up arrow history recall (#24) (4ca7449)
+- Allow left/right movement after up arrow history recall (#24) (4ca744983c3c1e2234debf68add1fa755ec543e4)
 
 ## [v0.2.2](https://github.com/versenilvis/iris/releases/tag/v0.2.2) - 2026-07-03
 
 ### Bug fixes
 
-- Installer (#22) (df968e8)
+- Installer (#22) (df968e8d7f1f93cf9091425096df443b4eb1fcd8)
 
 ### Features
 
-- Iris uninstall command (#21) (2223f17)
+- Iris uninstall command (#21) (2223f1736be05c16df31ae15ce7805261b6bec49)
 
 ## [v0.2.0](https://github.com/versenilvis/iris/releases/tag/v0.2.0) - 2026-07-03
 
 ### Bug fixes
 
-- Better suggestion and overlay movement on key presses (#12) (aca3d16)
-- Menu deboucing (#14) (c7960aa)
-- Data race and overlay bugs (#20) (ca9d30a)
+- Better suggestion and overlay movement on key presses (#12) (aca3d1670cc7792765d3175c51da57d9b3634281)
+- Menu deboucing (#14) (c7960aac46f6b7b4b985f4c01cf3282dcb37fb4c)
+- Data race and overlay bugs (#20) (ca9d30af9c0f9361cb5515d46afa36fdd12140d4)
 
 ### Documentation
 
-- Update guidelines for new user and developer (#16) (b9cec2b)
-- Introducing to iris (#11) (24fddac)
+- Update guidelines for new user and developer (#16) (b9cec2b3ac0e2baa62add488948b987138bc0763)
+- Introducing to iris (#11) (24fddaccfef8302a7850434f3ddebe5a0d2d8015)
 
 ### Features
 
-- Better debugger (#13) (f37f068)
+- Better debugger (#13) (f37f0681ce2e22054fc636f37acc79d8347c6a1f)
 
 ### Performance
 
-- Prevent memory leak, data race and speed up ComputeCursorCol processing (#15) (8f89c15)
+- Prevent memory leak, data race and speed up ComputeCursorCol processing (#15) (8f89c15e725e8487ded62912ef264ca7a220a76c)
 
 ## [v0.1.0](https://github.com/versenilvis/iris/releases/tag/v0.1.0) - 2026-05-30
 
 ### Bug fixes
 
-- Hide history when delete whole line (afa3c28)
-- Continue to suggest command after tab (61f05a4)
-- Handle quote when tokenize (e465d90)
-- Handle value attached flags (1109034)
-- Add token injection to resolve shell aliases (503d38e)
-- Remove sync.Once so we can always up-to-date with shell config (8b25bda)
-- Prioritize aliases (2b760fb)
-- Iris now reloads via signal handoff (bed9c98)
-- Return last shell insteadd of default shell on reload (ccbf592)
-- Print reloading (8dff686)
-- Eliminate child shell leakage and terminal corruption on reload (11225df)
-- Ctrl R open reverse search instead of switching to history (f306566)
-- Iris keep suggesting when press tab continually (fc21a6b)
-- Up/down arrow hide menu (c798673)
-- Extra left border (38118a9)
-- Should show in priority (8032448)
-- Prioritize exact matching then order (a5c27bd)
-- Now with same fuzzy tier, which command has higher score will be in higher order (b045aaf)
-- Key reading loop conflict (27c7b97)
-- Wrong suggestion on chmod command (d2909d9)
-- Text file busy bug on setup (44ff34f)
-- Cd and zoxide only shows dir (9720b5f)
-- Support folder contains space (3c5a058)
-- Fix all problems related to test (e587f02)
-- All issues by golangci-lint (c765412)
-- Fuzzy search shows commands that no one need (88d6ee4)
-- Typo (07b7d19)
-- Err check rules and fix config (56e04be)
-- Add user email and name to support ci/cd (ae067fa)
-- Git doesnt show branch suggesstion properly (0ec946f)
-- Git (9b206fe)
-- Issue #4 and #5 (#6) (d06526c)
-- Correct nightly tag, fix tmux startup, full-word suggestions only, and keep current dir on reload (#8) (8556fa6)
+- Hide history when delete whole line (afa3c28a8862f72cb489fe4781a0b75a8164a3d7)
+- Continue to suggest command after tab (61f05a4c82b1c3a40af0d1c870a7ed13998dd98a)
+- Handle quote when tokenize (e465d900a81ad6c847cfc4b9e408f13c2117ad56)
+- Handle value attached flags (1109034c8729234424d47bd94e7cc01dcec15ce3)
+- Add token injection to resolve shell aliases (503d38e5c497ad8e15a06560c072d371555a849c)
+- Remove sync.Once so we can always up-to-date with shell config (8b25bdac0fc321f4b4d9bb53c4f36fdc9ab2bb80)
+- Prioritize aliases (2b760fb82ae6c0e64a0c79963c30499a538ba295)
+- Iris now reloads via signal handoff (bed9c98747f5ed1395c7b255faf8cebfa6575c67)
+- Return last shell insteadd of default shell on reload (ccbf59201aa3953aa5c771ee43918a46bbe10328)
+- Print reloading (8dff68601e5e2fa630d407074ef8c092547b0c15)
+- Eliminate child shell leakage and terminal corruption on reload (11225df6c839b5c287bf31dd5f7cc38085ea2251)
+- Ctrl R open reverse search instead of switching to history (f306566602d2eae39428864b8e8b14934d32e708)
+- Iris keep suggesting when press tab continually (fc21a6b0cc4ea13887a7809b36b72a190e715481)
+- Up/down arrow hide menu (c798673069e1b37f8ffdb12d0fe9742c57bd2285)
+- Extra left border (38118a9a4789329be922ac57d457e2c0b12a1b94)
+- Should show in priority (8032448cb6f30fd6d4a412a308abbbc08e32a1b4)
+- Prioritize exact matching then order (a5c27bdb942e3c3dd2fc2e934c20e379c5ee155e)
+- Now with same fuzzy tier, which command has higher score will be in higher order (b045aaf6af71ed9cc7332849f8147972762bd6b7)
+- Key reading loop conflict (27c7b9732658745e7afdc201d930f5799e7f641a)
+- Wrong suggestion on chmod command (d2909d93aaeee6667d2d0c042126b05fd7eb7dee)
+- Text file busy bug on setup (44ff34f3789d0c4f5f61671365a701960872d0c8)
+- Cd and zoxide only shows dir (9720b5f4bcf2dd888973b91c3984187c5015ec20)
+- Support folder contains space (3c5a0580d1e6709dbc054fd4373a2f7a654e7ea0)
+- Fix all problems related to test (e587f027982701d390fc1bc75702c93e0d66ee7c)
+- All issues by golangci-lint (c76541258acc79abce4a3685590e3e35dbdb0ed7)
+- Fuzzy search shows commands that no one need (88d6ee4e57d324076ae6b41aacc49241ad980ca5)
+- Typo (07b7d19347bfe3fe7188e331bfc6b10af937ad58)
+- Err check rules and fix config (56e04be4098b22662a7ad96b3a10cbe4cf8752e0)
+- Add user email and name to support ci/cd (ae067fa2004790f677f8350b744b3ff34f365ff1)
+- Git doesnt show branch suggesstion properly (0ec946f408f4416aca1c520f8c326326a565a10d)
+- Git (9b206fe701ab024a14903c9ff1315bb055991676)
+- Issue #4 and #5 (#6) (d06526cf21d59336d2d2f7fee5d492b1ead2f73c)
+- Correct nightly tag, fix tmux startup, full-word suggestions only, and keep current dir on reload (#8) (8556fa626aecd555e1a87f0bd39621fe517cebd5)
 
 ### Documentation
 
-- LICENSE (2eac0cd)
-- Add hot reload and shell aliases (97d009f)
-- Updater (72dd694)
+- LICENSE (2eac0cd38e21cde76cd45a5d9d450805e759e140)
+- Add hot reload and shell aliases (97d009f7ef6c0b9e020f69be155440fa7fa0a5ef)
+- Updater (72dd6940e422932caa4977f61778f38917511ed6)
 
 ### Features
 
-- Entry point (c384c57)
-- Build and run (f69e390)
-- Ipc server (55bd6e1)
-- Threat-safe terminal writer (551a096)
-- Iris command (1fb279e)
-- History search (515d6f2)
-- Drop down menu tui (25ff2bc)
-- Spec (d384694)
-- Some common commands (aab3c6b)
-- Add partial (e559c96)
-- File generator for file suggestion (76458ce)
-- Refactor and add more commands (f4816d2)
-- Tracking CWD and simply return file desc (7b37b8a)
-- Change priority (b018446)
-- Optimize build command (4cc7853)
-- Dynamic git command completion (f64c802)
-- System PATH scannee (525eac1)
-- Support aliases (1f483c5)
-- Scan shell aliases like .zshrc, .bashrc, ... (4c70c24)
-- Rebuild and update pkg (02fdd99)
-- In-place reloading on current TTY (78e1919)
-- Shift tab to toggle menu (7a9c28e)
-- Stop showing suggestion when delete entire line (887b5af)
-- Now pressing space  show alias as full command (7c11a3a)
-- Continue last mode (c7106f9)
-- Add bash and fish (00826a5)
-- Ghost text (edab802)
-- Disable ghost text when using arrow keys (ff8874f)
-- Run with terminal (5c8ac9e)
-- Add more options and limit file extension (667cf9f)
-- Scan 1 level deeper in folder (66b2b22)
-- : install script (ef26602)
-- Setup (b6e5096)
-- Detect another command is running to stop iris (cea2a7b)
-- Show preview command when using arrow keys (23e5b13)
-- Up/down arrow key now can choose last commands (3c8eca3)
-- Zoxide (5d81871)
-- Copy to local bin (be3c081)
-- All tests (17f33ff)
-- More commands, tests, add Registry conflict between tests (d74c959)
-- Version (e6f4bdd)
-- Updater (1e923a1)
-- Update test (f9eb190)
-- Uninstaller (eaa7344)
-- Updates and versioning (#1) (9fd54c8)
-- Issue template and release ci/cd (b5c0e5e)
-- Issue template and ci/cd (#2) (8f4d8b7)
-- Nightly built (9c1c774)
-- Crash log (#7) (bf67e50)
-- Toml config support (#9) (3d76a3e)
+- Entry point (c384c57cb9ee749cf594505c5ec7c499cc062b47)
+- Build and run (f69e390e3b55c87dea82a716045081a4e62faf63)
+- Ipc server (55bd6e1b481df0a4d773b0165543e54020f72a96)
+- Threat-safe terminal writer (551a096d2d0b23ee3e019695778702b3d8ee04d8)
+- Iris command (1fb279e588f790e3402a8b8734eda72d6dfa71f2)
+- History search (515d6f2a0a772708227936490aa77878fcb2f601)
+- Drop down menu tui (25ff2bcb2c4cf60da3a884cc48c30ed2c82ffd0f)
+- Spec (d384694ab341fcc384fd323bcf89ee5788088627)
+- Some common commands (aab3c6be2ed85e897149bf1a273761f5e4248b5d)
+- Add partial (e559c960d9b5589b2609045f23eac7be4cc4c531)
+- File generator for file suggestion (76458ce52ef27f090d204d1885a274fc7119cc50)
+- Refactor and add more commands (f4816d2b5f0fc371a413f61ebb13f321e610e8d7)
+- Tracking CWD and simply return file desc (7b37b8ae2823a4bad1660cba8486fce7a70e9534)
+- Change priority (b01844639bfc02dc7a727df3aae93a08648a2b6b)
+- Optimize build command (4cc7853256480dbe1a2c0cbe1c9d2abf2b1acbb5)
+- Dynamic git command completion (f64c8022b264e78ac3248e52b8b3d6386868c100)
+- System PATH scannee (525eac1bfa6e1c20246c6cc6d200be70e75790f1)
+- Support aliases (1f483c5ab291bea8cdc35eec2a13ec9da21b6096)
+- Scan shell aliases like .zshrc, .bashrc, ... (4c70c242990acc4d1311712dfd7d189994a1b8ab)
+- Rebuild and update pkg (02fdd99e400b09b8c39dd1a86f7b2140cf056a48)
+- In-place reloading on current TTY (78e19199b0478efa1de09d549ef044c8f5d0b491)
+- Shift tab to toggle menu (7a9c28e6f68f3914d69649de6fd87e519ec5fa67)
+- Stop showing suggestion when delete entire line (887b5af9580b29fa10bdf86fb478e9622d0aec79)
+- Now pressing space  show alias as full command (7c11a3a620e2e6b0fd704b2a094399e4f98a0fe2)
+- Continue last mode (c7106f9fc2a849f8262d36bcc73e92dd3791868a)
+- Add bash and fish (00826a5c075020a000948546cb9800489e7b182e)
+- Ghost text (edab80202690c088faaa7af0ba9e535a73b66260)
+- Disable ghost text when using arrow keys (ff8874fefcbdcc5ec036e7e5381efbe8bff96753)
+- Run with terminal (5c8ac9e4a65434f11004d430fcc694001dbb7d8c)
+- Add more options and limit file extension (667cf9feae0b22690f5c911b5d36bd6f6f8076f6)
+- Scan 1 level deeper in folder (66b2b22d94a4f60618bbd31b905bf1242a900341)
+- : install script (ef26602ded90ba3fdd64f6f74addcd9dc7773814)
+- Setup (b6e5096092a8de4ec92ec35070999cf4e3998432)
+- Detect another command is running to stop iris (cea2a7bee72ec9dc5c689eb76d1dbdf89a59dca7)
+- Show preview command when using arrow keys (23e5b13f6d11b436dcac52126f023b4362eb1f64)
+- Up/down arrow key now can choose last commands (3c8eca3a62315b9594fde752125dfc88a1a5f504)
+- Zoxide (5d81871aef68ad6b1e88b76832066579bb094e8f)
+- Copy to local bin (be3c08171bdbf7b312551efa5413a9c43bc33c69)
+- All tests (17f33ff480ff8f443107d682322d72f4b51cceb0)
+- More commands, tests, add Registry conflict between tests (d74c959be4ebc8ac535686ab18eadb3f0d648af5)
+- Version (e6f4bdd36d6024b2286985def87df30888244222)
+- Updater (1e923a13d9816ce0414dbbd05d0fc219e40027e2)
+- Update test (f9eb1900464cb0190a0120acacde2846b1726e4a)
+- Uninstaller (eaa7344a24a0a2b5feaad1daba379a3611152557)
+- Updates and versioning (#1) (9fd54c8c3dfa6e87750b1365615ccabef3c53a44)
+- Issue template and release ci/cd (b5c0e5ec3d99ec4d754c6722cbe15d49f7a11fed)
+- Issue template and ci/cd (#2) (8f4d8b7db7c32ac919f3f1121af251f3bbcff887)
+- Nightly built (9c1c7749b08983db182cee0f0d4ffaf485a6ed6d)
+- Crash log (#7) (bf67e50ea612b1a1e146e4dfc67de843877374e2)
+- Toml config support (#9) (3d76a3ee8816ac8fa2c5026551ff93d77bbd4762)
 
 ### Performance
 
-- Using string.Builder instead of concatenation (81b80d0)
-- Finding the first space and using a case-insensitive comparison (caf4aa3)
+- Using string.Builder instead of concatenation (81b80d079ce20956ee99e0343fc90c0d4d8b9295)
+- Finding the first space and using a case-insensitive comparison (caf4aa344e3f9ae1c0691cde3c91e89fa23d4629)
 
 ### Refactors
 
-- Improve reading aliases in shell config (71a75ce)
-- Shell adaptor (736723f)
-- Seperate into small files (db8b6ec)
-- Seperate into small files (3adc045)
+- Improve reading aliases in shell config (71a75ced2857f9ded98185ca2f110555f3c2146b)
+- Shell adaptor (736723fbe8a6d520ec70ecd939e3a91bf013f624)
+- Seperate into small files (db8b6ec91bf741519ce3a056ab2d93d8dafcd1d6)
+- Seperate into small files (3adc045c09575996ce966e8b83b4932a761bd64e)
+
+
