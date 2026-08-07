@@ -58,6 +58,198 @@ debug-changelog version="v1.99.0":
 debug-notify version="v1.99.0":
     IRIS_PID="" IRIS_MOCK_LATEST_VERSION="{{version}}" ./iris
 
+# test the background auto-updater's escalation ladder (silent install,
+# then repeated failures escalating to a confirm-worthy state, then giving
+# up rather than looping forever). fully offline: mocks the release API,
+# the install script fetch, and the release asset, and never touches the
+# real ~/.config, ~/.local/share, or install location.
+#
+# the confirm-prompt UI itself is interactive (needs a real terminal with
+# iris shell hooks active) and isn't exercised here - this recipe verifies
+# the state machine driving it instead, by inspecting state.toml directly.
+# usage: just debug-autoupdate
+[group('debug')]
+debug-autoupdate:
+    #!/bin/sh
+    PORT=19996
+    TMP=$(mktemp -d)
+    PASS=0
+    FAIL=0
+    trap "kill \$SERVER_PID 2>/dev/null; pkill -f \"$TMP/iris\" 2>/dev/null; rm -rf $TMP" EXIT
+
+    ok()   { PASS=$((PASS+1)); printf "  \033[32m✓\033[0m %s\n" "$1"; }
+    fail() { FAIL=$((FAIL+1)); printf "  \033[31m✗\033[0m %s\n" "$1"; }
+
+    OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+    MACH=$(uname -m)
+    case "$MACH" in
+        x86_64|amd64)  ARCH="amd64" ;;
+        aarch64|arm64) ARCH="arm64" ;;
+        *) echo "unsupported arch: $MACH"; exit 1 ;;
+    esac
+    ARCHIVE_NAME="iris_${OS}_${ARCH}.tar.gz"
+
+    echo "building old binary (v0.0.1)..."
+    go build -ldflags="-X github.com/versenilvis/iris/root.Version=v0.0.1" -o "$TMP/iris" ./cmd/iris
+
+    echo "building new binary (v1.99.0) + archive..."
+    mkdir -p "$TMP/new"
+    go build -ldflags="-X github.com/versenilvis/iris/root.Version=v1.99.0" -o "$TMP/new/iris" ./cmd/iris
+    tar -czf "$TMP/$ARCHIVE_NAME" -C "$TMP/new" iris
+
+    cp scripts/install.sh "$TMP/install.sh"
+    printf '#!/bin/sh\nexit 1\n' > "$TMP/install-fail.sh"
+
+    # --- mock server: release JSON for IRIS_UPDATE_URL, the install
+    # script itself for IRIS_INSTALL_URL, install.sh's own GitHub API
+    # lookup for IRIS_API_URL, and the tarball it downloads ---
+    python3 -c 'import sys, textwrap; exec(textwrap.dedent(r"""
+    import os, sys
+    from http.server import HTTPServer, BaseHTTPRequestHandler
+
+    port = int(sys.argv[1])
+    tmp_dir = sys.argv[2]
+    archive_name = sys.argv[3]
+
+    class mock_handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == "/update-response.json":
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                body = "## Changelog\\n### Bug fixes\\n* abc1234  a test fix\\n"
+                resp = "{\"tag_name\":\"v1.99.0\",\"published_at\":\"2026-01-01T00:00:00Z\",\"body\":\"" + body + "\",\"prerelease\":false}"
+                self.wfile.write(resp.encode("utf-8"))
+            elif self.path in ("/install.sh", "/install-fail.sh"):
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain")
+                self.end_headers()
+                with open(os.path.join(tmp_dir, self.path.lstrip("/")), "rb") as f:
+                    self.wfile.write(f.read())
+            elif "/repos/versenilvis/iris/releases/latest" in self.path:
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                download_url = "http://localhost:" + str(port) + "/" + archive_name
+                self.wfile.write(("{\"tag_name\":\"v1.99.0\",\"assets\":[{\"browser_download_url\":\"" + download_url + "\"}]}").encode("utf-8"))
+            elif self.path == "/" + archive_name:
+                filepath = os.path.join(tmp_dir, archive_name)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/octet-stream")
+                self.end_headers()
+                with open(filepath, "rb") as f:
+                    self.wfile.write(f.read())
+            else:
+                self.send_response(404)
+                self.end_headers()
+
+        def log_message(self, *args):
+            pass
+
+    HTTPServer(("", port), mock_handler).serve_forever()
+    """))' "$PORT" "$TMP" "$ARCHIVE_NAME" 2>/dev/null &
+    SERVER_PID=$!
+
+    i=0
+    until curl -sf "http://localhost:${PORT}/update-response.json" >/dev/null 2>&1; do
+        i=$((i+1))
+        [ $i -ge 30 ] && echo "mock server failed to start" && exit 1
+        sleep 0.1
+    done
+
+    mkdir -p "$TMP/cfg/iris"
+    cat > "$TMP/cfg/iris/config.toml" << 'CFGEOF'
+    [updater]
+    check-on-startup = true
+    channel = "stable"
+    check-interval = "0s"
+    auto-update = 1
+    CFGEOF
+
+    # each call is a fresh process = a fresh check cycle, since
+    # check-interval is 0s. everything lives under $TMP - nothing touches
+    # the real ~/.config, ~/.local/share, or an install path.
+    run_check() {
+        HOME="$TMP/home" \
+        XDG_CONFIG_HOME="$TMP/cfg" \
+        XDG_DATA_HOME="$TMP/data" \
+        BIN_DIR="$TMP/installed" \
+        IRIS_UPDATE_URL="http://localhost:${PORT}/update-response.json" \
+        IRIS_INSTALL_URL="$1" \
+        "$TMP/iris" >"$TMP/out.log" 2>&1 &
+        RUN_PID=$!
+        sleep 1.5
+        kill $RUN_PID 2>/dev/null
+        wait $RUN_PID 2>/dev/null
+    }
+
+    state_field() {
+        # tolerate BurntSushi/toml's indentation of nested-table fields
+        grep -E "^[[:space:]]*$1" "$TMP/data/iris/state.toml" 2>/dev/null | head -1
+    }
+
+    echo ""
+    echo "--- running test cases ---"
+
+    # --- test 1: attempt 1 installs silently and succeeds ---
+    printf "test 1: silent auto-install (attempt 1)... "
+    run_check "http://localhost:${PORT}/install.sh"
+    if [ -x "$TMP/installed/iris" ] && "$TMP/installed/iris" version 2>&1 | grep -q "v1.99.0"; then
+        ok "binary auto-installed to v1.99.0"
+    else
+        fail "binary was not installed; see $TMP/out.log"
+    fi
+    if state_field "auto-update-attempt" | grep -q " 0$"; then
+        ok "attempt counter cleared after success"
+    else
+        fail "expected attempt counter 0 after success, got: $(state_field auto-update-attempt)"
+    fi
+
+    # --- tests 2-5: forced failures escalate, then give up instead of looping ---
+    rm -rf "$TMP/data" "$TMP/installed"
+
+    printf "test 2: attempt 1 (forced failure)... "
+    run_check "http://localhost:${PORT}/install-fail.sh"
+    if state_field "auto-update-attempt" | grep -q " 1$"; then
+        ok "attempt counter is 1"
+    else
+        fail "expected attempt counter 1, got: $(state_field auto-update-attempt)"
+    fi
+
+    printf "test 3: attempt 2 (forced failure again, escalates)... "
+    run_check "http://localhost:${PORT}/install-fail.sh"
+    if state_field "auto-update-attempt" | grep -q " 2$"; then
+        ok "attempt counter is 2 (would show a confirm prompt)"
+    else
+        fail "expected attempt counter 2, got: $(state_field auto-update-attempt)"
+    fi
+
+    printf "test 4: attempt 3 (gives up)... "
+    run_check "http://localhost:${PORT}/install-fail.sh"
+    if state_field "auto-update-attempt" | grep -q " 3$"; then
+        ok "attempt counter is 3 (gave up)"
+    else
+        fail "expected attempt counter 3, got: $(state_field auto-update-attempt)"
+    fi
+
+    printf "test 5: attempt 4+ (stays given up, no infinite retry)... "
+    run_check "http://localhost:${PORT}/install-fail.sh"
+    if state_field "auto-update-attempt" | grep -q " 3$"; then
+        ok "attempt counter stayed at 3"
+    else
+        fail "expected attempt counter to stay at 3, got: $(state_field auto-update-attempt)"
+    fi
+
+    echo ""
+    printf "results: \033[32m%d passed\033[0m, \033[31m%d failed\033[0m\n" "$PASS" "$FAIL"
+    echo ""
+    echo "note: the confirm-prompt UI (auto-update=2, or auto-update=1's 2nd"
+    echo "attempt) is interactive and needs a real terminal with iris shell"
+    echo "hooks active to see rendered - set auto-update in your real config"
+    echo "and watch a live session for that part."
+
+    [ $FAIL -eq 0 ] || exit 1
+
 # test the install script locally
 # usage: just debug-install v1.0.0
 [group('debug')]

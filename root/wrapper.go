@@ -555,7 +555,17 @@ func runWrapper() {
 					select {
 					case result, ok := <-pendingUpdate:
 						if ok && result.hasUpdate {
-							printUpdateNotice(result.latestVersion, result.notes)
+							switch result.kind {
+							case updateResultAutoInstalled:
+								printAutoUpdateInstalledNotice(result.latestVersion)
+							case updateResultConfirm:
+								printAutoUpdateConfirmPrompt(result.latestVersion, result.notes)
+								armAutoUpdateConfirm(result.latestVersion)
+							case updateResultGiveUp:
+								printAutoUpdateGiveUpNotice(result.latestVersion)
+							default:
+								printUpdateNotice(result.latestVersion, result.notes)
+							}
 							updatePrinted = true
 						}
 					default:
@@ -777,6 +787,12 @@ func runWrapper() {
 			for i := 0; i < n; i++ {
 				b := inputSlice[i]
 				intercepted = false
+
+				// while an auto-update confirm prompt is pending, every
+				// byte goes to it instead of normal key handling
+				if handleAutoUpdateConfirmKey(b) {
+					continue
+				}
 
 				if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.ToggleMenu); matched {
 					intercepted = true

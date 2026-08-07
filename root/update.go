@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -17,8 +16,18 @@ import (
 	"github.com/versenilvis/iris/internal/config"
 )
 
+type updateResultKind int
+
+const (
+	updateResultNotify updateResultKind = iota
+	updateResultAutoInstalled
+	updateResultConfirm
+	updateResultGiveUp
+)
+
 // updateResult is passed from the async checker to the main loop
 type updateResult struct {
+	kind          updateResultKind
 	latestVersion string
 	notes         string
 	hasUpdate     bool
@@ -209,18 +218,66 @@ func startBackgroundUpdateCheck() chan updateResult {
 		state.Updater.LastCheckTime = time.Now()
 
 		if IsNewer(Version, latest) {
-			// only notify if user hasn't already seen this specific version notification
-			if state.Updater.SeenVersion != latest {
-				ch <- updateResult{latestVersion: latest, notes: release.Body, hasUpdate: true}
+			mode := config.Get().Updater.AutoUpdate
+			switch decideAutoUpdateAction(mode, latest, state.Updater) {
+			case autoUpdateNotifyOnly:
+				// only notify if user hasn't already seen this specific version notification
+				if state.Updater.SeenVersion != latest {
+					ch <- updateResult{kind: updateResultNotify, latestVersion: latest, notes: release.Body, hasUpdate: true}
+				}
+				// save the latest as seen_version so future sessions don't re-notify
+				// unless a NEWER version comes out (different tag)
+				state.Updater.SeenVersion = latest
+				_ = config.SaveState(state)
+				return
+
+			case autoUpdateInstallSilently:
+				state.Updater.AutoUpdateTarget = latest
+				state.Updater.AutoUpdateAttempt = 1
+				// write before installing: a crash mid-install still counts
+				// as an attempt, so a wedged install escalates next time
+				// instead of silently retrying forever
+				_ = config.SaveState(state)
+				if _, installErr := performUpdate(latest, false); installErr == nil {
+					state.Updater.AutoUpdateTarget = ""
+					state.Updater.AutoUpdateAttempt = 0
+					state.Updater.SeenVersion = ""
+					_ = config.SaveState(state)
+					ch <- updateResult{kind: updateResultAutoInstalled, latestVersion: latest, notes: release.Body, hasUpdate: true}
+				}
+				// on failure: state already recorded attempt 1 for this
+				// target, so the next check escalates to a confirm prompt
+				return
+
+			case autoUpdateConfirm:
+				nextAttempt := 1
+				if state.Updater.AutoUpdateTarget == latest {
+					nextAttempt = state.Updater.AutoUpdateAttempt + 1
+				}
+				state.Updater.AutoUpdateTarget = latest
+				state.Updater.AutoUpdateAttempt = nextAttempt
+				_ = config.SaveState(state)
+				ch <- updateResult{kind: updateResultConfirm, latestVersion: latest, notes: release.Body, hasUpdate: true}
+				return
+
+			case autoUpdateGiveUp:
+				// only announce the exact transition into giving up, not
+				// every cycle after
+				announce := state.Updater.AutoUpdateAttempt == 2
+				state.Updater.AutoUpdateAttempt = 3
+				_ = config.SaveState(state)
+				if announce {
+					ch <- updateResult{kind: updateResultGiveUp, latestVersion: latest, hasUpdate: true}
+				}
+				return
 			}
-			// save the latest as seen_version so future sessions don't re-notify
-			// unless a NEWER version comes out (different tag)
-			state.Updater.SeenVersion = latest
-		} else {
-			// up to date: clear the seen_version flag so the next update triggers a fresh notification
-			state.Updater.SeenVersion = ""
 		}
 
+		// up to date, or nothing left to do: clear update-related state so
+		// the next detected version starts a fresh notify/attempt cycle
+		state.Updater.SeenVersion = ""
+		state.Updater.AutoUpdateTarget = ""
+		state.Updater.AutoUpdateAttempt = 0
 		_ = config.SaveState(state)
 	}()
 
@@ -300,23 +357,13 @@ var updateCmd = &cobra.Command{
 
 		fmt.Printf("\033[36m[IRIS] updating %s → %s\033[0m\n", Version, latest)
 
-		// download and replace the binary using the install script
-		installScript := "https://raw.githubusercontent.com/versenilvis/iris/main/scripts/install.sh"
-		command := "curl -sSL " + installScript + " | sh"
 		runningPrefix := ""
 		if config.Get().Updater.Channel == "nightly" {
 			runningPrefix = fmt.Sprintf("IRIS_RELEASE_TAG=%s ", latest)
 		}
-		fmt.Printf("running: %s%s\n\n", runningPrefix, command)
+		fmt.Printf("running: %scurl -sSL %s | sh\n\n", runningPrefix, resolveInstallScriptURL())
 
-		cmdRun := exec.Command("sh", "-c", command)
-		if config.Get().Updater.Channel == "nightly" {
-			cmdRun.Env = append(os.Environ(), "IRIS_RELEASE_TAG="+latest)
-		}
-		cmdRun.Stdout = os.Stdout
-		cmdRun.Stderr = os.Stderr
-		cmdRun.Stdin = os.Stdin
-		if err := cmdRun.Run(); err != nil {
+		if _, err := performUpdate(latest, true); err != nil {
 			fmt.Printf("\n\033[31m[IRIS] update failed: %v\033[0m\n", err)
 			return
 		}
