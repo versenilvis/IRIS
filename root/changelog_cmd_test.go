@@ -211,3 +211,25 @@ func TestPrintChangelogBodyStopsAtUpdateFooter(t *testing.T) {
 		t.Error("expected the changelog entry to be rendered")
 	}
 }
+
+func TestPrintChangelogBodyFallsBackToRawTextForUnstructuredBody(t *testing.T) {
+	var buf bytes.Buffer
+	// nightly releases don't go through GoReleaser's changelog: block (see
+	// .github/workflows/nightly.yml) - their body has none of the "### "/
+	// "* " markers, so it should be shown as-is rather than silently dropped
+	body := "# 🌙 **Nightly build** - `v0.6.0-nightly.abc123`\nNightly release from commit: abc123\n\n# Update: \n`iris update`\n"
+	printChangelogBody(&buf, body)
+
+	if !strings.Contains(buf.String(), "Nightly build") {
+		t.Errorf("expected the raw nightly body as a fallback, got %q", buf.String())
+	}
+}
+
+func TestPrintChangelogBodyEmptyBodyPrintsNothing(t *testing.T) {
+	var buf bytes.Buffer
+	printChangelogBody(&buf, "")
+
+	if buf.Len() != 0 {
+		t.Errorf("expected no output for an empty body, got %q", buf.String())
+	}
+}

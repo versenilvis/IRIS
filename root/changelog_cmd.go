@@ -137,14 +137,18 @@ func releaseURL(tag string) string {
 	return "https://github.com/versenilvis/iris/releases/tag/" + tag
 }
 
-// printChangelogBody re-renders the GoReleaser-generated release body
-// (see the `changelog:` block in .goreleaser.yaml) as styled terminal
-// output. The body's shape is ours to rely on: "## Changelog" header,
-// "### Group" headings, "* {sha}  {message}" entries, then GoReleaser's
-// own "## Update" footer, which we stop at since this command prints its
-// own call-to-action.
+// printChangelogBody re-renders a release body as styled terminal output.
+// Stable releases go through GoReleaser (see the `changelog:` block in
+// .goreleaser.yaml): "### Group" headings, "* {sha}  {message}" entries,
+// then a "## Update" footer we stop at since this command prints its own
+// call-to-action. Nightly releases don't go through GoReleaser at all
+// (built directly by .github/workflows/nightly.yml) and have a fixed
+// plain-text body that matches none of those patterns - so if nothing
+// matched by the end, the raw body is printed as a fallback rather than
+// silently showing nothing.
 func printChangelogBody(out io.Writer, body string) {
 	firstGroup := true
+	matched := false
 	for line := range strings.SplitSeq(body, "\n") {
 		line = strings.TrimRight(line, "\r")
 		switch {
@@ -153,12 +157,14 @@ func printChangelogBody(out io.Writer, body string) {
 		case strings.HasPrefix(line, "## "):
 			continue
 		case strings.HasPrefix(line, "### "):
+			matched = true
 			if !firstGroup {
 				fmt.Fprintln(out)
 			}
 			firstGroup = false
 			fmt.Fprintf(out, "\033[1m%s\033[0m\n", strings.TrimPrefix(line, "### "))
 		case strings.HasPrefix(line, "* "):
+			matched = true
 			entry := strings.TrimPrefix(line, "* ")
 			sha, msg, ok := strings.Cut(entry, "  ")
 			if ok {
@@ -166,6 +172,12 @@ func printChangelogBody(out io.Writer, body string) {
 			} else {
 				fmt.Fprintf(out, "  %s\n", entry)
 			}
+		}
+	}
+
+	if !matched {
+		if trimmed := strings.TrimSpace(body); trimmed != "" {
+			fmt.Fprintln(out, trimmed)
 		}
 	}
 }
