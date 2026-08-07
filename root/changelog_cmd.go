@@ -163,13 +163,11 @@ func renderChangelogMarkdown(body string) (string, error) {
 	return changelogRenderer.Render(body)
 }
 
-// GoReleaser's default template wraps every body in a redundant top-level
-// heading; the release's own colored header line already says as much
 func stripRedundantHeading(body string) string {
 	lines := strings.Split(body, "\n")
 	filtered := lines[:0]
 	for _, line := range lines {
-		if strings.HasPrefix(strings.TrimSpace(line), "## ") {
+		if strings.TrimSpace(line) == "## Changelog" {
 			continue
 		}
 		filtered = append(filtered, line)
@@ -177,9 +175,7 @@ func stripRedundantHeading(body string) string {
 	return strings.Join(filtered, "\n")
 }
 
-// glamour pads a heading/list's margin with lines of color-coded spaces -
-// invisible in a real terminal (foreground color on whitespace draws
-// nothing) but still consumes a line, so blankness is judged post-strip
+// judged post-strip: glamour's margin padding has color codes but no glyphs
 func isBlankLine(line string) bool {
 	return strings.TrimSpace(ansi.Strip(line)) == ""
 }

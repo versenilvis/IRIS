@@ -277,11 +277,30 @@ func TestPrintChangelogBodyStripsRedundantHeadingAndBlankRuns(t *testing.T) {
 	}
 }
 
-func TestStripRedundantHeadingRemovesH2Only(t *testing.T) {
+func TestStripRedundantHeadingRemovesExactGoReleaserLabelOnly(t *testing.T) {
 	got := stripRedundantHeading("## Changelog\n### Bug fixes\n* item\n")
 	want := "### Bug fixes\n* item\n"
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestStripRedundantHeadingPreservesHandWrittenHeadings(t *testing.T) {
+	body := "## Theme is here\n<img src=\"...\" />\n"
+	got := stripRedundantHeading(body)
+	if got != body {
+		t.Errorf("expected a hand-written ## heading to be preserved, got %q", got)
+	}
+}
+
+func TestPrintChangelogBodyPreservesHandWrittenAnnouncement(t *testing.T) {
+	var buf bytes.Buffer
+	body := "## Theme is here\r\n<img width=\"1818\" src=\"...\" />\r\n\r\n## Update\r\n```bash\r\niris update\r\n```\r\n"
+	printChangelogBody(&buf, body)
+	plain := ansi.Strip(buf.String())
+
+	if !strings.Contains(plain, "Theme is here") {
+		t.Errorf("expected the hand-written release heading to be rendered, got %q", plain)
 	}
 }
 
