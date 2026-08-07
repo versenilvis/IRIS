@@ -11,7 +11,7 @@ body = """
 ### {{ group | upper_first }}
 {{ "\n" }}\
 {% for commit in commits %}\
-- {{ commit.message | upper_first }} ([{{ commit.id }}](https://github.com/versenilvis/iris/commit/{{ commit.id }}))
+- {{ commit.message | upper_first }} ([{{ commit.id | truncate(length=6, end="") }}](https://github.com/versenilvis/iris/commit/{{ commit.id }}))
 {% endfor %}\
 {{ "\n" }}\
 {% endfor %}\
