@@ -11,7 +11,7 @@ body = """
 ### {{ group | upper_first }}
 {{ "\n" }}\
 {% for commit in commits %}\
-- {{ commit.message | upper_first }} ({{ commit.id }})
+- {{ commit.message | upper_first }} ([{{ commit.id }}](https://github.com/versenilvis/iris/commit/{{ commit.id }}))
 {% endfor %}\
 {{ "\n" }}\
 {% endfor %}\
@@ -23,6 +23,9 @@ footer = ""
 conventional_commits = true
 filter_unconventional = true
 split_commits = false
+commit_preprocessors = [
+    { pattern = '\(#([0-9]+)\)', replace = "([#${1}](https://github.com/versenilvis/iris/issues/${1}))" },
+]
 # stable tags only - `ignore_tags` was tried first but git-cliff merges an
 # ignored tag's commits into the wrong release when nightly and stable tags share a commit range
 tag_pattern = "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
