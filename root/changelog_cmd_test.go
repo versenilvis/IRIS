@@ -79,7 +79,7 @@ func seedChangelogCache(t *testing.T, fetchedAt time.Time, releases []Release) {
 	if err != nil {
 		t.Fatalf("changelogCachePath: %v", err)
 	}
-	data, err := json.Marshal(changelogCache{FetchedAt: fetchedAt, Releases: releases})
+	data, err := json.Marshal(changelogCache{FetchedAt: fetchedAt, Channel: config.Get().Updater.Channel, Releases: releases})
 	if err != nil {
 		t.Fatalf("marshal cache: %v", err)
 	}
@@ -107,6 +107,35 @@ func TestFetchReleasesCachedServesWithinTTL(t *testing.T) {
 	}
 	if len(got) != 1 || got[0].TagName != "v1.0.0" {
 		t.Fatalf("expected cached release, got %+v", got)
+	}
+}
+
+func TestFetchReleasesCachedChannelChangeBypassesStaleCache(t *testing.T) {
+	originalConfig := config.Get()
+	t.Cleanup(func() { config.Init(originalConfig) })
+	cfg := config.DefaultConfig()
+	cfg.Updater.Channel = "nightly"
+	config.Init(cfg)
+
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	seedChangelogCache(t, time.Now(), []Release{{TagName: "v1.0.0-nightly.abc", Body: "nightly cache", Prerelease: true}})
+
+	cfg.Updater.Channel = "stable"
+	config.Init(cfg)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode([]Release{{TagName: "v1.0.0", Body: "stable release"}})
+	}))
+	defer srv.Close()
+	t.Setenv("IRIS_CHANGELOG_URL", srv.URL)
+
+	got, _, err := FetchReleasesCached(1, false)
+	if err != nil {
+		t.Fatalf("FetchReleasesCached: %v", err)
+	}
+	if len(got) != 1 || got[0].TagName != "v1.0.0" {
+		t.Fatalf("expected the channel switch to bypass the nightly-channel cache and fetch fresh, got %+v", got)
 	}
 }
 

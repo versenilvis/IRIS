@@ -26,6 +26,7 @@ type Release struct {
 
 type changelogCache struct {
 	FetchedAt time.Time `json:"fetched_at"`
+	Channel   string    `json:"channel"`
 	Releases  []Release `json:"releases"`
 }
 
@@ -60,7 +61,7 @@ func saveChangelogCache(releases []Release) {
 	if err != nil {
 		return
 	}
-	data, err := json.Marshal(changelogCache{FetchedAt: time.Now(), Releases: releases})
+	data, err := json.Marshal(changelogCache{FetchedAt: time.Now(), Channel: config.Get().Updater.Channel, Releases: releases})
 	if err != nil {
 		return
 	}
@@ -109,8 +110,10 @@ func truncateReleases(releases []Release, limit int) []Release {
 
 // falls back to a stale cache rather than failing outright when rate limited
 func FetchReleasesCached(limit int, refresh bool) (releases []Release, rateLimited bool, err error) {
+	channel := config.Get().Updater.Channel
+
 	if !refresh {
-		if cache, cacheErr := loadChangelogCache(); cacheErr == nil && time.Since(cache.FetchedAt) < changelogCacheTTL {
+		if cache, cacheErr := loadChangelogCache(); cacheErr == nil && cache.Channel == channel && time.Since(cache.FetchedAt) < changelogCacheTTL {
 			return truncateReleases(cache.Releases, limit), false, nil
 		}
 	}
@@ -118,7 +121,7 @@ func FetchReleasesCached(limit int, refresh bool) (releases []Release, rateLimit
 	fresh, fetchErr := FetchReleases(100)
 	if fetchErr != nil {
 		if errors.Is(fetchErr, ErrRateLimited) {
-			if cache, cacheErr := loadChangelogCache(); cacheErr == nil && len(cache.Releases) > 0 {
+			if cache, cacheErr := loadChangelogCache(); cacheErr == nil && cache.Channel == channel && len(cache.Releases) > 0 {
 				return truncateReleases(cache.Releases, limit), true, nil
 			}
 		}
