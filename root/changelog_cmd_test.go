@@ -262,3 +262,103 @@ func TestPrintChangelogBodyEmptyBodyPrintsNothing(t *testing.T) {
 		t.Errorf("expected no output for an empty body, got %q", buf.String())
 	}
 }
+
+func TestPrintChangelogBodyStripsRedundantHeadingAndBlankRuns(t *testing.T) {
+	var buf bytes.Buffer
+	body := "## Changelog\n### Bug fixes\n* abc1234  fix something\n"
+	printChangelogBody(&buf, body)
+	plain := ansi.Strip(buf.String())
+
+	if strings.Contains(plain, "Changelog") {
+		t.Errorf("expected the redundant ## Changelog heading to be stripped, got %q", plain)
+	}
+	if strings.Contains(buf.String(), "\n\n\n") {
+		t.Errorf("expected consecutive blank lines to be squeezed, got %q", buf.String())
+	}
+}
+
+func TestStripRedundantHeadingRemovesH2Only(t *testing.T) {
+	got := stripRedundantHeading("## Changelog\n### Bug fixes\n* item\n")
+	want := "### Bug fixes\n* item\n"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestSqueezeBlankLinesCollapsesRuns(t *testing.T) {
+	got := squeezeBlankLines("a\n\n\n\nb\n")
+	want := "a\n\nb\n"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestChangelogCmdShowsSpecificVersion(t *testing.T) {
+	originalConfig := config.Get()
+	t.Cleanup(func() { config.Init(originalConfig) })
+	config.Init(config.DefaultConfig())
+
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+
+	releases := []Release{
+		{TagName: "v0.5.2", Body: "## Changelog\n### Bug fixes\n* xyz9999  unrelated fix\n"},
+		{TagName: "v0.5.1", Body: "## Changelog\n### Bug fixes\n* abc1234  fix mode\n"},
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(releases)
+	}))
+	defer srv.Close()
+	t.Setenv("IRIS_CHANGELOG_URL", srv.URL)
+
+	var out, errOut bytes.Buffer
+	ChangelogCmd.SetOut(&out)
+	ChangelogCmd.SetErr(&errOut)
+	t.Cleanup(func() {
+		ChangelogCmd.SetOut(nil)
+		ChangelogCmd.SetErr(nil)
+	})
+
+	ChangelogCmd.Run(ChangelogCmd, []string{"v0.5.1"})
+	got := ansi.Strip(out.String())
+
+	if !strings.Contains(got, "v0.5.1") {
+		t.Fatalf("expected the requested version in output, got %q", got)
+	}
+	if strings.Contains(got, "v0.5.2") || strings.Contains(got, "unrelated fix") {
+		t.Errorf("expected only the requested version, got %q", got)
+	}
+	if !strings.Contains(got, "fix mode") {
+		t.Errorf("expected the matched release's body, got %q", got)
+	}
+}
+
+func TestChangelogCmdVersionNotFound(t *testing.T) {
+	originalConfig := config.Get()
+	t.Cleanup(func() { config.Init(originalConfig) })
+	config.Init(config.DefaultConfig())
+
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+
+	releases := []Release{{TagName: "v0.5.2", Body: "latest"}}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(releases)
+	}))
+	defer srv.Close()
+	t.Setenv("IRIS_CHANGELOG_URL", srv.URL)
+
+	var out, errOut bytes.Buffer
+	ChangelogCmd.SetOut(&out)
+	ChangelogCmd.SetErr(&errOut)
+	t.Cleanup(func() {
+		ChangelogCmd.SetOut(nil)
+		ChangelogCmd.SetErr(nil)
+	})
+
+	ChangelogCmd.Run(ChangelogCmd, []string{"v9.9.9"})
+
+	if !strings.Contains(errOut.String(), "not found") {
+		t.Errorf("expected a not-found error, got stdout=%q stderr=%q", out.String(), errOut.String())
+	}
+}

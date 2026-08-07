@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/charmbracelet/glamour"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/spf13/cobra"
 	"github.com/versenilvis/iris/internal/config"
 	"golang.org/x/term"
@@ -162,13 +163,62 @@ func renderChangelogMarkdown(body string) (string, error) {
 	return changelogRenderer.Render(body)
 }
 
+// GoReleaser's default template wraps every body in a redundant top-level
+// heading; the release's own colored header line already says as much
+func stripRedundantHeading(body string) string {
+	lines := strings.Split(body, "\n")
+	filtered := lines[:0]
+	for _, line := range lines {
+		if strings.HasPrefix(strings.TrimSpace(line), "## ") {
+			continue
+		}
+		filtered = append(filtered, line)
+	}
+	return strings.Join(filtered, "\n")
+}
+
+// glamour pads a heading/list's margin with lines of color-coded spaces -
+// invisible in a real terminal (foreground color on whitespace draws
+// nothing) but still consumes a line, so blankness is judged post-strip
+func isBlankLine(line string) bool {
+	return strings.TrimSpace(ansi.Strip(line)) == ""
+}
+
+func squeezeBlankLines(s string) string {
+	lines := strings.Split(s, "\n")
+	out := make([]string, 0, len(lines))
+	prevBlank := false
+	for _, line := range lines {
+		blank := isBlankLine(line)
+		if blank && prevBlank {
+			continue
+		}
+		out = append(out, line)
+		prevBlank = blank
+	}
+	return strings.Join(out, "\n")
+}
+
+func trimBlankLines(s string) string {
+	lines := strings.Split(s, "\n")
+	start := 0
+	for start < len(lines) && isBlankLine(lines[start]) {
+		start++
+	}
+	end := len(lines)
+	for end > start && isBlankLine(lines[end-1]) {
+		end--
+	}
+	return strings.Join(lines[start:end], "\n")
+}
+
 // the CTA is rendered separately by printRelease based on IsNewer, so the
 // GoReleaser footer is cut before handing the body to glamour
 func printChangelogBody(out io.Writer, body string) {
 	if idx := strings.Index(body, "## Update"); idx != -1 {
 		body = body[:idx]
 	}
-	body = strings.TrimSpace(body)
+	body = strings.TrimSpace(stripRedundantHeading(body))
 	if body == "" {
 		return
 	}
@@ -178,7 +228,7 @@ func printChangelogBody(out io.Writer, body string) {
 		fmt.Fprintln(out, body)
 		return
 	}
-	fmt.Fprint(out, rendered)
+	fmt.Fprintln(out, trimBlankLines(squeezeBlankLines(rendered)))
 }
 
 func printRelease(out io.Writer, release Release, showUpdateCTA bool) {
@@ -205,10 +255,16 @@ var (
 )
 
 var ChangelogCmd = &cobra.Command{
-	Use:   "changelog",
+	Use:   "changelog [version]",
 	Short: "show what changed in recent iris releases",
+	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		releases, rateLimited, err := FetchReleasesCached(changelogCount, changelogRefresh)
+		limit := changelogCount
+		if len(args) == 1 {
+			limit = 0 // searching a specific version, not just the most recent N
+		}
+
+		releases, rateLimited, err := FetchReleasesCached(limit, changelogRefresh)
 		if err != nil {
 			if errors.Is(err, ErrRateLimited) {
 				fmt.Fprintln(cmd.ErrOrStderr(), "\033[31m[IRIS] rate limited by GitHub API, try again later\033[0m")
@@ -223,6 +279,23 @@ var ChangelogCmd = &cobra.Command{
 		}
 
 		out := cmd.OutOrStdout()
+
+		if len(args) == 1 {
+			target := strings.TrimPrefix(args[0], "v")
+			for _, release := range releases {
+				if strings.TrimPrefix(release.TagName, "v") == target {
+					printRelease(out, release, true)
+					if rateLimited {
+						fmt.Fprintln(out)
+						fmt.Fprintln(out, "\033[33m[IRIS] rate limited by GitHub API, showing cached data\033[0m")
+					}
+					return
+				}
+			}
+			fmt.Fprintf(cmd.ErrOrStderr(), "\033[31m[IRIS] release %s not found\033[0m\n", args[0])
+			return
+		}
+
 		for i, release := range releases {
 			if i > 0 {
 				fmt.Fprintln(out)
