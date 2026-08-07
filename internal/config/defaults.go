@@ -7,13 +7,14 @@ import (
 func DefaultConfig() *Config {
 	return &Config{
 		Core: CoreConfig{
-			Version:     1,
-			Shell:       "",
-			ShellLogin:  false,
-			Mode:        "last",
-			Debug:       false,
-			ExpandAlias: true,
-			AutoExecute: false,
+			Version:             1,
+			Shell:               "",
+			ShellLogin:          false,
+			Mode:                "last",
+			Debug:               false,
+			ExpandAlias:         true,
+			AutoExecute:         false,
+			CobraProbeAllowlist: []string{"*"},
 		},
 		UI: UIConfig{
 			Style:           "modern",

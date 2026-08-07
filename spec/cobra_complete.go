@@ -9,6 +9,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/versenilvis/iris/internal/config"
 )
 
 type cobraCacheEntry struct {
@@ -91,6 +93,17 @@ func buildCobraCacheKey(binKey string, args []string, partial string) string {
 	return sb.String()
 }
 
+// cobraProbeAllowed reports whether binName is allowed to be probed, per
+// core.cobra-probe-allowlist. "*" allows any binary.
+func cobraProbeAllowed(binName string) bool {
+	for _, allowed := range config.Get().Core.CobraProbeAllowlist {
+		if allowed == "*" || allowed == binName {
+			return true
+		}
+	}
+	return false
+}
+
 // newProbeCmd builds and isolates the `__complete` probe command.
 // starts the child in its own session so it has no controlling terminal
 // and therefore won't affect the user's tty in the case of programs that
@@ -106,6 +119,9 @@ func newProbeCmd(ctx context.Context, binName string, args []string) *exec.Cmd {
 // returns nil if the binary is not Cobra-based or times out.
 func QueryCobraComplete(binName string, args []string, partial string) []Suggestion {
 	if strings.ContainsAny(binName, `/\`) {
+		return nil
+	}
+	if !cobraProbeAllowed(binName) {
 		return nil
 	}
 

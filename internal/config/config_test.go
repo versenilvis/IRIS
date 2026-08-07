@@ -27,6 +27,9 @@ func TestDefaultConfigAndState(t *testing.T) {
 	if cfg.AI.Providers != nil {
 		t.Errorf("expected default providers map to be nil, got %v", cfg.AI.Providers)
 	}
+	if len(cfg.Core.CobraProbeAllowlist) != 1 || cfg.Core.CobraProbeAllowlist[0] != "*" {
+		t.Errorf("expected default cobra probe allowlist [\"*\"], got %v", cfg.Core.CobraProbeAllowlist)
+	}
 
 	// test manual provider registration
 	cfg.AI.Provider = "custom"

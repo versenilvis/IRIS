@@ -292,15 +292,16 @@ iris config show
 
 ```toml
 [core]
-version = 1           # config schema version
-shell = ""            # "zsh", "bash", "fish", or empty for auto-detect
-shell-login = false   # run shell as a login shell (also: iris --shell-login)
-mode = "last"         # "last", "spec", or "history"
-debug = false         # verbose logging to iris.log (also: iris -d)
-expand-alias = true   # expand aliases before matching
-auto-execute = false  # run suggestion immediately instead of inserting it
-atuin-history = 0     # 0 = shell history, 1 = atuin, 2 = both
-atuin-db-path = ""    # path to atuin's history.db, empty = use default
+version = 1                    # config schema version
+shell = ""                     # "zsh", "bash", "fish", or empty for auto-detect
+shell-login = false            # run shell as a login shell (also: iris --shell-login)
+mode = "last"                  # "last", "spec", or "history"
+debug = false                  # verbose logging to iris.log (also: iris -d)
+expand-alias = true            # expand aliases before matching
+auto-execute = false           # run suggestion immediately instead of inserting it
+atuin-history = 0              # 0 = shell history, 1 = atuin, 2 = both
+atuin-db-path = ""             # path to atuin's history.db, empty = use default
+cobra-probe-allowlist = ["*"]  # binaries allowed to be probed with `__complete`, ["*"] allows any.
 
 [ui]
 style = "modern"       # "modern" or "classic"

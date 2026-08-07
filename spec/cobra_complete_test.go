@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/versenilvis/iris/internal/config"
 )
 
 func TestParseCobraOutput_ValidCobra(t *testing.T) {
@@ -163,6 +165,33 @@ func TestNewProbeCmd_NoControllingTerminal(t *testing.T) {
 	var exitErr *exec.ExitError
 	if !errors.As(runErr, &exitErr) {
 		t.Fatalf("expected probe script to exit nonzero after failing to open /dev/tty, got %v", runErr)
+	}
+}
+
+func TestCobraProbeAllowed(t *testing.T) {
+	original := config.Get()
+	t.Cleanup(func() { config.Init(original) })
+
+	cfg := config.DefaultConfig()
+	cfg.Core.CobraProbeAllowlist = []string{"*"}
+	config.Init(cfg)
+	if !cobraProbeAllowed("anything") {
+		t.Errorf("expected wildcard allowlist to allow any binary")
+	}
+
+	cfg.Core.CobraProbeAllowlist = []string{"kubectl", "gh"}
+	config.Init(cfg)
+	if !cobraProbeAllowed("kubectl") {
+		t.Errorf("expected listed binary 'kubectl' to be allowed")
+	}
+	if cobraProbeAllowed("fakecobra") {
+		t.Errorf("expected unlisted binary 'fakecobra' to be denied")
+	}
+
+	cfg.Core.CobraProbeAllowlist = []string{}
+	config.Init(cfg)
+	if cobraProbeAllowed("kubectl") {
+		t.Errorf("expected empty allowlist to deny everything")
 	}
 }
 
