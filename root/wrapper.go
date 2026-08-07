@@ -555,7 +555,7 @@ func runWrapper() {
 					select {
 					case result, ok := <-pendingUpdate:
 						if ok && result.hasUpdate {
-							printUpdateNotice(result.latestVersion)
+							printUpdateNotice(result.latestVersion, result.notes)
 							updatePrinted = true
 						}
 					default:

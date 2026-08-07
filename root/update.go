@@ -20,6 +20,7 @@ import (
 // updateResult is passed from the async checker to the main loop
 type updateResult struct {
 	latestVersion string
+	notes         string
 	hasUpdate     bool
 }
 
@@ -58,8 +59,8 @@ func fetchGitHubBody(ctx context.Context, endpoint string) ([]byte, error) {
 	return io.ReadAll(resp.Body)
 }
 
-// FetchLatestVersion hits the GitHub Releases API and returns the latest tag name
-func FetchLatestVersion() (string, error) {
+// FetchLatestRelease hits the GitHub Releases API and returns the latest release
+func FetchLatestRelease() (Release, error) {
 	ctx, cancel := newGitHubRequestContext()
 	defer cancel()
 
@@ -74,32 +75,37 @@ func FetchLatestVersion() (string, error) {
 
 	body, err := fetchGitHubBody(ctx, endpoint)
 	if err != nil {
-		return "", err
+		return Release{}, err
 	}
 
 	if config.Get().Updater.Channel == "nightly" && os.Getenv("IRIS_UPDATE_URL") == "" {
-		var releases []struct {
-			TagName string `json:"tag_name"`
-		}
+		var releases []Release
 		if err := json.Unmarshal(body, &releases); err != nil {
-			return "", err
+			return Release{}, err
 		}
 		if len(releases) == 0 {
-			return "", fmt.Errorf("no releases found")
+			return Release{}, fmt.Errorf("no releases found")
 		}
-		return releases[0].TagName, nil
+		return releases[0], nil
 	}
 
-	var result struct {
-		TagName string `json:"tag_name"`
+	var release Release
+	if err := json.Unmarshal(body, &release); err != nil {
+		return Release{}, err
 	}
-	if err := json.Unmarshal(body, &result); err != nil {
+	if release.TagName == "" {
+		return Release{}, fmt.Errorf("no tag_name in response")
+	}
+	return release, nil
+}
+
+// FetchLatestVersion hits the GitHub Releases API and returns the latest tag name
+func FetchLatestVersion() (string, error) {
+	release, err := FetchLatestRelease()
+	if err != nil {
 		return "", err
 	}
-	if result.TagName == "" {
-		return "", fmt.Errorf("no tag_name in response")
-	}
-	return result.TagName, nil
+	return release.TagName, nil
 }
 
 // IsNewer returns true if latest is a newer semantic version than current.
@@ -192,11 +198,12 @@ func startBackgroundUpdateCheck() chan updateResult {
 			return
 		}
 
-		latest, err := FetchLatestVersion()
+		release, err := FetchLatestRelease()
 		if err != nil {
 			// no network or API error: silently do nothing
 			return
 		}
+		latest := release.TagName
 
 		// update the last check time regardless of result
 		state.Updater.LastCheckTime = time.Now()
@@ -204,7 +211,7 @@ func startBackgroundUpdateCheck() chan updateResult {
 		if IsNewer(Version, latest) {
 			// only notify if user hasn't already seen this specific version notification
 			if state.Updater.SeenVersion != latest {
-				ch <- updateResult{latestVersion: latest, hasUpdate: true}
+				ch <- updateResult{latestVersion: latest, notes: release.Body, hasUpdate: true}
 			}
 			// save the latest as seen_version so future sessions don't re-notify
 			// unless a NEWER version comes out (different tag)
@@ -220,12 +227,41 @@ func startBackgroundUpdateCheck() chan updateResult {
 	return ch
 }
 
-// printUpdateNotice writes the one-time update message to stdout
-func printUpdateNotice(latest string) {
-	fmt.Printf(
+// changelogSummaryLines pulls up to max bullet messages out of a GoReleaser
+// changelog body (see the `changelog:` block in .goreleaser.yaml), dropping
+// the sha and group heading - just enough for a one-shot notice line.
+func changelogSummaryLines(body string, max int) []string {
+	var lines []string
+	for line := range strings.SplitSeq(body, "\n") {
+		line = strings.TrimRight(line, "\r")
+		if !strings.HasPrefix(line, "* ") {
+			continue
+		}
+		entry := strings.TrimPrefix(line, "* ")
+		_, msg, ok := strings.Cut(entry, "  ")
+		if !ok {
+			msg = entry
+		}
+		lines = append(lines, msg)
+		if len(lines) >= max {
+			break
+		}
+	}
+	return lines
+}
+
+// printUpdateNotice writes the one-time update message to stdout, along
+// with a short changelog summary when notes are available
+func printUpdateNotice(latest, notes string) {
+	var b strings.Builder
+	fmt.Fprintf(&b,
 		"\r\033[K\033[33m[IRIS] new version %s → %s available, run \033[1miris update\033[0m\033[33m to upgrade\033[0m\n",
 		Version, latest,
 	)
+	for _, line := range changelogSummaryLines(notes, 2) {
+		fmt.Fprintf(&b, "\033[33m  - %s\033[0m\n", line)
+	}
+	writeStdout([]byte(b.String()))
 }
 
 func init() {
