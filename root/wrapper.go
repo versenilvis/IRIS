@@ -17,6 +17,7 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+	"unicode"
 
 	"github.com/creack/pty"
 	"github.com/versenilvis/iris/integration"
@@ -1017,19 +1018,46 @@ func runWrapper() {
 						bufferMu.Lock()
 						runes := []rune(naiveBuffer)
 						oldOffset := cursorOffset
+						isCtrlWordJump := arrowConsumed > 3 || strings.Contains(strings.ToLower(config.Get().Keybindings.NavigateRight), "ctrl")
 						switch arrowDir {
 						case "left":
-							if cursorOffset < len(runes) {
-								cursorOffset++
+							if isCtrlWordJump {
+								pos := len(runes) - cursorOffset
+								if pos > 0 {
+									for pos > 0 && unicode.IsSpace(runes[pos-1]) {
+										pos--
+									}
+									for pos > 0 && !unicode.IsSpace(runes[pos-1]) {
+										pos--
+									}
+									cursorOffset = len(runes) - pos
+								}
+							} else {
+								if cursorOffset < len(runes) {
+									cursorOffset++
+								}
 							}
 						case "right":
-							if cursorOffset > 0 {
-								cursorOffset--
+							if isCtrlWordJump {
+								pos := len(runes) - cursorOffset
+								if pos < len(runes) {
+									for pos < len(runes) && !unicode.IsSpace(runes[pos]) {
+										pos++
+									}
+									for pos < len(runes) && unicode.IsSpace(runes[pos]) {
+										pos++
+									}
+									cursorOffset = len(runes) - pos
+								}
+							} else {
+								if cursorOffset > 0 {
+									cursorOffset--
+								}
 							}
 						}
 						newOffset := cursorOffset
 						bufferMu.Unlock()
-						logger.Debugf("Arrow key %s processed: naiveBuf=%q, offset: %d -> %d", arrowDir, naiveBuffer, oldOffset, newOffset)
+						logger.Debugf("Arrow key %s processed (isCtrl=%v): naiveBuf=%q, offset: %d -> %d", arrowDir, isCtrlWordJump, naiveBuffer, oldOffset, newOffset)
 						userNavigated.Store(true)
 						overlay.SetUserNavigated(true)
 						overlay.ClearGhostTextState()
@@ -1070,17 +1098,10 @@ func runWrapper() {
 					renderMu.Unlock()
 					isCommandActive.Store(false)
 					_, _ = ptmx.Write([]byte{b})
-<<<<<<< HEAD
 					resetBuffer()
-=======
-					bufferMu.Lock()
-					naiveBuffer = ""
-					cursorOffset = 0
-					bufferMu.Unlock()
 					activeModeMu.Lock()
 					activeMode = loadMode()
 					activeModeMu.Unlock()
->>>>>>> upstream/main
 					disableGhostText.Store(false)
 					shouldOverlayDraw = false
 					userNavigated.Store(false)
@@ -1163,7 +1184,6 @@ func runWrapper() {
 					case 0x0c: // ctrl+l: clear screen but keep buffer and redraw menu
 						shouldOverlayDraw = true
 						userNavigated.Store(false)
-<<<<<<< HEAD
 					case '\r', '\n', 0x03, 0x15: // enter, ctrl+c, ctrl+u: clear buffer on line reset
 						inBracketedPaste = false
 						resetBuffer()
@@ -1174,8 +1194,6 @@ func runWrapper() {
 						writeStdout([]byte(overlay.ClearAndDisable()))
 						SetCurrentAISuggestion(nil)
 						userNavigated.Store(false)
-=======
->>>>>>> upstream/main
 					default:
 						// track normal printable characters in the buffer for matching
 						if b >= 32 && b <= 126 {

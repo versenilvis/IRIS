@@ -97,6 +97,7 @@ func TestOpenAIClient_Suggest(t *testing.T) {
 	}
 	if sugg == nil {
 		t.Fatalf("expected suggestion, got nil")
+		return
 	}
 	if sugg.Cmd != "kubectl get pods -n kube-system" {
 		t.Errorf("expected cleaned cmd, got %q", sugg.Cmd)
