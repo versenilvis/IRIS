@@ -8,13 +8,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/charmbracelet/glamour"
 	"github.com/spf13/cobra"
 	"github.com/versenilvis/iris/internal/config"
+	"golang.org/x/term"
 )
 
-// Release mirrors the fields we need from the GitHub releases API.
 type Release struct {
 	TagName     string    `json:"tag_name"`
 	PublishedAt time.Time `json:"published_at"`
@@ -66,9 +68,6 @@ func saveChangelogCache(releases []Release) {
 	_ = os.WriteFile(path, data, 0o644)
 }
 
-// FetchReleases hits the GitHub releases API and returns up to limit
-// releases, filtering out prereleases (nightlies) unless the nightly
-// channel is active. A limit of 0 returns everything fetched.
 func FetchReleases(limit int) ([]Release, error) {
 	ctx, cancel := newGitHubRequestContext()
 	defer cancel()
@@ -108,10 +107,7 @@ func truncateReleases(releases []Release, limit int) []Release {
 	return releases
 }
 
-// FetchReleasesCached serves cached releases when they're within TTL, and
-// falls back to a stale cache when the API is rate limited rather than
-// failing outright. rateLimited reports whether the result came from that
-// fallback, so the caller can say so.
+// falls back to a stale cache rather than failing outright when rate limited
 func FetchReleasesCached(limit int, refresh bool) (releases []Release, rateLimited bool, err error) {
 	if !refresh {
 		if cache, cacheErr := loadChangelogCache(); cacheErr == nil && time.Since(cache.FetchedAt) < changelogCacheTTL {
@@ -137,49 +133,49 @@ func releaseURL(tag string) string {
 	return "https://github.com/versenilvis/iris/releases/tag/" + tag
 }
 
-// printChangelogBody re-renders a release body as styled terminal output.
-// Stable releases go through GoReleaser (see the `changelog:` block in
-// .goreleaser.yaml): "### Group" headings, "* {sha}  {message}" entries,
-// then a "## Update" footer we stop at since this command prints its own
-// call-to-action. Nightly releases don't go through GoReleaser at all
-// (built directly by .github/workflows/nightly.yml) and have a fixed
-// plain-text body that matches none of those patterns - so if nothing
-// matched by the end, the raw body is printed as a fallback rather than
-// silently showing nothing.
+var (
+	changelogRenderer     *glamour.TermRenderer
+	changelogRendererOnce sync.Once
+	errChangelogRenderer  error
+)
+
+func changelogRenderWidth() int {
+	if w, _, err := term.GetSize(int(os.Stdout.Fd())); err == nil && w > 0 && w < 120 {
+		return w
+	}
+	return 120
+}
+
+func renderChangelogMarkdown(body string) (string, error) {
+	changelogRendererOnce.Do(func() {
+		changelogRenderer, errChangelogRenderer = glamour.NewTermRenderer(
+			glamour.WithStandardStyle("dark"),
+			glamour.WithWordWrap(changelogRenderWidth()),
+		)
+	})
+	if errChangelogRenderer != nil {
+		return "", errChangelogRenderer
+	}
+	return changelogRenderer.Render(body)
+}
+
+// the CTA is rendered separately by printRelease based on IsNewer, so the
+// GoReleaser footer is cut before handing the body to glamour
 func printChangelogBody(out io.Writer, body string) {
-	firstGroup := true
-	matched := false
-	for line := range strings.SplitSeq(body, "\n") {
-		line = strings.TrimRight(line, "\r")
-		switch {
-		case strings.HasPrefix(line, "## Update"):
-			return
-		case strings.HasPrefix(line, "## "):
-			continue
-		case strings.HasPrefix(line, "### "):
-			matched = true
-			if !firstGroup {
-				fmt.Fprintln(out)
-			}
-			firstGroup = false
-			fmt.Fprintf(out, "\033[1m%s\033[0m\n", strings.TrimPrefix(line, "### "))
-		case strings.HasPrefix(line, "* "):
-			matched = true
-			entry := strings.TrimPrefix(line, "* ")
-			sha, msg, ok := strings.Cut(entry, "  ")
-			if ok {
-				fmt.Fprintf(out, "  \033[2m%s\033[0m  %s\n", sha, msg)
-			} else {
-				fmt.Fprintf(out, "  %s\n", entry)
-			}
-		}
+	if idx := strings.Index(body, "## Update"); idx != -1 {
+		body = body[:idx]
+	}
+	body = strings.TrimSpace(body)
+	if body == "" {
+		return
 	}
 
-	if !matched {
-		if trimmed := strings.TrimSpace(body); trimmed != "" {
-			fmt.Fprintln(out, trimmed)
-		}
+	rendered, err := renderChangelogMarkdown(body)
+	if err != nil {
+		fmt.Fprintln(out, body)
+		return
 	}
+	fmt.Fprint(out, rendered)
 }
 
 func printRelease(out io.Writer, release Release, showUpdateCTA bool) {
@@ -205,7 +201,6 @@ var (
 	changelogRefresh bool
 )
 
-// ChangelogCmd shows grouped release notes fetched from GitHub releases.
 var ChangelogCmd = &cobra.Command{
 	Use:   "changelog",
 	Short: "show what changed in recent iris releases",

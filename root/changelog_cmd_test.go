@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/x/ansi"
 	"github.com/versenilvis/iris/internal/config"
 )
 
@@ -203,25 +204,24 @@ func TestPrintChangelogBodyStopsAtUpdateFooter(t *testing.T) {
 	var buf bytes.Buffer
 	body := "## Changelog\n### Bug fixes\n* abc1234  fix something\n## Update\n```bash\niris update\n```\n"
 	printChangelogBody(&buf, body)
+	plain := ansi.Strip(buf.String())
 
-	if strings.Contains(buf.String(), "Update") {
+	if strings.Contains(plain, "Update") {
 		t.Error("expected the GoReleaser footer to be excluded from rendered body")
 	}
-	if !strings.Contains(buf.String(), "fix something") {
-		t.Error("expected the changelog entry to be rendered")
+	if !strings.Contains(plain, "fix something") {
+		t.Errorf("expected the changelog entry to be rendered, got %q", plain)
 	}
 }
 
-func TestPrintChangelogBodyFallsBackToRawTextForUnstructuredBody(t *testing.T) {
+func TestPrintChangelogBodyRendersArbitraryMarkdown(t *testing.T) {
 	var buf bytes.Buffer
-	// nightly releases don't go through GoReleaser's changelog: block (see
-	// .github/workflows/nightly.yml) - their body has none of the "### "/
-	// "* " markers, so it should be shown as-is rather than silently dropped
-	body := "# 🌙 **Nightly build** - `v0.6.0-nightly.abc123`\nNightly release from commit: abc123\n\n# Update: \n`iris update`\n"
+	body := "# 🌙 **Nightly build** - `v0.6.0-nightly.abc123`\nNightly release from commit: abc123\n"
 	printChangelogBody(&buf, body)
+	plain := ansi.Strip(buf.String())
 
-	if !strings.Contains(buf.String(), "Nightly build") {
-		t.Errorf("expected the raw nightly body as a fallback, got %q", buf.String())
+	if !strings.Contains(plain, "Nightly build") {
+		t.Errorf("expected the body rendered via glamour, got %q", plain)
 	}
 }
 
