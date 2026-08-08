@@ -8,6 +8,7 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "dust",
 		Description: "Like du but more intuitive",
+		Generator:   spec.FileGenerator("/"),
 		Options: []spec.Option{
 			{Name: "--help", Description: "Show help for dust"},
 			{Name: "--version", Description: "Print version information"},

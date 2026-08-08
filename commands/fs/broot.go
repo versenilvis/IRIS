@@ -8,6 +8,7 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "broot",
 		Description: "Show the last modified date of files and directories",
+		Generator:   spec.FileGenerator("/"),
 		Options: []spec.Option{
 			{Name: "--dates", Description: "Show the last modified date of files and directories"},
 			{Name: "--no-dates", Description: "Don't show the last modified date"},
