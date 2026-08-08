@@ -14,6 +14,24 @@ import (
 
 type Duration time.Duration
 
+type GhostTextMode int
+
+func (g *GhostTextMode) UnmarshalTOML(val interface{}) error {
+	switch v := val.(type) {
+	case bool:
+		if v {
+			*g = 1
+		} else {
+			*g = 0
+		}
+	case int64:
+		*g = GhostTextMode(v)
+	default:
+		return fmt.Errorf("ghost-text must be a boolean or integer")
+	}
+	return nil
+}
+
 var (
 	_ encoding.TextUnmarshaler = (*Duration)(nil)
 	_ encoding.TextMarshaler   = (*Duration)(nil)
@@ -43,13 +61,13 @@ type CoreConfig struct {
 }
 
 type UIConfig struct {
-	Style           string `toml:"style"`
-	GhostText       bool   `toml:"ghost-text"`
-	ShowHiddenFiles bool   `toml:"hidden-files"`
-	MaxSuggestions  int    `toml:"max-suggestions"`
-	MaxHeight       int    `toml:"max-height"`
-	MaxWidth        int    `toml:"max-width"`
-	NerdFonts       bool   `toml:"nerd-fonts"`
+	Style           string        `toml:"style"`
+	GhostText       GhostTextMode `toml:"ghost-text"` // 0 = turn off, 1 = turn on, 2 = show ghost text individually
+	ShowHiddenFiles bool          `toml:"hidden-files"`
+	MaxSuggestions  int           `toml:"max-suggestions"`
+	MaxHeight       int           `toml:"max-height"`
+	MaxWidth        int           `toml:"max-width"`
+	NerdFonts       bool          `toml:"nerd-fonts"`
 }
 
 type GitConfig struct {

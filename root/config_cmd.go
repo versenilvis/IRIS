@@ -69,8 +69,8 @@ nerd-fonts = true
 # show hidden files with dot prefix
 hidden-files = false
 
-# enable inline ghost text
-ghost-text = true
+# 0 = turn off, 1 = turn on, 2 = show ghost text individually
+ghost-text = 1
 
 # maximum suggestions to display
 max-suggestions = 100

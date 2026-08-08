@@ -17,7 +17,7 @@ func DefaultConfig() *Config {
 		},
 		UI: UIConfig{
 			Style:           "modern",
-			GhostText:       true,
+			GhostText:       1,
 			ShowHiddenFiles: false,
 			MaxSuggestions:  100,
 			MaxHeight:       15,
@@ -52,6 +52,7 @@ func DefaultConfig() *Config {
 			SelectSuggestion: "tab",
 			NavigateUp:       "up",
 			NavigateDown:     "down",
+			NavigateRight:    "right",
 		},
 	}
 }
