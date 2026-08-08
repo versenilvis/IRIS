@@ -10,6 +10,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/versenilvis/fuzzy"
 	"github.com/versenilvis/iris/spec"
@@ -30,24 +32,56 @@ func init() {
 	})
 }
 
+// zoxideCacheTTL bounds how stale the directory list may be. Generators run on
+// every keystroke and `zoxide query -l` is a subprocess costing on the order of
+// ten milliseconds, which is the entire latency budget for a suggestion redraw.
+// The list only changes when the user changes directory, so a short window
+// costs nothing in practice.
+const zoxideCacheTTL = 2 * time.Second
+
+var zoxideCache struct {
+	sync.Mutex
+	dirs    []string
+	err     error
+	fetched time.Time
+}
+
+// zoxideDirs returns zoxide's known directories, most frecent first.
+func zoxideDirs() ([]string, error) {
+	zoxideCache.Lock()
+	defer zoxideCache.Unlock()
+
+	if !zoxideCache.fetched.IsZero() && time.Since(zoxideCache.fetched) < zoxideCacheTTL {
+		return zoxideCache.dirs, zoxideCache.err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+
+	out, err := exec.CommandContext(ctx, "zoxide", "query", "-l").Output()
+	zoxideCache.fetched = time.Now()
+	zoxideCache.err = err
+	zoxideCache.dirs = nil
+	if err != nil {
+		return nil, err
+	}
+
+	for line := range strings.SplitSeq(string(bytes.TrimSpace(out)), "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			zoxideCache.dirs = append(zoxideCache.dirs, line)
+		}
+	}
+	return zoxideCache.dirs, nil
+}
+
 func ZoxideGenerator() spec.GeneratorFunc {
 	return func(tokens []string, prefix string, partial string) []spec.Suggestion {
 		fullQuery := strings.Join(tokens[1:], " ")
 		localSuggestions := spec.FileGenerator("/")(tokens, prefix, fullQuery)
 
 		var zoxideSuggestions []spec.Suggestion
-		cmd := exec.CommandContext(context.Background(), "zoxide", "query", "-l")
-		out, err := cmd.Output()
+		dirs, err := zoxideDirs()
 		if err == nil {
-			lines := strings.Split(string(bytes.TrimSpace(out)), "\n")
-			var dirs []string
-			for _, line := range lines {
-				line = strings.TrimSpace(line)
-				if line != "" {
-					dirs = append(dirs, line)
-				}
-			}
-
 			home, _ := os.UserHomeDir()
 
 			if fullQuery == "" {
