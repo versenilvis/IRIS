@@ -59,6 +59,9 @@ expand-alias = true
 # automatically execute command after accepting suggestion
 auto-execute = false
 
+# 0 = off, 1 = atuin history only, 2 = atuin history + default history
+atuin-history = 0
+
 [ui]
 # visual style: "modern" (icons, category pills, shortcut footer) or "classic" (minimalist, centered number, no icons)
 style = "modern"
