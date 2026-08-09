@@ -2,6 +2,7 @@ package integration
 
 import (
 	"bufio"
+	"context"
 	"database/sql"
 	"os"
 	"path/filepath"
@@ -89,7 +90,7 @@ func loadAtuinCmds() ([]string, error) {
 	}
 	defer db.Close()
 
-	rows, err := db.Query(`SELECT command FROM history WHERE deleted_at IS NULL ORDER BY timestamp DESC LIMIT 10000`)
+	rows, err := db.QueryContext(context.Background(), `SELECT command FROM history WHERE deleted_at IS NULL ORDER BY timestamp DESC LIMIT 10000`)
 	if err != nil {
 		return nil, err
 	}
