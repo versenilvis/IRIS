@@ -257,7 +257,11 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 				historyCache = append(historyCache, cmd)
 				seen[cmd] = true
 				idMapCache[cmd] = currentID
-				sourceMapCache[cmd] = "session"
+				if atuinSeen[cmd] {
+					sourceMapCache[cmd] = "atuin"
+				} else {
+					sourceMapCache[cmd] = "session"
+				}
 				currentID--
 			}
 		}
