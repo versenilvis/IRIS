@@ -300,6 +300,7 @@ debug = false
 expand-alias = true
 auto-execute = false
 atuin-history = 0
+atuin-db-path = ""
 
 [ui]
 style = "modern"    # "modern" or "classic"

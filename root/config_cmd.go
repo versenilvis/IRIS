@@ -62,6 +62,9 @@ auto-execute = false
 # 0 = off, 1 = atuin history only, 2 = atuin history + default history
 atuin-history = 0
 
+# custom atuin database path (leave empty for default)
+atuin-db-path = ""
+
 [ui]
 # visual style: "modern" (icons, category pills, shortcut footer) or "classic" (minimalist, centered number, no icons)
 style = "modern"

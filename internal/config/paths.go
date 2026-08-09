@@ -50,6 +50,9 @@ func HistoryDBPath() (string, error) {
 }
 
 func AtuinDBPath() (string, error) {
+	if cfg := Get(); cfg != nil && cfg.Core.AtuinDBPath != "" {
+		return cfg.Core.AtuinDBPath, nil
+	}
 	dataHome := os.Getenv("XDG_DATA_HOME")
 	if dataHome == "" {
 		home, err := os.UserHomeDir()
