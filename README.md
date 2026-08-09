@@ -292,59 +292,59 @@ iris config show
 
 ```toml
 [core]
-version = 1
-shell = ""          # "zsh", "bash", "fish", or empty for auto-detection
-shell-login = false # run the selected shell as a login shell; can also be enabled with iris --shell-login
-mode = "last"       # "last", "spec", or "history"
-debug = false
-expand-alias = true
-auto-execute = false
-atuin-history = 0
-atuin-db-path = ""
+version = 1                                                   # config schema version, do not edit
+shell = ""                                                    # "zsh", "bash", "fish", or empty for auto-detection
+shell-login = false                                           # run the selected shell as a login shell; can also be enabled with iris --shell-login
+mode = "last"                                                 # "last", "spec", or "history"
+debug = false                                                 # verbose logging to iris.log; also enabled with iris -d
+expand-alias = true                                           # expand shell aliases before matching suggestions
+auto-execute = false                                          # run the accepted suggestion immediately instead of just inserting it
+atuin-history = 0                                             # 0 = shell history, 1 = atuin only, 2 = atuin + shell
+atuin-db-path = ""                                            # path to atuin's history.db, empty = auto-detect
 
 [ui]
-style = "modern"    # "modern" or "classic"
-ghost-text = true
-hidden-files = false
-max-suggestions = 100
-max-height = 15
-max-width = 0
-nerd-fonts = true
+style = "modern"                                              # "modern" or "classic"
+ghost-text = true                                             # faded inline preview of the top suggestion
+hidden-files = false                                          # include dotfiles in file/path suggestions
+max-suggestions = 100                                         # max suggestions ranked before display
+max-height = 15                                               # max visible rows in the suggestion menu
+max-width = 0                                                 # max menu width in columns, 0 = auto
+nerd-fonts = true                                             # use nerd-font icons instead of plain text
 
 [keybindings]
-toggle-mode = "ctrl+r"
-toggle-menu = "shift+tab"
-select = "tab"
-navigate-up = "up"
-navigate-down = "down"
-navigate-right = "right"
+toggle-mode = "ctrl+r"                                        # switch between spec and history suggestion mode
+toggle-menu = "shift+tab"                                     # show or hide the suggestion menu
+select = "tab"                                                # accept the highlighted suggestion
+navigate-up = "up"                                            # move selection up, or open command history when the prompt is empty
+navigate-down = "down"                                        # move selection down, or open command history when the prompt is empty
+navigate-right = "right"                                      # accept ghost text when the menu is open
 
 [git]
-filter-active-branch = true
-deduplicate-branches = true
+filter-active-branch = true                                   # exclude the current branch from checkout/branch suggestions
+deduplicate-branches = true                                   # merge local/remote branches with the same name into one suggestion
 
 [updater]
-check-on-startup = true
-channel = "stable" # "stable" or "nightly"
-check-interval = "24h"
-auto-update = 0 # 0 = off, 1 = auto-install, 2 = always confirm first
+check-on-startup = true                                       # check for a new release when iris starts
+channel = "stable"                                            # "stable" or "nightly"
+check-interval = "24h"                                        # minimum time between automatic update checks
+auto-update = 0                                               # 0 = off, 1 = auto-install, 2 = always confirm first
 
 [ai]
 enabled = false
-provider = "groq" # "groq" or "ollama"
-debounce_ms = 400
+provider = "groq"                                             # "groq" or "ollama"
+debounce_ms = 400                                             # ms to wait after typing stops before querying the AI
 
 # please use free subscription, that is enough for your daily usage
 [ai.providers.groq]
 endpoint = "https://api.groq.com/openai/v1/chat/completions"
-api_key_env = "GROQ_API_KEY" # or set api_key directly
+api_key_env = "GROQ_API_KEY"                                  # or set api_key directly
 model = "llama-3.3-70b-versatile"
-timeout_ms = 3000
+timeout_ms = 3000                                             # ms before giving up on the AI request
 
 [ai.providers.ollama]
 endpoint = "http://localhost:11434/v1/chat/completions"
 model = "qwen2.5-coder"
-timeout_ms = 5000
+timeout_ms = 5000                                             # ms before giving up on the AI request
 ```
 
 > [!NOTE]
