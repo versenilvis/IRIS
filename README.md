@@ -299,6 +299,7 @@ mode = "last"       # "last", "spec", or "history"
 debug = false
 expand-alias = true
 auto-execute = false
+atuin-history = 0
 
 [ui]
 style = "modern"    # "modern" or "classic"
