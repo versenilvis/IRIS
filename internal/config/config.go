@@ -40,6 +40,8 @@ type CoreConfig struct {
 	Debug       bool   `toml:"debug"`
 	ExpandAlias bool   `toml:"expand-alias"`
 	AutoExecute bool   `toml:"auto-execute"`
+	// 0 = shell history, 1 = atuin only, 2 = atuin + shell
+	Atuin       int    `toml:"atuin"`
 }
 
 type UIConfig struct {

@@ -49,6 +49,18 @@ func HistoryDBPath() (string, error) {
 	return filepath.Join(filepath.Dir(statePath), "history.db"), nil
 }
 
+func AtuinDBPath() (string, error) {
+	dataHome := os.Getenv("XDG_DATA_HOME")
+	if dataHome == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		dataHome = filepath.Join(home, ".local", "share")
+	}
+	return filepath.Join(dataHome, "atuin", "history.db"), nil
+}
+
 func CachePath() (string, error) {
 	cacheHome := os.Getenv("XDG_CACHE_HOME")
 	if cacheHome != "" {
