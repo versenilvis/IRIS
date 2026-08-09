@@ -304,6 +304,7 @@ func runWrapper() {
 		shellPGID = spec.ShellPID
 	}
 	var isCommandActive atomic.Bool
+	var isAltScreenActive atomic.Bool
 	var disableGhostText atomic.Bool
 	disableGhostText.Store(!config.Get().UI.GhostText)
 	var renderOverlayFn atomic.Value // holds func()
@@ -315,6 +316,9 @@ func runWrapper() {
 		}
 	})
 	isExecuting := func() bool {
+		if isAltScreenActive.Load() {
+			return true
+		}
 		if isCommandActive.Load() {
 			// for bash: no preexec/precmd hooks, so fall back to TIOCGPGRP to detect when shell returns
 			if shellName == "bash" {
@@ -449,7 +453,17 @@ func runWrapper() {
 				logger.Errorf("Unexpected PTY read error: %v", err)
 				os.Exit(1)
 			}
-			writeStdout(buf[:n])
+
+			// detect alternate screen buffer (smcup/rmcup) used by TUI apps (nvim, atuin, fzf)
+			chunk := buf[:n]
+			if bytes.Contains(chunk, []byte("\x1b[?1049h")) || bytes.Contains(chunk, []byte("\x1b[?1047h")) || bytes.Contains(chunk, []byte("\x1b[?47h")) {
+				isAltScreenActive.Store(true)
+				writeStdout([]byte(overlay.ClearAndDisable()))
+			} else if bytes.Contains(chunk, []byte("\x1b[?1049l")) || bytes.Contains(chunk, []byte("\x1b[?1047l")) || bytes.Contains(chunk, []byte("\x1b[?47l")) {
+				isAltScreenActive.Store(false)
+			}
+
+			writeStdout(chunk)
 
 			bufferMu.Lock()
 			nbEmpty := naiveBuffer == ""
