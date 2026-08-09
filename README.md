@@ -300,7 +300,7 @@ debug = false         # verbose logging to iris.log (also: iris -d)
 expand-alias = true   # expand aliases before matching
 auto-execute = false  # run suggestion immediately instead of inserting it
 atuin-history = 0     # 0 = shell history, 1 = atuin, 2 = both
-atuin-db-path = ""    # path to atuin's history.db, empty = auto-detect
+atuin-db-path = ""    # path to atuin's history.db, empty = use default
 
 [ui]
 style = "modern"       # "modern" or "classic"
