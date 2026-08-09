@@ -99,10 +99,16 @@ func loadAtuinCmds() ([]string, error) {
 			continue
 		}
 		cmd = strings.TrimSpace(sanitizeUTF8(cmd))
+		cmd = strings.ReplaceAll(cmd, "\n", " ")
+		cmd = strings.ReplaceAll(cmd, "\r", "")
 		if cmd != "" && !seen[cmd] {
 			seen[cmd] = true
 			cmds = append(cmds, cmd)
 		}
+	}
+	// reverse array to be oldest-first
+	for i, j := 0, len(cmds)-1; i < j; i, j = i+1, j-1 {
+		cmds[i], cmds[j] = cmds[j], cmds[i]
 	}
 	return cmds, rows.Err()
 }
@@ -217,9 +223,9 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 					_ = scanner.Err()
 				}
 			}
-			// mode 2: prepend atuin (newer, higher priority) before shell file
+			// mode 2: append atuin (newer, higher priority) after shell file
 			if atuinMode == 2 && len(atuinCmds) > 0 {
-				allCmds = append(atuinCmds, allCmds...)
+				allCmds = append(allCmds, atuinCmds...)
 			}
 		}
 
