@@ -55,11 +55,17 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 		baseConf := 75
 		for i, h := range histResults {
 			conf := max(baseConf-(i*2), 60)
+			
+			icon := "history"
+			if h.Source == "atuin" {
+				icon = "atuin"
+			}
+			
 			addSuggestion(spec.Suggestion{
 				Cmd:        h.Cmd,
-				Desc:       "history",
-				Icon:       "history",
-				Source:     "history",
+				Desc:       h.Source,
+				Icon:       icon,
+				Source:     h.Source,
 				Confidence: conf,
 			})
 		}

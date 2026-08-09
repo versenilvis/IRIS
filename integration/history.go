@@ -22,6 +22,7 @@ var (
 
 	historyCache  []string
 	idMapCache    map[string]int
+	sourceMapCache map[string]string
 	searcherCache *fuzzy.Searcher
 	mu            sync.Mutex
 	lastModTime   int64
@@ -54,10 +55,12 @@ type HistResult struct {
 	ID         int
 	Cmd        string
 	FuzzyScore int
+	Source     string
 }
 
 func init() {
 	idMapCache = make(map[string]int)
+	sourceMapCache = make(map[string]string)
 }
 
 func sanitizeUTF8(s string) string {
@@ -236,8 +239,14 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 
 		// build historyCache backwards so newest commands come first
 		seen := make(map[string]bool)
+		atuinSeen := make(map[string]bool)
+		for _, c := range atuinCmds {
+			atuinSeen[c] = true
+		}
+
 		historyCache = nil
 		idMapCache = make(map[string]int)
+		sourceMapCache = make(map[string]string)
 
 		currentID := len(sessionHistory) + len(allCmds)
 
@@ -248,6 +257,7 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 				historyCache = append(historyCache, cmd)
 				seen[cmd] = true
 				idMapCache[cmd] = currentID
+				sourceMapCache[cmd] = "session"
 				currentID--
 			}
 		}
@@ -259,6 +269,11 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 				historyCache = append(historyCache, cmd)
 				seen[cmd] = true
 				idMapCache[cmd] = currentID
+				if atuinSeen[cmd] {
+					sourceMapCache[cmd] = "atuin"
+				} else {
+					sourceMapCache[cmd] = "history"
+				}
 				currentID--
 			}
 		}
@@ -275,6 +290,7 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 			results = append(results, HistResult{
 				ID:  idMapCache[cmd],
 				Cmd: cmd,
+				Source: sourceMapCache[cmd],
 			})
 		}
 		return results, nil
@@ -364,6 +380,7 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 				ID:         idMapCache[m.Str],
 				Cmd:        m.Str,
 				FuzzyScore: m.Score,
+				Source:     sourceMapCache[m.Str],
 			})
 		}
 	}
