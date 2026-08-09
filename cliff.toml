@@ -38,6 +38,8 @@ commit_parsers = [
     { message = "(?i)^fix", group = "Bug fixes" },
     { message = "(?i)^perf", group = "Performance" },
     { message = "(?i)^refactor", group = "Refactors" },
+    # the CI bot's own changelog-update commit, not a user-facing doc change
+    { message = "(?i)^docs\\(changelog\\)", skip = true },
     { message = "(?i)^docs?", group = "Documentation" },
     { message = "(?i)^chore", skip = true },
     { message = "(?i)^build", skip = true },

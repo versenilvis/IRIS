@@ -25,6 +25,7 @@ changelog:
         exclude:
             - "(?i)^fix\\(ci\\)"
             - "(?i)^fix\\(release\\)"
+            - "(?i)^docs\\(changelog\\)"
     groups:
         - title: "Features"
           regexp: '(?i)^.*?feat(\(.+\))?!?:.+$'

@@ -4,10 +4,6 @@ All notable changes to this project are documented in this file.
 
 ## [v0.6.0](https://github.com/versenilvis/iris/releases/tag/v0.6.0) - 2026-08-09
 
-### Documentation
-
-- Update for v0.5.4 [skip ci] ([bf4f42](https://github.com/versenilvis/iris/commit/bf4f424e794ebb0d9a8d73a17967757ead92205d))
-
 ### Features
 
 - Atuin history support ([#134](https://github.com/versenilvis/iris/issues/134)) ([dd1fb1](https://github.com/versenilvis/iris/commit/dd1fb156fcbcb10bfc527f9ad4c71e4d240b1a2b))
@@ -17,10 +13,6 @@ All notable changes to this project are documented in this file.
 ### Bug fixes
 
 - Update stale vendorHash for new go.mod dependencies ([#132](https://github.com/versenilvis/iris/issues/132)) ([e334af](https://github.com/versenilvis/iris/commit/e334af8d883b62a40e2c02cc11b001f68cdc7153))
-
-### Documentation
-
-- Update for v0.5.3 [skip ci] ([55d559](https://github.com/versenilvis/iris/commit/55d55957c0b9e6ee17e2a6598e33a2c128647567))
 
 ## [v0.5.3](https://github.com/versenilvis/iris/releases/tag/v0.5.3) - 2026-08-07
 
