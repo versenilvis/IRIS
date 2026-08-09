@@ -28,6 +28,7 @@ var (
 
 	atuinCmds    []string
 	atuinLastMod int64
+	lastAtuinMode int = -1
 )
 
 func RecordSessionCommand(cmd string) {
@@ -142,6 +143,10 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 	}
 
 	atuinMode := config.Get().Core.Atuin
+	if lastAtuinMode != -1 && atuinMode != lastAtuinMode {
+		historyCache = nil
+	}
+	lastAtuinMode = atuinMode
 
 	if atuinMode > 0 {
 		dbPath, _ := config.AtuinDBPath()
