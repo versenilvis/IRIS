@@ -185,7 +185,7 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 		}
 
 		var allCmds []string
-		if atuinMode == 1 {
+		if atuinMode == 1 && len(atuinCmds) > 0 {
 			// atuin only — prepend newest-first so the merge loop below works
 			allCmds = atuinCmds
 		} else {
@@ -356,6 +356,7 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 				ID:         idMapCache[cmd],
 				Cmd:        cmd,
 				FuzzyScore: 10000,
+				Source:     sourceMapCache[cmd],
 			})
 			strictMatches++
 			if strictMatches >= 200 {
