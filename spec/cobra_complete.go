@@ -2,6 +2,7 @@ package spec
 
 import (
 	"context"
+	"debug/buildinfo"
 	"os"
 	"os/exec"
 	"strconv"
@@ -12,6 +13,8 @@ import (
 
 	"github.com/versenilvis/iris/internal/config"
 )
+
+const cobraModulePath = "github.com/spf13/cobra"
 
 type cobraCacheEntry struct {
 	suggestions []Suggestion
@@ -104,6 +107,25 @@ func cobraProbeAllowed(binName string) bool {
 	return false
 }
 
+// isLikelyCobraBinary reports whether binName is a Go binary linking Cobra.
+// only does static analysis so can produce false negatives and positives.
+func isLikelyCobraBinary(binName string) bool {
+	path, err := exec.LookPath(binName)
+	if err != nil {
+		return false
+	}
+	info, err := buildinfo.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	for _, dep := range info.Deps {
+		if dep.Path == cobraModulePath {
+			return true
+		}
+	}
+	return false
+}
+
 // newProbeCmd builds and isolates the `__complete` probe command.
 // starts the child in its own session so it has no controlling terminal
 // and therefore won't affect the user's tty in the case of programs that
@@ -134,6 +156,10 @@ func QueryCobraComplete(binName string, args []string, partial string) []Suggest
 		return filterByPartial(entry.suggestions, partial)
 	}
 	cobraCacheMu.Unlock()
+
+	if !isLikelyCobraBinary(binName) {
+		return nil
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
 	defer cancel()

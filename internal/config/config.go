@@ -33,16 +33,16 @@ func (d Duration) MarshalText() ([]byte, error) {
 }
 
 type CoreConfig struct {
-	Version             int    `toml:"version"`
-	Shell               string `toml:"shell"`
-	ShellLogin          bool   `toml:"shell-login"`
-	Mode                string `toml:"mode"`
-	Debug               bool   `toml:"debug"`
-	ExpandAlias         bool   `toml:"expand-alias"`
-	AutoExecute         bool   `toml:"auto-execute"`
+	Version     int    `toml:"version"`
+	Shell       string `toml:"shell"`
+	ShellLogin  bool   `toml:"shell-login"`
+	Mode        string `toml:"mode"`
+	Debug       bool   `toml:"debug"`
+	ExpandAlias bool   `toml:"expand-alias"`
+	AutoExecute bool   `toml:"auto-execute"`
 	// 0 = shell history, 1 = atuin only, 2 = atuin + shell
-	Atuin               int    `toml:"atuin-history"`
-	AtuinDBPath         string `toml:"atuin-db-path"`
+	Atuin               int      `toml:"atuin-history"`
+	AtuinDBPath         string   `toml:"atuin-db-path"`
 	CobraProbeAllowlist []string `toml:"cobra-probe-allowlist"`
 }
 

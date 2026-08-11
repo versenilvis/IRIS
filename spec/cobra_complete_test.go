@@ -195,6 +195,26 @@ func TestCobraProbeAllowed(t *testing.T) {
 	}
 }
 
+func TestLooksLikeCobraBinary_NotGoBinary(t *testing.T) {
+	// 'ls' is a standard unix command that's not a go binary
+	if isLikelyCobraBinary("ls") {
+		t.Errorf("expected 'ls' to not look like a Cobra binary")
+	}
+}
+
+func TestLooksLikeCobraBinary_RealCobraBinary(t *testing.T) {
+	dir := t.TempDir()
+	binPath := filepath.Join(dir, "cobrafixture")
+	build := exec.Command("go", "build", "-o", binPath, "./testdata/cobrafixture")
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("could not build fixture binary: %v: %s", err, out)
+	}
+
+	if !isLikelyCobraBinary(binPath) {
+		t.Errorf("expected fixture binary linking Cobra to look like a Cobra binary")
+	}
+}
+
 func TestLookup_CobraGolangciLint(t *testing.T) {
 	results := Lookup("golangci-lint ")
 	if len(results) == 0 {
