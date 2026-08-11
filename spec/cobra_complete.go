@@ -96,17 +96,6 @@ func buildCobraCacheKey(binKey string, args []string, partial string) string {
 	return sb.String()
 }
 
-// cobraProbeAllowed reports whether binName is allowed to be probed, per
-// core.cobra-probe-allowlist. "*" allows any binary.
-func cobraProbeAllowed(binName string) bool {
-	for _, allowed := range config.Get().Core.CobraProbeAllowlist {
-		if allowed == "*" || allowed == binName {
-			return true
-		}
-	}
-	return false
-}
-
 // isLikelyCobraBinary reports whether binName is a Go binary linking Cobra.
 // only does static analysis so can produce false negatives and positives.
 func isLikelyCobraBinary(binName string) bool {
@@ -143,7 +132,7 @@ func QueryCobraComplete(binName string, args []string, partial string) []Suggest
 	if strings.ContainsAny(binName, `/\`) {
 		return nil
 	}
-	if !cobraProbeAllowed(binName) {
+	if !config.Get().Core.CobraProbeEnabled {
 		return nil
 	}
 

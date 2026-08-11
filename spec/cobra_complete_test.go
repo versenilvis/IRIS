@@ -168,30 +168,17 @@ func TestNewProbeCmd_NoControllingTerminal(t *testing.T) {
 	}
 }
 
-func TestCobraProbeAllowed(t *testing.T) {
+func TestQueryCobraComplete_ProbeDisabled(t *testing.T) {
+	t.Cleanup(ResetCobraCache)
 	original := config.Get()
 	t.Cleanup(func() { config.Init(original) })
 
 	cfg := config.DefaultConfig()
-	cfg.Core.CobraProbeAllowlist = []string{"*"}
+	cfg.Core.CobraProbeEnabled = false
 	config.Init(cfg)
-	if !cobraProbeAllowed("anything") {
-		t.Errorf("expected wildcard allowlist to allow any binary")
-	}
 
-	cfg.Core.CobraProbeAllowlist = []string{"kubectl", "gh"}
-	config.Init(cfg)
-	if !cobraProbeAllowed("kubectl") {
-		t.Errorf("expected listed binary 'kubectl' to be allowed")
-	}
-	if cobraProbeAllowed("fakecobra") {
-		t.Errorf("expected unlisted binary 'fakecobra' to be denied")
-	}
-
-	cfg.Core.CobraProbeAllowlist = []string{}
-	config.Init(cfg)
-	if cobraProbeAllowed("kubectl") {
-		t.Errorf("expected empty allowlist to deny everything")
+	if result := QueryCobraComplete("non-go-binary", nil, ""); result != nil {
+		t.Errorf("expected nil when cobra probing is disabled, got %v", result)
 	}
 }
 

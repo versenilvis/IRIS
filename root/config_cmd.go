@@ -65,10 +65,8 @@ atuin-history = 0
 # custom atuin database path (leave empty for default)
 atuin-db-path = ""
 
-# binaries allowed to be probed with ` + "`__complete`" + ` for Cobra-based CLI suggestions.
-# "*" allows any (default). use an explicit list (e.g. ["kubectl", "helm", "gh"]) to
-# only probe known-safe CLIs, or [] to disable probing entirely
-cobra-probe-allowlist = ["*"]
+# probe unknown binaries with ` + "`__complete`" + ` for Cobra-based CLI suggestions.
+cobra-probe-enabled = true
 
 [ui]
 # visual style: "modern" (icons, category pills, shortcut footer) or "classic" (minimalist, centered number, no icons)
