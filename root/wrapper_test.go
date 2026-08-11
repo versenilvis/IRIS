@@ -98,3 +98,39 @@ func TestSyncProcessCWDKeepsDirectoryOnBadPath(t *testing.T) {
 		}
 	}
 }
+
+func TestNullTokenSplit(t *testing.T) {
+	tests := []struct {
+		name        string // subtest name
+		data        string // input data
+		atEOF       bool   // is at eof
+		wantAdvance int    // expected bytes consumed
+		wantToken   string // expected token returned
+		wantMore    bool   // wants more data before producing a token
+	}{
+		{"empty at eof", "", true, 0, "", true},
+		{"complete token", "/some/dir\x00rest", false, len("/some/dir\x00"), "/some/dir", false},
+		{"partial token, not at eof", "/some/dir", false, 0, "", true},
+		{"partial token at eof is returned as final token", "/some/dir", true, len("/some/dir"), "/some/dir", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			advance, token, err := nullTokenSplit([]byte(tt.data), tt.atEOF)
+			if err != nil {
+				t.Fatalf("nullTokenSplit(%q, %v) returned error: %v", tt.data, tt.atEOF, err)
+			}
+			if advance != tt.wantAdvance {
+				t.Errorf("advance = %d, want %d", advance, tt.wantAdvance)
+			}
+			if tt.wantMore {
+				if token != nil {
+					t.Errorf("token = %q, want nil (more data needed)", token)
+				}
+				return
+			}
+			if string(token) != tt.wantToken {
+				t.Errorf("token = %q, want %q", token, tt.wantToken)
+			}
+		})
+	}
+}

@@ -135,6 +135,21 @@ func syncProcessCWD(cwd string) {
 	_ = os.Chdir(cwd)
 }
 
+// nullTokenSplit is a bufio.SplitFunc for the null-byte-delimited messages
+// iris passes over its IPC pipes.
+func nullTokenSplit(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	if atEOF && len(data) == 0 {
+		return 0, nil, nil
+	}
+	if i := bytes.IndexByte(data, '\x00'); i >= 0 {
+		return i + 1, data[0:i], nil
+	}
+	if atEOF {
+		return len(data), data, nil
+	}
+	return 0, nil, nil
+}
+
 // runWrapper sets up the pty environment, launches the shell,
 // and manages the main input loop to provide real-time suggestions
 // it handles raw terminal mode to intercept keystrokes and
@@ -153,6 +168,15 @@ func runWrapper() {
 	r, w, err := os.Pipe() // pipe for ipc communication from shell to iris
 	if err != nil {
 		return
+	}
+
+	// relay cwd changes up to the watchdog over the fd it handed the wrapper so external tools
+	// don't just see the initial working directory
+	var watchdogCWD *os.File
+	if fdStr := os.Getenv("IRIS_WATCHDOG_CWD_FD"); fdStr != "" {
+		if fd, fdErr := strconv.Atoi(fdStr); fdErr == nil {
+			watchdogCWD = os.NewFile(uintptr(fd), "watchdog-cwd-relay")
+		}
 	}
 
 	var shellName string
@@ -515,18 +539,7 @@ func runWrapper() {
 			}
 		}()
 		scanner := bufio.NewScanner(r)
-		scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
-			if atEOF && len(data) == 0 {
-				return 0, nil, nil
-			}
-			if i := bytes.IndexByte(data, '\x00'); i >= 0 {
-				return i + 1, data[0:i], nil
-			}
-			if atEOF {
-				return len(data), data, nil
-			}
-			return 0, nil, nil
-		})
+		scanner.Split(nullTokenSplit)
 
 		for scanner.Scan() {
 			query := scanner.Text()
@@ -534,6 +547,9 @@ func runWrapper() {
 			if cwd, ok := strings.CutPrefix(query, "IRIS_CWD:"); ok {
 				spec.SetCWD(cwd)
 				syncProcessCWD(cwd)
+				if watchdogCWD != nil {
+					_, _ = fmt.Fprintf(watchdogCWD, "%s\x00", cwd)
+				}
 				continue
 			}
 

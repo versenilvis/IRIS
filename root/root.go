@@ -1,10 +1,12 @@
 package root
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -77,6 +79,19 @@ func init() {
 	}
 }
 
+// relayWatchdogCWD reads null-delimited cwd updates the wrapper relays over
+// r and applies each one to the watchdog's own working directory.
+func relayWatchdogCWD(r io.Reader) {
+	scanner := bufio.NewScanner(r)
+	scanner.Split(nullTokenSplit)
+	for scanner.Scan() {
+		syncProcessCWD(scanner.Text())
+	}
+	if err := scanner.Err(); err != nil {
+		logger.Errorf("watchdog cwd relay scanner error: %v", err)
+	}
+}
+
 // runWatchdog spawns the watchdog parent process
 func runWatchdog() {
 	exe, err := os.Executable()
@@ -114,6 +129,17 @@ func runWatchdog() {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = w
 
+	// give the wrapper a pipe to relay the shell's cwd back to the watchdog
+	// so it doesn't stay stuck at its initial working directory
+	// the watchdog holds the outer tty, so it's the process external tools
+	// inspect to resolve this session's cwd.
+	cwdR, cwdW, cwdErr := os.Pipe()
+	if cwdErr == nil {
+		cwdFD := 3 + len(cmd.ExtraFiles)
+		cmd.ExtraFiles = append(cmd.ExtraFiles, cwdW)
+		cmd.Env = append(cmd.Env, fmt.Sprintf("IRIS_WATCHDOG_CWD_FD=%d", cwdFD))
+	}
+
 	err = cmd.Start()
 	if err != nil {
 		runOriginal()
@@ -121,6 +147,10 @@ func runWatchdog() {
 	}
 
 	_ = w.Close()
+	if cwdErr == nil {
+		_ = cwdW.Close()
+		go relayWatchdogCWD(cwdR)
+	}
 
 	// copy child stderr to both our buffer and the real stderr, filtering out panics
 	var stderrBuf bytes.Buffer
