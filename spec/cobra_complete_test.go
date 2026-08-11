@@ -205,7 +205,7 @@ func TestLooksLikeCobraBinary_NotGoBinary(t *testing.T) {
 func TestLooksLikeCobraBinary_RealCobraBinary(t *testing.T) {
 	dir := t.TempDir()
 	binPath := filepath.Join(dir, "cobrafixture")
-	build := exec.Command("go", "build", "-o", binPath, "./testdata/cobrafixture")
+	build := exec.CommandContext(context.Background(), "go", "build", "-o", binPath, "./testdata/cobrafixture")
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("could not build fixture binary: %v: %s", err, out)
 	}
