@@ -1057,6 +1057,7 @@ func runWrapper() {
 								}
 								continue
 							}
+							rawSeq := append([]byte(nil), inputSlice[i:i+navConsumed]...)
 							i += navConsumed - 1
 							intercepted = true
 							bufferMu.Lock()
@@ -1095,6 +1096,7 @@ func runWrapper() {
 								userNavigated.Store(false)
 							}
 							bufferMu.Unlock()
+							_, _ = ptmx.Write(rawSeq)
 							isLeftRightArrow = true
 						}
 					}
