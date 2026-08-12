@@ -107,6 +107,17 @@ func writeStdout(data []byte) {
 	_, _ = os.Stdout.Write(data)
 }
 
+func restoreStdoutTTY() {
+	if term.IsTerminal(int(os.Stdout.Fd())) {
+		return
+	}
+	tty, err := os.OpenFile("/dev/tty", os.O_WRONLY, 0)
+	if err != nil {
+		return
+	}
+	os.Stdout = tty
+}
+
 // restoreTerminal restores the terminal state if needed
 func restoreTerminal() {
 	oldStateMu.Lock()
@@ -129,6 +140,8 @@ func syncProcessCWD(cwd string) {
 // it handles raw terminal mode to intercept keystrokes and
 // coordinates between the shell process and the suggestion overlay
 func runWrapper() {
+	restoreStdoutTTY()
+
 	var naiveBuffer string
 	var lastSubmittedCommand string
 	cursorOffset := 0
