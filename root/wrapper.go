@@ -317,7 +317,12 @@ func runWrapper() {
 	})
 	isExecuting := func() bool {
 		if isAltScreenActive.Load() {
-			return true
+			pgrp, pgrpErr := unix.IoctlGetInt(int(ptmx.Fd()), unix.TIOCGPGRP)
+			if pgrpErr == nil && pgrp == shellPGID {
+				isAltScreenActive.Store(false)
+			} else {
+				return true
+			}
 		}
 		if isCommandActive.Load() {
 			// for bash: no preexec/precmd hooks, so fall back to TIOCGPGRP to detect when shell returns
