@@ -31,7 +31,9 @@ if [ -n "$IRIS_PID" ] && [ "$IRIS_PID" != "$PPID" ] && [ "${TTY:-$(tty 2>/dev/nu
     unset IRIS_PID IRIS_IS_CHILD IRIS_FD IRIS_TTY
 fi
 
-if [ -z "$IRIS_PID" ] && [ -z "$IRIS_RESCUE" ]; then
+# a non-interactive shell (tool runners sourcing rc files, scripts) has no
+# prompt to complete, and exec'ing here would seize the tty from the real iris
+if [[ -o interactive ]] && [ -t 0 ] && [ -z "$IRIS_PID" ] && [ -z "$IRIS_RESCUE" ]; then
     export IRIS_ACTIVE_SHELL="zsh"
     exec iris
 fi
@@ -74,7 +76,9 @@ if [ -n "$IRIS_PID" ] && [ "$IRIS_PID" != "$PPID" ] && [ "$(tty 2>/dev/null)" !=
     unset IRIS_PID IRIS_IS_CHILD IRIS_FD IRIS_TTY
 fi
 
-if [ -z "$IRIS_PID" ] && [ -z "$IRIS_RESCUE" ]; then
+# a non-interactive shell (tool runners sourcing rc files, scripts) has no
+# prompt to complete, and exec'ing here would seize the tty from the real iris
+if [[ $- == *i* ]] && [ -t 0 ] && [ -z "$IRIS_PID" ] && [ -z "$IRIS_RESCUE" ]; then
     export IRIS_ACTIVE_SHELL="bash"
     exec iris
 fi
