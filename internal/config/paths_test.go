@@ -84,15 +84,15 @@ func TestConfigDirRejectsUnusableOverride(t *testing.T) {
 			t.Setenv(ConfigDirEnv, tt.dir)
 
 			_, err := ConfigPath()
-			var badDir *ErrConfigDir
+			var badDir *ConfigDirError
 			if !errors.As(err, &badDir) {
-				t.Fatalf("ConfigPath() error = %v, want *ErrConfigDir", err)
+				t.Fatalf("ConfigPath() error = %v, want *ConfigDirError", err)
 			}
 			if badDir.Reason != tt.reason {
 				t.Errorf("reason = %q, want %q", badDir.Reason, tt.reason)
 			}
 			if _, err := ThemePath(); !errors.As(err, &badDir) {
-				t.Errorf("ThemePath() error = %v, want *ErrConfigDir", err)
+				t.Errorf("ThemePath() error = %v, want *ConfigDirError", err)
 			}
 		})
 	}

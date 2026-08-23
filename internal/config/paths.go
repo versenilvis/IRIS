@@ -12,10 +12,10 @@ import (
 // boundary, the environment is not.
 const ConfigDirEnv = "IRIS_CONFIG_DIR"
 
-// ErrConfigDir reports an unusable IRIS_CONFIG_DIR. An explicit override that
+// ConfigDirError reports an unusable IRIS_CONFIG_DIR. An explicit override that
 // points nowhere is a typo or a broken generated path, and silently falling
 // back to the default location turns that into "my theme stopped applying".
-type ErrConfigDir struct {
+type ConfigDirError struct {
 	Dir    string
 	Reason string
 	// Source names what set Dir, so the message points at the flag the user
@@ -23,7 +23,7 @@ type ErrConfigDir struct {
 	Source string
 }
 
-func (e *ErrConfigDir) Error() string {
+func (e *ConfigDirError) Error() string {
 	source := e.Source
 	if source == "" {
 		source = ConfigDirEnv
@@ -38,16 +38,16 @@ func configDir() (dir string, overridden bool, err error) {
 		if !filepath.IsAbs(custom) {
 			abs, absErr := filepath.Abs(custom)
 			if absErr != nil {
-				return "", true, &ErrConfigDir{Dir: custom, Reason: "cannot be resolved to an absolute path"}
+				return "", true, &ConfigDirError{Dir: custom, Reason: "cannot be resolved to an absolute path"}
 			}
 			custom = abs
 		}
 		info, statErr := os.Stat(custom)
 		if statErr != nil {
-			return "", true, &ErrConfigDir{Dir: custom, Reason: "does not exist"}
+			return "", true, &ConfigDirError{Dir: custom, Reason: "does not exist"}
 		}
 		if !info.IsDir() {
-			return "", true, &ErrConfigDir{Dir: custom, Reason: "is not a directory"}
+			return "", true, &ConfigDirError{Dir: custom, Reason: "is not a directory"}
 		}
 		return custom, true, nil
 	}

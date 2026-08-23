@@ -277,7 +277,7 @@ func Execute() {
 		fromFlag = true
 	}
 	if _, dirErr := config.ConfigDir(); dirErr != nil {
-		var badDir *config.ErrConfigDir
+		var badDir *config.ConfigDirError
 		if errors.As(dirErr, &badDir) {
 			if fromFlag {
 				badDir.Source = configDirFlag
