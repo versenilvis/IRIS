@@ -319,6 +319,7 @@ select = "tab"             # accept the selected suggestion
 navigate-up = "up"         # select up, or open history if empty
 navigate-down = "down"     # select down, or open history if empty
 navigate-right = "right"   # accept ghost text
+navigate-closed = "history" # with the menu closed: "history" browses iris history, "shell" passes the key to the shell (e.g. atuin)
 
 [git]
 filter-active-branch = true  # exclude current branch from suggestions

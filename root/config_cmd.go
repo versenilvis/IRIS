@@ -118,6 +118,10 @@ select = "tab"
 navigate-up = "up"
 navigate-down = "down"
 navigate-right = "right"
+
+# what navigate-up/navigate-down do while the menu is closed:
+# "history" = browse iris history, "shell" = leave the key to the shell
+navigate-closed = "history"
 `
 		err = os.WriteFile(path, []byte(defaultContent), 0644)
 		if err != nil {
