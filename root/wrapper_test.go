@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"golang.org/x/term"
+
+	"github.com/versenilvis/iris/internal/config"
 )
 
 func wantDir(t *testing.T, path string) string {
@@ -130,6 +132,28 @@ func TestNullTokenSplit(t *testing.T) {
 			}
 			if string(token) != tt.wantToken {
 				t.Errorf("token = %q, want %q", token, tt.wantToken)
+			}
+		})
+	}
+}
+
+func TestMenuOnlyHidden(t *testing.T) {
+	tests := []struct {
+		name        string
+		mode        config.GhostTextMode
+		menuEnabled bool
+		want        bool
+	}{
+		{"mode 2, menu toggled off", config.GhostTextIndividual, false, true},
+		{"mode 2, menu on", config.GhostTextIndividual, true, false},
+		{"mode 1, menu toggled off", config.GhostTextOn, false, false},
+		{"mode 1, menu on", config.GhostTextOn, true, false},
+		{"mode 0, menu toggled off", config.GhostTextOff, false, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := menuOnlyHidden(tt.mode, tt.menuEnabled); got != tt.want {
+				t.Errorf("menuOnlyHidden(%d, %v) = %v, want %v", tt.mode, tt.menuEnabled, got, tt.want)
 			}
 		})
 	}

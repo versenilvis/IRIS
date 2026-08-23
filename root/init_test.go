@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/versenilvis/iris/internal/config"
 )
 
 func captureInitScript(t *testing.T, shell string) string {
@@ -55,5 +57,29 @@ func TestInitAutostartRequiresInteractiveShell(t *testing.T) {
 				t.Fatalf("%s autostart is not guarded by %q:\n%s", shell, guard, head[cond:])
 			}
 		})
+	}
+}
+
+func TestFishAutosuggestionsFollowGhostTextMode(t *testing.T) {
+	const marker = "set -g fish_autosuggestion_enabled 0"
+
+	cases := []struct {
+		mode config.GhostTextMode
+		want bool
+	}{
+		{config.GhostTextOff, false},
+		{config.GhostTextOn, true},
+		{config.GhostTextIndividual, true},
+	}
+
+	for _, tc := range cases {
+		cfg := config.DefaultConfig()
+		cfg.UI.GhostText = tc.mode
+		config.Init(cfg)
+
+		script := captureInitScript(t, "fish")
+		if got := strings.Contains(script, marker); got != tc.want {
+			t.Errorf("ghost-text=%d: fish autosuggestions disabled=%v, want %v", tc.mode, got, tc.want)
+		}
 	}
 }

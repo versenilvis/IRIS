@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/BurntSushi/toml"
 )
 
 func TestDefaultConfigAndState(t *testing.T) {
@@ -130,7 +132,7 @@ model = "qwen-2.5-coder-32b"
 	t.Setenv("IRIS_CORE_DEBUG", "true")
 	t.Setenv("IRIS_CORE_SHELL", "fish")
 	t.Setenv("IRIS_CORE_MODE", "history")
-	t.Setenv("IRIS_UI_GHOST_TEXT", "false")
+	t.Setenv("IRIS_UI_GHOST_TEXT", "0")
 	t.Setenv("IRIS_UI_MAX_SUGGESTIONS", "250")
 	t.Setenv("IRIS_UI_MAX_HEIGHT", "25")
 	t.Setenv("IRIS_UPDATER_CHANNEL", "nightly")
@@ -156,8 +158,8 @@ model = "qwen-2.5-coder-32b"
 	if cfg.Core.Mode != "history" {
 		t.Errorf("expected mode history, got %q", cfg.Core.Mode)
 	}
-	if cfg.UI.GhostText {
-		t.Errorf("expected ghost text to be false")
+	if cfg.UI.GhostText != GhostTextOff {
+		t.Errorf("expected ghost text off, got %d", cfg.UI.GhostText)
 	}
 	if cfg.UI.MaxSuggestions != 250 {
 		t.Errorf("expected max suggestions 250, got %d", cfg.UI.MaxSuggestions)
@@ -365,5 +367,72 @@ func TestMatchKey_NavKeybindingsNoLongerHijackEnter(t *testing.T) {
 		if m, _ := MatchKey([]byte{0x0d}, expected); m {
 			t.Errorf("MatchKey(enter{0x0d}, %q) matched; Enter must remain reserved", expected)
 		}
+	}
+}
+
+func TestGhostTextModeUnmarshalTOML(t *testing.T) {
+	cases := []struct {
+		name  string
+		input string
+		want  GhostTextMode
+	}{
+		{"legacy true", "ghost-text = true", GhostTextOn},
+		{"legacy false", "ghost-text = false", GhostTextOff},
+		{"off", "ghost-text = 0", GhostTextOff},
+		{"on", "ghost-text = 1", GhostTextOn},
+		{"individual", "ghost-text = 2", GhostTextIndividual},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var cfg Config
+			if _, err := toml.Decode("[ui]\n"+tc.input+"\n", &cfg); err != nil {
+				t.Fatalf("decode %q: %v", tc.input, err)
+			}
+			if cfg.UI.GhostText != tc.want {
+				t.Errorf("%q: got %d, want %d", tc.input, cfg.UI.GhostText, tc.want)
+			}
+		})
+	}
+
+	var cfg Config
+	if _, err := toml.Decode("[ui]\nghost-text = \"yes\"\n", &cfg); err == nil {
+		t.Error("expected a string ghost-text to be rejected")
+	}
+}
+
+func TestValidateGhostTextRange(t *testing.T) {
+	cfg := DefaultConfig()
+
+	for _, valid := range []GhostTextMode{GhostTextOff, GhostTextOn, GhostTextIndividual} {
+		cfg.UI.GhostText = valid
+		if err := validate(cfg); err != nil {
+			t.Errorf("expected ghost-text=%d to be valid, got error: %v", valid, err)
+		}
+	}
+
+	for _, invalid := range []GhostTextMode{-1, 3} {
+		cfg.UI.GhostText = invalid
+		if err := validate(cfg); err == nil {
+			t.Errorf("expected ghost-text=%d to be rejected", invalid)
+		}
+	}
+}
+
+func TestGhostTextEnvAcceptsBoolAndInt(t *testing.T) {
+	cases := map[string]GhostTextMode{
+		"0": GhostTextOff, "1": GhostTextOn, "2": GhostTextIndividual,
+		"true": GhostTextOn, "false": GhostTextOff,
+	}
+
+	for val, want := range cases {
+		t.Run(val, func(t *testing.T) {
+			t.Setenv("IRIS_UI_GHOST_TEXT", val)
+			cfg := DefaultConfig()
+			applyEnv(cfg)
+			if cfg.UI.GhostText != want {
+				t.Errorf("IRIS_UI_GHOST_TEXT=%q: got %d, want %d", val, cfg.UI.GhostText, want)
+			}
+		})
 	}
 }

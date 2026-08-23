@@ -14,6 +14,31 @@ import (
 
 type Duration time.Duration
 
+// ghost-text was a bool before it grew a third mode, so old configs must keep loading
+type GhostTextMode int
+
+func (g *GhostTextMode) UnmarshalTOML(val any) error {
+	switch v := val.(type) {
+	case bool:
+		if v {
+			*g = GhostTextOn
+		} else {
+			*g = GhostTextOff
+		}
+	case int64:
+		*g = GhostTextMode(v)
+	default:
+		return fmt.Errorf("ghost-text must be a boolean or integer")
+	}
+	return nil
+}
+
+const (
+	GhostTextOff GhostTextMode = iota
+	GhostTextOn
+	GhostTextIndividual
+)
+
 var (
 	_ encoding.TextUnmarshaler = (*Duration)(nil)
 	_ encoding.TextMarshaler   = (*Duration)(nil)
@@ -47,13 +72,13 @@ type CoreConfig struct {
 }
 
 type UIConfig struct {
-	Style           string `toml:"style"`
-	GhostText       bool   `toml:"ghost-text"`
-	ShowHiddenFiles bool   `toml:"hidden-files"`
-	MaxSuggestions  int    `toml:"max-suggestions"`
-	MaxHeight       int    `toml:"max-height"`
-	MaxWidth        int    `toml:"max-width"`
-	NerdFonts       bool   `toml:"nerd-fonts"`
+	Style           string        `toml:"style"`
+	GhostText       GhostTextMode `toml:"ghost-text"`
+	ShowHiddenFiles bool          `toml:"hidden-files"`
+	MaxSuggestions  int           `toml:"max-suggestions"`
+	MaxHeight       int           `toml:"max-height"`
+	MaxWidth        int           `toml:"max-width"`
+	NerdFonts       bool          `toml:"nerd-fonts"`
 }
 
 type GitConfig struct {
@@ -289,6 +314,10 @@ func validate(cfg *Config) error {
 
 	if cfg.Updater.AutoUpdate < 0 || cfg.Updater.AutoUpdate > 2 {
 		return fmt.Errorf("updater.auto-update: invalid value %d (want: 0=off, 1=auto, 2=confirm)", cfg.Updater.AutoUpdate)
+	}
+
+	if cfg.UI.GhostText < GhostTextOff || cfg.UI.GhostText > GhostTextIndividual {
+		return fmt.Errorf("ui.ghost-text: invalid value %d (want: 0=off, 1=on, 2=individual)", cfg.UI.GhostText)
 	}
 
 	if cfg.UI.MaxSuggestions < 1 || cfg.UI.MaxSuggestions > 500 {

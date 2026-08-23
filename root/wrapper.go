@@ -150,6 +150,12 @@ func nullTokenSplit(data []byte, atEOF bool) (advance int, token []byte, err err
 	return 0, nil, nil
 }
 
+// In ghost-text mode 2 the menu toggle hides the menu box only: ghost text
+// outlives it, so rendering must keep going with the menu off.
+func menuOnlyHidden(mode config.GhostTextMode, menuEnabled bool) bool {
+	return !menuEnabled && mode == config.GhostTextIndividual
+}
+
 // runWrapper sets up the pty environment, launches the shell,
 // and manages the main input loop to provide real-time suggestions
 // it handles raw terminal mode to intercept keystrokes and
@@ -343,11 +349,11 @@ func runWrapper() {
 	var isCommandActive atomic.Bool
 	var isAltScreenActive atomic.Bool
 	var disableGhostText atomic.Bool
-	disableGhostText.Store(!config.Get().UI.GhostText)
+	disableGhostText.Store(config.Get().UI.GhostText == config.GhostTextOff)
 	var renderOverlayFn atomic.Value // holds func()
 	renderOverlayFn.Store(func() {})
 	config.AutoDetectConfigChange(func(cfg *config.Config) {
-		disableGhostText.Store(!cfg.UI.GhostText)
+		disableGhostText.Store(cfg.UI.GhostText == config.GhostTextOff)
 		if renderer, ok := renderOverlayFn.Load().(func()); ok {
 			renderer()
 		}
@@ -379,7 +385,7 @@ func runWrapper() {
 		return pgrp != shellPGID
 	}
 
-	suggestionsEnabled := true
+	suggestionsEnabled := config.Get().UI.GhostText != config.GhostTextIndividual
 
 	// Shared handler for configured navigation keys (e.g. ctrl+j / ctrl+k).
 	// Moves the overlay cursor when visible, otherwise opens history/spec
@@ -777,7 +783,13 @@ func runWrapper() {
 		}
 		currentCmd := overlay.GetCurrentCmd()
 		logger.Debugf("RenderOverlay nav: %v, typedQuery: '%s', currentCmd: '%s'", navCopy, overlay.GetTypedQuery(), currentCmd)
-		b.WriteString(overlay.Render())
+		if menuOnlyHidden(config.Get().UI.GhostText, suggestionsEnabled) {
+			// Clear() erases the drawn box without dropping item state, so the
+			// ghost text written above still has a suggestion behind it
+			b.WriteString(overlay.Clear())
+		} else {
+			b.WriteString(overlay.Render())
+		}
 		writeStdout([]byte(b.String()))
 	}
 
@@ -785,7 +797,7 @@ func runWrapper() {
 		renderMu.Lock()
 		defer renderMu.Unlock()
 
-		if !suggestionsEnabled || isExecuting() {
+		if isExecuting() || (!suggestionsEnabled && !menuOnlyHidden(config.Get().UI.GhostText, suggestionsEnabled)) {
 			if renderTimer != nil {
 				renderTimer.Stop()
 				renderTimer = nil
@@ -846,9 +858,16 @@ func runWrapper() {
 					intercepted = true
 					suggestionsEnabled = !suggestionsEnabled
 					if !suggestionsEnabled {
-						writeStdout([]byte(overlay.ClearAndDisable()))
+						if menuOnlyHidden(config.Get().UI.GhostText, suggestionsEnabled) {
+							writeStdout([]byte(overlay.Clear()))
+						} else {
+							writeStdout([]byte(overlay.ClearAndDisable()))
+						}
 					} else {
 						shouldOverlayDraw = true
+					}
+					if renderer, ok := renderOverlayFn.Load().(func()); ok {
+						renderer()
 					}
 					i += consumed - 1
 					continue
@@ -975,7 +994,7 @@ func runWrapper() {
 					if strings.TrimSpace(cmdToSubmit) == "iris reload" {
 						if newCfg, err := config.Load(); err == nil {
 							config.Init(newCfg)
-							disableGhostText.Store(!newCfg.UI.GhostText)
+							disableGhostText.Store(newCfg.UI.GhostText == config.GhostTextOff)
 						}
 						msg := "echo -e '\\033[32m✓ Iris configuration reloaded successfully.\\033[0m'\r"
 						_, _ = ptmx.Write(append([]byte{0x15}, []byte(msg)...))
@@ -986,7 +1005,7 @@ func runWrapper() {
 						activeModeMu.Lock()
 						activeMode = loadMode()
 						activeModeMu.Unlock()
-						disableGhostText.Store(false)
+						disableGhostText.Store(config.Get().UI.GhostText == config.GhostTextOff)
 						shouldOverlayDraw = false
 						userNavigated.Store(false)
 						continue
@@ -1003,7 +1022,7 @@ func runWrapper() {
 					activeModeMu.Unlock()
 					isCommandActive.Store(true)
 					_, _ = ptmx.Write([]byte{b}) // forward enter to terminal
-					disableGhostText.Store(false)
+					disableGhostText.Store(config.Get().UI.GhostText == config.GhostTextOff)
 					shouldOverlayDraw = false
 					userNavigated.Store(false)
 					continue
@@ -1173,7 +1192,7 @@ func runWrapper() {
 					activeModeMu.Lock()
 					activeMode = loadMode()
 					activeModeMu.Unlock()
-					disableGhostText.Store(false)
+					disableGhostText.Store(config.Get().UI.GhostText == config.GhostTextOff)
 					shouldOverlayDraw = false
 					userNavigated.Store(false)
 					continue

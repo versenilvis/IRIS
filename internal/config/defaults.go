@@ -18,7 +18,7 @@ func DefaultConfig() *Config {
 		},
 		UI: UIConfig{
 			Style:           "modern",
-			GhostText:       true,
+			GhostText:       GhostTextOn,
 			ShowHiddenFiles: false,
 			MaxSuggestions:  100,
 			MaxHeight:       15,
