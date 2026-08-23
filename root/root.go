@@ -52,15 +52,19 @@ It works exactly like coding editor suggestion menu drop down.`,
 			runWrapper()
 		},
 	}
-	shellFlag      string
-	shellLoginFlag bool
-	debugMode      bool
+	shellFlag          string
+	configDirFlagValue string
+	shellLoginFlag     bool
+	debugMode          bool
 )
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&shellFlag, "shell", "s", "", "shell to use (bash, zsh, fish)")
 	rootCmd.PersistentFlags().BoolVar(&shellLoginFlag, "shell-login", false, "run the selected shell as a login shell")
 	rootCmd.PersistentFlags().BoolVarP(&debugMode, "debug", "d", false, "enable debug logging to iris.log")
+	// read before cobra parses, in scanConfigDirFlag; registered so --help
+	// lists it and parsing does not reject it
+	rootCmd.PersistentFlags().StringVar(&configDirFlagValue, "config-dir", "", "directory holding config.toml and theme.toml (env: "+config.ConfigDirEnv+")")
 
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		if shellFlag != "" {
@@ -234,7 +238,54 @@ func runOriginal() {
 	}
 }
 
+// configDirFlag is the long form of the flag; scanConfigDirFlag reads it
+// straight out of os.Args because config.Load() runs before cobra parses
+// anything, so the cobra flag value is not available yet.
+const configDirFlag = "--config-dir"
+
+// scanConfigDirFlag returns the --config-dir value, supporting both
+// "--config-dir X" and "--config-dir=X".
+func scanConfigDirFlag(args []string) (string, bool) {
+	for i, arg := range args {
+		if value, ok := strings.CutPrefix(arg, configDirFlag+"="); ok {
+			return value, true
+		}
+		if arg == configDirFlag && i+1 < len(args) {
+			return args[i+1], true
+		}
+	}
+	return "", false
+}
+
+// failConfigDir reports an unusable config dir and stops. The init script
+// exports IRIS_ACTIVE_SHELL immediately before `exec iris`, so when it is set
+// iris has replaced the user's shell and exiting would close the terminal --
+// hand them a plain shell instead of a dead window.
+func failConfigDir(err error) {
+	fmt.Fprintf(os.Stderr, "\r\n\033[31m[IRIS] %v\033[0m\r\n", err)
+	if os.Getenv("IRIS_ACTIVE_SHELL") != "" {
+		fmt.Fprintf(os.Stderr, "\033[33m[IRIS] starting your shell without iris.\033[0m\r\n")
+		startRescueShell()
+	}
+	os.Exit(1)
+}
+
 func Execute() {
+	fromFlag := false
+	if dir, ok := scanConfigDirFlag(os.Args[1:]); ok {
+		_ = os.Setenv(config.ConfigDirEnv, dir)
+		fromFlag = true
+	}
+	if _, dirErr := config.ConfigDir(); dirErr != nil {
+		var badDir *config.ErrConfigDir
+		if errors.As(dirErr, &badDir) {
+			if fromFlag {
+				badDir.Source = configDirFlag
+			}
+			failConfigDir(badDir)
+		}
+	}
+
 	_ = config.MigrateFromLegacyJSON()
 	cfg, err := config.Load()
 	if err != nil {

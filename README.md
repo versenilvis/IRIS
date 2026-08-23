@@ -288,6 +288,24 @@ iris config init
 iris config show
 ```
 
+### Custom config location
+
+`config.toml` and `theme.toml` are read from `$XDG_CONFIG_HOME/iris`, falling back to `~/.config/iris`. Point IRIS somewhere else with either the `--config-dir` flag or the `IRIS_CONFIG_DIR` environment variable:
+
+```bash
+iris --config-dir ~/iris-profiles/work
+IRIS_CONFIG_DIR=~/iris-profiles/work iris
+```
+
+The flag wins over the variable, and both win over `XDG_CONFIG_HOME`. `iris config init`, `iris theme init` and `iris setup` write into the chosen directory, so a profile can be created and used entirely from one location.
+
+> [!IMPORTANT]
+> Prefer the environment variable when the directory should apply to your whole session. Your shell rc starts IRIS with a bare `exec iris`, which drops any flags you typed earlier — the environment survives that, so it is also what a NixOS or other declarative setup should set.
+
+The directory must exist. Unlike the default location, an explicit `--config-dir` that points nowhere is treated as an error rather than silently falling back, since that is nearly always a typo or a stale generated path. The files inside are still optional: a missing `config.toml` means built-in defaults and a missing `theme.toml` means the built-in theme, so pointing at an empty directory and running `iris config init` is the normal way to start a new profile.
+
+State and history (`~/.local/share/iris`) are **not** affected, so profiles share the remembered mode and frecency ranking.
+
 ### Sample `config.toml`
 
 ```toml
@@ -400,6 +418,8 @@ IRIS has theme TOML configuration file located at `~/.config/iris/theme.toml`
 ```bash
 iris theme init
 ```
+
+`theme.toml` lives beside `config.toml`, so `--config-dir` and `IRIS_CONFIG_DIR` relocate it too.
 
 ### Default theme
 IRIS automatically falls back to the default theme if `theme.toml` is missing, empty, or contains missing configuration options
