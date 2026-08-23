@@ -7,7 +7,7 @@ import (
 func init() {
 	spec.Register(&spec.Spec{
 		Name:        "space",
-		Description: "Deta Space CLI for mananging Deta Space projects",
+		Description: "Deta Space CLI for managing Deta Space projects",
 		Subcommands: []spec.Subcommand{
 			{Name: "completion", Description: "Generate the autocompletion script for the specified shell"},
 			{Name: "bash", Description: "Generate the autocompletion script for bash"},

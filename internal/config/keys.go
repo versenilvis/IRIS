@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strconv"
 	"strings"
 )
 
@@ -29,9 +30,25 @@ func MatchKey(input []byte, expected string) (matched bool, consumed int) {
 		char := expected[5]
 		if char >= 'a' && char <= 'z' {
 			targetByte := char - 'a' + 1
+			// 0x0d ('m') is the Carriage Return byte. In a raw terminal the
+			// Enter/Return key and Ctrl+M both arrive as 0x0d, so they are
+			// indistinguishable. Matching a "ctrl+m" keybinding here would let
+			// it shadow the Enter key and break line submission (the wrapper
+			// checks keybindings before its enter handler). Reserve this byte
+			// for Enter so a "ctrl+m" keybinding can never hijack it.
+			if targetByte == 0x0d {
+				return false, 0
+			}
 			if input[0] == targetByte {
 				return true, 1
 			}
+		// Some terminals (foot, kitty, etc.) send kitty keyboard protocol
+		// escape sequences for Ctrl+letter instead of raw control bytes:
+		// CSI <keycode> ; <modifiers> <action>
+		// where modifiers include Ctrl=4 and action='u' means press.
+		if matched, consumed := matchKittyCtrl(input, int(char)); matched {
+			return matched, consumed
+		}
 		}
 	}
 
@@ -73,6 +90,51 @@ func MatchKey(input []byte, expected string) (matched bool, consumed int) {
 	}
 
 	return false, 0
+}
+
+// matchKittyCtrl matches the kitty keyboard protocol CSI sequence for Ctrl+<letter>.
+// Format: ESC [ <keycode> ; <modifiers> <action>
+// For Ctrl+<letter>: keycode is the ASCII code of the letter, modifiers must have bit 2 (value 4) set, action is 'u'.
+func matchKittyCtrl(input []byte, expectedASCII int) (matched bool, consumed int) {
+	if len(input) < 6 || input[0] != 0x1b || input[1] != '[' {
+		return false, 0
+	}
+
+	uIdx := -1
+	for i := 2; i < len(input); i++ {
+		if input[i] == 'u' {
+			uIdx = i
+			break
+		}
+	}
+	if uIdx == -1 {
+		return false, 0
+	}
+
+	body := string(input[2:uIdx])
+	parts := strings.Split(body, ";")
+	if len(parts) != 2 {
+		return false, 0
+	}
+
+	keycode, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return false, 0
+	}
+	modifiers, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return false, 0
+	}
+
+	if modifiers&4 == 0 {
+		return false, 0
+	}
+
+	if keycode != expectedASCII {
+		return false, 0
+	}
+
+	return true, uIdx + 1
 }
 
 // FormatKeyName takes a config key string like "ctrl+r" and formats it for UI display, e.g. "<Ctrl+R>".

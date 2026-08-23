@@ -1,21 +1,24 @@
 package config
 
-import "time"
+import (
+	"time"
+)
 
 func DefaultConfig() *Config {
 	return &Config{
 		Core: CoreConfig{
-			Version:     1,
-			Shell:       "",
-			ShellLogin:  false,
-			Mode:        "last",
-			Debug:       false,
-			ExpandAlias: true,
-			AutoExecute: false,
+			Version:           1,
+			Shell:             "",
+			ShellLogin:        false,
+			Mode:              "last",
+			Debug:             false,
+			ExpandAlias:       true,
+			AutoExecute:       false,
+			CobraProbeEnabled: true,
 		},
 		UI: UIConfig{
 			Style:           "modern",
-			GhostText:       true,
+			GhostText:       GhostTextOn,
 			ShowHiddenFiles: false,
 			MaxSuggestions:  100,
 			MaxHeight:       15,
@@ -30,6 +33,7 @@ func DefaultConfig() *Config {
 			CheckOnStartup: true,
 			Channel:        "stable",
 			CheckInterval:  Duration(24 * time.Hour),
+			AutoUpdate:     0,
 		},
 		AI: AIConfig{
 			Enabled:       false,
@@ -58,8 +62,11 @@ func DefaultState() *State {
 	return &State{
 		LastMode: "spec",
 		Updater: UpdaterState{
-			LastCheckTime: time.Time{},
-			SeenVersion:   "",
+			LastCheckTime:     time.Time{},
+			SeenVersion:       "",
+			AutoUpdateTarget:  "",
+			AutoUpdateAttempt: 0,
+			DeclinedVersion:   "",
 		},
 	}
 }

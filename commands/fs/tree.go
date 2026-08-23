@@ -8,6 +8,7 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "tree",
 		Description: "Display directories as trees (with optional color/HTML output)",
+		Generator:   spec.FileGenerator("/"),
 		Options: []spec.Option{
 			{Name: "-a", Description: "All files are listed"},
 			{Name: "-d", Description: "List directories only"},

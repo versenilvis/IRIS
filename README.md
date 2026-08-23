@@ -50,7 +50,7 @@ Run iris wherever you already work; your local machine, a remote server, or anyw
 ## Why IRIS instead of Fig
 
 > [!IMPORTANT]
-> **[Fig](https://app.fig.io/) was officially sunset in September 2024 and migrated to Amazon Q Developer (which requires cloud authentication and proprietary bloat)**
+> **[Fig](https://app.fig.io/) was officially sunset in September 2024 and migrated to Amazon Q Developer (which requires cloud authentication and proprietary bloat)**  
 > **IRIS is the lightweight, open-source, zero-telemetry alternative built purely on native Go and TTY with no accounts, no GUI app, and no background daemons required**
 
 ### How it compares
@@ -229,6 +229,21 @@ cd iris
 just reload
 ```
 
+## Update
+
+```bash
+iris update
+```
+
+Checks for and installs the latest release. To see what's changed first:
+
+```bash
+iris changelog       # latest release
+iris changelog -n 3  # last 3 releases
+```
+
+IRIS can also check for and install updates on its own - see `updater.auto-update` in the [configuration guide](#configuration-guide) below.
+
 ## Uninstall
 
 To completely uninstall IRIS, remove all configurations, and clean up your shell integration files, simply run:
@@ -242,31 +257,29 @@ iris uninstall
 > [!WARNING]
 > **IRIS may cause visual conflicts and keybinding overlaps with other shell autosuggestion plugins or third-party completion tools. To prevent this, please disable them safely (e.g., zsh-autosuggestions, zsh-autocomplete, atuin, flyline, ...)**
 
-Add an alias to your shell configuration file to launch IRIS easily:
+> [!NOTE]
+> **This is already added from installation script, but if your shell config is missing it, please add manually**
+
+To automatically start IRIS every time you open a new shell session, add the init command to your shell config:
 
 **Zsh (`~/.zshrc`):**
 ```zsh
-if command -v iris >/dev/null 2>&1; then
-    alias i="iris"
-fi
+eval "$(iris init zsh)"
 ```
 
 **Bash (`~/.bashrc`):**
 ```bash
-if command -v iris >/dev/null 2>&1; then
-    alias i="iris"
-fi
+eval "$(iris init bash)"
 ```
 
 **Fish (`~/.config/fish/config.fish`):**
 ```fish
-if command -v iris >/dev/null 2>&1
-    alias i="iris"
-end
+iris init fish | source
 ```
+
 ## Configuration guide
 
-IRIS uses a clean TOML configuration file located at `~/.config/iris/config.toml`.
+IRIS uses a clean TOML configuration file located at `~/.config/iris/config.toml`
 
 ### Creating & viewing config
 
@@ -279,59 +292,67 @@ iris config show
 
 ```toml
 [core]
-version = 1
-shell = ""          # "zsh", "bash", "fish", or empty for auto-detection
-shell-login = false # run the selected shell as a login shell; can also be enabled with iris --shell-login
-mode = "last"       # "last", "spec", or "history"
-debug = false
-expand-alias = true
-auto-execute = false
+version = 1                    # config schema version
+shell = ""                     # "zsh", "bash", "fish", or empty for auto-detect
+shell-login = false            # run shell as a login shell (also: iris --shell-login)
+mode = "last"                  # "last", "spec", or "history"
+debug = false                  # verbose logging to iris.log (also: iris -d)
+expand-alias = true            # expand aliases before matching
+auto-execute = false           # run suggestion immediately instead of inserting it
+atuin-history = 0              # 0 = shell history, 1 = atuin, 2 = both
+atuin-db-path = ""             # path to atuin's history.db, empty = use default
+cobra-probe-enabled = true     # fall back to probing cobra binaries for completions
 
 [ui]
-style = "modern"    # "modern" or "classic"
-ghost-text = true
-hidden-files = false
-max-suggestions = 100
-max-height = 15
-max-width = 0
-nerd-fonts = true
+style = "modern"       # "modern" or "classic"
+ghost-text = 1         # 0 = off, 1 = menu + ghost text, 2 = ghost text only
+hidden-files = false   # include dotfiles in suggestions
+max-suggestions = 100  # max suggestions ranked before display
+max-height = 15        # max visible rows in the menu
+max-width = 0          # max menu width, 0 = auto
+nerd-fonts = true      # use nerd-font icons
 
 [keybindings]
-toggle-mode = "ctrl+r"
-toggle-menu = "shift+tab"
-select = "tab"
-navigate-up = "up"
-navigate-down = "down"
+toggle-mode = "ctrl+r"     # switch spec/history mode
+toggle-menu = "shift+tab"  # show or hide the suggestion menu
+select = "tab"             # accept the selected suggestion
+navigate-up = "up"         # select up, or open history if empty
+navigate-down = "down"     # select down, or open history if empty
+navigate-right = "right"   # accept ghost text
 
 [git]
-filter-active-branch = true
-deduplicate-branches = true
+filter-active-branch = true  # exclude current branch from suggestions
+deduplicate-branches = true  # merge same-name local/remote branches
 
 [updater]
-check-on-startup = true
-channel = "stable" # "stable" or "nightly"
-check-interval = "24h"
+check-on-startup = true  # check for updates on startup
+channel = "stable"       # "stable" or "nightly"
+check-interval = "24h"   # min time between update checks
+auto-update = 0          # 0 = off, 1 = auto-install, 2 = confirm first
 
 [ai]
 enabled = false
-provider = "groq" # "groq" or "ollama"
-debounce_ms = 400
+provider = "groq"  # "groq" or "ollama"
+debounce_ms = 400  # ms to wait before querying the AI
 
 # please use free subscription, that is enough for your daily usage
 [ai.providers.groq]
 endpoint = "https://api.groq.com/openai/v1/chat/completions"
-api_key_env = "GROQ_API_KEY" # or set api_key directly
+api_key_env = "GROQ_API_KEY"       # or set api_key directly
 model = "llama-3.3-70b-versatile"
-timeout_ms = 3000
+timeout_ms = 3000                  # ms before giving up
 
 [ai.providers.ollama]
 endpoint = "http://localhost:11434/v1/chat/completions"
 model = "qwen2.5-coder"
-timeout_ms = 5000
+timeout_ms = 5000  # ms before giving up
 ```
 
 > [!NOTE]
 > Using `api_key_env` is recommended over hardcoding `api_key` in plain text to keep credentials out of configuration files.
+
+> [!NOTE]
+> `ghost-text` used to be a boolean. Existing configs keep working: `true` is read as `1` and `false` as `0`, so there is nothing to change on upgrade.
 
 
 ## Default shortcuts
@@ -346,16 +367,16 @@ timeout_ms = 5000
 | <kbd>↓</kbd>                       | Navigate down / history | Move the selection down, or open command history when the prompt is empty.|
 | <kbd>→</kbd>                       | Accept ghost text       | Accept the faded ghost text suggestion when the menu is open.             |
 | <kbd>←</kbd> / <kbd>→</kbd>        | Move cursor             | Move the cursor inside the input buffer. Disabled when the prompt is empty|
-| <kbd>Ctrl/⌘</kbd> + <kbd>R</kbd>     | Switch mode             | Toggle between `spec` and `history` mode.                                 |
-| <kbd>Ctrl/⌘</kbd> + <kbd>A</kbd>     | Beginning of line       | Move the cursor to the start of the command line.                         |
-| <kbd>Ctrl/⌘</kbd> + <kbd>E</kbd>     | End of line             | Move the cursor to the end of the command line.                           |
-| <kbd>Ctrl/⌘</kbd> + <kbd>L</kbd>     | Clear screen            | Clear the terminal while preserving the input buffer and redrawing the menu. |
-| <kbd>Ctrl/⌘</kbd> + <kbd>U</kbd>     | Clear command           | Remove the entire current command and close the menu.                     |
-| <kbd>Ctrl/⌘</kbd> + <kbd>C</kbd>     | Cancel command          | Send `SIGINT`, clear the input buffer, and close the menu.                |
-| <kbd>Ctrl/⌘</kbd> + <kbd>W</kbd>     | Delete word             | Delete the word immediately before the cursor.                            |
+| <kbd>Ctrl</kbd> + <kbd>R</kbd>     | Switch mode             | Toggle between `spec` and `history` mode.                                 |
+| <kbd>Ctrl</kbd> + <kbd>A</kbd>     | Beginning of line       | Move the cursor to the start of the command line.                         |
+| <kbd>Ctrl</kbd> + <kbd>E</kbd>     | End of line             | Move the cursor to the end of the command line.                           |
+| <kbd>Ctrl</kbd> + <kbd>L</kbd>     | Clear screen            | Clear the terminal while preserving the input buffer and redrawing the menu. |
+| <kbd>Ctrl</kbd> + <kbd>U</kbd>     | Clear command           | Remove the entire current command and close the menu.                     |
+| <kbd>Ctrl</kbd> + <kbd>C</kbd>     | Cancel command          | Send `SIGINT`, clear the input buffer, and close the menu.                |
+| <kbd>Ctrl</kbd> + <kbd>W</kbd>     | Delete word             | Delete the word immediately before the cursor.                            |
 
 > [!NOTE]
-> With <kbd>Ctrl/⌘</kbd> + <kbd>A</kbd>, <kbd>Ctrl/⌘</kbd> + <kbd>E</kbd>, <kbd>Ctrl/⌘</kbd> + <kbd>W</kbd>, <kbd>Ctrl/⌘</kbd> + <kbd>U</kbd>, <kbd>Ctrl/⌘</kbd> + <kbd>L</kbd>, and <kbd>Ctrl/⌘</kbd> + <kbd>C</kbd>: they belong to your shell by default. IRIS handles them directly in raw mode so your cursor and menu stay in sync
+> With <kbd>Ctrl</kbd> + <kbd>A</kbd>, <kbd>Ctrl</kbd> + <kbd>E</kbd>, <kbd>Ctrl</kbd> + <kbd>W</kbd>, <kbd>Ctrl</kbd> + <kbd>U</kbd>, <kbd>Ctrl</kbd> + <kbd>L</kbd>, and <kbd>Ctrl</kbd> + <kbd>C</kbd>: they belong to your shell by default. IRIS handles them directly in raw mode so your cursor and menu stay in sync
 
 ## Theme
 
@@ -364,8 +385,45 @@ timeout_ms = 5000
   😺 <i>Kitty terminal</i>
 </div>
 
+> [!TIP]
+> **We keep all available theme templates in the [`themes/`](./themes) directory**  
+> **Feel free to create your own theme or contribute a new color scheme by adding it to this directory**
+
+IRIS has theme TOML configuration file located at `~/.config/iris/theme.toml`
+
+### Creating theme config
+
+```bash
+iris theme init
+```
+
+### Default theme
+IRIS automatically falls back to the default theme if `theme.toml` is missing, empty, or contains missing configuration options
+
+```toml
+border = "#a277ff"
+accent = "#61ffca"
+muted = "#6d6a7f"
+text = "#edecee"
+text_sel = "#ffffff"
+key = "#a277ff"
+match = "#61ffca"
+desc = "#9692a8"
+desc_sel = "#edecee"
+sel_bg = "#3d375e"
+sel_text = "#110f18"
+scroll_info = "#a277ff"
+ghost_text = "#4B4A4C"
+sys = "#1e1d28"
+sys_sel = "#a277ff"
+hist = "#1a2d36"
+hist_sel = "#61ffca"
+alias = "#2a2342"
+alias_sel = "#a277ff"
+```
+
 > [!NOTE]
-> Currently, IRIS doesn't have custom theme but it does have 2 basic styles
+> IRIS also has 2 basic styles
 
 <table>
   <tr>

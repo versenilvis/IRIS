@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/versenilvis/iris/spec"
+	"github.com/versenilvis/iris/spec/alias"
 )
 
 func TestMergeResults(t *testing.T) {
@@ -46,6 +47,22 @@ func TestMergeResults(t *testing.T) {
 		}
 		if res[0].Source != "ai" {
 			t.Errorf("Expected promoted source 'ai', got %q", res[0].Source)
+		}
+	})
+
+	t.Run("Tool Alias Preserved When Matching Query", func(t *testing.T) {
+		alias.Register(&mockGitProvider{})
+		defer alias.Reset()
+		res := MergeResults("git co", "default")
+		foundCo := false
+		for _, r := range res {
+			if r.Cmd == "git co" {
+				foundCo = true
+				break
+			}
+		}
+		if !foundCo {
+			t.Errorf("expected 'git co' alias suggestion in results for query 'git co', got %v", res)
 		}
 	})
 }

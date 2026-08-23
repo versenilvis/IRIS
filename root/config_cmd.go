@@ -59,6 +59,15 @@ expand-alias = true
 # automatically execute command after accepting suggestion
 auto-execute = false
 
+# 0 = off, 1 = atuin history only, 2 = atuin history + default history
+atuin-history = 0
+
+# custom atuin database path (leave empty for default)
+atuin-db-path = ""
+
+# probe unknown binaries with ` + "`__complete`" + ` for Cobra-based CLI suggestions.
+cobra-probe-enabled = true
+
 [ui]
 # visual style: "modern" (icons, category pills, shortcut footer) or "classic" (minimalist, centered number, no icons)
 style = "modern"
@@ -69,8 +78,9 @@ nerd-fonts = true
 # show hidden files with dot prefix
 hidden-files = false
 
-# enable inline ghost text
-ghost-text = true
+# 0 = off, 1 = on, 2 = ghost text only (menu opens on toggle key)
+# legacy true/false still accepted
+ghost-text = 1
 
 # maximum suggestions to display
 max-suggestions = 100
@@ -98,12 +108,16 @@ channel = "stable"
 # interval between update checks, e.g. "24h", "6h", "30m"
 check-interval = "24h"
 
+# 0 = off (default, notify only), 1 = auto-install, 2 = always confirm first
+auto-update = 0
+
 [keybindings]
 toggle-mode = "ctrl+r"
 toggle-menu = "shift+tab"
 select = "tab"
 navigate-up = "up"
 navigate-down = "down"
+navigate-right = "right"
 `
 		err = os.WriteFile(path, []byte(defaultContent), 0644)
 		if err != nil {
