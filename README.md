@@ -312,6 +312,9 @@ check-on-startup = true
 channel = "stable" # "stable" or "nightly"
 check-interval = "24h"
 
+[zoxide]
+extend-cd = false  # complete `cd` from zoxide's database, not just the current directory
+
 [ai]
 enabled = false
 provider = "groq" # "groq" or "ollama"

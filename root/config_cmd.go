@@ -98,6 +98,11 @@ channel = "stable"
 # interval between update checks, e.g. "24h", "6h", "30m"
 check-interval = "24h"
 
+[zoxide]
+# also complete cd from zoxide's frecency database, not just the
+# children of the current directory (requires zoxide on PATH)
+extend-cd = false
+
 [keybindings]
 toggle-mode = "ctrl+r"
 toggle-menu = "shift+tab"
