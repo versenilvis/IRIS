@@ -422,6 +422,10 @@ func runWrapper() {
 				_, _ = ptmx.Write(toWrite)
 			}
 
+			// ghost text is derived from TypedQuery, so history navigation that
+			// rewrites the buffer must move it too or the hint lags a selection
+			overlay.SetTypedQuery(bufCopy)
+
 			var b strings.Builder
 			if !disableGhostText.Load() {
 				b.WriteString(overlay.RenderGhostText(bufCopy, true, offsetCopy == 0))
@@ -688,6 +692,13 @@ func runWrapper() {
 		offsetCopy := cursorOffset
 		bufferMu.Unlock()
 
+		// Esc and unhandled keys disable ghost text only until the next key.
+		// Letting that outlive this render means RenderGhostText never runs to
+		// erase the glyphs already on the line, so they smear as the user edits.
+		if config.Get().UI.GhostText != config.GhostTextOff {
+			disableGhostText.Store(false)
+		}
+
 		activeModeMu.RLock()
 		modeCopy := activeMode
 		activeModeMu.RUnlock()
@@ -695,6 +706,10 @@ func runWrapper() {
 		navCopy := userNavigated.Load()
 
 		runes := []rune(bufCopy)
+		// with the cursor mid-line, rank against the whole command but render
+		// against the prefix: searching the prefix alone re-ranks on every
+		// keystroke and makes the ghost text flip around behind the cursor
+		queryForSearch := bufCopy
 		if offsetCopy > 0 && offsetCopy <= len(runes) {
 			bufCopy = string(runes[:len(runes)-offsetCopy])
 		}
@@ -757,8 +772,8 @@ func runWrapper() {
 				writeStdout([]byte(overlay.ClearAndDisable()))
 				return
 			}
-			logger.Debugf("Render query: '%s', mode: %s", bufCopy, modeCopy)
-			results := MergeResults(bufCopy, modeCopy)
+			logger.Debugf("Render query: '%s', mode: %s", queryForSearch, modeCopy)
+			results := MergeResults(queryForSearch, modeCopy)
 			logger.Debugf("Render results found: %d", len(results))
 
 			if len(results) == 0 || (len(results) == 1 && strings.TrimSpace(results[0].Cmd) == strings.TrimSpace(bufCopy) && !strings.HasSuffix(bufCopy, " ")) {
