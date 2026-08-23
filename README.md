@@ -351,6 +351,9 @@ timeout_ms = 5000  # ms before giving up
 > [!NOTE]
 > Using `api_key_env` is recommended over hardcoding `api_key` in plain text to keep credentials out of configuration files.
 
+> [!NOTE]
+> `ghost-text` used to be a boolean. Existing configs keep working: `true` is read as `1` and `false` as `0`, so there is nothing to change on upgrade.
+
 
 ## Default shortcuts
 
