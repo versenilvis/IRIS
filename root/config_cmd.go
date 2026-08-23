@@ -89,8 +89,8 @@ ghost-text = 1
 # maximum suggestions to display
 max-suggestions = 100
 
-# maximum height of the overlay
-max-height = 15
+# maximum suggestion rows shown in the menu
+max-height = 6
 
 # maximum width of the overlay (0 = responsive to terminal)
 max-width = 0

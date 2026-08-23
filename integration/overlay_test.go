@@ -161,15 +161,16 @@ func TestRenderMatchedTitle_CaseInsensitive(t *testing.T) {
 }
 
 func TestMenuItemRowsHonorsMaxHeight(t *testing.T) {
-	// ui.max-height was parsed and validated but never read: the box was fixed
-	// at 6 rows however it was configured, unlike ui.max-width.
+	// ui.max-height counts suggestion rows. It was read as the height of the
+	// whole box for a while, so a configured 6 drew 4 rows.
 	tests := []struct {
 		name      string
 		maxHeight int
 		want      int
 	}{
-		{"configured", 15, 15 - borderLines},
-		{"minimum", 3, 1},
+		{"configured", 15, 15},
+		{"borders do not eat rows", 6, 6},
+		{"minimum", 1, 1},
 		{"zero falls back", 0, defaultMaxItems},
 		{"out of range falls back", 999, defaultMaxItems},
 	}
@@ -209,7 +210,7 @@ func TestScrolloffIsSymmetric(t *testing.T) {
 	// The window kept a row of context above the highlight but none below, so
 	// paging down pinned it to the last visible row while paging up did not.
 	cfg := config.DefaultConfig()
-	cfg.UI.MaxHeight = 8 // 6 item rows
+	cfg.UI.MaxHeight = 6
 	config.Init(cfg)
 
 	items := make([]spec.Suggestion, 20)

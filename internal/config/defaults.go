@@ -22,7 +22,7 @@ func DefaultConfig() *Config {
 			GhostText:       GhostTextOn,
 			ShowHiddenFiles: false,
 			MaxSuggestions:  100,
-			MaxHeight:       15,
+			MaxHeight:       6,
 			MaxWidth:        0, // 0 means no limit, fallback to terminal width
 			NerdFonts:       true,
 		},

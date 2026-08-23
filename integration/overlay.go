@@ -23,6 +23,9 @@ const (
 	defaultMaxItems = 6
 	// borderLines is the top and bottom border the box draws around its items.
 	borderLines = 2
+	// maxMenuItems is the largest ui.max-height accepted, mirroring the bound
+	// config validation enforces.
+	maxMenuItems = 50
 )
 
 // lastDrawnLines records the total height of the most recently drawn box, so a
@@ -33,24 +36,25 @@ var lastDrawnLines atomic.Int32
 
 // menuItemRows is how many suggestion rows the overlay may show.
 //
-// ui.max-height is the height of the whole box, matching its name and the
-// comment `iris config init` writes, so the borders come out of that budget.
-// It is also clamped to the terminal: a box taller than the window can't be
-// scrolled back into view and would push the prompt off screen.
+// ui.max-height counts suggestions, not the lines the box occupies: it is the
+// number people compare against what they can see, and counting the border
+// into it meant max-height = 6 drew 4 rows.
+// It is still clamped to the terminal, since a box taller than the window
+// can't be scrolled back into view and would push the prompt off screen.
 func menuItemRows() int {
 	rows := config.Get().UI.MaxHeight
-	if rows < 3 || rows > 50 {
-		rows = defaultMaxItems + borderLines
+	if rows < 1 || rows > maxMenuItems {
+		rows = defaultMaxItems
 	}
 
 	if h := termHeight(); h > 0 {
-		// Leave a row for the prompt itself plus one of breathing room.
-		if avail := h - 2; rows > avail {
+		// Leave room for the border, the prompt itself, and one row of
+		// breathing room.
+		if avail := h - borderLines - 2; rows > avail {
 			rows = avail
 		}
 	}
 
-	rows -= borderLines
 	if rows < 1 {
 		rows = 1
 	}
