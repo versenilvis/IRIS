@@ -123,6 +123,7 @@ var iconMap = map[string]string{
 	"unzip":          "",
 	"alias":          "",
 	"history":        "",
+	"atuin":          "󰳗",
 	"system":         "",
 	"root":           "",
 }

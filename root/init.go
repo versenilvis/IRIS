@@ -25,13 +25,15 @@ For example, add this to your ~/.zshrc:
 		case "zsh":
 			fmt.Printf(`
 # Iris Autostart Hook
-if [ -n "$TMUX" ] && [ -n "$IRIS_PID" ]; then
-    if ps -o comm= -p $PPID 2>/dev/null | grep -q "tmux"; then
-        unset IRIS_PID IRIS_IS_CHILD IRIS_FD
-    fi
+# a multiplexer pane inherits IRIS_* but runs on its own tty, so those vars
+# point at an iris that is not driving this terminal
+if [ -n "$IRIS_PID" ] && [ "$IRIS_PID" != "$PPID" ] && [ "${TTY:-$(tty 2>/dev/null)}" != "$IRIS_TTY" ]; then
+    unset IRIS_PID IRIS_IS_CHILD IRIS_FD IRIS_TTY
 fi
 
-if [ -z "$IRIS_PID" ] && [ -z "$IRIS_RESCUE" ]; then
+# a non-interactive shell (tool runners sourcing rc files, scripts) has no
+# prompt to complete, and exec'ing here would seize the tty from the real iris
+if [[ -o interactive ]] && [ -t 0 ] && [ -z "$IRIS_PID" ] && [ -z "$IRIS_RESCUE" ]; then
     export IRIS_ACTIVE_SHELL="zsh"
     exec iris
 fi
@@ -68,13 +70,15 @@ fi
 		case "bash":
 			fmt.Printf(`
 # Iris Autostart Hook
-if [ -n "$TMUX" ] && [ -n "$IRIS_PID" ]; then
-    if ps -o comm= -p $PPID 2>/dev/null | grep -q "tmux"; then
-        unset IRIS_PID IRIS_IS_CHILD IRIS_FD
-    fi
+# a multiplexer pane inherits IRIS_* but runs on its own tty, so those vars
+# point at an iris that is not driving this terminal
+if [ -n "$IRIS_PID" ] && [ "$IRIS_PID" != "$PPID" ] && [ "$(tty 2>/dev/null)" != "$IRIS_TTY" ]; then
+    unset IRIS_PID IRIS_IS_CHILD IRIS_FD IRIS_TTY
 fi
 
-if [ -z "$IRIS_PID" ] && [ -z "$IRIS_RESCUE" ]; then
+# a non-interactive shell (tool runners sourcing rc files, scripts) has no
+# prompt to complete, and exec'ing here would seize the tty from the real iris
+if [[ $- == *i* ]] && [ -t 0 ] && [ -z "$IRIS_PID" ] && [ -z "$IRIS_RESCUE" ]; then
     export IRIS_ACTIVE_SHELL="bash"
     exec iris
 fi
@@ -94,13 +98,24 @@ fi
 
 `)
 		case "fish":
+			// fish's own autosuggestions collide with iris ghost text, but only
+			// turn them off when ghost text is actually on
+			disableFishAutosuggest := ""
+			if config.Get().UI.GhostText != config.GhostTextOff {
+				disableFishAutosuggest = "    set -g fish_autosuggestion_enabled 0\n"
+			}
 			fmt.Printf(`
 # Iris Autostart Hook
-if set -q TMUX; and set -q IRIS_PID
-    if ps -o comm= -p $PPID 2>/dev/null | grep -q "tmux"
+# a multiplexer pane inherits IRIS_* but runs on its own tty, so those vars
+# point at an iris that is not driving this terminal
+if set -q IRIS_PID
+    set -l iris_ppid (ps -o ppid= -p $fish_pid 2>/dev/null | string trim)
+    set -l iris_cur_tty (tty 2>/dev/null)
+    if test "$IRIS_PID" != "$iris_ppid"; and test "$iris_cur_tty" != "$IRIS_TTY"
         set -e IRIS_PID
         set -e IRIS_IS_CHILD
         set -e IRIS_FD
+        set -e IRIS_TTY
     end
 end
 
@@ -111,7 +126,7 @@ end
 
 # Iris Autocomplete Hook
 if set -q IRIS_PID; and set -q IRIS_FD
-    function _iris_fish_postexec --on-event fish_postexec
+%s    function _iris_fish_postexec --on-event fish_postexec
         set -l iris_exit_code $status
         printf "IRIS_CWD:%%s\x00" "$PWD" >&$IRIS_FD 2>/dev/null
         printf "IRIS_CMD_STOP:%%s\x00" "$iris_exit_code" >&$IRIS_FD 2>/dev/null
@@ -123,7 +138,7 @@ if set -q IRIS_PID; and set -q IRIS_FD
         printf "IRIS_CMD_START\x00" >&$IRIS_FD 2>/dev/null
     end
 end
-`)
+`, disableFishAutosuggest)
 		}
 	},
 }
@@ -248,8 +263,9 @@ nerd-fonts = true
 # show hidden files with dot prefix
 hidden-files = false
 
-# enable inline ghost text
-ghost-text = true
+# 0 = off, 1 = on, 2 = ghost text only (menu opens on toggle key)
+# legacy true/false still accepted
+ghost-text = 1
 
 # maximum suggestions to display
 max-suggestions = 100
@@ -277,6 +293,9 @@ channel = "stable"
 # interval between update checks, e.g. "24h", "6h", "30m"
 check-interval = "24h"
 
+# 0 = off (default, notify only), 1 = auto-install, 2 = always confirm first
+auto-update = 0
+
 [zoxide]
 # also complete cd from zoxide's frecency database, not just the
 # children of the current directory (requires zoxide on PATH)
@@ -288,6 +307,7 @@ toggle-menu = "shift+tab"
 select = "tab"
 navigate-up = "up"
 navigate-down = "down"
+navigate-right = "right"
 `
 				if errWrite := os.WriteFile(path, []byte(defaultContent), 0644); errWrite == nil {
 					fmt.Printf("✓ Initialized default config file at %s\n", path)

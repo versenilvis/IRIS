@@ -25,7 +25,10 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 	// add suggestion helper to deduplicate
 	addSuggestion := func(s spec.Suggestion) {
 		normalizedCmd := strings.TrimSpace(s.Cmd)
-		if normalizedCmd == "" || normalizedCmd == normalizedQuery {
+		if normalizedCmd == "" {
+			return
+		}
+		if s.Source != "alias" && normalizedCmd == normalizedQuery {
 			return
 		}
 		if s.Source == "" {
@@ -52,11 +55,17 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 		baseConf := 75
 		for i, h := range histResults {
 			conf := max(baseConf-(i*2), 60)
+			
+			icon := "history"
+			if h.Source == "atuin" {
+				icon = "atuin"
+			}
+			
 			addSuggestion(spec.Suggestion{
 				Cmd:        h.Cmd,
-				Desc:       "history",
-				Icon:       "history",
-				Source:     "history",
+				Desc:       h.Source,
+				Icon:       icon,
+				Source:     h.Source,
 				Confidence: conf,
 			})
 		}

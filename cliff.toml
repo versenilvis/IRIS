@@ -1,0 +1,51 @@
+[changelog]
+header = "# Changelog\n\nAll notable changes to this project are documented in this file.\n\n"
+body = """
+{% if version %}\
+## [{{ version }}](https://github.com/versenilvis/iris/releases/tag/{{ version }}) - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+## [Unreleased]
+{% endif %}\
+{{ "\n" }}\
+{% for group, commits in commits | group_by(attribute="group") %}\
+### {{ group | upper_first }}
+{{ "\n" }}\
+{% for commit in commits %}\
+- {{ commit.message | upper_first }} ([{{ commit.id | truncate(length=6, end="") }}](https://github.com/versenilvis/iris/commit/{{ commit.id }}))
+{% endfor %}\
+{{ "\n" }}\
+{% endfor %}\
+"""
+trim = true
+footer = ""
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+split_commits = false
+commit_preprocessors = [
+    { pattern = '\(#([0-9]+)\)', replace = "([#${1}](https://github.com/versenilvis/iris/issues/${1}))" },
+]
+# stable tags only - `ignore_tags` was tried first but git-cliff merges an
+# ignored tag's commits into the wrong release when nightly and stable tags share a commit range
+tag_pattern = "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+sort_commits = "oldest"
+
+commit_parsers = [
+    { message = "(?i)^feat", group = "Features" },
+    { message = "(?i)^fix\\(ci\\)", skip = true },
+    { message = "(?i)^fix\\(release\\)", skip = true },
+    { message = "(?i)^fix", group = "Bug fixes" },
+    { message = "(?i)^perf", group = "Performance" },
+    { message = "(?i)^refactor", group = "Refactors" },
+    # the CI bot's own changelog-update commit, not a user-facing doc change
+    { message = "(?i)^docs\\(changelog\\)", skip = true },
+    { message = "(?i)^docs?", group = "Documentation" },
+    { message = "(?i)^chore", skip = true },
+    { message = "(?i)^build", skip = true },
+    { message = "(?i)^ci", skip = true },
+    { message = "(?i)^test", skip = true },
+    { message = "(?i)^style", skip = true },
+    # catch-all: unlisted types (e.g. historical "pkg:") drop instead of leaking a stray group
+    { message = ".*", skip = true },
+]

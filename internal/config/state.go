@@ -11,6 +11,10 @@ import (
 type UpdaterState struct {
 	LastCheckTime time.Time `toml:"last-check-time"`
 	SeenVersion   string    `toml:"seen-version"`
+	// auto-update escalation ladder state, see decideAutoUpdateAction
+	AutoUpdateTarget  string `toml:"auto-update-target"`
+	AutoUpdateAttempt int    `toml:"auto-update-attempt"`
+	DeclinedVersion   string `toml:"declined-version"`
 }
 
 type State struct {

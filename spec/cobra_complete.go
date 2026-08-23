@@ -2,13 +2,19 @@ package spec
 
 import (
 	"context"
+	"debug/buildinfo"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
+
+	"github.com/versenilvis/iris/internal/config"
 )
+
+const cobraModulePath = "github.com/spf13/cobra"
 
 type cobraCacheEntry struct {
 	suggestions []Suggestion
@@ -90,11 +96,43 @@ func buildCobraCacheKey(binKey string, args []string, partial string) string {
 	return sb.String()
 }
 
+// isLikelyCobraBinary reports whether binName is a Go binary linking Cobra.
+// only does static analysis so can produce false negatives and positives.
+func isLikelyCobraBinary(binName string) bool {
+	path, err := exec.LookPath(binName)
+	if err != nil {
+		return false
+	}
+	info, err := buildinfo.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	for _, dep := range info.Deps {
+		if dep.Path == cobraModulePath {
+			return true
+		}
+	}
+	return false
+}
+
+// newProbeCmd builds and isolates the `__complete` probe command.
+// starts the child in its own session so it has no controlling terminal
+// and therefore won't affect the user's tty in the case of programs that
+// don't respect `__complete`.
+func newProbeCmd(ctx context.Context, binName string, args []string) *exec.Cmd {
+	cmd := exec.CommandContext(ctx, binName, args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	return cmd
+}
+
 // QueryCobraComplete calls `binName __complete <args> <partial>` and returns
 // structured suggestions cached per binary mtime, args, and partial.
 // returns nil if the binary is not Cobra-based or times out.
 func QueryCobraComplete(binName string, args []string, partial string) []Suggestion {
 	if strings.ContainsAny(binName, `/\`) {
+		return nil
+	}
+	if !config.Get().Core.CobraProbeEnabled {
 		return nil
 	}
 
@@ -108,12 +146,17 @@ func QueryCobraComplete(binName string, args []string, partial string) []Suggest
 	}
 	cobraCacheMu.Unlock()
 
+	if !isLikelyCobraBinary(binName) {
+		return nil
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
 	defer cancel()
 
 	cmdArgs := append([]string{"__complete"}, args...)
 	cmdArgs = append(cmdArgs, partial)
-	out, err := exec.CommandContext(ctx, binName, cmdArgs...).Output()
+	probe := newProbeCmd(ctx, binName, cmdArgs)
+	out, err := probe.Output()
 	if err != nil {
 		return nil
 	}

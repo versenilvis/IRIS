@@ -8,6 +8,7 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "trash",
 		Description: "Trash, move files/folders to the trash",
+		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-v", Description: "Print verbose output while moving items"},
 			{Name: "-F", Description: "Use the Finder API to move items to the trash"},

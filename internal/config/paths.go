@@ -10,11 +10,23 @@ func ConfigPath() (string, error) {
 	if configHome != "" {
 		return filepath.Join(configHome, "iris", "config.toml"), nil
 	}
-	dir, err := os.UserConfigDir()
+	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, "iris", "config.toml"), nil
+	return filepath.Join(home, ".config", "iris", "config.toml"), nil
+}
+
+func ThemePath() (string, error) {
+	configHome := os.Getenv("XDG_CONFIG_HOME")
+	if configHome != "" {
+		return filepath.Join(configHome, "iris", "theme.toml"), nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".config", "iris", "theme.toml"), nil
 }
 
 func StatePath() (string, error) {
@@ -35,6 +47,21 @@ func HistoryDBPath() (string, error) {
 		return "", err
 	}
 	return filepath.Join(filepath.Dir(statePath), "history.db"), nil
+}
+
+func AtuinDBPath() (string, error) {
+	if cfg := Get(); cfg != nil && cfg.Core.AtuinDBPath != "" {
+		return cfg.Core.AtuinDBPath, nil
+	}
+	dataHome := os.Getenv("XDG_DATA_HOME")
+	if dataHome == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		dataHome = filepath.Join(home, ".local", "share")
+	}
+	return filepath.Join(dataHome, "atuin", "history.db"), nil
 }
 
 func CachePath() (string, error) {

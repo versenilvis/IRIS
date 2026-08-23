@@ -8,6 +8,7 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "lsd",
 		Description: "An ls command with a lot of pretty colors and some other stuff",
+		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-1", Description: "Display one entry per line"},
 			{Name: "-A", Description: "Do not list implied . and"},

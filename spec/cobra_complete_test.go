@@ -1,7 +1,15 @@
 package spec
 
 import (
+	"context"
+	"errors"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
+	"time"
+
+	"github.com/versenilvis/iris/internal/config"
 )
 
 func TestParseCobraOutput_ValidCobra(t *testing.T) {
@@ -128,6 +136,69 @@ func TestLookup_CobraKubectl(t *testing.T) {
 			break
 		}
 		t.Logf("  - Cmd: %-30s | Source: %-15s | Priority: %d | Desc: %s", r.Cmd, r.Source, r.Priority, r.Desc)
+	}
+}
+
+func TestNewProbeCmd_Setsid(t *testing.T) {
+	cmd := newProbeCmd(context.Background(), "true", nil)
+	if cmd.SysProcAttr == nil || !cmd.SysProcAttr.Setsid {
+		t.Fatalf("expected probe command to set Setsid: true, got %+v", cmd.SysProcAttr)
+	}
+}
+
+// TestNewProbeCmd_NoControllingTerminal writes a small script
+// and runs it to check
+// if newProbeCmd actually denies it access to tty
+func TestNewProbeCmd_NoControllingTerminal(t *testing.T) {
+	dir := t.TempDir()
+	script := "#!/bin/sh\nexec 3<>/dev/tty"
+
+	binPath := filepath.Join(dir, "ttyprobe")
+	if err := os.WriteFile(binPath, []byte(script), 0o755); err != nil {
+		t.Fatalf("failed to write probe script: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	runErr := newProbeCmd(ctx, binPath, nil).Run()
+
+	var exitErr *exec.ExitError
+	if !errors.As(runErr, &exitErr) {
+		t.Fatalf("expected probe script to exit nonzero after failing to open /dev/tty, got %v", runErr)
+	}
+}
+
+func TestQueryCobraComplete_ProbeDisabled(t *testing.T) {
+	t.Cleanup(ResetCobraCache)
+	original := config.Get()
+	t.Cleanup(func() { config.Init(original) })
+
+	cfg := config.DefaultConfig()
+	cfg.Core.CobraProbeEnabled = false
+	config.Init(cfg)
+
+	if result := QueryCobraComplete("non-go-binary", nil, ""); result != nil {
+		t.Errorf("expected nil when cobra probing is disabled, got %v", result)
+	}
+}
+
+func TestLooksLikeCobraBinary_NotGoBinary(t *testing.T) {
+	// 'ls' is a standard unix command that's not a go binary
+	if isLikelyCobraBinary("ls") {
+		t.Errorf("expected 'ls' to not look like a Cobra binary")
+	}
+}
+
+func TestLooksLikeCobraBinary_RealCobraBinary(t *testing.T) {
+	dir := t.TempDir()
+	binPath := filepath.Join(dir, "cobrafixture")
+	build := exec.CommandContext(context.Background(), "go", "build", "-o", binPath, "./testdata/cobrafixture")
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("could not build fixture binary: %v: %s", err, out)
+	}
+
+	if !isLikelyCobraBinary(binPath) {
+		t.Errorf("expected fixture binary linking Cobra to look like a Cobra binary")
 	}
 }
 

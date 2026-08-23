@@ -3,11 +3,11 @@ package root
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -16,18 +16,59 @@ import (
 	"github.com/versenilvis/iris/internal/config"
 )
 
+type updateResultKind int
+
+const (
+	updateResultNotify updateResultKind = iota
+	updateResultAutoInstalled
+	updateResultConfirm
+	updateResultGiveUp
+)
+
 // updateResult is passed from the async checker to the main loop
 type updateResult struct {
+	kind          updateResultKind
 	latestVersion string
+	notes         string
 	hasUpdate     bool
 }
 
 // pendingUpdate is set by the background goroutine and consumed once after the first IRIS_CMD_STOP
 var pendingUpdate chan updateResult
 
-// FetchLatestVersion hits the GitHub Releases API and returns the latest tag name
-func FetchLatestVersion() (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+// ErrRateLimited is returned when the GitHub API responds 403/429.
+var ErrRateLimited = errors.New("rate limited by GitHub API")
+
+func newGitHubRequestContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), 5*time.Second)
+}
+
+func fetchGitHubBody(ctx context.Context, endpoint string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusTooManyRequests {
+		return nil, ErrRateLimited
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	return io.ReadAll(resp.Body)
+}
+
+// FetchLatestRelease hits the GitHub Releases API and returns the latest release
+func FetchLatestRelease() (Release, error) {
+	ctx, cancel := newGitHubRequestContext()
 	defer cancel()
 
 	endpoint := os.Getenv("IRIS_UPDATE_URL")
@@ -39,50 +80,39 @@ func FetchLatestVersion() (string, error) {
 		}
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	body, err := fetchGitHubBody(ctx, endpoint)
 	if err != nil {
-		return "", err
-	}
-	req.Header.Set("Accept", "application/vnd.github+json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
+		return Release{}, err
 	}
 
 	if config.Get().Updater.Channel == "nightly" && os.Getenv("IRIS_UPDATE_URL") == "" {
-		var releases []struct {
-			TagName string `json:"tag_name"`
-		}
+		var releases []Release
 		if err := json.Unmarshal(body, &releases); err != nil {
-			return "", err
+			return Release{}, err
 		}
 		if len(releases) == 0 {
-			return "", fmt.Errorf("no releases found")
+			return Release{}, fmt.Errorf("no releases found")
 		}
-		return releases[0].TagName, nil
+		return releases[0], nil
 	}
 
-	var result struct {
-		TagName string `json:"tag_name"`
+	var release Release
+	if err := json.Unmarshal(body, &release); err != nil {
+		return Release{}, err
 	}
-	if err := json.Unmarshal(body, &result); err != nil {
+	if release.TagName == "" {
+		return Release{}, fmt.Errorf("no tag_name in response")
+	}
+	return release, nil
+}
+
+// FetchLatestVersion hits the GitHub Releases API and returns the latest tag name
+func FetchLatestVersion() (string, error) {
+	release, err := FetchLatestRelease()
+	if err != nil {
 		return "", err
 	}
-	if result.TagName == "" {
-		return "", fmt.Errorf("no tag_name in response")
-	}
-	return result.TagName, nil
+	return release.TagName, nil
 }
 
 // IsNewer returns true if latest is a newer semantic version than current.
@@ -90,14 +120,14 @@ func FetchLatestVersion() (string, error) {
 func IsNewer(current, latest string) bool {
 	c := strings.TrimPrefix(current, "v")
 	l := strings.TrimPrefix(latest, "v")
-
+	channel := config.Get().Updater.Channel
 	// dev builds or empty versions never trigger an update
 	if c == "" || c == "dev" || l == "" || l == "dev" {
 		return false
 	}
 
 	// nightly builds are never shown as stable update targets
-	if config.Get().Updater.Channel != "nightly" && strings.Contains(l, "-nightly.") {
+	if channel != "nightly" && strings.Contains(l, "-nightly.") {
 		return false
 	}
 
@@ -122,6 +152,10 @@ func IsNewer(current, latest string) bool {
 		if lv < cv {
 			return false
 		}
+	}
+
+	if channel == "nightly" && strings.Contains(l, "-nightly.") && c != l {
+		return true
 	}
 
 	// if all parts are equal, the one with more parts is newer (e.g. 1.0.1 > 1.0)
@@ -171,40 +205,111 @@ func startBackgroundUpdateCheck() chan updateResult {
 			return
 		}
 
-		latest, err := FetchLatestVersion()
+		release, err := FetchLatestRelease()
 		if err != nil {
 			// no network or API error: silently do nothing
 			return
 		}
+		latest := release.TagName
 
 		// update the last check time regardless of result
 		state.Updater.LastCheckTime = time.Now()
 
 		if IsNewer(Version, latest) {
-			// only notify if user hasn't already seen this specific version notification
-			if state.Updater.SeenVersion != latest {
-				ch <- updateResult{latestVersion: latest, hasUpdate: true}
+			mode := config.Get().Updater.AutoUpdate
+			switch decideAutoUpdateAction(mode, latest, state.Updater) {
+			case autoUpdateNotifyOnly:
+				// only notify if user hasn't already seen this specific version notification
+				if state.Updater.SeenVersion != latest {
+					ch <- updateResult{kind: updateResultNotify, latestVersion: latest, notes: release.Body, hasUpdate: true}
+				}
+				// save the latest as seen_version so future sessions don't re-notify
+				// unless a NEWER version comes out (different tag)
+				state.Updater.SeenVersion = latest
+				_ = config.SaveState(state)
+				return
+
+			case autoUpdateInstallSilently:
+				state.Updater.AutoUpdateTarget = latest
+				state.Updater.AutoUpdateAttempt = 1
+				// write before installing so a crash still counts as an attempt
+				_ = config.SaveState(state)
+				if _, installErr := performUpdate(latest, false); installErr == nil {
+					state.Updater.AutoUpdateTarget = ""
+					state.Updater.AutoUpdateAttempt = 0
+					state.Updater.SeenVersion = ""
+					_ = config.SaveState(state)
+					ch <- updateResult{kind: updateResultAutoInstalled, latestVersion: latest, notes: release.Body, hasUpdate: true}
+				}
+				// on failure: state already recorded attempt 1 for this
+				// target, so the next check escalates to a confirm prompt
+				return
+
+			case autoUpdateConfirm:
+				nextAttempt := 1
+				if state.Updater.AutoUpdateTarget == latest {
+					nextAttempt = state.Updater.AutoUpdateAttempt + 1
+				}
+				state.Updater.AutoUpdateTarget = latest
+				state.Updater.AutoUpdateAttempt = nextAttempt
+				_ = config.SaveState(state)
+				ch <- updateResult{kind: updateResultConfirm, latestVersion: latest, notes: release.Body, hasUpdate: true}
+				return
+
+			case autoUpdateGiveUp:
+				// only announce the exact transition into giving up, not
+				// every cycle after
+				announce := state.Updater.AutoUpdateAttempt == 2
+				state.Updater.AutoUpdateAttempt = 3
+				_ = config.SaveState(state)
+				if announce {
+					ch <- updateResult{kind: updateResultGiveUp, latestVersion: latest, hasUpdate: true}
+				}
+				return
 			}
-			// save the latest as seen_version so future sessions don't re-notify
-			// unless a NEWER version comes out (different tag)
-			state.Updater.SeenVersion = latest
-		} else {
-			// up to date: clear the seen_version flag so the next update triggers a fresh notification
-			state.Updater.SeenVersion = ""
 		}
 
+		// up to date, or nothing left to do: clear update-related state so
+		// the next detected version starts a fresh notify/attempt cycle
+		state.Updater.SeenVersion = ""
+		state.Updater.AutoUpdateTarget = ""
+		state.Updater.AutoUpdateAttempt = 0
 		_ = config.SaveState(state)
 	}()
 
 	return ch
 }
 
-// printUpdateNotice writes the one-time update message to stdout
-func printUpdateNotice(latest string) {
-	fmt.Printf(
+func changelogSummaryLines(body string, max int) []string {
+	var lines []string
+	for line := range strings.SplitSeq(body, "\n") {
+		line = strings.TrimRight(line, "\r")
+		if !strings.HasPrefix(line, "* ") {
+			continue
+		}
+		entry := strings.TrimPrefix(line, "* ")
+		_, msg, ok := strings.Cut(entry, "  ")
+		if !ok {
+			msg = entry
+		}
+		lines = append(lines, msg)
+		if len(lines) >= max {
+			break
+		}
+	}
+	return lines
+}
+
+func printUpdateNotice(latest, notes string) {
+	var b strings.Builder
+	fmt.Fprintf(&b,
 		"\r\033[K\033[33m[IRIS] new version %s → %s available, run \033[1miris update\033[0m\033[33m to upgrade\033[0m\n",
 		Version, latest,
 	)
+	for _, line := range changelogSummaryLines(notes, 2) {
+		fmt.Fprintf(&b, "\033[33m  - %s\033[0m\n", line)
+	}
+	writeStdout([]byte(b.String()))
 }
 
 func init() {
@@ -243,15 +348,13 @@ var updateCmd = &cobra.Command{
 
 		fmt.Printf("\033[36m[IRIS] updating %s → %s\033[0m\n", Version, latest)
 
-		// download and replace the binary using the install script
-		installScript := "https://raw.githubusercontent.com/versenilvis/iris/main/scripts/install.sh"
-		fmt.Printf("running: curl -sSL %s | sh\n\n", installScript)
+		runningPrefix := ""
+		if config.Get().Updater.Channel == "nightly" {
+			runningPrefix = fmt.Sprintf("IRIS_RELEASE_TAG=%s ", latest)
+		}
+		fmt.Printf("running: %scurl -sSL %s | sh\n\n", runningPrefix, resolveInstallScriptURL())
 
-		cmdRun := exec.Command("sh", "-c", "curl -sSL "+installScript+" | sh")
-		cmdRun.Stdout = os.Stdout
-		cmdRun.Stderr = os.Stderr
-		cmdRun.Stdin = os.Stdin
-		if err := cmdRun.Run(); err != nil {
+		if _, err := performUpdate(latest, true); err != nil {
 			fmt.Printf("\n\033[31m[IRIS] update failed: %v\033[0m\n", err)
 			return
 		}

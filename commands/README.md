@@ -123,7 +123,7 @@ Currently, Iris natively supports **567** top-level CLI commands across **14** c
 | **`serverless`** | AWS profile to use with the command | [`serverless.go`](./ops/serverless.go) |
 | **`sfdx`** | Analyze (lint) Aura component code | [`sfdx.go`](./ops/sfdx.go) |
 | **`sftp`** | OpenSSH secure file transfer | [`sftp.go`](./ops/sftp.go) |
-| **`space`** | Deta Space CLI for mananging Deta Space projects | [`space.go`](./ops/space.go) |
+| **`space`** | Deta Space CLI for managing Deta Space projects | [`space.go`](./ops/space.go) |
 | **`sqlite3`** | A command line interface for SQLite version 3 | [`sqlite3.go`](./ops/sqlite3.go) |
 | **`src`** | Interact with Sourcegraph from the command line | [`src.go`](./ops/src.go) |
 | **`ssh`** | secure shell | [`ssh.go`](./ops/ssh.go) |

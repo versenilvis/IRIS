@@ -2,7 +2,6 @@ package integration
 
 import (
 	"fmt"
-	"image/color"
 	"os"
 	"strconv"
 	"strings"
@@ -129,38 +128,6 @@ func ComputeCursorCol(data []byte) int {
 	return col
 }
 
-type Theme struct {
-	Border     color.Color
-	Accent     color.Color
-	Muted      color.Color
-	Text       color.Color
-	TextSel    color.Color
-	Match      color.Color
-	Desc       color.Color
-	DescSel    color.Color
-	SelBg      color.Color
-	ScrollInfo color.Color
-	GhostText  color.Color
-}
-
-var currentTheme = Theme{
-	Border:     lipgloss.Color("#a277ff"),
-	Accent:     lipgloss.Color("#61ffca"),
-	Muted:      lipgloss.Color("#6d6a7f"),
-	Text:       lipgloss.Color("#edecee"),
-	TextSel:    lipgloss.Color("#ffffff"),
-	Match:      lipgloss.Color("#61ffca"),
-	Desc:       lipgloss.Color("#9692a8"),
-	DescSel:    lipgloss.Color("#edecee"),
-	SelBg:      lipgloss.Color("#3d375e"),
-	ScrollInfo: lipgloss.Color("#a277ff"),
-	GhostText:  lipgloss.Color("#4B4A4C"),
-}
-
-func SetTheme(t Theme) {
-	currentTheme = t
-}
-
 type Overlay struct {
 	mu            sync.Mutex
 	Visible       bool
@@ -217,6 +184,12 @@ func (o *Overlay) GetTypedQuery() string {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	return o.TypedQuery
+}
+
+func (o *Overlay) SetTypedQuery(q string) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.TypedQuery = q
 }
 
 func (o *Overlay) GetCurrentCmd() string {
@@ -477,7 +450,11 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 
 	if ghostText != "" {
 		width := termWidth()
-		cursorCol := o.PromptLen + lipgloss.Width(buffer)
+		totalCol := o.PromptLen + lipgloss.Width(buffer)
+		cursorCol := totalCol
+		if width > 0 {
+			cursorCol = totalCol % width
+		}
 		availableCols := width - cursorCol
 		if availableCols <= 0 {
 			ghostText = ""
@@ -498,7 +475,7 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 
 	s.WriteString(ansi.SaveCursor)
 	if ghostText != "" {
-		styled := lipgloss.NewStyle().Foreground(currentTheme.GhostText).Render(ghostText)
+		styled := lipgloss.NewStyle().Foreground(lipgloss.Color(config.Theme().GhostText)).Render(ghostText)
 		s.WriteString(styled)
 	}
 	if padLen > 0 {
@@ -520,28 +497,18 @@ func termWidth() int {
 	return w
 }
 
-// sourceTag renders a pill-style source label (" alias ") with inverted
-// colors when selected.
-func sourceTag(label, bgHex, fgHex string, selected bool) string {
-	style := lipgloss.NewStyle().Background(lipgloss.Color(bgHex)).Foreground(lipgloss.Color(fgHex))
-	if selected {
-		style = lipgloss.NewStyle().Background(lipgloss.Color(fgHex)).Foreground(lipgloss.Color("#110f18")).Bold(true)
-	}
-	return style.Render(" " + label + " ")
-}
-
 func renderMatchedTitle(title, typed string, selected bool, w int) string {
-	t := currentTheme
+	t := config.Theme()
 	textColor := t.Text
 	if selected {
 		textColor = t.TextSel
 	}
 
-	base := lipgloss.NewStyle().Foreground(textColor)
-	match := lipgloss.NewStyle().Foreground(t.Match).Bold(true)
+	base := lipgloss.NewStyle().Foreground(lipgloss.Color(textColor))
+	match := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Match)).Bold(true)
 	if selected {
-		base = base.Background(t.SelBg)
-		match = match.Background(t.SelBg)
+		base = base.Background(lipgloss.Color(t.SelBg))
+		match = match.Background(lipgloss.Color(t.SelBg))
 	}
 
 	display := fixedWidth(title, w)
@@ -570,18 +537,20 @@ func (o *Overlay) draw() string {
 		return ""
 	}
 
-	t := currentTheme
-	border := lipgloss.NewStyle().Foreground(t.Border)
-	scrollStyle := lipgloss.NewStyle().Foreground(t.ScrollInfo)
+	t := config.Theme()
+	border := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Border))
+	scrollStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(t.ScrollInfo))
 
 	var s strings.Builder
 	s.WriteString(ansi.ResetModeAutoWrap)
 
 	typedLen := lipgloss.Width(o.TypedQuery)
-	targetCol := o.PromptLen + typedLen
-
 	width := termWidth()
 
+	// ComputeCursorCol returns the total visual width, not the column on the
+	// current line. When the prompt is wider than the terminal the cursor has
+	// wrapped, so using PromptLen directly overflows the screen and the box
+	// lands at the wrong horizontal position.
 	boxWidth := config.Get().UI.MaxWidth
 	if boxWidth <= 0 {
 		boxWidth = 76 // Default if 0
@@ -593,13 +562,23 @@ func (o *Overlay) draw() string {
 		boxWidth = 40 // Minimum safe width
 	}
 
+	// ComputeCursorCol returns the total visual width, not the column on the
+	// current line. When the prompt is wider than the terminal the cursor has
+	// wrapped, so using PromptLen directly overflows the screen and the box
+	// lands at the wrong horizontal position.
+	totalCol := o.PromptLen + typedLen
+	cursorCol := totalCol
+	if width > 0 {
+		cursorCol = totalCol % width
+	}
+	targetCol := cursorCol
 	if targetCol+boxWidth > width {
 		targetCol = width - boxWidth
 	}
 	if targetCol < 0 {
 		targetCol = 0
 	}
-	logger.Debugf("Overlay draw: pLen=%d, typedLen=%d, targetCol=%d, width=%d", o.PromptLen, typedLen, targetCol, width)
+	logger.Debugf("Overlay draw: pLen=%d, typedLen=%d, totalCol=%d, cursorCol=%d, targetCol=%d, width=%d", o.PromptLen, typedLen, totalCol, cursorCol, targetCol, width)
 
 	s.WriteString(ansi.SaveCursor)
 
@@ -692,14 +671,14 @@ func (o *Overlay) draw() string {
 
 		bg := lipgloss.NewStyle()
 		if selected {
-			bg = bg.Background(t.SelBg)
+			bg = bg.Background(lipgloss.Color(t.SelBg))
 		}
 
 		marker := " "
-		markerStyle := bg.Foreground(t.Muted)
+		markerStyle := bg.Foreground(lipgloss.Color(t.Muted))
 		if selected {
 			marker = "▶"
-			markerStyle = bg.Foreground(t.Accent).Bold(true)
+			markerStyle = bg.Foreground(lipgloss.Color(t.Accent)).Bold(true)
 		}
 
 		iconGlyph := lookupIcon(it.Icon)
@@ -707,7 +686,7 @@ func (o *Overlay) draw() string {
 		if selected {
 			iconColor = t.Accent
 		}
-		iconStr := bg.Foreground(iconColor).Render(fixedWidth(iconGlyph, iconW))
+		iconStr := bg.Foreground(lipgloss.Color(iconColor)).Render(fixedWidth(iconGlyph, iconW))
 
 		title := renderMatchedTitle(it.Cmd, o.TypedQuery, selected, titleW)
 
@@ -719,26 +698,50 @@ func (o *Overlay) draw() string {
 		var desc string
 		if isClassic {
 			if it.Icon == "alias" {
-				desc = bg.Foreground(descColor).Render(fixedWidth("alias: "+it.Desc, descW))
+				desc = bg.Foreground(lipgloss.Color(descColor)).Render(fixedWidth("alias: "+it.Desc, descW))
 			} else {
-				desc = bg.Foreground(descColor).Render(fixedWidth(it.Desc, descW))
+				desc = bg.Foreground(lipgloss.Color(descColor)).Render(fixedWidth(it.Desc, descW))
 			}
 		} else {
 			switch it.Icon {
 			case "alias":
-				tag := sourceTag("alias", "#2a2342", "#a277ff", selected)
-				rem := max(descW-lipgloss.Width(tag)-1, 0)
-				desc = tag + bg.Render(" ") + bg.Foreground(descColor).Render(fixedWidth(it.Desc, rem))
+				boxStyle := lipgloss.NewStyle().Background(lipgloss.Color(t.Alias)).Foreground(lipgloss.Color(t.AliasSel))
+				if selected {
+					boxStyle = lipgloss.NewStyle().Background(lipgloss.Color(t.AliasSel)).Foreground(lipgloss.Color(t.SelText)).Bold(true)
+				}
+				tag := boxStyle.Render(" alias ")
+				tw := lipgloss.Width(tag)
+				rem := max(descW-tw-1, 0)
+				desc = tag + bg.Render(" ") + bg.Foreground(lipgloss.Color(descColor)).Render(fixedWidth(it.Desc, rem))
+			case "atuin":
+				boxStyle := lipgloss.NewStyle().Background(lipgloss.Color(t.Alias)).Foreground(lipgloss.Color(t.AliasSel))
+				if selected {
+					boxStyle = lipgloss.NewStyle().Background(lipgloss.Color(t.AliasSel)).Foreground(lipgloss.Color(t.SelText)).Bold(true)
+				}
+				tag := boxStyle.Render(" atuin ")
+				tw := lipgloss.Width(tag)
+				rem := max(descW-tw-1, 0)
+				desc = tag + bg.Render(" ") + bg.Foreground(lipgloss.Color(descColor)).Render(fixedWidth("atuin history", rem))
 			case "history":
-				tag := sourceTag("history", "#1a2d36", "#61ffca", selected)
-				rem := max(descW-lipgloss.Width(tag), 0)
+				boxStyle := lipgloss.NewStyle().Background(lipgloss.Color(t.History)).Foreground(lipgloss.Color(t.HistorySel))
+				if selected {
+					boxStyle = lipgloss.NewStyle().Background(lipgloss.Color(t.HistorySel)).Foreground(lipgloss.Color(t.SelText)).Bold(true)
+				}
+				tag := boxStyle.Render(" history ")
+				tw := lipgloss.Width(tag)
+				rem := max(descW-tw, 0)
 				desc = tag + bg.Render(strings.Repeat(" ", rem))
 			case "system":
-				tag := sourceTag("system", "#1e1d28", "#a277ff", selected)
-				rem := max(descW-lipgloss.Width(tag), 0)
+				boxStyle := lipgloss.NewStyle().Background(lipgloss.Color(t.Sys)).Foreground(lipgloss.Color(t.SysSel))
+				if selected {
+					boxStyle = lipgloss.NewStyle().Background(lipgloss.Color(t.SysSel)).Foreground(lipgloss.Color(t.SelText)).Bold(true)
+				}
+				tag := boxStyle.Render(" system ")
+				tw := lipgloss.Width(tag)
+				rem := max(descW-tw, 0)
 				desc = tag + bg.Render(strings.Repeat(" ", rem))
 			default:
-				desc = bg.Foreground(descColor).Render(fixedWidth(it.Desc, descW))
+				desc = bg.Foreground(lipgloss.Color(descColor)).Render(fixedWidth(it.Desc, descW))
 			}
 		}
 
@@ -769,11 +772,11 @@ func (o *Overlay) draw() string {
 
 	footerInfo := ""
 	if !isClassic {
-		keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#a277ff")).Bold(true)
+		keyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(t.Key)).Bold(true)
 		selectKey := keyStyle.Render(config.FormatKeyName(config.Get().Keybindings.SelectSuggestion))
 		ctrlRKey := keyStyle.Render(config.FormatKeyName(config.Get().Keybindings.ToggleMode))
-		acceptText := lipgloss.NewStyle().Foreground(t.ScrollInfo).Render(" Accept")
-		modeText := lipgloss.NewStyle().Foreground(t.ScrollInfo).Render(" Mode")
+		acceptText := lipgloss.NewStyle().Foreground(lipgloss.Color(t.ScrollInfo)).Render(" Accept")
+		modeText := lipgloss.NewStyle().Foreground(lipgloss.Color(t.ScrollInfo)).Render(" Mode")
 		footerInfo = fmt.Sprintf(" %s%s • %s%s ", selectKey, acceptText, ctrlRKey, modeText)
 	}
 

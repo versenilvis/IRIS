@@ -14,6 +14,31 @@ import (
 
 type Duration time.Duration
 
+// ghost-text was a bool before it grew a third mode, so old configs must keep loading
+type GhostTextMode int
+
+func (g *GhostTextMode) UnmarshalTOML(val any) error {
+	switch v := val.(type) {
+	case bool:
+		if v {
+			*g = GhostTextOn
+		} else {
+			*g = GhostTextOff
+		}
+	case int64:
+		*g = GhostTextMode(v)
+	default:
+		return fmt.Errorf("ghost-text must be a boolean or integer")
+	}
+	return nil
+}
+
+const (
+	GhostTextOff GhostTextMode = iota
+	GhostTextOn
+	GhostTextIndividual
+)
+
 var (
 	_ encoding.TextUnmarshaler = (*Duration)(nil)
 	_ encoding.TextMarshaler   = (*Duration)(nil)
@@ -40,16 +65,20 @@ type CoreConfig struct {
 	Debug       bool   `toml:"debug"`
 	ExpandAlias bool   `toml:"expand-alias"`
 	AutoExecute bool   `toml:"auto-execute"`
+	// 0 = shell history, 1 = atuin only, 2 = atuin + shell
+	Atuin             int    `toml:"atuin-history"`
+	AtuinDBPath       string `toml:"atuin-db-path"`
+	CobraProbeEnabled bool   `toml:"cobra-probe-enabled"`
 }
 
 type UIConfig struct {
-	Style           string `toml:"style"`
-	GhostText       bool   `toml:"ghost-text"`
-	ShowHiddenFiles bool   `toml:"hidden-files"`
-	MaxSuggestions  int    `toml:"max-suggestions"`
-	MaxHeight       int    `toml:"max-height"`
-	MaxWidth        int    `toml:"max-width"`
-	NerdFonts       bool   `toml:"nerd-fonts"`
+	Style           string        `toml:"style"`
+	GhostText       GhostTextMode `toml:"ghost-text"`
+	ShowHiddenFiles bool          `toml:"hidden-files"`
+	MaxSuggestions  int           `toml:"max-suggestions"`
+	MaxHeight       int           `toml:"max-height"`
+	MaxWidth        int           `toml:"max-width"`
+	NerdFonts       bool          `toml:"nerd-fonts"`
 }
 
 type GitConfig struct {
@@ -61,6 +90,8 @@ type UpdaterConfig struct {
 	CheckOnStartup bool     `toml:"check-on-startup"`
 	Channel        string   `toml:"channel"`
 	CheckInterval  Duration `toml:"check-interval"`
+	// AutoUpdate: 0 = off (default), 1 = auto-install, 2 = always confirm first
+	AutoUpdate int `toml:"auto-update"`
 }
 
 type KeybindingsConfig struct {
@@ -69,6 +100,7 @@ type KeybindingsConfig struct {
 	SelectSuggestion string `toml:"select"`
 	NavigateUp       string `toml:"navigate-up"`
 	NavigateDown     string `toml:"navigate-down"`
+	NavigateRight    string `toml:"navigate-right"`
 }
 
 type ZoxideConfig struct {
@@ -159,30 +191,47 @@ func Init(cfg *Config) {
 }
 
 func AutoDetectConfigChange(onReload func(cfg *Config)) {
-	path, err := ConfigPath()
+	cfgPath, err := ConfigPath()
 	if err != nil {
 		return
 	}
+	themePath, _ := ThemePath()
+
 	go func() {
-		var lastMod time.Time
-		if info, err := os.Stat(path); err == nil {
-			lastMod = info.ModTime()
+		statMod := func(p string) time.Time {
+			if info, err := os.Stat(p); err == nil {
+				return info.ModTime()
+			}
+			return time.Time{}
 		}
+		cfgLast := statMod(cfgPath)
+		themeLast := statMod(themePath)
 		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 		for range ticker.C {
-			info, err := os.Stat(path)
-			if err == nil {
-				if !lastMod.IsZero() && info.ModTime().After(lastMod) {
-					lastMod = info.ModTime()
-					if newCfg, err := Load(); err == nil {
-						Init(newCfg)
-						if onReload != nil {
-							onReload(newCfg)
-						}
+			changed := false
+			cfgMod := statMod(cfgPath)
+			if !cfgLast.IsZero() && cfgMod.After(cfgLast) {
+				cfgLast = cfgMod
+				changed = true
+			} else if cfgLast.IsZero() {
+				cfgLast = cfgMod
+			}
+			if themePath != "" {
+				themeMod := statMod(themePath)
+				if !themeLast.IsZero() && (themeMod.After(themeLast) || themeMod.IsZero()) {
+					themeLast = themeMod
+					changed = true
+				} else if themeLast.IsZero() {
+					themeLast = themeMod
+				}
+			}
+			if changed {
+				if newCfg, err := Load(); err == nil {
+					Init(newCfg)
+					if onReload != nil {
+						onReload(newCfg)
 					}
-				} else if lastMod.IsZero() {
-					lastMod = info.ModTime()
 				}
 			}
 		}
@@ -205,6 +254,10 @@ func Load() (*Config, error) {
 		}
 	}
 
+	if themePath, err := ThemePath(); err == nil {
+		LoadTheme(themePath)
+	}
+
 	applyEnv(cfg)
 
 	// fallback for empty keybindings
@@ -222,6 +275,9 @@ func Load() (*Config, error) {
 	}
 	if cfg.Keybindings.NavigateDown == "" {
 		cfg.Keybindings.NavigateDown = "down"
+	}
+	if cfg.Keybindings.NavigateRight == "" {
+		cfg.Keybindings.NavigateRight = "right"
 	}
 
 	if err := validate(cfg); err != nil {
@@ -270,6 +326,14 @@ func validate(cfg *Config) error {
 	validChannels := map[string]bool{"stable": true, "nightly": true}
 	if !validChannels[cfg.Updater.Channel] {
 		return fmt.Errorf("updater.channel: invalid value %q (want: stable|nightly)", cfg.Updater.Channel)
+	}
+
+	if cfg.Updater.AutoUpdate < 0 || cfg.Updater.AutoUpdate > 2 {
+		return fmt.Errorf("updater.auto-update: invalid value %d (want: 0=off, 1=auto, 2=confirm)", cfg.Updater.AutoUpdate)
+	}
+
+	if cfg.UI.GhostText < GhostTextOff || cfg.UI.GhostText > GhostTextIndividual {
+		return fmt.Errorf("ui.ghost-text: invalid value %d (want: 0=off, 1=on, 2=individual)", cfg.UI.GhostText)
 	}
 
 	if cfg.UI.MaxSuggestions < 1 || cfg.UI.MaxSuggestions > 500 {
