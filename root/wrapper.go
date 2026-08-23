@@ -420,6 +420,7 @@ func runWrapper() {
 			// ghost text is derived from TypedQuery, so history navigation that
 			// rewrites the buffer must move it too or the hint lags a selection
 			overlay.SetTypedQuery(bufCopy)
+			overlay.SetCursorAtEnd(offsetCopy == 0)
 
 			var b strings.Builder
 			if !disableGhostText.Load() {
@@ -797,6 +798,7 @@ func runWrapper() {
 		}
 
 		overlay.SetUserNavigated(navCopy)
+		overlay.SetCursorAtEnd(offsetCopy == 0)
 		if !disableGhostText.Load() {
 			b.WriteString(overlay.RenderGhostText(bufCopy, navCopy, offsetCopy == 0))
 		}
