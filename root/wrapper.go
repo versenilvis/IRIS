@@ -360,12 +360,7 @@ func runWrapper() {
 	})
 	isExecuting := func() bool {
 		if isAltScreenActive.Load() {
-			pgrp, pgrpErr := unix.IoctlGetInt(int(ptmx.Fd()), unix.TIOCGPGRP)
-			if pgrpErr == nil && pgrp == shellPGID {
-				isAltScreenActive.Store(false)
-			} else {
-				return true
-			}
+			return true
 		}
 		if isCommandActive.Load() {
 			// for bash: no preexec/precmd hooks, so fall back to TIOCGPGRP to detect when shell returns
@@ -494,6 +489,7 @@ func runWrapper() {
 			}
 		}()
 		var lastPromptBuf []byte
+		var altScreenCarry []byte
 		buf := make([]byte, 4096)
 		for {
 			n, err := ptmx.Read(buf)
@@ -508,12 +504,13 @@ func runWrapper() {
 
 			// detect alternate screen buffer (smcup/rmcup) used by TUI apps (nvim, atuin, fzf)
 			chunk := buf[:n]
-			if bytes.Contains(chunk, []byte("\x1b[?1049h")) || bytes.Contains(chunk, []byte("\x1b[?1047h")) || bytes.Contains(chunk, []byte("\x1b[?47h")) {
-				isAltScreenActive.Store(true)
-				writeStdout([]byte(overlay.ClearAndDisable()))
-			} else if bytes.Contains(chunk, []byte("\x1b[?1049l")) || bytes.Contains(chunk, []byte("\x1b[?1047l")) || bytes.Contains(chunk, []byte("\x1b[?47l")) {
-				isAltScreenActive.Store(false)
+			if enter, ok := scanAltScreen(altScreenCarry, chunk); ok {
+				isAltScreenActive.Store(enter)
+				if enter {
+					writeStdout([]byte(overlay.ClearAndDisable()))
+				}
 			}
+			altScreenCarry = keepAltScreenCarry(chunk)
 
 			writeStdout(chunk)
 
@@ -582,6 +579,9 @@ func runWrapper() {
 					}
 				}
 				isCommandActive.Store(false)
+				// the shell reached a new prompt, so nothing owns the alternate
+				// screen any more even if a killed TUI never restored it
+				isAltScreenActive.Store(false)
 				SetCurrentAISuggestion(nil)
 				bufferMu.Lock()
 				cmdToRecord := lastSubmittedCommand
@@ -633,6 +633,9 @@ func runWrapper() {
 			}
 
 			isCommandActive.Store(false)
+			// a query means the shell's line editor is live, so any full screen
+			// app launched from a widget (atuin, fzf) has handed the screen back
+			isAltScreenActive.Store(false)
 
 			if overlay.GetUserNavigated() {
 				continue
