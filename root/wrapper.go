@@ -406,8 +406,8 @@ func runWrapper() {
 			var toWrite []byte
 			if isHistMode && selectedCmd != "" {
 				naiveBuffer = selectedCmd
+				toWrite = shell.ReplaceLine([]byte(selectedCmd), cursorOffset)
 				cursorOffset = 0
-				toWrite = shell.ReplaceLine([]byte(selectedCmd))
 			}
 			bufCopy := naiveBuffer
 			offsetCopy := cursorOffset
@@ -466,12 +466,13 @@ func runWrapper() {
 				if selected != "" {
 					bufferMu.Lock()
 					naiveBuffer = selected
+					replace := shell.ReplaceLine([]byte(selected), cursorOffset)
 					cursorOffset = 0
 					bufferMu.Unlock()
 
 					userNavigated.Store(true)
 					writeStdout([]byte(overlay.Render()))
-					_, _ = ptmx.Write(shell.ReplaceLine([]byte(selected)))
+					_, _ = ptmx.Write(replace)
 				}
 			}
 		}
@@ -905,9 +906,10 @@ func runWrapper() {
 					if userNavigated.Load() {
 						bufferMu.Lock()
 						naiveBuffer = overlay.GetTypedQuery()
+						replace := shell.ReplaceLine([]byte(overlay.GetTypedQuery()), cursorOffset)
 						cursorOffset = 0
 						bufferMu.Unlock()
-						_, _ = ptmx.Write(shell.ReplaceLine([]byte(overlay.GetTypedQuery())))
+						_, _ = ptmx.Write(replace)
 					}
 					userNavigated.Store(false)
 					overlay.Show()
@@ -953,9 +955,10 @@ func runWrapper() {
 							}
 							bufferMu.Lock()
 							naiveBuffer = selected
+							replace := shell.ReplaceLine([]byte(selected), cursorOffset)
 							cursorOffset = 0
 							bufferMu.Unlock()
-							_, _ = ptmx.Write(shell.ReplaceLine([]byte(selected)))
+							_, _ = ptmx.Write(replace)
 
 							overlay.ClearGhostTextState()
 							userNavigated.Store(false)
@@ -1004,8 +1007,11 @@ func runWrapper() {
 								selectedCmd = s + " "
 							}
 						}
+						bufferMu.Lock()
+						offset := cursorOffset
+						bufferMu.Unlock()
 						// update the line first
-						_, _ = ptmx.Write(shell.ReplaceLine([]byte(selectedCmd)))
+						_, _ = ptmx.Write(shell.ReplaceLine([]byte(selectedCmd), offset))
 						cmdToSubmit = selectedCmd
 					} else {
 						bufferMu.Lock()
@@ -1019,11 +1025,12 @@ func runWrapper() {
 							disableGhostText.Store(newCfg.UI.GhostText == config.GhostTextOff)
 						}
 						msg := "echo -e '\\033[32m✓ Iris configuration reloaded successfully.\\033[0m'\r"
-						_, _ = ptmx.Write(shell.ReplaceLine([]byte(msg)))
 						bufferMu.Lock()
+						replace := shell.ReplaceLine([]byte(msg), cursorOffset)
 						naiveBuffer = ""
 						cursorOffset = 0
 						bufferMu.Unlock()
+						_, _ = ptmx.Write(replace)
 						activeModeMu.Lock()
 						activeMode = loadMode()
 						activeModeMu.Unlock()
@@ -1311,12 +1318,13 @@ func runWrapper() {
 							bufferMu.Unlock()
 
 							if isSpaceAlias && ok {
-								// clear the current alias and replace it with the full command
-								_, _ = ptmx.Write(shell.ReplaceLine([]byte(target + " ")))
 								bufferMu.Lock()
+								replace := shell.ReplaceLine([]byte(target+" "), cursorOffset)
 								naiveBuffer = target + " "
 								cursorOffset = 0
 								bufferMu.Unlock()
+								// clear the current alias and replace it with the full command
+								_, _ = ptmx.Write(replace)
 								shouldOverlayDraw = true
 								continue
 							}

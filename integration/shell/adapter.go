@@ -14,21 +14,25 @@ import (
 )
 
 // ReplaceLine builds the byte sequence that clears the shell's current input
-// line and types text in its place.
+// line and types text in its place. cursorFromEnd is how many characters the
+// cursor sits to the left of the end of the line.
 //
-// The clear is ctrl+e then ctrl+u, not ctrl+u alone. ctrl+u is only
-// kill-whole-line under zsh's stock emacs keymap; `bindkey '^U'
-// backward-kill-line` is a common preference, and it is also what bash does by
-// default (unix-line-discard). Those kill from the cursor backwards, so with
-// the cursor mid-line everything to its right survived and collided with the
-// text typed next -- selecting a suggestion left the tail of the old buffer
-// interleaved through the new one.
+// ctrl+u only clears the whole line from the end: it is kill-whole-line in
+// zsh's stock emacs keymap, but kills backwards under bash (unix-line-discard),
+// fish, zsh's vi keymap, and `bindkey '^U' backward-kill-line`. Left mid-line,
+// everything to the right of the cursor survived and collided with the text
+// typed next.
 //
-// Moving to end-of-line first makes all three bindings equivalent: there is
-// nothing to the right left to preserve.
-func ReplaceLine(text []byte) []byte {
-	out := make([]byte, 0, len(text)+2)
-	out = append(out, 0x05, 0x15) // ctrl+e (end-of-line), ctrl+u (kill)
+// The cursor therefore has to reach the end first, and it walks there with the
+// right arrow rather than ctrl+e. ctrl+e is a key people rebind -- binding it
+// to atuin-search is common, and iris sending it opened the atuin overlay every
+// time it rewrote the line.
+func ReplaceLine(text []byte, cursorFromEnd int) []byte {
+	out := make([]byte, 0, len(text)+3*max(cursorFromEnd, 0)+1)
+	for range cursorFromEnd {
+		out = append(out, 0x1b, '[', 'C') // right arrow (forward-char)
+	}
+	out = append(out, 0x15) // ctrl+u (kill)
 	return append(out, text...)
 }
 
@@ -37,7 +41,7 @@ type Adapter interface {
 	GetName() string
 	GetShellPath() string
 	GetEnv(fd int, pid int) []string
-	PrepareSelectSequence(selected string) []byte
+	PrepareSelectSequence(selected string, cursorFromEnd int) []byte
 	// ScanAliases returns a map of alias name to target command
 	ScanAliases() map[string]string
 }
@@ -64,8 +68,8 @@ func (b *BashAdapter) GetShellPath() string { return "bash" }
 func (b *BashAdapter) GetEnv(fd int, pid int) []string {
 	return append(os.Environ(), "IRIS_FD="+fmt.Sprint(fd), "IRIS_PID="+fmt.Sprint(pid))
 }
-func (b *BashAdapter) PrepareSelectSequence(selected string) []byte {
-	return ReplaceLine([]byte(selected))
+func (b *BashAdapter) PrepareSelectSequence(selected string, cursorFromEnd int) []byte {
+	return ReplaceLine([]byte(selected), cursorFromEnd)
 }
 func (b *BashAdapter) ScanAliases() map[string]string {
 	return ScanPosixAliases([]string{".bashrc", ".bash_profile", ".bash_aliases"})
@@ -79,8 +83,8 @@ func (z *ZshAdapter) GetShellPath() string { return "zsh" }
 func (z *ZshAdapter) GetEnv(fd int, pid int) []string {
 	return append(os.Environ(), "IRIS_FD="+fmt.Sprint(fd), "IRIS_PID="+fmt.Sprint(pid))
 }
-func (z *ZshAdapter) PrepareSelectSequence(selected string) []byte {
-	return ReplaceLine([]byte(selected))
+func (z *ZshAdapter) PrepareSelectSequence(selected string, cursorFromEnd int) []byte {
+	return ReplaceLine([]byte(selected), cursorFromEnd)
 }
 func (z *ZshAdapter) ScanAliases() map[string]string {
 	envSet := os.Getenv("ZDOTDIR") != ""
@@ -139,8 +143,8 @@ func (f *FishAdapter) GetShellPath() string { return "fish" }
 func (f *FishAdapter) GetEnv(fd int, pid int) []string {
 	return append(os.Environ(), "IRIS_FD="+fmt.Sprint(fd), "IRIS_PID="+fmt.Sprint(pid))
 }
-func (f *FishAdapter) PrepareSelectSequence(selected string) []byte {
-	return ReplaceLine([]byte(selected))
+func (f *FishAdapter) PrepareSelectSequence(selected string, cursorFromEnd int) []byte {
+	return ReplaceLine([]byte(selected), cursorFromEnd)
 }
 func (f *FishAdapter) ScanAliases() map[string]string {
 	// fish uses 'alias' command in config.fish or separate function files

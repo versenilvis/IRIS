@@ -1,6 +1,7 @@
 package shell
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -202,25 +203,41 @@ alias spaced='git status -sb'
 	}
 }
 
-func TestReplaceLineMovesToEndBeforeKilling(t *testing.T) {
-	// ctrl+u alone is only kill-whole-line under zsh's stock emacs keymap.
-	// Under `bindkey '^U' backward-kill-line` (and bash's default
-	// unix-line-discard) it kills backwards from the cursor, so anything to the
-	// right of the cursor survived and collided with the text typed next.
-	// Prefixing ctrl+e makes the three equivalent.
-	got := ReplaceLine([]byte("cd config/"))
-
-	if len(got) < 2 || got[0] != 0x05 || got[1] != 0x15 {
-		t.Fatalf("ReplaceLine() = %q; want it to start with ctrl+e, ctrl+u", got)
-	}
-	if string(got[2:]) != "cd config/" {
-		t.Errorf("ReplaceLine() payload = %q; want %q", got[2:], "cd config/")
+func TestReplaceLineNeverSendsCtrlE(t *testing.T) {
+	// iris used to move to end-of-line with ctrl+e. Binding ctrl+e to
+	// atuin-search is common, so every line rewrite -- history navigation,
+	// selecting a suggestion -- popped the atuin overlay.
+	for _, cursorFromEnd := range []int{0, 1, 4} {
+		got := ReplaceLine([]byte("cd config/"), cursorFromEnd)
+		if bytes.IndexByte(got, 0x05) >= 0 {
+			t.Errorf("ReplaceLine(_, %d) = %q; must not contain ctrl+e", cursorFromEnd, got)
+		}
 	}
 }
+
+func TestReplaceLineWalksToTheEndBeforeKilling(t *testing.T) {
+	// ctrl+u kills backwards under bash, fish and zsh's vi keymap, so the
+	// cursor has to be at the end or the tail of the old line survives.
+	tests := []struct {
+		cursorFromEnd int
+		want          string
+	}{
+		{0, "\x15cd config/"},
+		{1, "\x1b[C\x15cd config/"},
+		{3, "\x1b[C\x1b[C\x1b[C\x15cd config/"},
+	}
+
+	for _, tt := range tests {
+		if got := ReplaceLine([]byte("cd config/"), tt.cursorFromEnd); string(got) != tt.want {
+			t.Errorf("ReplaceLine(_, %d) = %q; want %q", tt.cursorFromEnd, got, tt.want)
+		}
+	}
+}
+
 func TestPrepareSelectSequenceUsesReplaceLine(t *testing.T) {
 	for _, a := range []Adapter{&ZshAdapter{}, &BashAdapter{}, &FishAdapter{}} {
-		got := a.PrepareSelectSequence("git status")
-		want := ReplaceLine([]byte("git status"))
+		got := a.PrepareSelectSequence("git status", 2)
+		want := ReplaceLine([]byte("git status"), 2)
 		if string(got) != string(want) {
 			t.Errorf("%s PrepareSelectSequence() = %q; want %q", a.GetName(), got, want)
 		}
