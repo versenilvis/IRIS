@@ -5,6 +5,7 @@ go 1.25.0
 require (
 	charm.land/lipgloss/v2 v2.0.5
 	github.com/BurntSushi/toml v1.6.0
+	github.com/Gaurav-Gosain/tuitest v0.0.0-20260821151822-797f5bbc19a8
 	github.com/charmbracelet/glamour v1.0.0
 	github.com/charmbracelet/x/ansi v0.11.7
 	github.com/creack/pty v1.1.24
@@ -17,7 +18,6 @@ require (
 )
 
 require (
-	github.com/Gaurav-Gosain/tuitest v0.0.0-20260821151822-797f5bbc19a8 // indirect
 	github.com/alecthomas/chroma/v2 v2.20.0 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
