@@ -137,7 +137,7 @@ func TestReloadDoesNotStrandTheBox(t *testing.T) {
 	var b strings.Builder
 	for _, e := range []string{
 		"nvim ~/.config/", "nvim ~/.config/iris/", "nvim ~/.config/opencode/",
-		"nvim ~/.config/iris/config.toml", "nvim a.cppp", "nv a.go", "nv a.cpp",
+		"nvim ~/.config/iris/config.toml", "nvim a.cxx", "nv a.go", "nv a.cpp",
 	} {
 		b.WriteString(": 1700000000:0;" + e + "\n")
 	}
