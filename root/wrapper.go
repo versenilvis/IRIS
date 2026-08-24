@@ -161,6 +161,9 @@ func menuOnlyHidden(mode config.GhostTextMode, menuEnabled bool) bool {
 // chunks, short enough that navigation still feels immediate.
 const repaintSettleDelay = 12 * time.Millisecond
 
+// maxRepaintWait caps how long a deferred draw can be pushed back in total.
+const maxRepaintWait = 40 * time.Millisecond
+
 // runWrapper sets up the pty environment, launches the shell,
 // and manages the main input loop to provide real-time suggestions
 // it handles raw terminal mode to intercept keystrokes and
@@ -371,6 +374,7 @@ func runWrapper() {
 	var deferredDrawMu sync.Mutex
 	var deferredDrawTimer *time.Timer
 	var deferredDraw func()
+	var deferredDrawDeadline time.Time
 
 	// drawAfterRepaint runs draw once the pty has been quiet for a moment,
 	// which is as close as iris gets to "the shell has finished repainting".
@@ -378,6 +382,7 @@ func runWrapper() {
 		deferredDrawMu.Lock()
 		defer deferredDrawMu.Unlock()
 		deferredDraw = draw
+		deferredDrawDeadline = time.Now().Add(maxRepaintWait)
 		if deferredDrawTimer != nil {
 			deferredDrawTimer.Stop()
 		}
@@ -398,7 +403,9 @@ func runWrapper() {
 	postponeDeferredDraw := func() {
 		deferredDrawMu.Lock()
 		defer deferredDrawMu.Unlock()
-		if deferredDrawTimer != nil {
+		// never past the deadline: a command that keeps writing must not hold
+		// the menu back indefinitely
+		if deferredDrawTimer != nil && time.Now().Add(repaintSettleDelay).Before(deferredDrawDeadline) {
 			deferredDrawTimer.Reset(repaintSettleDelay)
 		}
 	}
@@ -449,6 +456,7 @@ func runWrapper() {
 			isHistMode := activeMode == "history"
 			activeModeMu.RUnlock()
 			var toWrite []byte
+			prevBuf := naiveBuffer
 			if isHistMode && selectedCmd != "" {
 				naiveBuffer = selectedCmd
 				toWrite = shell.ReplaceLine([]byte(selectedCmd), cursorOffset)
@@ -475,7 +483,11 @@ func runWrapper() {
 				b.WriteString(overlay.Render())
 				writeStdout([]byte(b.String()))
 			}
-			if len(toWrite) > 0 {
+			// Only wait for the repaint when it will actually move the box.
+			// The replacement lands on the same rows unless it wraps onto a
+			// different number of them, and deferring every step makes walking
+			// the list feel like it is catching up with the keyboard.
+			if len(toWrite) > 0 && overlay.InputRowsFor(prevBuf) != overlay.InputRowsFor(bufCopy) {
 				drawAfterRepaint(draw)
 			} else {
 				draw()
