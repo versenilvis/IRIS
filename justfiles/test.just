@@ -9,7 +9,12 @@ alias ana := analyze
 analyze:
     @go run scripts/test_analyzer.go
 
+# golangci-lint type checks with the go/types it was built against, so a newer
+# toolchain on PATH makes it panic on the standard library rather than report
+# anything. Override when your golangci-lint was built against a different Go.
+lint-toolchain := env('IRIS_LINT_TOOLCHAIN', 'go1.26.5')
+
 # run linter
 [group('test')]
 lint:
-    @golangci-lint run ./...
+    @GOTOOLCHAIN={{lint-toolchain}} golangci-lint run ./...
