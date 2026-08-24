@@ -156,6 +156,11 @@ func menuOnlyHidden(mode config.GhostTextMode, menuEnabled bool) bool {
 	return !menuEnabled && mode == config.GhostTextIndividual
 }
 
+// repaintSettleDelay is how long the pty has to stay quiet before a deferred
+// overlay draw runs. Long enough to cover a shell repaint arriving in several
+// chunks, short enough that navigation still feels immediate.
+const repaintSettleDelay = 12 * time.Millisecond
+
 // runWrapper sets up the pty environment, launches the shell,
 // and manages the main input loop to provide real-time suggestions
 // it handles raw terminal mode to intercept keystrokes and
@@ -358,6 +363,46 @@ func runWrapper() {
 			renderer()
 		}
 	})
+	// A line rewrite reaches the terminal through the shell: iris writes the
+	// replacement to the pty, the shell repaints, and only then does the cursor
+	// sit on the row the box has to hang off. Drawing straight away anchors the
+	// box at the old row, and a line that grew onto more wrapped rows repaints
+	// over the top of it.
+	var deferredDrawMu sync.Mutex
+	var deferredDrawTimer *time.Timer
+	var deferredDraw func()
+
+	// drawAfterRepaint runs draw once the pty has been quiet for a moment,
+	// which is as close as iris gets to "the shell has finished repainting".
+	drawAfterRepaint := func(draw func()) {
+		deferredDrawMu.Lock()
+		defer deferredDrawMu.Unlock()
+		deferredDraw = draw
+		if deferredDrawTimer != nil {
+			deferredDrawTimer.Stop()
+		}
+		deferredDrawTimer = time.AfterFunc(repaintSettleDelay, func() {
+			deferredDrawMu.Lock()
+			run := deferredDraw
+			deferredDraw = nil
+			deferredDrawTimer = nil
+			deferredDrawMu.Unlock()
+			if run != nil {
+				run()
+			}
+		})
+	}
+
+	// postponeDeferredDraw pushes the pending draw back while the shell is
+	// still writing, so the box lands after the last of the repaint.
+	postponeDeferredDraw := func() {
+		deferredDrawMu.Lock()
+		defer deferredDrawMu.Unlock()
+		if deferredDrawTimer != nil {
+			deferredDrawTimer.Reset(repaintSettleDelay)
+		}
+	}
+
 	isExecuting := func() bool {
 		if isAltScreenActive.Load() {
 			return true
@@ -422,12 +467,19 @@ func runWrapper() {
 			overlay.SetTypedQuery(bufCopy)
 			overlay.SetCursorAtEnd(offsetCopy == 0)
 
-			var b strings.Builder
-			if !disableGhostText.Load() {
-				b.WriteString(overlay.RenderGhostText(bufCopy, true, offsetCopy == 0))
+			draw := func() {
+				var b strings.Builder
+				if !disableGhostText.Load() {
+					b.WriteString(overlay.RenderGhostText(bufCopy, true, offsetCopy == 0))
+				}
+				b.WriteString(overlay.Render())
+				writeStdout([]byte(b.String()))
 			}
-			b.WriteString(overlay.Render())
-			writeStdout([]byte(b.String()))
+			if len(toWrite) > 0 {
+				drawAfterRepaint(draw)
+			} else {
+				draw()
+			}
 		} else if suggestionsEnabled {
 			// hidden-overlay history navigation only when suggestions are enabled;
 			// otherwise let the navigation keys pass through to the shell
@@ -515,6 +567,7 @@ func runWrapper() {
 			altScreenCarry = keepAltScreenCarry(chunk)
 
 			writeStdout(chunk)
+			postponeDeferredDraw()
 
 			bufferMu.Lock()
 			nbEmpty := naiveBuffer == ""
