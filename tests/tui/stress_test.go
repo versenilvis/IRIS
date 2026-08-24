@@ -87,7 +87,7 @@ func TestShrinkingTheQueryLeavesNoFragment(t *testing.T) {
 	prefix := "echo " + strings.Repeat("p", 200)
 	var b strings.Builder
 	for i := range 8 {
-		b.WriteString(fmt.Sprintf(": 1700000000:0;%s-tail-%02d\n", prefix, i))
+		fmt.Fprintf(&b, ": 1700000000:0;%s-tail-%02d\n", prefix, i)
 	}
 	if err := os.WriteFile(filepath.Join(home, ".zsh_history"), []byte(b.String()), 0o644); err != nil {
 		t.Fatal(err)

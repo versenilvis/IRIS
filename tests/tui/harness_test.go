@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -21,7 +22,7 @@ const (
 var (
 	buildOnce sync.Once
 	irisBin   string
-	buildErr  error
+	errBuild  error
 )
 
 // binary builds iris once per run. The tests drive the real wrapper, so there
@@ -41,19 +42,21 @@ func binary(t *testing.T) string {
 
 		dir, err := os.MkdirTemp("", "iris-tui-*")
 		if err != nil {
-			buildErr = err
+			errBuild = err
 			return
 		}
 		irisBin = filepath.Join(dir, "iris")
-		cmd := exec.Command("go", "build", "-o", irisBin, "github.com/versenilvis/iris/cmd/iris")
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, "go", "build", "-o", irisBin, "github.com/versenilvis/iris/cmd/iris")
 		cmd.Dir = repoRoot(t)
 		if out, err := cmd.CombinedOutput(); err != nil {
-			buildErr = err
+			errBuild = err
 			t.Logf("go build: %s", out)
 		}
 	})
-	if buildErr != nil {
-		t.Fatalf("building iris: %v", buildErr)
+	if errBuild != nil {
+		t.Fatalf("building iris: %v", errBuild)
 	}
 	return irisBin
 }
