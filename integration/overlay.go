@@ -210,6 +210,11 @@ type Overlay struct {
 	// row: it walks to the end-of-text column, which is only where the cursor
 	// really is when nothing has moved it left.
 	CursorAtEnd bool
+	// anchorCol pins the box's column for as long as the user is walking the
+	// list. Selecting an entry rewrites the line, so following the cursor makes
+	// the box jump left and right under the entry being read.
+	anchorCol int
+	hasAnchor bool
 }
 
 func (o *Overlay) SetCursorAtEnd(v bool) {
@@ -310,6 +315,7 @@ func (o *Overlay) SetQueryAndItems(query string, items []spec.Suggestion) {
 	o.Visible = len(o.Items) > 0
 	o.Cursor = 0
 	o.StartIdx = 0
+	o.hasAnchor = false
 }
 
 func (o *Overlay) InjectAISuggestion(sugg spec.Suggestion) bool {
@@ -399,6 +405,7 @@ func (o *Overlay) SetHistoryList(items []spec.Suggestion, startAtBottom bool) st
 	defer o.mu.Unlock()
 	o.TypedQuery = ""
 	o.UserNavigated = true
+	o.hasAnchor = false
 	o.Items = items
 	o.Visible = len(o.Items) > 0
 	if startAtBottom && len(o.Items) > 0 {
@@ -663,6 +670,15 @@ func (o *Overlay) draw() string {
 	}
 	if targetCol < 0 {
 		targetCol = 0
+	}
+	// Hold the column still while the user walks the list. Each step rewrites
+	// the shell's line to the selected entry, so the cursor -- and with it the
+	// box -- would otherwise jump to a new column on every keypress.
+	if o.UserNavigated && o.hasAnchor {
+		targetCol = o.anchorCol
+	} else {
+		o.anchorCol = targetCol
+		o.hasAnchor = true
 	}
 	logger.Debugf("Overlay draw: pLen=%d, typedLen=%d, totalCol=%d, cursorCol=%d, targetCol=%d, width=%d", o.PromptLen, typedLen, totalCol, cursorCol, targetCol, width)
 
@@ -957,6 +973,7 @@ func (o *Overlay) HideMenu(query string) string {
 	clearLinesBelow(&s, clearRows())
 	// the box is gone, so nothing is hanging below a wrapped input any more
 	lastDrawnInputRows.Store(0)
+	o.hasAnchor = false
 	s.WriteString(ansi.SetModeAutoWrap)
 	return s.String()
 }
@@ -989,6 +1006,7 @@ func (o *Overlay) ClearAndDisable() string {
 	clearLinesBelow(&s, clearRows())
 	// the box is gone, so nothing is hanging below a wrapped input any more
 	lastDrawnInputRows.Store(0)
+	o.hasAnchor = false
 	s.WriteString(ansi.SetModeAutoWrap)
 	return s.String()
 }
