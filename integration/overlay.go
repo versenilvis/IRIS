@@ -215,6 +215,25 @@ type Overlay struct {
 	// the box jump left and right under the entry being read.
 	anchorCol int
 	hasAnchor bool
+	// ScreenLine is what iris believes the shell is currently displaying. It
+	// trails TypedQuery while a rewrite is held back during navigation, and the
+	// box is placed against this, not against the entry being highlighted.
+	ScreenLine string
+}
+
+// SetSelection updates the highlighted entry without claiming the shell has
+// redrawn its line yet.
+func (o *Overlay) SetSelection(q string) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.TypedQuery = q
+}
+
+// SetScreenLine records that the shell's line now holds q.
+func (o *Overlay) SetScreenLine(q string) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.ScreenLine = q
 }
 
 func (o *Overlay) SetCursorAtEnd(v bool) {
@@ -273,6 +292,7 @@ func (o *Overlay) SetTypedQuery(q string) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	o.TypedQuery = q
+	o.ScreenLine = q
 }
 
 func (o *Overlay) GetCurrentCmd() string {
@@ -310,6 +330,7 @@ func (o *Overlay) SetQueryAndItems(query string, items []spec.Suggestion) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	o.TypedQuery = query
+	o.ScreenLine = query
 	o.UserNavigated = false
 	o.Items = items
 	o.Visible = len(o.Items) > 0
@@ -404,6 +425,7 @@ func (o *Overlay) SetHistoryList(items []spec.Suggestion, startAtBottom bool) st
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	o.TypedQuery = ""
+	o.ScreenLine = ""
 	o.UserNavigated = true
 	o.hasAnchor = false
 	o.Items = items
@@ -637,7 +659,7 @@ func (o *Overlay) draw() string {
 	var s strings.Builder
 	s.WriteString(ansi.ResetModeAutoWrap)
 
-	typedLen := lipgloss.Width(o.TypedQuery)
+	typedLen := lipgloss.Width(o.ScreenLine)
 	width := termWidth()
 
 	// ComputeCursorCol returns the total visual width, not the column on the
@@ -950,6 +972,7 @@ func (o *Overlay) HideMenu(query string) string {
 	defer o.mu.Unlock()
 
 	o.TypedQuery = query
+	o.ScreenLine = query
 	if !o.Visible && len(o.Items) == 0 && o.LastGhostLen == 0 {
 		return ""
 	}
@@ -989,6 +1012,7 @@ func (o *Overlay) ClearAndDisable() string {
 	o.Visible = false
 	o.Items = nil
 	o.TypedQuery = ""
+	o.ScreenLine = ""
 	o.UserNavigated = false
 	o.Cursor = 0
 	o.StartIdx = 0
