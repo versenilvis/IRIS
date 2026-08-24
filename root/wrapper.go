@@ -161,8 +161,12 @@ func menuOnlyHidden(mode config.GhostTextMode, menuEnabled bool) bool {
 // chunks, short enough that navigation still feels immediate.
 const repaintSettleDelay = 12 * time.Millisecond
 
-// maxRepaintWait caps how long a deferred draw can be pushed back in total.
-const maxRepaintWait = 40 * time.Millisecond
+// maxRepaintWait caps how long a deferred draw can be pushed back in total. It
+// is generous because it only ever applies when the replacement moves the box:
+// a menu that appears late is a blink, but one drawn into a line the shell is
+// still painting corrupts it for good. The shell repaints incrementally and
+// will not repair cells it does not know were overwritten.
+const maxRepaintWait = 150 * time.Millisecond
 
 // runWrapper sets up the pty environment, launches the shell,
 // and manages the main input loop to provide real-time suggestions
@@ -456,7 +460,6 @@ func runWrapper() {
 			isHistMode := activeMode == "history"
 			activeModeMu.RUnlock()
 			var toWrite []byte
-			prevBuf := naiveBuffer
 			if isHistMode && selectedCmd != "" {
 				naiveBuffer = selectedCmd
 				toWrite = shell.ReplaceLine([]byte(selectedCmd), cursorOffset)
@@ -483,11 +486,13 @@ func runWrapper() {
 				b.WriteString(overlay.Render())
 				writeStdout([]byte(b.String()))
 			}
-			// Only wait for the repaint when it will actually move the box.
-			// The replacement lands on the same rows unless it wraps onto a
-			// different number of them, and deferring every step makes walking
-			// the list feel like it is catching up with the keyboard.
-			if len(toWrite) > 0 && overlay.InputRowsFor(prevBuf) != overlay.InputRowsFor(bufCopy) {
+			// Any rewrite has to wait for the shell. Comparing how the old and
+			// new lines wrap is not enough: while keys are still arriving the
+			// cursor is wherever an earlier, longer line left it, so "these two
+			// wrap the same" says nothing about where the box would land.
+			// Waiting also coalesces a held key into one draw instead of one
+			// per keypress.
+			if len(toWrite) > 0 {
 				drawAfterRepaint(draw)
 			} else {
 				draw()
@@ -578,8 +583,13 @@ func runWrapper() {
 			}
 			altScreenCarry = keepAltScreenCarry(chunk)
 
-			writeStdout(chunk)
+			// Push the pending draw back before writing, not after: stdout is
+			// the terminal (tmux, and whatever renders it), so this write can
+			// block for as long as that side is slow to consume. Postponing
+			// afterwards lets the settle timer expire mid-repaint, and the box
+			// then lands in the middle of a line the shell is still painting.
 			postponeDeferredDraw()
+			writeStdout(chunk)
 
 			bufferMu.Lock()
 			nbEmpty := naiveBuffer == ""

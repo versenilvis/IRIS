@@ -217,14 +217,6 @@ type Overlay struct {
 	hasAnchor bool
 }
 
-// InputRowsFor reports how many rows past the first the prompt plus text
-// occupy, so callers can tell whether replacing the line will move the box.
-func (o *Overlay) InputRowsFor(text string) int {
-	o.mu.Lock()
-	defer o.mu.Unlock()
-	return inputRows(o.PromptLen + lipgloss.Width(text))
-}
-
 func (o *Overlay) SetCursorAtEnd(v bool) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
