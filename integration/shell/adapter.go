@@ -46,6 +46,10 @@ type Adapter interface {
 	ScanAliases() map[string]string
 }
 
+type AbbrScanner interface {
+	ScanAbbrs() map[string]string
+}
+
 // Current shell instance
 var Current Adapter
 
@@ -147,11 +151,38 @@ func (f *FishAdapter) PrepareSelectSequence(selected string, cursorFromEnd int) 
 	return ReplaceLine([]byte(selected), cursorFromEnd)
 }
 func (f *FishAdapter) ScanAliases() map[string]string {
-	// fish uses 'alias' command in config.fish or separate function files
-	return ScanPosixAliases([]string{filepath.Join(GetFishConfigDir(), "config.fish")})
+	return scanFishDefs(GetFishConfigDir()).aliases
+}
+
+func (f *FishAdapter) ScanAbbrs() map[string]string {
+	return scanFishDefs(GetFishConfigDir()).abbrs
 }
 
 func GetFishConfigDir() string {
+	// $__fish_config_dir is a shell variable rather than an env var, so it is
+	// resolved once per process the same way ZDOTDIR is.
+	fishConfigDirOnce.Do(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, "fish", "-c", "echo $__fish_config_dir")
+		out, err := cmd.Output()
+		if err == nil {
+			fishConfigDirCached = strings.TrimSpace(string(out))
+		}
+		if fishConfigDirCached == "" {
+			fishConfigDirCached = defaultFishConfigDir()
+		}
+	})
+
+	return fishConfigDirCached
+}
+
+var (
+	fishConfigDirOnce   sync.Once
+	fishConfigDirCached string
+)
+
+func defaultFishConfigDir() string {
 	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
 		return filepath.Join(xdg, "fish")
 	}
