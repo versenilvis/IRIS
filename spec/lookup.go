@@ -13,6 +13,7 @@ import (
 
 var (
 	ShellAliases   = map[string]string{}
+	ShellAbbrs     = map[string]string{}
 	shellAliasesMu sync.RWMutex
 )
 
@@ -38,17 +39,23 @@ func GetAliasesCopy() map[string]string {
 func Lookup(input string) []Suggestion {
 	if shell.Current != nil {
 		aliases := shell.Current.ScanAliases()
+		abbrs := map[string]string{}
+		if scanner, ok := shell.Current.(shell.AbbrScanner); ok {
+			abbrs = scanner.ScanAbbrs()
+		}
 		shellAliasesMu.Lock()
 		ShellAliases = aliases
+		ShellAbbrs = abbrs
 		shellAliasesMu.Unlock()
 	}
 
 	shellAliasesMu.RLock()
 	aliases := ShellAliases
+	abbrs := ShellAbbrs
 	shellAliasesMu.RUnlock()
 
 	if input == "" {
-		return topLevelSuggestions("", aliases)
+		return topLevelSuggestions("", aliases, abbrs)
 	}
 
 	tokens := Tokenize(input)
@@ -57,7 +64,7 @@ func Lookup(input string) []Suggestion {
 	expandedPrefix := ""
 
 	if len(tokens) == 1 && tokens[0] == "" {
-		return topLevelSuggestions("", aliases)
+		return topLevelSuggestions("", aliases, abbrs)
 	}
 	// NOTE: remember that wrapper already check if we type nothing, but I just want to make sure
 	// in the future, maybe we will write unit test or using Lookup in another module
@@ -121,7 +128,7 @@ func Lookup(input string) []Suggestion {
 
 	if len(tokens) == 1 {
 		query := tokens[0]
-		results := topLevelSuggestions(query, aliases)
+		results := topLevelSuggestions(query, aliases, abbrs)
 
 		if spec, exists := Registry[query]; exists {
 			hasTrailingSpace := query != "" && query[len(query)-1] == ' '
@@ -373,8 +380,8 @@ func Lookup(input string) []Suggestion {
 
 	if isAliasExpanded && expandedPrefix != "" && originalPrefix != "" {
 		for i := range results {
-			if strings.HasPrefix(results[i].Cmd, expandedPrefix) {
-				results[i].Cmd = originalPrefix + strings.TrimPrefix(results[i].Cmd, expandedPrefix)
+			if after, ok := strings.CutPrefix(results[i].Cmd, expandedPrefix); ok {
+				results[i].Cmd = originalPrefix + after
 			}
 		}
 	}
@@ -382,7 +389,7 @@ func Lookup(input string) []Suggestion {
 	return results
 }
 
-func topLevelSuggestions(query string, aliases map[string]string) []Suggestion {
+func topLevelSuggestions(query string, aliases, abbrs map[string]string) []Suggestion {
 	scanExternalCommands()
 	results, seen := []Suggestion{}, make(map[string]bool)
 
@@ -390,6 +397,15 @@ func topLevelSuggestions(query string, aliases map[string]string) []Suggestion {
 		if !seen[name] && (query == "" || HasPrefix(name, query)) {
 			results = append(results, Suggestion{
 				Cmd: name, Desc: target, Icon: "alias",
+			})
+			seen[name] = true
+		}
+	}
+
+	for name, expansion := range abbrs {
+		if !seen[name] && (query == "" || HasPrefix(name, query)) {
+			results = append(results, Suggestion{
+				Cmd: name, Desc: expansion, Icon: "abbr", Source: "abbr",
 			})
 			seen[name] = true
 		}

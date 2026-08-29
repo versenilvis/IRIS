@@ -144,7 +144,7 @@ func basePriorityFor(s spec.Suggestion) int {
 	}
 
 	switch s.Source {
-	case "spec":
+	case "spec", "abbr":
 		return 60
 	case "ai":
 		if s.Confidence > 0 {
