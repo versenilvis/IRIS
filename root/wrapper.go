@@ -791,11 +791,19 @@ func runWrapper() {
 			// app launched from a widget (atuin, fzf) has handed the screen back
 			isAltScreenActive.Store(false)
 
-			if overlay.GetUserNavigated() {
+			// iris is writing the line itself while the menu is being walked, so
+			// the shell is only echoing that back. The atomic flips before the
+			// rewrite goes out; the overlay's copy only catches up on the draw.
+			if userNavigated.Load() || overlay.GetUserNavigated() {
 				continue
 			}
 
-			if query == "" {
+			line, offset, ok := parseLineReport(query)
+			if !ok {
+				continue
+			}
+
+			if line == "" {
 				bufferMu.Lock()
 				wasEmpty := naiveBuffer == ""
 				naiveBuffer = ""
@@ -809,12 +817,13 @@ func runWrapper() {
 			}
 
 			bufferMu.Lock()
-			if naiveBuffer == query {
+			// the cursor alone moving still has to redraw, so it counts as a change
+			if naiveBuffer == line && cursorOffset == offset {
 				bufferMu.Unlock()
 				continue
 			}
-			naiveBuffer = query
-			cursorOffset = 0
+			naiveBuffer = line
+			cursorOffset = offset
 			bufferMu.Unlock()
 
 			if renderer, ok := renderOverlayFn.Load().(func()); ok {

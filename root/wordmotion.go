@@ -109,3 +109,23 @@ func isWordRune(shellName string, r rune) bool {
 	}
 	return shellName == "zsh" && strings.ContainsRune(zshWordChars, r)
 }
+
+// parseLineReport reads what the shell says its line editor holds. zsh reports
+// the whole buffer with the cursor's place in it; a shell without that hook
+// only ever sends the text itself, and is taken to be at the end of it.
+func parseLineReport(query string) (line string, cursorFromEnd int, ok bool) {
+	rest, found := strings.CutPrefix(query, "IRIS_LINE:")
+	if !found {
+		return query, 0, true
+	}
+
+	head, buf, found := strings.Cut(rest, ":")
+	if !found {
+		return "", 0, false
+	}
+	left, err := strconv.Atoi(head)
+	if err != nil {
+		return "", 0, false
+	}
+	return buf, max(len([]rune(buf))-left, 0), true
+}

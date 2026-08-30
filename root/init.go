@@ -40,8 +40,10 @@ fi
 
 # Iris Autocomplete Hook
 if [ -n "$IRIS_PID" ] && [ -n "$IRIS_FD" ]; then
+  # the cursor comes with the line: sending only $LBUFFER made iris drop
+  # everything to the right of the cursor and believe it sat at the end
   _iris_send_lbuffer() {
-    print -u $IRIS_FD -N -r -- "$LBUFFER" 2>/dev/null
+    print -u $IRIS_FD -N -r -- "IRIS_LINE:${#LBUFFER}:$BUFFER" 2>/dev/null
   }
 
   _iris_sync_cwd() {
@@ -60,7 +62,7 @@ if [ -n "$IRIS_PID" ] && [ -n "$IRIS_FD" ]; then
 
   autoload -Uz add-zle-hook-widget
   autoload -Uz add-zsh-hook
-  
+
   add-zle-hook-widget line-pre-redraw _iris_send_lbuffer
   add-zsh-hook precmd _iris_precmd
   add-zsh-hook preexec _iris_preexec
