@@ -934,7 +934,10 @@ func runWrapper() {
 
 		var b strings.Builder
 		if !navCopy {
-			if bufCopy == "" && !overlay.IsVisible() {
+			// bufCopy is only the text before the cursor. An empty one means the
+			// cursor sits at the start of a line that still has content, which
+			// is not the same as nothing being typed.
+			if queryForSearch == "" && !overlay.IsVisible() {
 				writeStdout([]byte(overlay.ClearAndDisable()))
 				return
 			}
