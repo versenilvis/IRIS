@@ -92,7 +92,8 @@ max-suggestions = 100
 # maximum suggestion rows shown in the menu
 max-height = 6
 
-# maximum width of the overlay (0 = responsive to terminal)
+# overlay width, as columns (80) or a share of the terminal ("80%")
+# 0 keeps the built-in default width
 max-width = 0
 
 [git]

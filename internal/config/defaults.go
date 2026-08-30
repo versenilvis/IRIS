@@ -23,7 +23,7 @@ func DefaultConfig() *Config {
 			ShowHiddenFiles: false,
 			MaxSuggestions:  100,
 			MaxHeight:       6,
-			MaxWidth:        0, // 0 means no limit, fallback to terminal width
+			MaxWidth:        Width{}, // unset; the overlay falls back to its own default width
 			NerdFonts:       true,
 		},
 		Git: GitConfig{

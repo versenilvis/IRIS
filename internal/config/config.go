@@ -86,7 +86,7 @@ type UIConfig struct {
 	ShowHiddenFiles bool          `toml:"hidden-files"`
 	MaxSuggestions  int           `toml:"max-suggestions"`
 	MaxHeight       int           `toml:"max-height"`
-	MaxWidth        int           `toml:"max-width"`
+	MaxWidth        Width         `toml:"max-width"`
 	NerdFonts       bool          `toml:"nerd-fonts"`
 }
 
@@ -352,6 +352,9 @@ func validate(cfg *Config) error {
 		return fmt.Errorf("ui.max-suggestions: must be between 1 and 500")
 	}
 
+	if err := cfg.UI.MaxWidth.validate(); err != nil {
+		return fmt.Errorf("ui.max-width: %w", err)
+	}
 	if cfg.UI.MaxHeight < 1 || cfg.UI.MaxHeight > 50 {
 		return fmt.Errorf("ui.max-height: must be between 1 and 50")
 	}

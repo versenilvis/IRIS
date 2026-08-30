@@ -328,7 +328,7 @@ ghost-text = 1         # 0 = off, 1 = menu + ghost text, 2 = ghost text only
 hidden-files = false   # include dotfiles in suggestions
 max-suggestions = 100  # max suggestions ranked before display
 max-height = 6         # max visible rows in the menu
-max-width = 0          # max menu width, 0 = auto
+max-width = 0          # menu width: columns (80) or a share ("80%"), 0 = default
 nerd-fonts = true      # use nerd-font icons
 
 [keybindings]
