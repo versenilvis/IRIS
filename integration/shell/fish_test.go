@@ -155,6 +155,10 @@ end
 function greet --description 'say hello'
     echo hello
 end
+
+function ff --description 'alias for finding files'
+    fd $argv
+end
 `
 	expected := map[string]string{
 		"gst": "git status -sb",

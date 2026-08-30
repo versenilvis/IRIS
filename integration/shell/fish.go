@@ -496,6 +496,11 @@ func parseFishAliasFunction(segment string, aliases map[string]string) {
 	}
 
 	tokens := SplitAliasTokens(rest)
+	if len(tokens) == 0 {
+		return
+	}
+	name := unquoteAliasValue(tokens[0])
+
 	for i, token := range tokens {
 		flag, value, hasValue := strings.Cut(token, "=")
 		if flag != "--description" && flag != "-d" {
@@ -507,7 +512,11 @@ func parseFishAliasFunction(segment string, aliases map[string]string) {
 			}
 			value = tokens[i+1]
 		}
-		parseFishAlias(unquoteAliasValue(value), aliases)
+		described := map[string]string{}
+		parseFishAlias(unquoteAliasValue(value), described)
+		if target, ok := described[name]; ok {
+			aliases[name] = target
+		}
 		return
 	}
 }
