@@ -1239,6 +1239,28 @@ func runWrapper() {
 						continue
 					}
 
+					// ctrl/alt + arrow is the shell's own word motion: forward it
+					// untouched and follow it, rather than falling through to
+					// the unknown-sequence path that drops the tracked line.
+					if motion, consumed := parseWordMotion(inputSlice[i:]); motion != motionNone {
+						intercepted = true
+						// the box hangs off the cursor, so it has to come down
+						// before the shell moves it: erasing afterwards is
+						// measured from the new column and eats the line
+						writeStdout([]byte(overlay.ClearAndDisable()))
+						_, _ = ptmx.Write(inputSlice[i : i+consumed])
+						i += consumed - 1
+						bufferMu.Lock()
+						cursorOffset = wordMotionOffset(shellName, naiveBuffer, cursorOffset, motion)
+						hasLine := naiveBuffer != ""
+						bufferMu.Unlock()
+						if hasLine {
+							shouldOverlayDraw = true
+							userNavigated.Store(false)
+						}
+						continue
+					}
+
 					// handle escape sequences like arrow keys and functional shortcuts
 					// left/right arrow cursor tracking
 					isLeftRightArrow := false
@@ -1249,6 +1271,9 @@ func runWrapper() {
 							bufferMu.Unlock()
 							if isEmptyQuery {
 								intercepted = true
+								// nothing to track, but the shell may still have
+								// a line of its own to move through
+								_, _ = ptmx.Write(inputSlice[i : i+3])
 								i += 2
 								continue
 							}
@@ -1295,6 +1320,7 @@ func runWrapper() {
 							isEmptyQuery := naiveBuffer == "" && (!overlay.IsVisible() || overlay.GetTypedQuery() == "")
 							bufferMu.Unlock()
 							if isEmptyQuery {
+								_, _ = ptmx.Write(rawSeq)
 								continue
 							}
 

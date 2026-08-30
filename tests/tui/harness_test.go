@@ -121,7 +121,9 @@ func startIn(t *testing.T, home string, extraEnv ...string) *tuitest.Terminal {
 	if prompt == "" {
 		prompt = "> "
 	}
-	zshrc := "PROMPT='" + prompt + "'\nRPROMPT=''\nunsetopt PROMPT_SP\neval \"$(" + bin + " init zsh)\"\n"
+	// sourced last so a test can add its own bindkeys on top of the integration
+	zshrc := "PROMPT='" + prompt + "'\nRPROMPT=''\nunsetopt PROMPT_SP\neval \"$(" + bin + " init zsh)\"\n" +
+		"[[ -f $ZDOTDIR/.zshrc.extra ]] && source $ZDOTDIR/.zshrc.extra\n"
 	if err := os.WriteFile(filepath.Join(home, ".zshrc"), []byte(zshrc), 0o644); err != nil {
 		t.Fatal(err)
 	}
