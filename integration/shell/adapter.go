@@ -164,7 +164,7 @@ func GetFishConfigDir() string {
 	fishConfigDirOnce.Do(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 		defer cancel()
-		cmd := exec.CommandContext(ctx, "fish", "-c", "echo $__fish_config_dir")
+		cmd := exec.CommandContext(ctx, "fish", "--no-config", "-c", "echo $__fish_config_dir")
 		out, err := cmd.Output()
 		if err == nil {
 			fishConfigDirCached = strings.TrimSpace(string(out))
