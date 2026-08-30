@@ -31,7 +31,7 @@
               subPackages = ["cmd/iris"];
 
               proxyVendor = true;
-              vendorHash = "sha256-q1szUQkhdKq2VhMuWYYWTahmDxGeVjvHLmjciZu3cBU=";
+              vendorHash = "sha256-huyTWK6ef42KY2zmFIQuFoeR8B8XKHE7OVfFnfefeCU=";
 
               doCheck = false;
 
