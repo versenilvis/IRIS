@@ -1256,10 +1256,10 @@ func runWrapper() {
 					// the unknown-sequence path that drops the tracked line.
 					if motion, consumed := parseWordMotion(inputSlice[i:]); motion != motionNone {
 						intercepted = true
-						// the box hangs off the cursor, so it has to come down
-						// before the shell moves it: erasing afterwards is
-						// measured from the new column and eats the line
-						writeStdout([]byte(overlay.ClearAndDisable()))
+						// the hint sits past the end of the line, so it has to be
+						// erased before the cursor leaves: blanking it afterwards
+						// lands on the text the cursor moved over
+						writeStdout([]byte(overlay.HideGhostTextSync()))
 						_, _ = ptmx.Write(inputSlice[i : i+consumed])
 						i += consumed - 1
 						bufferMu.Lock()
@@ -1278,28 +1278,28 @@ func runWrapper() {
 					isLeftRightArrow := false
 					if i+2 < n && (inputSlice[i+1] == '[' || inputSlice[i+1] == 'O') {
 						if inputSlice[i+2] == 'D' {
+							intercepted = true
+							rawSeq := append([]byte(nil), inputSlice[i:i+3]...)
+							i += 2
+
 							bufferMu.Lock()
 							isEmptyQuery := naiveBuffer == "" && (!overlay.IsVisible() || overlay.GetTypedQuery() == "")
 							bufferMu.Unlock()
 							if isEmptyQuery {
-								intercepted = true
 								// nothing to track, but the shell may still have
 								// a line of its own to move through
-								_, _ = ptmx.Write(inputSlice[i : i+3])
-								i += 2
+								_, _ = ptmx.Write(rawSeq)
 								continue
 							}
+
+							writeStdout([]byte(overlay.HideGhostTextSync()))
 							bufferMu.Lock()
-							if naiveBuffer != "" || overlay.IsVisible() {
-								cursorOffset++
-								if cursorOffset > len(naiveBuffer) {
-									cursorOffset = len(naiveBuffer)
-								}
-								shouldOverlayDraw = true
-								userNavigated.Store(false)
-							}
+							cursorOffset = min(cursorOffset+1, len([]rune(naiveBuffer)))
 							bufferMu.Unlock()
-							isLeftRightArrow = true
+							_, _ = ptmx.Write(rawSeq)
+							shouldOverlayDraw = true
+							userNavigated.Store(false)
+							continue
 						} else if inputSlice[i+2] == 'C' {
 							_, navConsumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateRight)
 							if navConsumed == 0 {
