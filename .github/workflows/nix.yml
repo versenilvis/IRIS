@@ -1,0 +1,41 @@
+name: Nix
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "flake.nix"
+      - "flake.lock"
+      - "go.mod"
+      - "go.sum"
+      - "**/*.go"
+      - ".github/workflows/nix.yml"
+  pull_request:
+    paths:
+      - "flake.nix"
+      - "flake.lock"
+      - "go.mod"
+      - "go.sum"
+      - "**/*.go"
+      - ".github/workflows/nix.yml"
+
+jobs:
+  build:
+    name: Flake Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Build flake package
+        run: nix build .#default -L
