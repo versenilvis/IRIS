@@ -24,6 +24,8 @@ func installedPackageGenerator(pm string) spec.GeneratorFunc {
 			cmd = exec.CommandContext(ctx, "rpm", "-qa", "--qf", "%{NAME}\n")
 		case "brew":
 			cmd = exec.CommandContext(ctx, "brew", "list")
+		case "mas":
+			cmd = exec.CommandContext(ctx, "mas", "list")
 		default:
 			return nil
 		}
@@ -37,6 +39,17 @@ func installedPackageGenerator(pm string) spec.GeneratorFunc {
 		for line := range strings.SplitSeq(string(out), "\n") {
 			line = strings.TrimSpace(line)
 			if line == "" {
+				continue
+			}
+			if pm == "mas" {
+				fields := strings.Fields(line)
+				if len(fields) < 3 {
+					continue
+				}
+				results = append(results, spec.Suggestion{
+					Cmd:  fields[0],
+					Desc: strings.Join(fields[1:len(fields)-1], " "),
+				})
 				continue
 			}
 			results = append(results, spec.Suggestion{Cmd: line, Desc: "installed"})
@@ -272,6 +285,31 @@ func init() {
 			{Name: "--force", Description: "force operation"},
 			{Name: "--verbose", Description: "verbose"},
 			{Name: "--dry-run", Description: "simulate"},
+		},
+	})
+
+	// mas
+	spec.Register(&spec.Spec{
+		Name:        "mas",
+		Description: "Third-party command-line interface for the Mac App Store",
+		Subcommands: []spec.Subcommand{
+			{Name: "config", Description: "Output mas config & related system info"},
+			{Name: "get", Aliases: []string{"purchase"}, Description: "Get & install free apps from the App Store"},
+			{Name: "home", Description: "Open App Store app pages in the default web browser", Generator: installedPackageGenerator("mas")},
+			{Name: "install", Description: "Install previously gotten apps from the App Store"},
+			{Name: "list", Description: "List apps installed from the App Store", Generator: installedPackageGenerator("mas")},
+			{Name: "lookup", Aliases: []string{"info"}, Description: "Output app info from the App Store", Generator: installedPackageGenerator("mas")},
+			{Name: "lucky", Description: "Install the first app returned from searching the App Store"},
+			{Name: "open", Description: "Open app page in 'App Store.app'", Generator: installedPackageGenerator("mas")},
+			{Name: "outdated", Description: "List pending app updates from the App Store"},
+			{Name: "reset", Description: "Reset App Store processes & clear cached App Store downloads"},
+			{Name: "search", Description: "Search for apps in the App Store"},
+			{Name: "seller", Aliases: []string{"vendor"}, Description: "Open apps' seller pages in the default web browser", Generator: installedPackageGenerator("mas")},
+			{Name: "signout", Description: "Sign out of the App Store"},
+			{Name: "uninstall", Description: "Uninstall apps installed from the App Store", Generator: installedPackageGenerator("mas")},
+			{Name: "update", Aliases: []string{"upgrade"}, Description: "Update outdated apps installed from the App Store"},
+			{Name: "version", Description: "Output version number"},
+			{Name: "help", Description: "Show subcommand help information"},
 		},
 	})
 

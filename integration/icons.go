@@ -127,6 +127,7 @@ var iconMap = map[string]string{
 	"atuin":          "󰳗",
 	"system":         "",
 	"root":           "",
+	"mas":            "",
 }
 
 func lookupIcon(key string) string {
