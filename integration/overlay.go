@@ -593,13 +593,9 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 			normBuf := normalize(buffer)
 			if ghostText == "" && buffer != "" && strings.HasPrefix(strings.ToLower(pred), strings.ToLower(buffer)) {
 				ghostText = pred[len(buffer):]
-			} else if (ghostText != "" || normBuf == "") && !strings.EqualFold(normPred, normFull) && !strings.EqualFold(normPred, normBuf) {
-				// only show › hint when there is a primary completion (ghostText) or buffer is empty
-				// never show for unrelated typed input - it can't be expanded by right-arrow
-				hint := " " + PredictionSymbol + " " + pred
-				if buffer == "" && ghostText == "" {
-					hint = PredictionSymbol + " " + pred
-				}
+			} else if normBuf == "" && !strings.EqualFold(normPred, normFull) {
+				// › hint only for empty buffer (cold-start sequence prediction)
+				hint := PredictionSymbol + " " + pred
 				width := termWidth()
 				totalCol := o.PromptLen + lipgloss.Width(buffer) + lipgloss.Width(ghostText)
 				cursorCol := totalCol % width

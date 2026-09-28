@@ -348,8 +348,9 @@ func TestRenderGhostText_WithPrediction(t *testing.T) {
 	if !strings.Contains(out, "grep") {
 		t.Fatalf("expected primary ghost text 'grep', got: %q", out)
 	}
-	if !strings.Contains(out, "› cd ripgrep") {
-		t.Fatalf("expected prediction hint '› cd ripgrep', got: %q", out)
+	// › hint is NOT shown when buffer is non-empty
+	if strings.Contains(out, PredictionSymbol) {
+		t.Fatalf("expected no › hint when buffer is non-empty, got: %q", out)
 	}
 
 	renderOut := o.Render()
@@ -357,6 +358,7 @@ func TestRenderGhostText_WithPrediction(t *testing.T) {
 		t.Fatalf("expected footer to contain 'Predict', got: %q", renderOut)
 	}
 }
+
 
 func TestRenderGhostText_WithPredictionContinuation(t *testing.T) {
 	o := NewOverlay()
