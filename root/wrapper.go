@@ -1013,8 +1013,23 @@ func runWrapper() {
 			results := MergeResults(queryForSearch, modeCopy)
 			logger.Debugf("Render results found: %d", len(results))
 
+			if config.Get().Core.Prediction {
+				curr := overlay.GetPrediction()
+				trimmedBuf := strings.TrimSpace(bufCopy)
+				if curr != "" && trimmedBuf != "" && strings.HasPrefix(strings.ToLower(curr), strings.ToLower(trimmedBuf)) && !strings.EqualFold(curr, trimmedBuf) {
+					// retain active prediction while user types matching prefix
+				} else {
+					overlay.SetPrediction(findPredictedCommand(bufCopy))
+				}
+			} else {
+				overlay.SetPrediction("")
+			}
+
 			if len(results) == 0 || (len(results) == 1 && strings.TrimSpace(results[0].Cmd) == strings.TrimSpace(bufCopy) && !strings.HasSuffix(bufCopy, " ")) {
 				b.WriteString(overlay.HideMenu(bufCopy))
+				if !disableGhostText.Load() && overlay.GetPrediction() != "" {
+					b.WriteString(overlay.RenderGhostText(bufCopy, false, offsetCopy == 0))
+				}
 				writeStdout([]byte(b.String()))
 				return
 			}
@@ -1023,11 +1038,6 @@ func runWrapper() {
 				b.WriteString(overlay.Clear())
 			}
 			overlay.SetQueryAndItems(bufCopy, results)
-			if config.Get().Core.Prediction {
-				overlay.SetPrediction(findPredictedCommand(bufCopy))
-			} else {
-				overlay.SetPrediction("")
-			}
 		} else {
 			if overlay.IsVisible() {
 				b.WriteString(overlay.Clear())
@@ -1192,6 +1202,7 @@ func runWrapper() {
 									selected = s + " "
 								}
 							}
+							currPred := overlay.GetPrediction()
 							bufferMu.Lock()
 							naiveBuffer = selected
 							replace := shell.ReplaceLine([]byte(selected), cursorOffset)
@@ -1201,7 +1212,21 @@ func runWrapper() {
 
 							overlay.ClearGhostTextState()
 							userNavigated.Store(false)
-							writeStdout([]byte(overlay.Render()))
+
+							trimmedSel := strings.TrimSpace(selected)
+							if currPred != "" && strings.HasPrefix(strings.ToLower(currPred), strings.ToLower(trimmedSel)) {
+								overlay.SetPrediction(currPred)
+							} else if config.Get().Core.Prediction {
+								overlay.SetPrediction(findPredictedCommand(selected))
+							} else {
+								overlay.SetPrediction("")
+							}
+
+							drawAfterEcho(echoMarker(selected), func() {
+								if renderer, ok := renderOverlayFn.Load().(func()); ok {
+									renderer()
+								}
+							})
 						}
 					}
 					// always consume the full binding atomically, even when the overlay is hidden
@@ -1430,7 +1455,11 @@ func runWrapper() {
 								bufferMu.Unlock()
 								userNavigated.Store(false)
 								_, _ = ptmx.Write(replace)
-								shouldOverlayDraw = true
+								drawAfterEcho(echoMarker(predCmd), func() {
+									if renderer, ok := renderOverlayFn.Load().(func()); ok {
+										renderer()
+									}
+								})
 								continue
 							}
 
@@ -1442,7 +1471,11 @@ func runWrapper() {
 								bufferMu.Unlock()
 								overlay.ClearGhostTextState()
 								_, _ = ptmx.Write([]byte(ghostText))
-								shouldOverlayDraw = true
+								drawAfterEcho(echoMarker(ghostText), func() {
+									if renderer, ok := renderOverlayFn.Load().(func()); ok {
+										renderer()
+									}
+								})
 								continue
 							}
 

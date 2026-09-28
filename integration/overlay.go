@@ -506,19 +506,27 @@ func (o *Overlay) GetGhostText(buffer string, cursorAtEnd bool) string {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
-	if !o.Visible || len(o.Items) == 0 || !cursorAtEnd || buffer == "" {
+	if !cursorAtEnd || buffer == "" {
 		return ""
 	}
 
-	var topCmd string
-	if o.Cursor >= 0 && o.Cursor < len(o.Items) {
-		topCmd = o.Items[o.Cursor].Cmd
-	} else {
-		topCmd = o.Items[0].Cmd
+	if o.Visible && len(o.Items) > 0 {
+		var topCmd string
+		if o.Cursor >= 0 && o.Cursor < len(o.Items) {
+			topCmd = o.Items[o.Cursor].Cmd
+		} else {
+			topCmd = o.Items[0].Cmd
+		}
+
+		if strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(buffer)) {
+			return topCmd[len(buffer):]
+		}
 	}
 
-	if strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(buffer)) {
-		return topCmd[len(buffer):]
+	if config.Get().Core.Prediction && o.PredictedCmd != "" {
+		if strings.HasPrefix(strings.ToLower(o.PredictedCmd), strings.ToLower(buffer)) {
+			return o.PredictedCmd[len(buffer):]
+		}
 	}
 	return ""
 }
@@ -545,7 +553,9 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
-	if !o.Visible || len(o.Items) == 0 {
+	hasItems := o.Visible && len(o.Items) > 0
+	hasPrediction := config.Get().Core.Prediction && o.PredictedCmd != "" && cursorAtEnd
+	if !hasItems && !hasPrediction {
 		if o.LastGhostLen > 0 {
 			padLen := o.LastGhostLen + 4
 			o.LastGhostLen = 0
@@ -557,7 +567,7 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 	var s strings.Builder
 	ghostText := ""
 	if cursorAtEnd {
-		if buffer != "" {
+		if buffer != "" && len(o.Items) > 0 {
 			var topCmd string
 			if o.Cursor >= 0 && o.Cursor < len(o.Items) {
 				topCmd = o.Items[o.Cursor].Cmd
@@ -571,12 +581,17 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 		if config.Get().Core.Prediction && o.PredictedCmd != "" {
 			pred := o.PredictedCmd
 			currentFull := buffer + ghostText
-			if !strings.EqualFold(pred, currentFull) && !strings.EqualFold(pred, buffer) {
+			if ghostText == "" && buffer != "" && strings.HasPrefix(strings.ToLower(pred), strings.ToLower(buffer)) {
+				ghostText = pred[len(buffer):]
+			} else if !strings.EqualFold(pred, currentFull) && !strings.EqualFold(pred, buffer) {
 				sym := config.Get().UI.PredictionSymbol
 				if sym == "" {
 					sym = "›"
 				}
 				hint := " " + sym + " " + pred
+				if buffer == "" && ghostText == "" {
+					hint = sym + " " + pred
+				}
 				width := termWidth()
 				totalCol := o.PromptLen + lipgloss.Width(buffer) + lipgloss.Width(ghostText)
 				cursorCol := totalCol % width
@@ -1026,7 +1041,6 @@ func (o *Overlay) HideMenu(query string) string {
 	o.UserNavigated = false
 	o.Cursor = 0
 	o.StartIdx = 0
-	o.PredictedCmd = ""
 
 	var s strings.Builder
 	s.WriteString(ansi.ResetModeAutoWrap)

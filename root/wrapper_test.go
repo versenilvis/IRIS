@@ -167,4 +167,3 @@ func TestFindPredictedCommand(t *testing.T) {
 		t.Logf("findPredictedCommand('just') = %q", res)
 	}
 }
-

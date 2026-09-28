@@ -358,3 +358,27 @@ func TestRenderGhostText_WithPrediction(t *testing.T) {
 	}
 }
 
+func TestRenderGhostText_WithPredictionContinuation(t *testing.T) {
+	o := NewOverlay()
+	o.SetPrediction("just reload")
+
+	// even when items is empty, continuation should render inline
+	out := o.RenderGhostText("just ", false, true)
+	if !strings.Contains(out, "reload") {
+		t.Fatalf("expected continuation ghost text 'reload', got: %q", out)
+	}
+	if got := o.GetGhostText("just ", true); got != "reload" {
+		t.Fatalf("expected GetGhostText 'reload', got: %q", got)
+	}
+}
+
+func TestHideMenu_KeepsPrediction(t *testing.T) {
+	o := NewOverlay()
+	o.SetPrediction("just reload")
+	o.HideMenu("just ")
+	if got := o.GetPrediction(); got != "just reload" {
+		t.Fatalf("expected prediction 'just reload' preserved, got: %q", got)
+	}
+}
+
+
