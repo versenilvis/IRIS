@@ -163,7 +163,9 @@ func TestMenuOnlyHidden(t *testing.T) {
 }
 
 func TestFindPredictedCommand(t *testing.T) {
-	spec.SetCWD("/home/verse/dev/github/iris")
+	wd, _ := os.Getwd()
+	spec.SetCWD(wd)
+	t.Cleanup(func() { spec.SetCWD("") })
 	for _, q := range []string{"just", "just ", "just reload", "just reload "} {
 		res := findPredictedCommand(q)
 		t.Logf("findPredictedCommand(%q) = %q", q, res)

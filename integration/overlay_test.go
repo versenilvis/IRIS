@@ -359,18 +359,29 @@ func TestRenderGhostText_WithPrediction(t *testing.T) {
 	}
 }
 
-
 func TestRenderGhostText_WithPredictionContinuation(t *testing.T) {
 	o := NewOverlay()
 	o.SetPrediction("just reload")
 
-	// even when items is empty, continuation should render inline
 	out := o.RenderGhostText("just ", false, true)
 	if !strings.Contains(out, "reload") {
 		t.Fatalf("expected continuation ghost text 'reload', got: %q", out)
 	}
+	if !strings.Contains(out, PredictionSymbol) {
+		t.Fatalf("expected prediction symbol %q in ghost text, got: %q", PredictionSymbol, out)
+	}
 	if got := o.GetGhostText("just ", true); got != "reload" {
 		t.Fatalf("expected GetGhostText 'reload', got: %q", got)
+	}
+}
+
+func TestRenderGhostText_EmptyBufferShowsHint(t *testing.T) {
+	o := NewOverlay()
+	o.SetPrediction("just reload")
+
+	out := o.RenderGhostText("", false, true)
+	if !strings.Contains(out, PredictionSymbol) || !strings.Contains(out, "just reload") {
+		t.Fatalf("expected prediction hint for empty buffer, got: %q", out)
 	}
 }
 
@@ -391,11 +402,11 @@ func TestRenderGhostText_MultiSpaceHistoryNoDuplicate(t *testing.T) {
 
 	out := o.RenderGhostText("just ", false, true)
 	// should contain "reload" exactly once (no "reload reload")
-	first := strings.Index(out, "reload")
-	if first == -1 {
+	_, after, ok := strings.Cut(out, "reload")
+	if !ok {
 		t.Fatalf("expected 'reload' in ghost, got: %q", out)
 	}
-	if strings.Contains(out[first+len("reload"):], "reload") {
+	if strings.Contains(after, "reload") {
 		t.Fatalf("got duplicate 'reload' in ghost text: %q", out)
 	}
 }
@@ -411,4 +422,3 @@ func TestRenderGhostText_UnrelatedInputNoHint(t *testing.T) {
 		t.Fatalf("expected no › hint for unrelated input 'jar', got: %q", out)
 	}
 }
-

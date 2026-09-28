@@ -118,8 +118,10 @@ func findPredictedCommand(query string) string {
 
 	if trimmed != "" {
 		if nextEntries, _ := store.QuerySequencesWithFallback(ctxTimeout, trimmed, cwd); len(nextEntries) > 0 {
-			if nextEntries[0].NextCmd != "" && !strings.EqualFold(nextEntries[0].NextCmd, trimmed) {
-				return nextEntries[0].NextCmd
+			for _, e := range nextEntries {
+				if strings.HasPrefix(strings.ToLower(e.NextCmd), lowerQuery) && !strings.EqualFold(e.NextCmd, trimmed) {
+					return e.NextCmd
+				}
 			}
 		}
 	}
@@ -1446,23 +1448,6 @@ func runWrapper() {
 							}
 							bufferMu.Unlock()
 
-							if predCmd != "" && predCmd != naiveBuffer {
-								writeStdout([]byte(overlay.HideGhostTextSync()))
-								bufferMu.Lock()
-								naiveBuffer = predCmd
-								replace := shell.ReplaceLine([]byte(predCmd), cursorOffset)
-								cursorOffset = 0
-								bufferMu.Unlock()
-								userNavigated.Store(false)
-								_, _ = ptmx.Write(replace)
-								drawAfterEcho(echoMarker(predCmd), func() {
-									if renderer, ok := renderOverlayFn.Load().(func()); ok {
-										renderer()
-									}
-								})
-								continue
-							}
-
 							if len(ghostText) > 0 {
 								writeStdout([]byte(overlay.HideGhostTextSync()))
 								bufferMu.Lock()
@@ -1472,6 +1457,25 @@ func runWrapper() {
 								overlay.ClearGhostTextState()
 								_, _ = ptmx.Write([]byte(ghostText))
 								drawAfterEcho(echoMarker(ghostText), func() {
+									if renderer, ok := renderOverlayFn.Load().(func()); ok {
+										renderer()
+									}
+								})
+								continue
+							}
+
+							trimmedBuf := strings.TrimSpace(naiveBuffer)
+							isRelatedPred := naiveBuffer == "" || (trimmedBuf != "" && strings.HasPrefix(strings.ToLower(predCmd), strings.ToLower(trimmedBuf)))
+							if predCmd != "" && isRelatedPred && predCmd != naiveBuffer {
+								writeStdout([]byte(overlay.HideGhostTextSync()))
+								bufferMu.Lock()
+								naiveBuffer = predCmd
+								replace := shell.ReplaceLine([]byte(predCmd), cursorOffset)
+								cursorOffset = 0
+								bufferMu.Unlock()
+								userNavigated.Store(false)
+								_, _ = ptmx.Write(replace)
+								drawAfterEcho(echoMarker(predCmd), func() {
 									if renderer, ok := renderOverlayFn.Load().(func()); ok {
 										renderer()
 									}

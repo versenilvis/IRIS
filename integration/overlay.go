@@ -591,11 +591,12 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 			normPred := normalize(pred)
 			normFull := normalize(buffer + ghostText)
 			normBuf := normalize(buffer)
-			if ghostText == "" && buffer != "" && strings.HasPrefix(strings.ToLower(pred), strings.ToLower(buffer)) {
-				ghostText = pred[len(buffer):]
-			} else if normBuf == "" && !strings.EqualFold(normPred, normFull) {
-				// › hint only for empty buffer (cold-start sequence prediction)
-				hint := PredictionSymbol + " " + pred
+			isRelated := normBuf == "" || strings.HasPrefix(strings.ToLower(normPred), strings.ToLower(normBuf))
+			if isRelated && !strings.EqualFold(normPred, normFull) {
+				hint := " " + PredictionSymbol + " " + pred
+				if (normBuf == "" && ghostText == "") || (strings.HasSuffix(buffer, " ") && ghostText == "") {
+					hint = PredictionSymbol + " " + pred
+				}
 				width := termWidth()
 				totalCol := o.PromptLen + lipgloss.Width(buffer) + lipgloss.Width(ghostText)
 				cursorCol := totalCol % width

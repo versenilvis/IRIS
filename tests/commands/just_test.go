@@ -44,7 +44,10 @@ func TestJustLookup(t *testing.T) {
 
 	oldWd, _ := os.Getwd()
 	_ = os.Chdir(tmp)
-	defer func() { _ = os.Chdir(oldWd) }()
+	defer func() {
+		_ = os.Chdir(oldWd)
+		spec.SetCWD("")
+	}()
 	spec.SetCWD(tmp)
 
 	for _, input := range []string{"just ", "just reload", "just reload "} {
