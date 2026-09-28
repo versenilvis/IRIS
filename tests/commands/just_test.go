@@ -36,3 +36,21 @@ func TestJustGenerator(t *testing.T) {
 		t.Fatalf("expected nil when justfile cannot be read, got %v", resMissing)
 	}
 }
+
+func TestJustLookup(t *testing.T) {
+	tmp := t.TempDir()
+	content := []byte("# reload iris\nreload:\n\techo reload\n")
+	_ = os.WriteFile(filepath.Join(tmp, "justfile"), content, 0644)
+
+	oldWd, _ := os.Getwd()
+	_ = os.Chdir(tmp)
+	defer func() { _ = os.Chdir(oldWd) }()
+	spec.SetCWD(tmp)
+
+	for _, input := range []string{"just ", "just reload", "just reload "} {
+		res := spec.Lookup(input)
+		for _, r := range res {
+			t.Logf("Lookup(%q) -> %q", input, r.Cmd)
+		}
+	}
+}

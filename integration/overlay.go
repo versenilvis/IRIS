@@ -519,7 +519,12 @@ func (o *Overlay) GetGhostText(buffer string, cursorAtEnd bool) string {
 		}
 
 		if strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(buffer)) {
-			return topCmd[len(buffer):]
+			suffix := topCmd[len(buffer):]
+			// normalize: if the suffix is just extra whitespace before the same word,
+			// collapse it so right-arrow expands what's actually on screen
+			if strings.TrimSpace(suffix) != "" {
+				return suffix
+			}
 		}
 	}
 
@@ -575,15 +580,21 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 				topCmd = o.Items[0].Cmd
 			}
 			if strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(buffer)) {
-				ghostText = topCmd[len(buffer):]
+				suffix := topCmd[len(buffer):]
+				if strings.TrimSpace(suffix) != "" {
+					ghostText = suffix
+				}
 			}
 		}
 		if config.Get().Core.Prediction && o.PredictedCmd != "" {
 			pred := o.PredictedCmd
 			currentFull := buffer + ghostText
+			trimmedPred := strings.TrimSpace(pred)
+			trimmedFull := strings.TrimSpace(currentFull)
+			trimmedBuf := strings.TrimSpace(buffer)
 			if ghostText == "" && buffer != "" && strings.HasPrefix(strings.ToLower(pred), strings.ToLower(buffer)) {
 				ghostText = pred[len(buffer):]
-			} else if !strings.EqualFold(pred, currentFull) && !strings.EqualFold(pred, buffer) {
+			} else if !strings.EqualFold(trimmedPred, trimmedFull) && !strings.EqualFold(trimmedPred, trimmedBuf) && !strings.HasSuffix(strings.ToLower(strings.TrimSpace(ghostText)), strings.ToLower(trimmedPred)) {
 				hint := " " + PredictionSymbol + " " + pred
 				if buffer == "" && ghostText == "" {
 					hint = PredictionSymbol + " " + pred
