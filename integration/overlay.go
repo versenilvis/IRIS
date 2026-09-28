@@ -556,15 +556,17 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 
 	var s strings.Builder
 	ghostText := ""
-	if cursorAtEnd && buffer != "" {
-		var topCmd string
-		if o.Cursor >= 0 && o.Cursor < len(o.Items) {
-			topCmd = o.Items[o.Cursor].Cmd
-		} else {
-			topCmd = o.Items[0].Cmd
-		}
-		if strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(buffer)) {
-			ghostText = topCmd[len(buffer):]
+	if cursorAtEnd {
+		if buffer != "" {
+			var topCmd string
+			if o.Cursor >= 0 && o.Cursor < len(o.Items) {
+				topCmd = o.Items[o.Cursor].Cmd
+			} else {
+				topCmd = o.Items[0].Cmd
+			}
+			if strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(buffer)) {
+				ghostText = topCmd[len(buffer):]
+			}
 		}
 		if config.Get().Core.Prediction && o.PredictedCmd != "" {
 			pred := o.PredictedCmd

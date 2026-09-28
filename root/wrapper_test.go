@@ -158,3 +158,13 @@ func TestMenuOnlyHidden(t *testing.T) {
 		})
 	}
 }
+
+func TestFindPredictedCommand(t *testing.T) {
+	res := findPredictedCommand("just")
+	if res == "" {
+		t.Log("no prediction for 'just' in test environment")
+	} else {
+		t.Logf("findPredictedCommand('just') = %q", res)
+	}
+}
+

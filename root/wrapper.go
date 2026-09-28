@@ -40,6 +40,16 @@ var (
 func getPrevCommand() string {
 	prevCmdMu.Lock()
 	defer prevCmdMu.Unlock()
+	if prevRecordedCommand == "" {
+		if store, err := scoring.GetFrecencyStore(); err == nil && store != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+			defer cancel()
+			if cmd, cwd := store.GetLatestHistoryEntry(ctx); cmd != "" {
+				prevRecordedCommand = cmd
+				prevCmdCwd = cwd
+			}
+		}
+	}
 	return prevRecordedCommand
 }
 
@@ -83,24 +93,33 @@ func findPredictedCommand(query string) string {
 	ctxTimeout, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
-	if trimmed != "" {
-		if nextEntries, _ := store.QuerySequencesWithFallback(ctxTimeout, trimmed, cwd); len(nextEntries) > 0 {
-			if nextEntries[0].NextCmd != "" && !strings.EqualFold(nextEntries[0].NextCmd, trimmed) {
-				return nextEntries[0].NextCmd
-			}
-		}
-	}
-
 	prev := getPrevCommand()
 	if prev != "" {
 		if prevEntries, _ := store.QuerySequencesWithFallback(ctxTimeout, prev, cwd); len(prevEntries) > 0 {
 			if lowerQuery == "" {
-				return prevEntries[0].NextCmd
-			}
-			for _, e := range prevEntries {
-				if strings.HasPrefix(strings.ToLower(e.NextCmd), lowerQuery) && !strings.EqualFold(e.NextCmd, trimmed) {
-					return e.NextCmd
+				if !strings.EqualFold(prevEntries[0].NextCmd, trimmed) {
+					return prevEntries[0].NextCmd
 				}
+			} else {
+				for _, e := range prevEntries {
+					if strings.HasPrefix(strings.ToLower(e.NextCmd), lowerQuery) && !strings.EqualFold(e.NextCmd, trimmed) {
+						return e.NextCmd
+					}
+				}
+			}
+		}
+	}
+
+	if trimmed != "" {
+		if topHistory := store.QueryTopHistoryByPrefix(ctxTimeout, trimmed, cwd); topHistory != "" && !strings.EqualFold(topHistory, trimmed) {
+			return topHistory
+		}
+	}
+
+	if trimmed != "" {
+		if nextEntries, _ := store.QuerySequencesWithFallback(ctxTimeout, trimmed, cwd); len(nextEntries) > 0 {
+			if nextEntries[0].NextCmd != "" && !strings.EqualFold(nextEntries[0].NextCmd, trimmed) {
+				return nextEntries[0].NextCmd
 			}
 		}
 	}

@@ -76,6 +76,7 @@ func NewFrecencyStore(dbPath string) (*FrecencyStore, error) {
 		return nil, err
 	}
 	_ = os.Chmod(dbPath, 0600)
+	go store.BootstrapSequences(context.Background(), "", "")
 
 	return store, nil
 }
@@ -337,6 +338,135 @@ ORDER BY total_count DESC
 	}
 
 	return nil, false
+}
+
+func (f *FrecencyStore) GetLatestHistoryEntry(ctx context.Context) (string, string) {
+	if f == nil {
+		return "", ""
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var cmd, cwd string
+	row := f.db.QueryRowContext(ctx, "SELECT cmd, cwd FROM history_entries ORDER BY last_used DESC LIMIT 1")
+	if err := row.Scan(&cmd, &cwd); err == nil {
+		return cmd, cwd
+	}
+	return "", ""
+}
+
+func (f *FrecencyStore) QueryTopHistoryByPrefix(ctx context.Context, prefix, cwd string) string {
+	if f == nil {
+		return ""
+	}
+	prefix = strings.TrimSpace(prefix)
+	if prefix == "" {
+		return ""
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	var cmd string
+	row := f.db.QueryRowContext(ctx, `
+SELECT cmd
+FROM history_entries
+WHERE (cmd LIKE ? OR cmd LIKE ? OR cmd = ?) AND cmd != ?
+ORDER BY CASE WHEN cwd = ? THEN 1 ELSE 0 END DESC, count DESC, last_used DESC
+LIMIT 1
+`, prefix+" %", prefix+"%", prefix, prefix, cwd)
+	if err := row.Scan(&cmd); err == nil {
+		return cmd
+	}
+	return ""
+}
+
+func (f *FrecencyStore) BootstrapSequences(ctx context.Context, historyPath, defaultCwd string) {
+	if f == nil {
+		return
+	}
+	f.mu.Lock()
+	var count int
+	_ = f.db.QueryRowContext(ctx, "SELECT count(*) FROM command_sequences").Scan(&count)
+	f.mu.Unlock()
+	if count >= 20 {
+		return
+	}
+
+	if historyPath == "" {
+		home, _ := os.UserHomeDir()
+		candidates := []string{
+			filepath.Join(home, ".zsh_history"),
+			filepath.Join(home, ".bash_history"),
+			filepath.Join(home, ".local/share/fish/fish_history"),
+		}
+		for _, p := range candidates {
+			if _, err := os.Stat(p); err == nil {
+				historyPath = p
+				break
+			}
+		}
+	}
+	if historyPath == "" {
+		return
+	}
+
+	data, err := os.ReadFile(historyPath)
+	if err != nil {
+		return
+	}
+
+	rawLines := strings.Split(string(data), "\n")
+	var cmds []string
+	for _, l := range rawLines {
+		l = strings.TrimSpace(l)
+		if l == "" {
+			continue
+		}
+		if strings.HasPrefix(l, ": ") {
+			if idx := strings.Index(l, ";"); idx != -1 {
+				l = strings.TrimSpace(l[idx+1:])
+			}
+		}
+		if l != "" && len(l) < 300 {
+			cmds = append(cmds, l)
+		}
+	}
+	if len(cmds) < 2 {
+		return
+	}
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	tx, err := f.db.BeginTx(ctx, nil)
+	if err != nil {
+		return
+	}
+	stmt, err := tx.PrepareContext(ctx, `
+INSERT INTO command_sequences (prev_cmd, next_cmd, cwd, count, last_used)
+VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)
+ON CONFLICT(prev_cmd, next_cmd, cwd) DO UPDATE SET
+    count = command_sequences.count + 1,
+    last_used = CURRENT_TIMESTAMP;
+`)
+	if err != nil {
+		_ = tx.Rollback()
+		return
+	}
+	defer stmt.Close()
+
+	if defaultCwd == "" {
+		defaultCwd, _ = os.UserHomeDir()
+	}
+
+	start := max(0, len(cmds)-2000)
+	for i := start; i < len(cmds)-1; i++ {
+		prev := cmds[i]
+		next := cmds[i+1]
+		if prev != next && !strings.Contains(prev, "\n") && !strings.Contains(next, "\n") {
+			_, _ = stmt.ExecContext(ctx, prev, next, defaultCwd)
+		}
+	}
+	_ = tx.Commit()
 }
 
 func (f *FrecencyStore) QueryTransitionsWithFallback(ctx context.Context, prevSkeleton, cwd string) ([]TransitionEntry, bool) {
