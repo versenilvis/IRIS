@@ -381,4 +381,32 @@ func TestHideMenu_KeepsPrediction(t *testing.T) {
 	}
 }
 
+func TestRenderGhostText_MultiSpaceHistoryNoDuplicate(t *testing.T) {
+	// history entry recorded with extra spaces must not produce "reload reload"
+	o := NewOverlay()
+	o.UpdateItems([]spec.Suggestion{{Cmd: "just   reload", Source: "history"}})
+	o.SetPrediction("just reload")
+
+	out := o.RenderGhostText("just ", false, true)
+	// should contain "reload" exactly once (no "reload reload")
+	first := strings.Index(out, "reload")
+	if first == -1 {
+		t.Fatalf("expected 'reload' in ghost, got: %q", out)
+	}
+	if strings.Contains(out[first+len("reload"):], "reload") {
+		t.Fatalf("got duplicate 'reload' in ghost text: %q", out)
+	}
+}
+
+func TestRenderGhostText_UnrelatedInputNoHint(t *testing.T) {
+	// when buffer doesn't match prediction prefix and there's no item completion,
+	// the › hint must not appear
+	o := NewOverlay()
+	o.SetPrediction("just reload")
+
+	out := o.RenderGhostText("jar", false, true)
+	if strings.Contains(out, PredictionSymbol) {
+		t.Fatalf("expected no › hint for unrelated input 'jar', got: %q", out)
+	}
+}
 

@@ -519,10 +519,8 @@ func (o *Overlay) GetGhostText(buffer string, cursorAtEnd bool) string {
 		}
 
 		if strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(buffer)) {
-			suffix := topCmd[len(buffer):]
-			// normalize: if the suffix is just extra whitespace before the same word,
-			// collapse it so right-arrow expands what's actually on screen
-			if strings.TrimSpace(suffix) != "" {
+			suffix := strings.TrimLeft(topCmd[len(buffer):], " ")
+			if suffix != "" {
 				return suffix
 			}
 		}
@@ -580,21 +578,24 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 				topCmd = o.Items[0].Cmd
 			}
 			if strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(buffer)) {
-				suffix := topCmd[len(buffer):]
-				if strings.TrimSpace(suffix) != "" {
+				// trim leading spaces that come from multi-space history entries (e.g. "just   reload" → suffix "  reload" → "reload")
+				suffix := strings.TrimLeft(topCmd[len(buffer):], " ")
+				if suffix != "" {
 					ghostText = suffix
 				}
 			}
 		}
 		if config.Get().Core.Prediction && o.PredictedCmd != "" {
 			pred := o.PredictedCmd
-			currentFull := buffer + ghostText
-			trimmedPred := strings.TrimSpace(pred)
-			trimmedFull := strings.TrimSpace(currentFull)
-			trimmedBuf := strings.TrimSpace(buffer)
+			normalize := func(s string) string { return strings.Join(strings.Fields(s), " ") }
+			normPred := normalize(pred)
+			normFull := normalize(buffer + ghostText)
+			normBuf := normalize(buffer)
 			if ghostText == "" && buffer != "" && strings.HasPrefix(strings.ToLower(pred), strings.ToLower(buffer)) {
 				ghostText = pred[len(buffer):]
-			} else if !strings.EqualFold(trimmedPred, trimmedFull) && !strings.EqualFold(trimmedPred, trimmedBuf) && !strings.HasSuffix(strings.ToLower(strings.TrimSpace(ghostText)), strings.ToLower(trimmedPred)) {
+			} else if (ghostText != "" || normBuf == "") && !strings.EqualFold(normPred, normFull) && !strings.EqualFold(normPred, normBuf) {
+				// only show › hint when there is a primary completion (ghostText) or buffer is empty
+				// never show for unrelated typed input - it can't be expanded by right-arrow
 				hint := " " + PredictionSymbol + " " + pred
 				if buffer == "" && ghostText == "" {
 					hint = PredictionSymbol + " " + pred
