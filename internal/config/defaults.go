@@ -16,15 +16,17 @@ func DefaultConfig() *Config {
 			AutoExecute:       false,
 			CobraProbeEnabled: true,
 			NavigateClosed:    "history",
+			Prediction:        true,
 		},
 		UI: UIConfig{
-			Style:           "modern",
-			GhostText:       GhostTextOn,
-			ShowHiddenFiles: false,
-			MaxSuggestions:  100,
-			MaxHeight:       6,
-			MaxWidth:        Width{}, // unset; the overlay falls back to its own default width
-			NerdFonts:       true,
+			Style:            "modern",
+			GhostText:        GhostTextOn,
+			ShowHiddenFiles:  false,
+			MaxSuggestions:   100,
+			MaxHeight:        6,
+			MaxWidth:         Width{}, // unset; the overlay falls back to its own default width
+			NerdFonts:        true,
+			PredictionSymbol: "›",
 		},
 		Git: GitConfig{
 			FilterActiveBranch:  true,

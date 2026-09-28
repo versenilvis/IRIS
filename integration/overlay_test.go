@@ -335,3 +335,26 @@ func TestDrawLeavesTheLineAloneWhenTheCursorIsNotAtTheEnd(t *testing.T) {
 		t.Error("redraw erased to end of line while the cursor was mid-command")
 	}
 }
+
+func TestRenderGhostText_WithPrediction(t *testing.T) {
+	o := NewOverlay()
+	items := []spec.Suggestion{
+		{Cmd: "mkdir ripgrep"},
+	}
+	o.UpdateItems(items)
+	o.SetPrediction("cd ripgrep")
+
+	out := o.RenderGhostText("mkdir rip", false, true)
+	if !strings.Contains(out, "grep") {
+		t.Fatalf("expected primary ghost text 'grep', got: %q", out)
+	}
+	if !strings.Contains(out, "› cd ripgrep") {
+		t.Fatalf("expected prediction hint '› cd ripgrep', got: %q", out)
+	}
+
+	renderOut := o.Render()
+	if !strings.Contains(renderOut, "Predict") {
+		t.Fatalf("expected footer to contain 'Predict', got: %q", renderOut)
+	}
+}
+

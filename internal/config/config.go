@@ -78,16 +78,18 @@ type CoreConfig struct {
 	// instance. Without it the only way to keep that binding is to move iris
 	// onto other keys, which costs arrow-key navigation of the menu entirely.
 	NavigateClosed string `toml:"navigate-closed"`
+	Prediction     bool   `toml:"prediction"`
 }
 
 type UIConfig struct {
-	Style           string        `toml:"style"`
-	GhostText       GhostTextMode `toml:"ghost-text"`
-	ShowHiddenFiles bool          `toml:"hidden-files"`
-	MaxSuggestions  int           `toml:"max-suggestions"`
-	MaxHeight       int           `toml:"max-height"`
-	MaxWidth        Width         `toml:"max-width"`
-	NerdFonts       bool          `toml:"nerd-fonts"`
+	Style            string        `toml:"style"`
+	GhostText        GhostTextMode `toml:"ghost-text"`
+	ShowHiddenFiles  bool          `toml:"hidden-files"`
+	MaxSuggestions   int           `toml:"max-suggestions"`
+	MaxHeight        int           `toml:"max-height"`
+	MaxWidth         Width         `toml:"max-width"`
+	NerdFonts        bool          `toml:"nerd-fonts"`
+	PredictionSymbol string        `toml:"prediction-symbol"`
 }
 
 type GitConfig struct {
@@ -281,6 +283,9 @@ func Load() (*Config, error) {
 	}
 	if cfg.Core.NavigateClosed == "" {
 		cfg.Core.NavigateClosed = "history"
+	}
+	if cfg.UI.PredictionSymbol == "" {
+		cfg.UI.PredictionSymbol = "›"
 	}
 	if cfg.Keybindings.NavigateUp == "" {
 		cfg.Keybindings.NavigateUp = "up"

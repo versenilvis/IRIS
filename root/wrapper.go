@@ -68,6 +68,45 @@ func setPrevRecordedInfo(cmd, cwd string) {
 	prevCmdCwd = cwd
 }
 
+func findPredictedCommand(query string) string {
+	if !config.Get().Core.Prediction {
+		return ""
+	}
+	store, err := scoring.GetFrecencyStore()
+	if err != nil || store == nil {
+		return ""
+	}
+	cwd := spec.GetCWD()
+	trimmed := strings.TrimSpace(query)
+	lowerQuery := strings.ToLower(query)
+
+	ctxTimeout, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	if trimmed != "" {
+		if nextEntries, _ := store.QuerySequencesWithFallback(ctxTimeout, trimmed, cwd); len(nextEntries) > 0 {
+			if nextEntries[0].NextCmd != "" && !strings.EqualFold(nextEntries[0].NextCmd, trimmed) {
+				return nextEntries[0].NextCmd
+			}
+		}
+	}
+
+	prev := getPrevCommand()
+	if prev != "" {
+		if prevEntries, _ := store.QuerySequencesWithFallback(ctxTimeout, prev, cwd); len(prevEntries) > 0 {
+			if lowerQuery == "" {
+				return prevEntries[0].NextCmd
+			}
+			for _, e := range prevEntries {
+				if strings.HasPrefix(strings.ToLower(e.NextCmd), lowerQuery) && !strings.EqualFold(e.NextCmd, trimmed) {
+					return e.NextCmd
+				}
+			}
+		}
+	}
+	return ""
+}
+
 func loadMode() string {
 	mode := config.Get().Core.Mode
 	if mode == "last" {
@@ -965,6 +1004,11 @@ func runWrapper() {
 				b.WriteString(overlay.Clear())
 			}
 			overlay.SetQueryAndItems(bufCopy, results)
+			if config.Get().Core.Prediction {
+				overlay.SetPrediction(findPredictedCommand(bufCopy))
+			} else {
+				overlay.SetPrediction("")
+			}
 		} else {
 			if overlay.IsVisible() {
 				b.WriteString(overlay.Clear())
@@ -1352,9 +1396,27 @@ func runWrapper() {
 							if !disableGhostText.Load() {
 								ghostText = overlay.GetGhostText(naiveBuffer, atEnd)
 							}
+							predCmd := ""
+							if !disableGhostText.Load() && config.Get().Core.Prediction && atEnd {
+								predCmd = overlay.GetPrediction()
+							}
 							bufferMu.Unlock()
 
+							if predCmd != "" && predCmd != naiveBuffer {
+								writeStdout([]byte(overlay.HideGhostTextSync()))
+								bufferMu.Lock()
+								naiveBuffer = predCmd
+								replace := shell.ReplaceLine([]byte(predCmd), cursorOffset)
+								cursorOffset = 0
+								bufferMu.Unlock()
+								userNavigated.Store(false)
+								_, _ = ptmx.Write(replace)
+								shouldOverlayDraw = true
+								continue
+							}
+
 							if len(ghostText) > 0 {
+								writeStdout([]byte(overlay.HideGhostTextSync()))
 								bufferMu.Lock()
 								naiveBuffer += ghostText
 								cursorOffset = 0

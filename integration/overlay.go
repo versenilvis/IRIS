@@ -218,7 +218,20 @@ type Overlay struct {
 	// ScreenLine is what iris believes the shell is currently displaying. It
 	// trails TypedQuery while a rewrite is held back during navigation, and the
 	// box is placed against this, not against the entry being highlighted.
-	ScreenLine string
+	ScreenLine   string
+	PredictedCmd string
+}
+
+func (o *Overlay) SetPrediction(cmd string) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.PredictedCmd = cmd
+}
+
+func (o *Overlay) GetPrediction() string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.PredictedCmd
 }
 
 // SetSelection updates the highlighted entry without claiming the shell has
@@ -552,6 +565,24 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 		}
 		if strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(buffer)) {
 			ghostText = topCmd[len(buffer):]
+		}
+		if config.Get().Core.Prediction && o.PredictedCmd != "" {
+			pred := o.PredictedCmd
+			currentFull := buffer + ghostText
+			if !strings.EqualFold(pred, currentFull) && !strings.EqualFold(pred, buffer) {
+				sym := config.Get().UI.PredictionSymbol
+				if sym == "" {
+					sym = "›"
+				}
+				hint := " " + sym + " " + pred
+				width := termWidth()
+				totalCol := o.PromptLen + lipgloss.Width(buffer) + lipgloss.Width(ghostText)
+				cursorCol := totalCol % width
+				availableCols := width - cursorCol
+				if lipgloss.Width(hint) <= availableCols {
+					ghostText += hint
+				}
+			}
 		}
 	}
 
@@ -927,7 +958,18 @@ func (o *Overlay) draw() string {
 		ctrlRKey := keyStyle.Render(config.FormatKeyName(config.Get().Keybindings.ToggleMode))
 		acceptText := lipgloss.NewStyle().Foreground(lipgloss.Color(t.ScrollInfo)).Render(" Accept")
 		modeText := lipgloss.NewStyle().Foreground(lipgloss.Color(t.ScrollInfo)).Render(" Mode")
-		footerInfo = fmt.Sprintf(" %s%s • %s%s ", selectKey, acceptText, ctrlRKey, modeText)
+		if o.PredictedCmd != "" && config.Get().Core.Prediction {
+			rightArrowKey := keyStyle.Render("→")
+			predictText := lipgloss.NewStyle().Foreground(lipgloss.Color(t.ScrollInfo)).Render(" Predict")
+			candidate := fmt.Sprintf(" %s%s • %s%s • %s%s ", selectKey, acceptText, rightArrowKey, predictText, ctrlRKey, modeText)
+			if lipgloss.Width(candidate)+2 <= inner {
+				footerInfo = candidate
+			} else {
+				footerInfo = fmt.Sprintf(" %s%s • %s%s ", selectKey, acceptText, ctrlRKey, modeText)
+			}
+		} else {
+			footerInfo = fmt.Sprintf(" %s%s • %s%s ", selectKey, acceptText, ctrlRKey, modeText)
+		}
 	}
 
 	s.WriteString(titledEdge("╰", "╯", inner, footerInfo, border, inner-lipgloss.Width(footerInfo)-2))
@@ -982,6 +1024,7 @@ func (o *Overlay) HideMenu(query string) string {
 	o.UserNavigated = false
 	o.Cursor = 0
 	o.StartIdx = 0
+	o.PredictedCmd = ""
 
 	var s strings.Builder
 	s.WriteString(ansi.ResetModeAutoWrap)
@@ -1016,6 +1059,7 @@ func (o *Overlay) ClearAndDisable() string {
 	o.UserNavigated = false
 	o.Cursor = 0
 	o.StartIdx = 0
+	o.PredictedCmd = ""
 
 	var s strings.Builder
 	s.WriteString(ansi.ResetModeAutoWrap)
