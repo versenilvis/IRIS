@@ -37,6 +37,12 @@ var (
 	prevCmdMu           sync.Mutex
 )
 
+func getPrevCommand() string {
+	prevCmdMu.Lock()
+	defer prevCmdMu.Unlock()
+	return prevRecordedCommand
+}
+
 func getPrevSkeleton() string {
 	prevCmdMu.Lock()
 	defer prevCmdMu.Unlock()
@@ -743,9 +749,10 @@ func runWrapper() {
 				bufferMu.Unlock()
 				if cmdToRecord != "" {
 					cwd := spec.GetCWD()
+					prevCmd := getPrevCommand()
 					prevSkeleton, prevCwd := getPrevRecordedInfo()
 					currSkeleton := scoring.ExtractSkeleton(cmdToRecord)
-					go func(c, d string, code int, pSkel, pCwd, cSkel string) {
+					go func(c, d string, code int, pCmd, pSkel, pCwd, cSkel string) {
 						defer func() {
 							if r := recover(); r != nil {
 								WriteCrashLog(r)
@@ -758,8 +765,11 @@ func runWrapper() {
 							if pSkel != "" && cSkel != "" {
 								_ = store.RecordTransition(ctxRecord, pSkel, cSkel, d, code)
 							}
+							if pCmd != "" && c != "" {
+								_ = store.RecordSequence(ctxRecord, pCmd, c, d, code)
+							}
 						}
-					}(cmdToRecord, cwd, exitCode, prevSkeleton, prevCwd, currSkeleton)
+					}(cmdToRecord, cwd, exitCode, prevCmd, prevSkeleton, prevCwd, currSkeleton)
 					setPrevRecordedInfo(cmdToRecord, cwd)
 				}
 				// hook: after user executes a command, print the update notice exactly once per session

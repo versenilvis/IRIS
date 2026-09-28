@@ -51,16 +51,34 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 		aliases := spec.GetAliasesCopy()
 		histResults, _ := integration.SearchHistory(query, aliases)
 
-		// scale confidence based on recency (index in histResults) so the most recent commands stay on top
+		var seqMatches map[string]int
+		if prev := getPrevCommand(); prev != "" {
+			if store, err := scoring.GetFrecencyStore(); err == nil && store != nil {
+				if entries, _ := store.QuerySequencesWithFallback(context.Background(), prev, spec.GetCWD()); len(entries) > 0 {
+					seqMatches = make(map[string]int, len(entries))
+					maxCnt := entries[0].Count
+					for _, e := range entries {
+						if maxCnt > 0 {
+							seqMatches[e.NextCmd] = int((float64(e.Count) / float64(maxCnt)) * 30.0)
+						}
+					}
+				}
+			}
+		}
+
+		// scale confidence based on recency with adaptive sequence boost
 		baseConf := 75
 		for i, h := range histResults {
 			conf := max(baseConf-(i*2), 60)
-			
+			if bonus, ok := seqMatches[h.Cmd]; ok {
+				conf += bonus
+			}
+
 			icon := "history"
 			if h.Source == "atuin" {
 				icon = "atuin"
 			}
-			
+
 			addSuggestion(spec.Suggestion{
 				Cmd:        h.Cmd,
 				Desc:       h.Source,
@@ -101,7 +119,7 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 		ctxTimeout, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 		defer cancel()
 		store, _ := scoring.GetFrecencyStore()
-		signals := scoring.CollectSignals(ctxTimeout, cwd, query, rootCmd, store, getPrevSkeleton())
+		signals := scoring.CollectSignals(ctxTimeout, cwd, query, rootCmd, store, getPrevSkeleton(), getPrevCommand())
 		scored := scoring.Score(deduped, signals)
 
 		finalResults = make([]spec.Suggestion, 0, len(scored))

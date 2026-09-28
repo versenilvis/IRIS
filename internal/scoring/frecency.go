@@ -31,6 +31,14 @@ type TransitionEntry struct {
 	LastUsed     time.Time
 }
 
+type SequenceEntry struct {
+	PrevCmd  string
+	NextCmd  string
+	Cwd      string
+	Count    int
+	LastUsed time.Time
+}
+
 type FrecencyStore struct {
 	db *sql.DB
 	mu sync.Mutex
@@ -111,6 +119,18 @@ CREATE TABLE IF NOT EXISTS command_transitions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_transitions_prev_cwd ON command_transitions(prev_skeleton, cwd);
+
+CREATE TABLE IF NOT EXISTS command_sequences (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    prev_cmd  TEXT NOT NULL,
+    next_cmd  TEXT NOT NULL,
+    cwd       TEXT NOT NULL,
+    count     INTEGER DEFAULT 1,
+    last_used TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(prev_cmd, next_cmd, cwd)
+);
+
+CREATE INDEX IF NOT EXISTS idx_sequences_prev_cwd ON command_sequences(prev_cmd, cwd);
 `
 	_, err := f.db.ExecContext(ctxTimeout, schema)
 	return err
@@ -195,6 +215,128 @@ ON CONFLICT(prev_skeleton, next_skeleton, cwd) DO UPDATE SET
 	}
 	_, err := f.db.ExecContext(ctxTimeout, query, prevSkeleton, nextSkeleton, cwd)
 	return err
+}
+
+func (f *FrecencyStore) RecordSequence(ctx context.Context, prevCmd, nextCmd, cwd string, nextExitCode int) error {
+	if f == nil {
+		return nil
+	}
+	prevCmd = strings.TrimSpace(prevCmd)
+	nextCmd = strings.TrimSpace(nextCmd)
+	cwd = strings.TrimSpace(cwd)
+	if prevCmd == "" || nextCmd == "" || cwd == "" {
+		return nil
+	}
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctxTimeout, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
+	defer cancel()
+
+	var query string
+	if nextExitCode == 0 {
+		query = `
+INSERT INTO command_sequences (prev_cmd, next_cmd, cwd, count, last_used)
+VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)
+ON CONFLICT(prev_cmd, next_cmd, cwd) DO UPDATE SET
+    count = count + 1,
+    last_used = CURRENT_TIMESTAMP;
+`
+	} else {
+		query = `
+INSERT INTO command_sequences (prev_cmd, next_cmd, cwd, count, last_used)
+VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP)
+ON CONFLICT(prev_cmd, next_cmd, cwd) DO UPDATE SET
+    last_used = CURRENT_TIMESTAMP;
+`
+	}
+	_, err := f.db.ExecContext(ctxTimeout, query, prevCmd, nextCmd, cwd)
+	return err
+}
+
+func (f *FrecencyStore) QuerySequencesWithFallback(ctx context.Context, prevCmd, cwd string) ([]SequenceEntry, bool) {
+	if f == nil {
+		return nil, false
+	}
+	prevCmd = strings.TrimSpace(prevCmd)
+	cwd = strings.TrimSpace(cwd)
+	if prevCmd == "" {
+		return nil, false
+	}
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctxTimeout, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
+	defer cancel()
+
+	var localEntries []SequenceEntry
+	rows, err := f.db.QueryContext(ctxTimeout, `
+SELECT prev_cmd, next_cmd, cwd, count, last_used
+FROM command_sequences
+WHERE prev_cmd = ? AND cwd = ? AND count > 0
+ORDER BY count DESC
+`, prevCmd, cwd)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var prev, next, rCwd string
+			var count int
+			var lastUsedRaw string
+			if err := rows.Scan(&prev, &next, &rCwd, &count, &lastUsedRaw); err == nil {
+				t, _ := parseTimestamp(lastUsedRaw)
+				localEntries = append(localEntries, SequenceEntry{
+					PrevCmd:  prev,
+					NextCmd:  next,
+					Cwd:      rCwd,
+					Count:    count,
+					LastUsed: t,
+				})
+			}
+		}
+	}
+	if len(localEntries) > 0 {
+		return localEntries, true
+	}
+
+	var globalEntries []SequenceEntry
+	gRows, gErr := f.db.QueryContext(ctxTimeout, `
+SELECT prev_cmd, next_cmd, SUM(count) as total_count, MAX(last_used) as max_last_used
+FROM command_sequences
+WHERE prev_cmd = ? AND count > 0
+GROUP BY next_cmd
+ORDER BY total_count DESC
+`, prevCmd)
+	if gErr == nil {
+		defer gRows.Close()
+		for gRows.Next() {
+			var prev, next string
+			var count int
+			var lastUsedRaw string
+			if err := gRows.Scan(&prev, &next, &count, &lastUsedRaw); err == nil {
+				t, _ := parseTimestamp(lastUsedRaw)
+				globalEntries = append(globalEntries, SequenceEntry{
+					PrevCmd:  prev,
+					NextCmd:  next,
+					Cwd:      "",
+					Count:    count,
+					LastUsed: t,
+				})
+			}
+		}
+	}
+	if len(globalEntries) > 0 {
+		return globalEntries, false
+	}
+
+	return nil, false
 }
 
 func (f *FrecencyStore) QueryTransitionsWithFallback(ctx context.Context, prevSkeleton, cwd string) ([]TransitionEntry, bool) {
