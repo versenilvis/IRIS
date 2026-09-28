@@ -76,9 +76,6 @@ navigate-closed = "history"
 prediction = true
 
 [ui]
-# symbol separating ghost text from command prediction
-prediction-symbol = "›"
-
 # visual style: "modern" (icons, category pills, shortcut footer) or "classic" (minimalist, centered number, no icons)
 style = "modern"
 

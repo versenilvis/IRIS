@@ -584,13 +584,9 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 			if ghostText == "" && buffer != "" && strings.HasPrefix(strings.ToLower(pred), strings.ToLower(buffer)) {
 				ghostText = pred[len(buffer):]
 			} else if !strings.EqualFold(pred, currentFull) && !strings.EqualFold(pred, buffer) {
-				sym := config.Get().UI.PredictionSymbol
-				if sym == "" {
-					sym = "›"
-				}
-				hint := " " + sym + " " + pred
+				hint := " " + PredictionSymbol + " " + pred
 				if buffer == "" && ghostText == "" {
-					hint = sym + " " + pred
+					hint = PredictionSymbol + " " + pred
 				}
 				width := termWidth()
 				totalCol := o.PromptLen + lipgloss.Width(buffer) + lipgloss.Width(ghostText)

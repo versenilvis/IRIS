@@ -24,9 +24,8 @@ func DefaultConfig() *Config {
 			ShowHiddenFiles:  false,
 			MaxSuggestions:   100,
 			MaxHeight:        6,
-			MaxWidth:         Width{}, // unset; the overlay falls back to its own default width
-			NerdFonts:        true,
-			PredictionSymbol: "›",
+			MaxWidth:        Width{}, // unset; the overlay falls back to its own default width
+			NerdFonts:       true,
 		},
 		Git: GitConfig{
 			FilterActiveBranch:  true,

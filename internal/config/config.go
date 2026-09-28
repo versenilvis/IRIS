@@ -89,7 +89,6 @@ type UIConfig struct {
 	MaxHeight        int           `toml:"max-height"`
 	MaxWidth         Width         `toml:"max-width"`
 	NerdFonts        bool          `toml:"nerd-fonts"`
-	PredictionSymbol string        `toml:"prediction-symbol"`
 }
 
 type GitConfig struct {
@@ -283,9 +282,6 @@ func Load() (*Config, error) {
 	}
 	if cfg.Core.NavigateClosed == "" {
 		cfg.Core.NavigateClosed = "history"
-	}
-	if cfg.UI.PredictionSymbol == "" {
-		cfg.UI.PredictionSymbol = "›"
 	}
 	if cfg.Keybindings.NavigateUp == "" {
 		cfg.Keybindings.NavigateUp = "up"
