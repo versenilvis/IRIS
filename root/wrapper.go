@@ -26,6 +26,7 @@ import (
 	"github.com/versenilvis/iris/internal/config"
 	"github.com/versenilvis/iris/internal/logger"
 	"github.com/versenilvis/iris/internal/scoring"
+	"github.com/versenilvis/iris/internal/workspace"
 	"github.com/versenilvis/iris/spec"
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
@@ -254,6 +255,7 @@ func runWrapper() {
 
 	var naiveBuffer string
 	var lastSubmittedCommand string
+	var lastSubmittedCWD string
 	cursorOffset := 0
 	var bufferMu sync.Mutex
 	var userNavigated atomic.Bool
@@ -764,6 +766,7 @@ func runWrapper() {
 
 			if cwd, ok := strings.CutPrefix(query, "IRIS_CWD:"); ok {
 				spec.SetCWD(cwd)
+				workspace.InvalidateProjectIDCache()
 				syncProcessCWD(cwd)
 				if watchdogCWD != nil {
 					_, _ = fmt.Fprintf(watchdogCWD, "%s\x00", cwd)
@@ -796,10 +799,12 @@ func runWrapper() {
 				SetCurrentAISuggestion(nil)
 				bufferMu.Lock()
 				cmdToRecord := lastSubmittedCommand
+				cwdToRecord := lastSubmittedCWD
 				lastSubmittedCommand = ""
+				lastSubmittedCWD = ""
 				bufferMu.Unlock()
-				if cmdToRecord != "" {
-					cwd := spec.GetCWD()
+				if cmdToRecord != "" && cwdToRecord != "" {
+					cwd := cwdToRecord
 					prevCmd := getPrevCommand()
 					prevSkeleton, prevCwd := getPrevRecordedInfo()
 					currSkeleton := scoring.ExtractSkeleton(cmdToRecord)
@@ -1300,6 +1305,7 @@ func runWrapper() {
 					integration.RecordSessionCommand(cmdToSubmit)
 					bufferMu.Lock()
 					lastSubmittedCommand = strings.TrimSpace(cmdToSubmit)
+					lastSubmittedCWD = spec.GetCWD()
 					naiveBuffer = ""
 					cursorOffset = 0
 					bufferMu.Unlock()

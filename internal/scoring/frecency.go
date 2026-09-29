@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/versenilvis/iris/internal/config"
+	"github.com/versenilvis/iris/internal/workspace"
 	_ "modernc.org/sqlite"
 )
 
@@ -40,8 +41,10 @@ type SequenceEntry struct {
 }
 
 type FrecencyStore struct {
-	db *sql.DB
-	mu sync.Mutex
+	db     *sql.DB
+	mu     sync.Mutex
+	bgWg   sync.WaitGroup
+	dbPath string
 }
 
 func NewFrecencyStore(dbPath string) (*FrecencyStore, error) {
@@ -64,13 +67,21 @@ func NewFrecencyStore(dbPath string) (*FrecencyStore, error) {
 	}
 	_ = os.Chmod(dbPath, 0600)
 
+	if dbPath != ":memory:" {
+		if fi, err := os.Stat(dbPath); err == nil && fi.Size() > 0 {
+			if data, errRead := os.ReadFile(dbPath); errRead == nil {
+				_ = os.WriteFile(dbPath+".bak", data, 0600)
+			}
+		}
+	}
+
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite database: %w", err)
 	}
 	db.SetMaxOpenConns(1)
 
-	store := &FrecencyStore{db: db}
+	store := &FrecencyStore{db: db, dbPath: dbPath}
 	if err := store.initSchema(context.Background()); err != nil {
 		_ = db.Close()
 		return nil, err
@@ -102,6 +113,7 @@ CREATE TABLE IF NOT EXISTS history_entries (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     cmd TEXT NOT NULL,
     cwd TEXT NOT NULL,
+    project_id TEXT DEFAULT NULL,
     count INTEGER DEFAULT 1,
     last_used TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(cmd, cwd)
@@ -126,6 +138,7 @@ CREATE TABLE IF NOT EXISTS command_sequences (
     prev_cmd  TEXT NOT NULL,
     next_cmd  TEXT NOT NULL,
     cwd       TEXT NOT NULL,
+    project_id TEXT DEFAULT NULL,
     count     INTEGER DEFAULT 1,
     last_used TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(prev_cmd, next_cmd, cwd)
@@ -133,8 +146,126 @@ CREATE TABLE IF NOT EXISTS command_sequences (
 
 CREATE INDEX IF NOT EXISTS idx_sequences_prev_cwd ON command_sequences(prev_cmd, cwd);
 `
-	_, err := f.db.ExecContext(ctxTimeout, schema)
-	return err
+	if _, err := f.db.ExecContext(ctxTimeout, schema); err != nil {
+		return err
+	}
+
+	addedHist, err := f.addColumnIfNotExists(ctxTimeout, "history_entries", "project_id", "TEXT DEFAULT NULL")
+	if err != nil {
+		return err
+	}
+	addedSeq, err := f.addColumnIfNotExists(ctxTimeout, "command_sequences", "project_id", "TEXT DEFAULT NULL")
+	if err != nil {
+		return err
+	}
+
+	indexSQL := `
+CREATE INDEX IF NOT EXISTS idx_history_project_cmd ON history_entries(project_id, cmd);
+CREATE INDEX IF NOT EXISTS idx_sequences_project_prev ON command_sequences(project_id, prev_cmd);
+`
+	if _, err := f.db.ExecContext(ctxTimeout, indexSQL); err != nil {
+		return err
+	}
+
+	if addedHist || addedSeq {
+		cleanupSQL := `
+DELETE FROM history_entries WHERE count <= 0;
+DELETE FROM command_sequences WHERE count <= 0;
+`
+		if _, err := f.db.ExecContext(ctxTimeout, cleanupSQL); err != nil {
+			return err
+		}
+	}
+
+	f.bgWg.Add(1)
+	go func() {
+		defer f.bgWg.Done()
+		f.backfillProjectIDs()
+	}()
+	return nil
+}
+
+func (f *FrecencyStore) addColumnIfNotExists(ctx context.Context, table, column, colDef string) (bool, error) {
+	rows, err := f.db.QueryContext(ctx, fmt.Sprintf("PRAGMA table_info(%s)", table))
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var cid int
+		var name, ctype string
+		var notnull, pk int
+		var dfltValue interface{}
+		if scanErr := rows.Scan(&cid, &name, &ctype, &notnull, &dfltValue, &pk); scanErr == nil {
+			if strings.EqualFold(name, column) {
+				return false, nil
+			}
+		}
+	}
+	if rowsErr := rows.Err(); rowsErr != nil {
+		return false, rowsErr
+	}
+	_, err = f.db.ExecContext(ctx, fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, column, colDef))
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (f *FrecencyStore) backfillProjectIDs() {
+	if f == nil || f.db == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	rows, err := f.db.QueryContext(ctx, "SELECT DISTINCT cwd FROM history_entries WHERE project_id IS NULL")
+	if err == nil {
+		defer func() { _ = rows.Close() }()
+		var cwds []string
+		for rows.Next() {
+			var d string
+			if errScan := rows.Scan(&d); errScan == nil && d != "" {
+				cwds = append(cwds, d)
+			}
+		}
+		if rowsErr := rows.Err(); rowsErr == nil {
+			for _, d := range cwds {
+				norm := workspace.Normalize(d)
+				pid := ""
+				if _, statErr := os.Stat(norm); statErr == nil {
+					pid = workspace.ProjectID(workspace.DetectRoot(norm))
+				}
+				f.mu.Lock()
+				_, _ = f.db.ExecContext(ctx, "UPDATE history_entries SET project_id = ? WHERE cwd = ? AND project_id IS NULL", pid, d)
+				f.mu.Unlock()
+			}
+		}
+	}
+
+	seqRows, seqErr := f.db.QueryContext(ctx, "SELECT DISTINCT cwd FROM command_sequences WHERE project_id IS NULL")
+	if seqErr == nil {
+		defer func() { _ = seqRows.Close() }()
+		var cwds []string
+		for seqRows.Next() {
+			var d string
+			if errScan := seqRows.Scan(&d); errScan == nil && d != "" {
+				cwds = append(cwds, d)
+			}
+		}
+		if seqRowsErr := seqRows.Err(); seqRowsErr == nil {
+			for _, d := range cwds {
+				norm := workspace.Normalize(d)
+				pid := ""
+				if _, statErr := os.Stat(norm); statErr == nil {
+					pid = workspace.ProjectID(workspace.DetectRoot(norm))
+				}
+				f.mu.Lock()
+				_, _ = f.db.ExecContext(ctx, "UPDATE command_sequences SET project_id = ? WHERE cwd = ? AND project_id IS NULL", pid, d)
+				f.mu.Unlock()
+			}
+		}
+	}
 }
 
 func (f *FrecencyStore) Record(ctx context.Context, cmd, cwd string, exitCode int) error {
@@ -146,6 +277,12 @@ func (f *FrecencyStore) Record(ctx context.Context, cmd, cwd string, exitCode in
 	if cmd == "" || cwd == "" {
 		return nil
 	}
+	if exitCode != 0 {
+		return nil
+	}
+
+	normCwd := workspace.Normalize(cwd)
+	projectID := workspace.ProjectID(workspace.DetectRoot(normCwd))
 
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -156,24 +293,15 @@ func (f *FrecencyStore) Record(ctx context.Context, cmd, cwd string, exitCode in
 	ctxTimeout, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
 	defer cancel()
 
-	var query string
-	if exitCode == 0 {
-		query = `
-INSERT INTO history_entries (cmd, cwd, count, last_used)
-VALUES (?, ?, 1, CURRENT_TIMESTAMP)
+	query := `
+INSERT INTO history_entries (cmd, cwd, project_id, count, last_used)
+VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)
 ON CONFLICT(cmd, cwd) DO UPDATE SET
+    project_id = COALESCE(NULLIF(excluded.project_id, ''), project_id),
     count = count + 1,
     last_used = CURRENT_TIMESTAMP;
 `
-	} else {
-		query = `
-INSERT INTO history_entries (cmd, cwd, count, last_used)
-VALUES (?, ?, 0, CURRENT_TIMESTAMP)
-ON CONFLICT(cmd, cwd) DO UPDATE SET
-    last_used = CURRENT_TIMESTAMP;
-`
-	}
-	_, err := f.db.ExecContext(ctxTimeout, query, cmd, cwd)
+	_, err := f.db.ExecContext(ctxTimeout, query, cmd, cwd, projectID)
 	return err
 }
 
@@ -187,7 +315,11 @@ func (f *FrecencyStore) RecordTransition(ctx context.Context, prevSkeleton, next
 	if prevSkeleton == "" || nextSkeleton == "" || cwd == "" {
 		return nil
 	}
+	if nextExitCode != 0 {
+		return nil
+	}
 
+	normCwd := workspace.Normalize(cwd)
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -197,24 +329,14 @@ func (f *FrecencyStore) RecordTransition(ctx context.Context, prevSkeleton, next
 	ctxTimeout, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
 	defer cancel()
 
-	var query string
-	if nextExitCode == 0 {
-		query = `
+	query := `
 INSERT INTO command_transitions (prev_skeleton, next_skeleton, cwd, count, last_used)
 VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)
 ON CONFLICT(prev_skeleton, next_skeleton, cwd) DO UPDATE SET
     count = count + 1,
     last_used = CURRENT_TIMESTAMP;
 `
-	} else {
-		query = `
-INSERT INTO command_transitions (prev_skeleton, next_skeleton, cwd, count, last_used)
-VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP)
-ON CONFLICT(prev_skeleton, next_skeleton, cwd) DO UPDATE SET
-    last_used = CURRENT_TIMESTAMP;
-`
-	}
-	_, err := f.db.ExecContext(ctxTimeout, query, prevSkeleton, nextSkeleton, cwd)
+	_, err := f.db.ExecContext(ctxTimeout, query, prevSkeleton, nextSkeleton, normCwd)
 	return err
 }
 
@@ -228,6 +350,12 @@ func (f *FrecencyStore) RecordSequence(ctx context.Context, prevCmd, nextCmd, cw
 	if prevCmd == "" || nextCmd == "" || cwd == "" {
 		return nil
 	}
+	if nextExitCode != 0 {
+		return nil
+	}
+
+	normCwd := workspace.Normalize(cwd)
+	projectID := workspace.ProjectID(workspace.DetectRoot(normCwd))
 
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -238,24 +366,15 @@ func (f *FrecencyStore) RecordSequence(ctx context.Context, prevCmd, nextCmd, cw
 	ctxTimeout, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
 	defer cancel()
 
-	var query string
-	if nextExitCode == 0 {
-		query = `
-INSERT INTO command_sequences (prev_cmd, next_cmd, cwd, count, last_used)
-VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)
+	query := `
+INSERT INTO command_sequences (prev_cmd, next_cmd, cwd, project_id, count, last_used)
+VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
 ON CONFLICT(prev_cmd, next_cmd, cwd) DO UPDATE SET
+    project_id = COALESCE(NULLIF(excluded.project_id, ''), project_id),
     count = count + 1,
     last_used = CURRENT_TIMESTAMP;
 `
-	} else {
-		query = `
-INSERT INTO command_sequences (prev_cmd, next_cmd, cwd, count, last_used)
-VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP)
-ON CONFLICT(prev_cmd, next_cmd, cwd) DO UPDATE SET
-    last_used = CURRENT_TIMESTAMP;
-`
-	}
-	_, err := f.db.ExecContext(ctxTimeout, query, prevCmd, nextCmd, cwd)
+	_, err := f.db.ExecContext(ctxTimeout, query, prevCmd, nextCmd, cwd, projectID)
 	return err
 }
 
@@ -302,6 +421,9 @@ ORDER BY count DESC
 				})
 			}
 		}
+		if rowErr := rows.Err(); rowErr != nil {
+			localEntries = nil
+		}
 	}
 	if len(localEntries) > 0 {
 		return localEntries, true
@@ -331,6 +453,9 @@ ORDER BY total_count DESC
 					LastUsed: t,
 				})
 			}
+		}
+		if gRowErr := gRows.Err(); gRowErr != nil {
+			globalEntries = nil
 		}
 	}
 	if len(globalEntries) > 0 {
@@ -369,7 +494,7 @@ func (f *FrecencyStore) QueryTopHistoryByPrefix(ctx context.Context, prefix, cwd
 	row := f.db.QueryRowContext(ctx, `
 SELECT cmd
 FROM history_entries
-WHERE (cmd LIKE ? OR cmd LIKE ? OR cmd = ?) AND cmd != ?
+WHERE (cmd LIKE ? OR cmd LIKE ? OR cmd = ?) AND cmd != ? AND count > 0
 ORDER BY CASE WHEN cwd = ? THEN 1 ELSE 0 END DESC, count DESC, last_used DESC
 LIMIT 1
 `, prefix+" %", prefix+"%", prefix, prefix, cwd)
@@ -517,6 +642,9 @@ ORDER BY count DESC
 						})
 					}
 				}
+				if rowErr := rows.Err(); rowErr != nil {
+					loopEntries = nil
+				}
 			}
 		}()
 		if len(loopEntries) > 0 {
@@ -554,6 +682,9 @@ ORDER BY total_count DESC
 							LastUsed:     t,
 						})
 					}
+				}
+				if gRowErr := rows.Err(); gRowErr != nil {
+					loopEntries = nil
 				}
 			}
 		}()
@@ -732,6 +863,7 @@ func (f *FrecencyStore) Close() error {
 	if f == nil {
 		return nil
 	}
+	f.bgWg.Wait()
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.db != nil {

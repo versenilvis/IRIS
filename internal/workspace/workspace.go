@@ -145,3 +145,135 @@ func DetectCached(cwd string) WorkspaceInfo {
 	wsCache = &cacheEntry{key: key, info: info}
 	return info
 }
+
+// Normalize cleans and resolves symlinks on path
+func Normalize(path string) string {
+	if path == "" {
+		return ""
+	}
+	clean := filepath.Clean(path)
+	if real, err := filepath.EvalSymlinks(clean); err == nil {
+		clean = real
+	}
+	return clean
+}
+
+var projectMarkers = []string{
+	"go.mod",
+	"package.json",
+	"Cargo.toml",
+	"justfile",
+	"Justfile",
+	"Makefile",
+	"pyproject.toml",
+	"pom.xml",
+	"build.gradle",
+}
+
+func hasMarker(dir string) bool {
+	for _, m := range projectMarkers {
+		if _, err := os.Stat(filepath.Join(dir, m)); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
+// DetectRoot finds the closest repository or project root for cwd.
+// Note: WorkspaceInfo (from Detect) inspects signature files strictly in CWD for prompt icons/specs.
+// In contrast, DetectRoot traverses upwards to establish scope boundaries for prediction.
+func DetectRoot(cwd string) string {
+	dir := Normalize(cwd)
+	if dir == "" {
+		return ""
+	}
+	home := ""
+	if h, err := os.UserHomeDir(); err == nil && h != "" {
+		home = Normalize(h)
+	}
+	var marker string
+	for dir != home && dir != filepath.Dir(dir) {
+		if _, err := os.Lstat(filepath.Join(dir, ".git")); err == nil {
+			return dir
+		}
+		if marker == "" && hasMarker(dir) {
+			marker = dir
+		}
+		dir = filepath.Dir(dir)
+	}
+	return marker
+}
+
+// ProjectID returns canonical project identifier, resolving git worktrees to main repo
+func ProjectID(root string) string {
+	if root == "" {
+		return ""
+	}
+	root = Normalize(root)
+	gitPath := filepath.Join(root, ".git")
+	fi, err := os.Lstat(gitPath)
+	if err != nil || fi.IsDir() {
+		return root
+	}
+	b, err := os.ReadFile(gitPath)
+	if err != nil {
+		return root
+	}
+	s := strings.TrimSpace(string(b))
+	gitdir, ok := strings.CutPrefix(s, "gitdir:")
+	if !ok {
+		return root
+	}
+	gitdir = strings.TrimSpace(gitdir)
+	if !filepath.IsAbs(gitdir) {
+		gitdir = filepath.Join(root, gitdir)
+	}
+	cd, err := os.ReadFile(filepath.Join(gitdir, "commondir"))
+	if err != nil {
+		// submodule without commondir
+		return root
+	}
+	common := strings.TrimSpace(string(cd))
+	if !filepath.IsAbs(common) {
+		common = filepath.Join(gitdir, common)
+	}
+	common = filepath.Clean(common)
+	if filepath.Base(common) != ".git" {
+		// bare repo or unexpected layout
+		return root
+	}
+	id := filepath.Dir(common)
+	return Normalize(id)
+}
+
+var (
+	projIDCacheMu sync.RWMutex
+	projIDCache   = make(map[string]string)
+)
+
+// DetectProjectIDCached returns cached project ID for cwd, avoiding repeated disk stats on keystrokes
+func DetectProjectIDCached(cwd string) string {
+	if cwd == "" {
+		return ""
+	}
+	norm := Normalize(cwd)
+	projIDCacheMu.RLock()
+	id, ok := projIDCache[norm]
+	projIDCacheMu.RUnlock()
+	if ok {
+		return id
+	}
+
+	id = ProjectID(DetectRoot(norm))
+	projIDCacheMu.Lock()
+	projIDCache[norm] = id
+	projIDCacheMu.Unlock()
+	return id
+}
+
+// InvalidateProjectIDCache clears the cached project IDs
+func InvalidateProjectIDCache() {
+	projIDCacheMu.Lock()
+	projIDCache = make(map[string]string)
+	projIDCacheMu.Unlock()
+}
