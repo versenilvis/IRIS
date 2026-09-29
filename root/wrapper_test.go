@@ -8,9 +8,7 @@ import (
 	"golang.org/x/term"
 
 	_ "github.com/versenilvis/iris/commands"
-	"github.com/versenilvis/iris/integration"
 	"github.com/versenilvis/iris/internal/config"
-	"github.com/versenilvis/iris/spec"
 )
 
 func wantDir(t *testing.T, path string) string {
@@ -162,32 +160,4 @@ func TestMenuOnlyHidden(t *testing.T) {
 	}
 }
 
-func TestFindPredictedCommand(t *testing.T) {
-	wd, _ := os.Getwd()
-	spec.SetCWD(wd)
-	t.Cleanup(func() { spec.SetCWD("") })
-	for _, q := range []string{"just", "just ", "just reload", "just reload "} {
-		res := findPredictedCommand(q)
-		t.Logf("findPredictedCommand(%q) = %q", q, res)
-		for _, m := range []string{"spec", "history"} {
-			resList := MergeResults(q, m)
-			t.Logf("  MergeResults(%q, %q) count = %d", q, m, len(resList))
-			for i, r := range resList {
-				if i < 3 {
-					t.Logf("    [%s] item %d: Cmd=%q Desc=%q", m, i, r.Cmd, r.Desc)
-				}
-			}
-
-			o := integration.NewOverlay()
-			o.SetPrediction(res)
-			if len(resList) > 0 {
-				o.SetQueryAndItems(q, resList)
-			}
-			gt := o.RenderGhostText(q, false, true)
-			t.Logf("  [%s] RenderGhostText(%q) = %q", m, q, gt)
-			hm := o.HideMenu(q)
-			t.Logf("  [%s] HideMenu(%q) = %q", m, q, hm)
-		}
-	}
-}
 

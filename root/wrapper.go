@@ -116,15 +116,6 @@ func findPredictedCommand(query string) string {
 		}
 	}
 
-	if trimmed != "" {
-		if nextEntries, _ := store.QuerySequencesWithFallback(ctxTimeout, trimmed, cwd); len(nextEntries) > 0 {
-			for _, e := range nextEntries {
-				if strings.HasPrefix(strings.ToLower(e.NextCmd), lowerQuery) && !strings.EqualFold(e.NextCmd, trimmed) {
-					return e.NextCmd
-				}
-			}
-		}
-	}
 	return ""
 }
 
