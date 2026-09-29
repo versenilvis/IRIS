@@ -1448,22 +1448,6 @@ func runWrapper() {
 							}
 							bufferMu.Unlock()
 
-							if len(ghostText) > 0 {
-								writeStdout([]byte(overlay.HideGhostTextSync()))
-								bufferMu.Lock()
-								naiveBuffer += ghostText
-								cursorOffset = 0
-								bufferMu.Unlock()
-								overlay.ClearGhostTextState()
-								_, _ = ptmx.Write([]byte(ghostText))
-								drawAfterEcho(echoMarker(ghostText), func() {
-									if renderer, ok := renderOverlayFn.Load().(func()); ok {
-										renderer()
-									}
-								})
-								continue
-							}
-
 							trimmedBuf := strings.TrimSpace(naiveBuffer)
 							isRelatedPred := naiveBuffer == "" || (trimmedBuf != "" && strings.HasPrefix(strings.ToLower(predCmd), strings.ToLower(trimmedBuf)))
 							if predCmd != "" && isRelatedPred && predCmd != naiveBuffer {
@@ -1476,6 +1460,22 @@ func runWrapper() {
 								userNavigated.Store(false)
 								_, _ = ptmx.Write(replace)
 								drawAfterEcho(echoMarker(predCmd), func() {
+									if renderer, ok := renderOverlayFn.Load().(func()); ok {
+										renderer()
+									}
+								})
+								continue
+							}
+
+							if !overlay.IsVisible() && len(ghostText) > 0 {
+								writeStdout([]byte(overlay.HideGhostTextSync()))
+								bufferMu.Lock()
+								naiveBuffer += ghostText
+								cursorOffset = 0
+								bufferMu.Unlock()
+								overlay.ClearGhostTextState()
+								_, _ = ptmx.Write([]byte(ghostText))
+								drawAfterEcho(echoMarker(ghostText), func() {
 									if renderer, ok := renderOverlayFn.Load().(func()); ok {
 										renderer()
 									}

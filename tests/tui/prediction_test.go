@@ -90,3 +90,28 @@ func TestPredictionUnrelatedInputDoesNotShowOrExpand(t *testing.T) {
 		t.Fatalf("prompt = %q; want 'jar'\nscreen:\n%s", got, screen(term))
 	}
 }
+
+func TestPredictionRightArrowExpandsPredictionWhileMenuIsOpen(t *testing.T) {
+	home := predictionHome(t)
+	term := startIn(t, home, "IRIS_CORE_MODE=history")
+	defer func() { _ = term.Close() }()
+
+	if err := term.Type("just"); err != nil {
+		t.Fatal(err)
+	}
+	if err := term.WaitForText("Accept", 10*time.Second); err != nil {
+		t.Fatalf("menu did not appear: %v\n%s", err, screen(term))
+	}
+
+	// right arrow must expand prediction ("just reload"), not act like Tab
+	if err := term.SendKeys("\x1b[C"); err != nil {
+		t.Fatal(err)
+	}
+	if err := term.WaitStable(2 * time.Second); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := promptLine(t, term); got != "just reload" {
+		t.Fatalf("prompt = %q; want 'just reload'\nscreen:\n%s", got, screen(term))
+	}
+}
