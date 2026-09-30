@@ -488,7 +488,21 @@ func TestBenchmark_RealDB_Comparison(t *testing.T) {
 		t.Skip("real history.db not found")
 	}
 
-	realStore, storeErr := NewFrecencyStore(realPath)
+	// copy to temp dir so migrations and schema initialization do not mutate real db
+	tmpDir := t.TempDir()
+	tmpDB := filepath.Join(tmpDir, "history.db")
+	data, err := os.ReadFile(realPath)
+	if err != nil {
+		t.Skipf("cannot read real history.db: %v", err)
+	}
+	if err := os.WriteFile(tmpDB, data, 0600); err != nil {
+		t.Fatalf("cannot write temp history.db: %v", err)
+	}
+	if walData, err := os.ReadFile(realPath + "-wal"); err == nil {
+		_ = os.WriteFile(tmpDB+"-wal", walData, 0600)
+	}
+
+	realStore, storeErr := NewFrecencyStore(tmpDB)
 	if storeErr != nil {
 		t.Fatalf("open real store: %v", storeErr)
 	}
