@@ -154,7 +154,9 @@ func startInDirShell(t *testing.T, home, workDir, shellName string, extraEnv ...
 	case "fish":
 		fishConfDir := filepath.Join(home, ".config/fish")
 		_ = os.MkdirAll(fishConfDir, 0o755)
-		configFish := "function fish_prompt\n    echo -n '" + prompt + "'\nend\n" +
+		configFish := "set -g fish_greeting ''\n" +
+			"set -g fish_autosuggestion_enabled 0\n" +
+			"function fish_prompt\n    echo -n '" + prompt + "'\nend\n" +
 			"function fish_update_completions\n    return 0\nend\n" +
 			bin + " init fish | source\n"
 		if err := os.WriteFile(filepath.Join(fishConfDir, "config.fish"), []byte(configFish), 0o644); err != nil {
