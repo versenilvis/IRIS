@@ -535,6 +535,59 @@ func TestFrecencyStore_DoNotOverwriteProjectIDWithEmpty(t *testing.T) {
 	}
 }
 
+func TestFrecencyStore_CwdNormalization(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "history.db")
+	store, err := NewFrecencyStore(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create store: %v", err)
+	}
+	defer store.Close()
+
+	ctx := context.Background()
+	testDir := filepath.Join(tmpDir, "myrepo")
+	_ = os.MkdirAll(testDir, 0755)
+
+	// test Record with trailing slash and query without
+	dirWithSlash := testDir + "/"
+	if recErr := store.Record(ctx, "git status", dirWithSlash, 0); recErr != nil {
+		t.Fatalf("record failed: %v", recErr)
+	}
+	entries, qErr := store.QueryLocal(ctx, testDir, "git", 10)
+	if qErr != nil || len(entries) != 1 || entries[0].Cmd != "git status" {
+		t.Fatalf("expected 1 entry from QueryLocal, got %v (err: %v)", entries, qErr)
+	}
+
+	// query candidate exact cwd match across trailing slash difference
+	candidates := store.QueryHistoryCandidates(ctx, "git", testDir, "")
+	if len(candidates) != 1 || candidates[0].Tier != 4 {
+		t.Fatalf("expected tier 4 candidate, got %v", candidates)
+	}
+
+	// test RecordSequence and query with trailing slash mismatch
+	if err := store.RecordSequence(ctx, "git status", "git diff", dirWithSlash, 0); err != nil {
+		t.Fatalf("record sequence failed: %v", err)
+	}
+	seqEntries, ok := store.QuerySequencesWithFallback(ctx, "git status", testDir)
+	if !ok || len(seqEntries) != 1 || seqEntries[0].NextCmd != "git diff" {
+		t.Fatalf("expected sequence entry, got %v", seqEntries)
+	}
+
+	// test QueryTransitionsWithFallback across trailing slash difference
+	if err := store.RecordTransition(ctx, "git status", "git commit", dirWithSlash, 0); err != nil {
+		t.Fatalf("record transition failed: %v", err)
+	}
+	transitions, ok := store.QueryTransitionsWithFallback(ctx, "git status", testDir)
+	if !ok || len(transitions) != 1 || transitions[0].NextSkeleton != "git commit" {
+		t.Fatalf("expected transition entry, got %v", transitions)
+	}
+
+	// test tierOf with trailing slashes
+	if tier := tierOf(dirWithSlash, "proj", testDir, "proj"); tier != 4 {
+		t.Fatalf("expected tier 4 for slash mismatch, got %d", tier)
+	}
+}
+
 func openRawLegacyDB(path string) (*sql.DB, error) {
 	db, err := sql.Open("sqlite", path)
 	if err != nil {

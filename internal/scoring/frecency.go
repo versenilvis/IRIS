@@ -351,7 +351,7 @@ ON CONFLICT(cmd, cwd) DO UPDATE SET
     count = count + 1,
     last_used = CURRENT_TIMESTAMP;
 `
-	_, err := f.db.ExecContext(ctxTimeout, query, cmd, cwd, projectID)
+	_, err := f.db.ExecContext(ctxTimeout, query, cmd, normCwd, projectID)
 	return err
 }
 
@@ -445,7 +445,7 @@ ON CONFLICT(prev_cmd, next_cmd, cwd) DO UPDATE SET
     count = count + 1,
     last_used = CURRENT_TIMESTAMP;
 `
-	_, err := f.db.ExecContext(ctxTimeout, query, prevCmd, nextCmd, cwd, projectID)
+	_, err := f.db.ExecContext(ctxTimeout, query, prevCmd, nextCmd, normCwd, projectID)
 	return err
 }
 
@@ -454,7 +454,7 @@ func (f *FrecencyStore) QuerySequencesWithFallback(ctx context.Context, prevCmd,
 		return nil, false
 	}
 	prevCmd = strings.TrimSpace(prevCmd)
-	cwd = strings.TrimSpace(cwd)
+	cwd = workspace.Normalize(strings.TrimSpace(cwd))
 	if prevCmd == "" {
 		return nil, false
 	}
@@ -565,6 +565,8 @@ type globalRow struct {
 }
 
 func tierOf(rowCwd, rowPID, cwd, pid string) int {
+	rowCwd = workspace.Normalize(rowCwd)
+	cwd = workspace.Normalize(cwd)
 	if rowCwd == cwd {
 		return 4
 	}
@@ -582,13 +584,16 @@ func tierOf(rowCwd, rowPID, cwd, pid string) int {
 }
 
 func isUnder(child, parent string) bool {
-	if parent == "" || parent == child {
+	child = workspace.Normalize(child)
+	parent = workspace.Normalize(parent)
+	if parent == "" || child == "" || parent == child {
 		return false
 	}
 	return strings.HasPrefix(child, strings.TrimSuffix(parent, "/")+"/")
 }
 
 func rank(local []localRow, global []globalRow, cwd, pid string) []Candidate {
+	cwd = workspace.Normalize(cwd)
 	m := map[string]*Candidate{}
 	for _, r := range local {
 		t := tierOf(r.cwd, r.pid, cwd, pid)
@@ -650,7 +655,7 @@ func (f *FrecencyStore) QueryHistoryCandidates(ctx context.Context, prefix, cwd,
 	if f == nil || prefix == "" {
 		return nil
 	}
-	cwd = strings.TrimSpace(cwd)
+	cwd = workspace.Normalize(strings.TrimSpace(cwd))
 	pid = strings.TrimSpace(pid)
 
 	if ctx == nil {
@@ -785,7 +790,7 @@ func (f *FrecencyStore) QuerySequenceCandidates(ctx context.Context, prevCmd, pr
 		return nil
 	}
 	prevCmd = strings.TrimSpace(prevCmd)
-	cwd = strings.TrimSpace(cwd)
+	cwd = workspace.Normalize(strings.TrimSpace(cwd))
 	pid = strings.TrimSpace(pid)
 
 	if ctx == nil {
@@ -1026,6 +1031,7 @@ ON CONFLICT(prev_cmd, next_cmd, cwd) DO UPDATE SET
 	if defaultCwd == "" {
 		defaultCwd, _ = os.UserHomeDir()
 	}
+	defaultCwd = workspace.Normalize(defaultCwd)
 
 	start := max(0, len(cmds)-2000)
 	for i := start; i < len(cmds)-1; i++ {
@@ -1043,7 +1049,7 @@ func (f *FrecencyStore) QueryTransitionsWithFallback(ctx context.Context, prevSk
 		return nil, false
 	}
 	prevSkeleton = strings.TrimSpace(prevSkeleton)
-	cwd = strings.TrimSpace(cwd)
+	cwd = workspace.Normalize(strings.TrimSpace(cwd))
 	if prevSkeleton == "" {
 		return nil, false
 	}
@@ -1171,6 +1177,7 @@ func (f *FrecencyStore) QueryLocal(ctx context.Context, cwd, prefix string, limi
 	if limit <= 0 {
 		limit = 50
 	}
+	cwd = workspace.Normalize(strings.TrimSpace(cwd))
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
