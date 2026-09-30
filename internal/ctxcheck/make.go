@@ -108,8 +108,18 @@ func ValidateMake(tokens []string, cwd string) Verdict {
 	i := 0
 	for i < len(args) {
 		arg := args[i]
-		if arg == "-C" || arg == "-f" || arg == "--file" || arg == "--makefile" || arg == "--directory" {
+		if arg == "-C" || arg == "-f" || arg == "--file" || arg == "--makefile" || arg == "--directory" ||
+			strings.HasPrefix(arg, "--file=") || strings.HasPrefix(arg, "--makefile=") || strings.HasPrefix(arg, "--directory=") ||
+			(strings.HasPrefix(arg, "-C") && len(arg) > 2) {
 			return Unknown
+		}
+		if arg == "-j" || arg == "-l" || arg == "-o" || arg == "-W" || arg == "-I" {
+			if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+				i += 2
+				continue
+			}
+			i++
+			continue
 		}
 		if strings.HasPrefix(arg, "-") {
 			// ignore standard flags

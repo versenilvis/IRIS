@@ -87,7 +87,28 @@ func TestMake_Flags(t *testing.T) {
 	if v := ValidateMake([]string{"make", "-C", "sub", "build"}, tmpDir); v != Unknown {
 		t.Errorf("expected -C flag to be Unknown, got %v", v)
 	}
+	if v := ValidateMake([]string{"make", "-Csub", "build"}, tmpDir); v != Unknown {
+		t.Errorf("expected -Csub flag to be Unknown, got %v", v)
+	}
 	if v := ValidateMake([]string{"make", "-f", "other.mk", "build"}, tmpDir); v != Unknown {
 		t.Errorf("expected -f flag to be Unknown, got %v", v)
+	}
+	if v := ValidateMake([]string{"make", "--file=other.mk", "build"}, tmpDir); v != Unknown {
+		t.Errorf("expected --file= flag to be Unknown, got %v", v)
+	}
+	if v := ValidateMake([]string{"make", "--makefile=other.mk", "build"}, tmpDir); v != Unknown {
+		t.Errorf("expected --makefile= flag to be Unknown, got %v", v)
+	}
+	if v := ValidateMake([]string{"make", "--directory=sub", "build"}, tmpDir); v != Unknown {
+		t.Errorf("expected --directory= flag to be Unknown, got %v", v)
+	}
+
+	for _, flag := range []string{"-j", "-l", "-o", "-W", "-I"} {
+		if v := ValidateMake([]string{"make", flag, "4", "build"}, tmpDir); v != Valid {
+			t.Errorf("expected %s with separate value and 'build' to be Valid, got %v", flag, v)
+		}
+		if v := ValidateMake([]string{"make", flag, "4", "missing"}, tmpDir); v != Invalid {
+			t.Errorf("expected %s with separate value and 'missing' to be Invalid, got %v", flag, v)
+		}
 	}
 }
