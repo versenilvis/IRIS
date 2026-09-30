@@ -256,17 +256,17 @@ func DetectProjectIDCached(cwd string) string {
 	if cwd == "" {
 		return ""
 	}
-	norm := Normalize(cwd)
 	projIDCacheMu.RLock()
-	id, ok := projIDCache[norm]
+	id, ok := projIDCache[cwd]
 	projIDCacheMu.RUnlock()
 	if ok {
 		return id
 	}
 
+	norm := Normalize(cwd)
 	id = ProjectID(DetectRoot(norm))
 	projIDCacheMu.Lock()
-	projIDCache[norm] = id
+	projIDCache[cwd] = id
 	projIDCacheMu.Unlock()
 	return id
 }

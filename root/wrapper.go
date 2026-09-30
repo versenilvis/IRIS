@@ -88,32 +88,32 @@ func findPredictedCommand(query string) string {
 		return ""
 	}
 	cwd := spec.GetCWD()
-	trimmed := strings.TrimSpace(query)
-	lowerQuery := strings.ToLower(query)
+	prefix := strings.TrimLeft(query, " ")
+
+	pid := workspace.DetectProjectIDCached(cwd)
+	allow := func(c scoring.Candidate) bool {
+		return c.Tier > 0 || c.ScopeCount >= scoring.GlobalScopeThreshold
+	}
 
 	ctxTimeout, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
 	prev := getPrevCommand()
 	if prev != "" {
-		if prevEntries, _ := store.QuerySequencesWithFallback(ctxTimeout, prev, cwd); len(prevEntries) > 0 {
-			if lowerQuery == "" {
-				if !strings.EqualFold(prevEntries[0].NextCmd, trimmed) {
-					return prevEntries[0].NextCmd
-				}
-			} else {
-				for _, e := range prevEntries {
-					if strings.HasPrefix(strings.ToLower(e.NextCmd), lowerQuery) && !strings.EqualFold(e.NextCmd, trimmed) {
-						return e.NextCmd
-					}
-				}
+		candidates := store.QuerySequenceCandidates(ctxTimeout, prev, prefix, cwd, pid)
+		for _, c := range candidates {
+			if !strings.EqualFold(c.Cmd, prefix) && allow(c) {
+				return c.Cmd
 			}
 		}
 	}
 
-	if trimmed != "" {
-		if topHistory := store.QueryTopHistoryByPrefix(ctxTimeout, trimmed, cwd); topHistory != "" && !strings.EqualFold(topHistory, trimmed) {
-			return topHistory
+	if prefix != "" {
+		candidates := store.QueryHistoryCandidates(ctxTimeout, prefix, cwd, pid)
+		for _, c := range candidates {
+			if !strings.EqualFold(c.Cmd, prefix) && allow(c) {
+				return c.Cmd
+			}
 		}
 	}
 

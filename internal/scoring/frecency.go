@@ -40,6 +40,21 @@ type SequenceEntry struct {
 	LastUsed time.Time
 }
 
+type Candidate struct {
+	Cmd        string
+	Tier       int
+	Count      int
+	LastUsed   time.Time
+	ScopeCount int
+}
+
+const (
+	LocalLimit           = 200
+	GlobalLimit          = 100
+	MaxCandidates        = 30
+	GlobalScopeThreshold = 3
+)
+
 type FrecencyStore struct {
 	db     *sql.DB
 	mu     sync.Mutex
@@ -479,27 +494,380 @@ func (f *FrecencyStore) GetLatestHistoryEntry(ctx context.Context) (string, stri
 	return "", ""
 }
 
-func (f *FrecencyStore) QueryTopHistoryByPrefix(ctx context.Context, prefix, cwd string) string {
-	if f == nil {
-		return ""
-	}
-	prefix = strings.TrimSpace(prefix)
-	if prefix == "" {
-		return ""
-	}
-	f.mu.Lock()
-	defer f.mu.Unlock()
+type localRow struct {
+	cmd   string
+	cwd   string
+	pid   string
+	count int
+	last  time.Time
+}
 
-	var cmd string
-	row := f.db.QueryRowContext(ctx, `
-SELECT cmd
+type globalRow struct {
+	cmd    string
+	total  int
+	last   time.Time
+	scopes int
+}
+
+func tierOf(rowCwd, rowPID, cwd, pid string) int {
+	if rowCwd == cwd {
+		return 4
+	}
+	// descendant or ancestor checks only apply within the same project
+	if pid == "" || rowPID != pid {
+		return 0
+	}
+	switch {
+	case isUnder(rowCwd, cwd):
+		return 3
+	case isUnder(cwd, rowCwd):
+		return 2
+	}
+	return 1
+}
+
+func isUnder(child, parent string) bool {
+	if parent == "" || parent == child {
+		return false
+	}
+	return strings.HasPrefix(child, strings.TrimSuffix(parent, "/")+"/")
+}
+
+func rank(local []localRow, global []globalRow, cwd, pid string) []Candidate {
+	m := map[string]*Candidate{}
+	for _, r := range local {
+		t := tierOf(r.cwd, r.pid, cwd, pid)
+		c, ok := m[r.cmd]
+		if !ok {
+			c = &Candidate{Cmd: r.cmd}
+			m[r.cmd] = c
+		}
+		c.Tier = max(c.Tier, t)
+		c.Count += r.count
+		if r.last.After(c.LastUsed) {
+			c.LastUsed = r.last
+		}
+	}
+	for _, g := range global {
+		if c, ok := m[g.cmd]; ok {
+			c.ScopeCount = g.scopes
+			continue
+		}
+		m[g.cmd] = &Candidate{Cmd: g.cmd, Tier: 0, Count: g.total, LastUsed: g.last, ScopeCount: g.scopes}
+	}
+	out := make([]Candidate, 0, len(m))
+	for _, c := range m {
+		out = append(out, *c)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		a, b := out[i], out[j]
+		if a.Tier != b.Tier {
+			return a.Tier > b.Tier
+		}
+		if a.Count != b.Count {
+			return a.Count > b.Count
+		}
+		if !a.LastUsed.Equal(b.LastUsed) {
+			return a.LastUsed.After(b.LastUsed)
+		}
+		return a.Cmd < b.Cmd
+	})
+	if len(out) > MaxCandidates {
+		out = out[:MaxCandidates]
+	}
+	return out
+}
+
+func prefixUpperBound(p string) string {
+	if p == "" {
+		return ""
+	}
+	b := []byte(p)
+	for i := len(b) - 1; i >= 0; i-- {
+		if b[i] < 255 {
+			b[i]++
+			return string(b[:i+1])
+		}
+	}
+	return ""
+}
+
+func (f *FrecencyStore) QueryHistoryCandidates(ctx context.Context, prefix, cwd, pid string) []Candidate {
+	if f == nil || prefix == "" {
+		return nil
+	}
+	cwd = strings.TrimSpace(cwd)
+	pid = strings.TrimSpace(pid)
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctxTimeout, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	defer cancel()
+
+	var local []localRow
+	var global []globalRow
+
+	upper := prefixUpperBound(prefix)
+
+	var localSQL string
+	var localArgs []interface{}
+	if pid != "" {
+		if upper != "" {
+			localSQL = `
+SELECT cmd, cwd, COALESCE(project_id,''), count, last_used
 FROM history_entries
-WHERE (cmd LIKE ? OR cmd LIKE ? OR cmd = ?) AND cmd != ? AND count > 0
-ORDER BY CASE WHEN cwd = ? THEN 1 ELSE 0 END DESC, count DESC, last_used DESC
-LIMIT 1
-`, prefix+" %", prefix+"%", prefix, prefix, cwd)
-	if err := row.Scan(&cmd); err == nil {
-		return cmd
+WHERE count > 0 AND cwd = ? AND cmd >= ? AND cmd < ? AND instr(cmd, ?) = 1 AND cmd != ?
+UNION
+SELECT cmd, cwd, COALESCE(project_id,''), count, last_used
+FROM history_entries
+WHERE count > 0 AND project_id = ? AND cmd >= ? AND cmd < ? AND instr(cmd, ?) = 1 AND cmd != ?
+ORDER BY count DESC LIMIT ?
+`
+			localArgs = []interface{}{cwd, prefix, upper, prefix, prefix, pid, prefix, upper, prefix, prefix, LocalLimit}
+		} else {
+			localSQL = `
+SELECT cmd, cwd, COALESCE(project_id,''), count, last_used
+FROM history_entries
+WHERE count > 0 AND cwd = ? AND instr(cmd, ?) = 1 AND cmd != ?
+UNION
+SELECT cmd, cwd, COALESCE(project_id,''), count, last_used
+FROM history_entries
+WHERE count > 0 AND project_id = ? AND instr(cmd, ?) = 1 AND cmd != ?
+ORDER BY count DESC LIMIT ?
+`
+			localArgs = []interface{}{cwd, prefix, prefix, pid, prefix, prefix, LocalLimit}
+		}
+	} else {
+		if upper != "" {
+			localSQL = `
+SELECT cmd, cwd, COALESCE(project_id,''), count, last_used
+FROM history_entries
+WHERE count > 0 AND cwd = ? AND cmd >= ? AND cmd < ? AND instr(cmd, ?) = 1 AND cmd != ?
+ORDER BY count DESC LIMIT ?
+`
+			localArgs = []interface{}{cwd, prefix, upper, prefix, prefix, LocalLimit}
+		} else {
+			localSQL = `
+SELECT cmd, cwd, COALESCE(project_id,''), count, last_used
+FROM history_entries
+WHERE count > 0 AND cwd = ? AND instr(cmd, ?) = 1 AND cmd != ?
+ORDER BY count DESC LIMIT ?
+`
+			localArgs = []interface{}{cwd, prefix, prefix, LocalLimit}
+		}
+	}
+
+	var globalSQL string
+	var globalArgs []interface{}
+	if upper != "" {
+		globalSQL = `
+SELECT cmd, SUM(count), MAX(last_used),
+       COUNT(DISTINCT COALESCE(NULLIF(project_id,''), cwd))
+FROM history_entries
+WHERE count > 0 AND cmd >= ? AND cmd < ? AND instr(cmd, ?) = 1 AND cmd != ?
+GROUP BY cmd ORDER BY SUM(count) DESC LIMIT ?
+`
+		globalArgs = []interface{}{prefix, upper, prefix, prefix, GlobalLimit}
+	} else {
+		globalSQL = `
+SELECT cmd, SUM(count), MAX(last_used),
+       COUNT(DISTINCT COALESCE(NULLIF(project_id,''), cwd))
+FROM history_entries
+WHERE count > 0 AND instr(cmd, ?) = 1 AND cmd != ?
+GROUP BY cmd ORDER BY SUM(count) DESC LIMIT ?
+`
+		globalArgs = []interface{}{prefix, prefix, GlobalLimit}
+	}
+
+	func() {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		if rows, err := f.db.QueryContext(ctxTimeout, localSQL, localArgs...); err == nil {
+			defer func() { _ = rows.Close() }()
+			for rows.Next() {
+				var cmd, rCwd, rPid, lastRaw string
+				var count int
+				if scanErr := rows.Scan(&cmd, &rCwd, &rPid, &count, &lastRaw); scanErr == nil {
+					t, _ := parseTimestamp(lastRaw)
+					local = append(local, localRow{
+						cmd:   cmd,
+						cwd:   rCwd,
+						pid:   rPid,
+						count: count,
+						last:  t,
+					})
+				}
+			}
+			if rowErr := rows.Err(); rowErr != nil {
+				local = nil
+			}
+		}
+
+		if gRows, err := f.db.QueryContext(ctxTimeout, globalSQL, globalArgs...); err == nil {
+			defer func() { _ = gRows.Close() }()
+			for gRows.Next() {
+				var cmd, lastRaw string
+				var total, scopes int
+				if scanErr := gRows.Scan(&cmd, &total, &lastRaw, &scopes); scanErr == nil {
+					t, _ := parseTimestamp(lastRaw)
+					global = append(global, globalRow{
+						cmd:    cmd,
+						total:  total,
+						last:   t,
+						scopes: scopes,
+					})
+				}
+			}
+			if gRowErr := gRows.Err(); gRowErr != nil {
+				global = nil
+			}
+		}
+	}()
+
+	return rank(local, global, cwd, pid)
+}
+
+func (f *FrecencyStore) QuerySequenceCandidates(ctx context.Context, prevCmd, prefix, cwd, pid string) []Candidate {
+	if f == nil || prevCmd == "" {
+		return nil
+	}
+	prevCmd = strings.TrimSpace(prevCmd)
+	cwd = strings.TrimSpace(cwd)
+	pid = strings.TrimSpace(pid)
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctxTimeout, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	defer cancel()
+
+	var local []localRow
+	var global []globalRow
+
+	var localSQL string
+	var localArgs []interface{}
+	var globalSQL string
+	var globalArgs []interface{}
+
+	if prefix == "" {
+		if pid != "" {
+			localSQL = `
+SELECT next_cmd, cwd, COALESCE(project_id,''), count, last_used
+FROM command_sequences
+WHERE count > 0 AND prev_cmd = ? AND cwd = ?
+UNION
+SELECT next_cmd, cwd, COALESCE(project_id,''), count, last_used
+FROM command_sequences
+WHERE count > 0 AND prev_cmd = ? AND project_id = ?
+ORDER BY count DESC LIMIT ?
+`
+			localArgs = []interface{}{prevCmd, cwd, prevCmd, pid, LocalLimit}
+		} else {
+			localSQL = `
+SELECT next_cmd, cwd, COALESCE(project_id,''), count, last_used
+FROM command_sequences
+WHERE count > 0 AND prev_cmd = ? AND cwd = ?
+ORDER BY count DESC LIMIT ?
+`
+			localArgs = []interface{}{prevCmd, cwd, LocalLimit}
+		}
+
+		globalSQL = `
+SELECT next_cmd, SUM(count), MAX(last_used),
+       COUNT(DISTINCT COALESCE(NULLIF(project_id,''), cwd))
+FROM command_sequences
+WHERE count > 0 AND prev_cmd = ?
+GROUP BY next_cmd ORDER BY SUM(count) DESC LIMIT ?
+`
+		globalArgs = []interface{}{prevCmd, GlobalLimit}
+	} else {
+		if pid != "" {
+			localSQL = `
+SELECT next_cmd, cwd, COALESCE(project_id,''), count, last_used
+FROM command_sequences
+WHERE count > 0 AND prev_cmd = ? AND cwd = ? AND instr(next_cmd, ?) = 1 AND next_cmd != ?
+UNION
+SELECT next_cmd, cwd, COALESCE(project_id,''), count, last_used
+FROM command_sequences
+WHERE count > 0 AND prev_cmd = ? AND project_id = ? AND instr(next_cmd, ?) = 1 AND next_cmd != ?
+ORDER BY count DESC LIMIT ?
+`
+			localArgs = []interface{}{prevCmd, cwd, prefix, prefix, prevCmd, pid, prefix, prefix, LocalLimit}
+		} else {
+			localSQL = `
+SELECT next_cmd, cwd, COALESCE(project_id,''), count, last_used
+FROM command_sequences
+WHERE count > 0 AND prev_cmd = ? AND cwd = ? AND instr(next_cmd, ?) = 1 AND next_cmd != ?
+ORDER BY count DESC LIMIT ?
+`
+			localArgs = []interface{}{prevCmd, cwd, prefix, prefix, LocalLimit}
+		}
+
+		globalSQL = `
+SELECT next_cmd, SUM(count), MAX(last_used),
+       COUNT(DISTINCT COALESCE(NULLIF(project_id,''), cwd))
+FROM command_sequences
+WHERE count > 0 AND prev_cmd = ? AND instr(next_cmd, ?) = 1 AND next_cmd != ?
+GROUP BY next_cmd ORDER BY SUM(count) DESC LIMIT ?
+`
+		globalArgs = []interface{}{prevCmd, prefix, prefix, GlobalLimit}
+	}
+
+	func() {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		if rows, err := f.db.QueryContext(ctxTimeout, localSQL, localArgs...); err == nil {
+			defer func() { _ = rows.Close() }()
+			for rows.Next() {
+				var nextCmd, rCwd, rPid, lastRaw string
+				var count int
+				if scanErr := rows.Scan(&nextCmd, &rCwd, &rPid, &count, &lastRaw); scanErr == nil {
+					t, _ := parseTimestamp(lastRaw)
+					local = append(local, localRow{
+						cmd:   nextCmd,
+						cwd:   rCwd,
+						pid:   rPid,
+						count: count,
+						last:  t,
+					})
+				}
+			}
+			if rowErr := rows.Err(); rowErr != nil {
+				local = nil
+			}
+		}
+
+		if gRows, err := f.db.QueryContext(ctxTimeout, globalSQL, globalArgs...); err == nil {
+			defer func() { _ = gRows.Close() }()
+			for gRows.Next() {
+				var nextCmd, lastRaw string
+				var total, scopes int
+				if scanErr := gRows.Scan(&nextCmd, &total, &lastRaw, &scopes); scanErr == nil {
+					t, _ := parseTimestamp(lastRaw)
+					global = append(global, globalRow{
+						cmd:    nextCmd,
+						total:  total,
+						last:   t,
+						scopes: scopes,
+					})
+				}
+			}
+			if gRowErr := gRows.Err(); gRowErr != nil {
+				global = nil
+			}
+		}
+	}()
+
+	return rank(local, global, cwd, pid)
+}
+
+func (f *FrecencyStore) QueryTopHistoryByPrefix(ctx context.Context, prefix, cwd string) string {
+	candidates := f.QueryHistoryCandidates(ctx, prefix, cwd, "")
+	if len(candidates) > 0 {
+		return candidates[0].Cmd
 	}
 	return ""
 }
