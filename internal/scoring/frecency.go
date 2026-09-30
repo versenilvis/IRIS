@@ -62,23 +62,37 @@ type FrecencyStore struct {
 	backupOnce sync.Once
 }
 
-func (f *FrecencyStore) backupDatabase(ctx context.Context) {
+func (f *FrecencyStore) backupDatabase(ctx context.Context) error {
 	if f.dbPath == "" || f.dbPath == ":memory:" || f.db == nil {
-		return
+		return nil
 	}
 	bakPath := f.dbPath + ".bak"
-	_ = os.Remove(bakPath)
-	_, err := f.db.ExecContext(ctx, "VACUUM INTO ?", bakPath)
+
+	// create empty destination file with 0600 permissions
+	fBak, err := os.OpenFile(bakPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
+	if err != nil {
+		return fmt.Errorf("failed to create backup file %s: %w", bakPath, err)
+	}
+	_ = fBak.Close()
+
+	// VACUUM INTO writes an atomic, WAL-consistent copy into the empty file
+	_, err = f.db.ExecContext(ctx, "VACUUM INTO ?", bakPath)
 	if err == nil {
-		_ = os.Chmod(bakPath, 0o600)
-		return
+		return nil
 	}
+
+	// fallback: truncate WAL checkpoint, then copy file bytes
 	_, _ = f.db.ExecContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE)")
-	if fi, errStat := os.Stat(f.dbPath); errStat == nil && fi.Size() > 0 {
-		if data, errRead := os.ReadFile(f.dbPath); errRead == nil {
-			_ = os.WriteFile(bakPath, data, 0o600)
-		}
+	data, errRead := os.ReadFile(f.dbPath)
+	if errRead != nil {
+		_ = os.Remove(bakPath)
+		return fmt.Errorf("backup failed via VACUUM INTO (%w) and fallback read (%w)", err, errRead)
 	}
+	if errWrite := os.WriteFile(bakPath, data, 0o600); errWrite != nil {
+		_ = os.Remove(bakPath)
+		return fmt.Errorf("backup failed via VACUUM INTO (%w) and fallback write (%w)", err, errWrite)
+	}
+	return nil
 }
 
 func NewFrecencyStore(dbPath string) (*FrecencyStore, error) {
@@ -231,9 +245,13 @@ func (f *FrecencyStore) addColumnIfNotExists(ctx context.Context, table, column,
 	if rowsErr := rows.Err(); rowsErr != nil {
 		return false, rowsErr
 	}
+	var backupErr error
 	f.backupOnce.Do(func() {
-		f.backupDatabase(ctx)
+		backupErr = f.backupDatabase(ctx)
 	})
+	if backupErr != nil {
+		return false, fmt.Errorf("schema migration aborted: failed to create database backup: %w", backupErr)
+	}
 	_, err = f.db.ExecContext(ctx, fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, column, colDef))
 	if err != nil {
 		return false, err

@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -422,6 +424,79 @@ func TestFrecencyStore_LegacyMigration(t *testing.T) {
 	_ = store2.Close()
 	if _, errStat := os.Stat(dbPath + ".bak"); !os.IsNotExist(errStat) {
 		t.Fatalf("expected .bak not to be created on already-migrated database: %v", errStat)
+	}
+}
+
+func TestFrecencyStore_LegacyMigration_WALConsistency(t *testing.T) {
+	if os.Getenv("TEST_SUBPROCESS_WAL") == "1" {
+		dbPath := os.Getenv("TEST_WAL_DBPATH")
+		rawDB, err := openRawLegacyDB(dbPath)
+		if err != nil {
+			os.Exit(1)
+		}
+		ctx := context.Background()
+		if _, err = rawDB.ExecContext(ctx, "PRAGMA journal_mode = WAL;"); err != nil {
+			os.Exit(2)
+		}
+		for i := range 20 {
+			cmd := fmt.Sprintf("cmd_%02d", i)
+			if _, err = rawDB.ExecContext(ctx, "INSERT INTO history_entries (cmd, cwd, count) VALUES (?, ?, 1)", cmd, filepath.Dir(dbPath)); err != nil {
+				os.Exit(3)
+			}
+		}
+		// Exit immediately without calling rawDB.Close() to leave uncheckpointed WAL frames on disk
+		os.Exit(0)
+	}
+
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "history.db")
+	ctx := context.Background()
+
+	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=TestFrecencyStore_LegacyMigration_WALConsistency")
+	cmd.Env = append(os.Environ(), "TEST_SUBPROCESS_WAL=1", "TEST_WAL_DBPATH="+dbPath)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("subprocess failed: %v, out: %s", err, out)
+	}
+
+	// Ensure WAL file exists with uncheckpointed frames
+	if fi, errStat := os.Stat(dbPath + "-wal"); errStat != nil || fi.Size() == 0 {
+		t.Fatalf("expected non-empty WAL file before migration: %v", errStat)
+	}
+
+	// 3. Open via NewFrecencyStore to trigger migration and backup
+	store, err := NewFrecencyStore(dbPath)
+	if err != nil {
+		t.Fatalf("NewFrecencyStore failed: %v", err)
+	}
+	_ = store.Close()
+
+	// 4. Open the .bak file independently and verify integrity and exact row count
+	bakPath := dbPath + ".bak"
+	bakDB, err := openRawLegacyDB(bakPath)
+	if err != nil {
+		t.Fatalf("failed to open backup file: %v", err)
+	}
+	defer bakDB.Close()
+
+	var integrity string
+	if err = bakDB.QueryRowContext(ctx, "PRAGMA integrity_check;").Scan(&integrity); err != nil || integrity != "ok" {
+		t.Fatalf("expected integrity_check=ok on backup, got %q (err=%v)", integrity, err)
+	}
+
+	var rowCount int
+	if err = bakDB.QueryRowContext(ctx, "SELECT count(*) FROM history_entries;").Scan(&rowCount); err != nil {
+		t.Fatalf("failed to count rows in backup: %v", err)
+	}
+	if rowCount != 20 {
+		t.Fatalf("expected 20 rows in backup from uncheckpointed WAL, got %d", rowCount)
+	}
+
+	// Verify backup file permissions are 0600
+	if fi, errStat := os.Stat(bakPath); errStat == nil {
+		if fi.Mode().Perm() != 0o600 {
+			t.Fatalf("expected 0600 permissions on backup, got %v", fi.Mode().Perm())
+		}
 	}
 }
 

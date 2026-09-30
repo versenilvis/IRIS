@@ -80,6 +80,44 @@ func setPrevRecordedInfo(cmd, cwd string) {
 	prevCmdCwd = cwd
 }
 
+var (
+	predictLogOnce sync.Once
+	predictLogMu   sync.Mutex
+)
+
+func logPredictionDebug(msg string) {
+	cacheDir, err := config.CachePath()
+	if err != nil {
+		return
+	}
+	logPath := filepath.Join(cacheDir, "predict.log")
+
+	predictLogMu.Lock()
+	defer predictLogMu.Unlock()
+
+	predictLogOnce.Do(func() {
+		_ = os.MkdirAll(cacheDir, 0o700)
+		_ = os.Chmod(cacheDir, 0o700)
+		if f, openErr := os.OpenFile(logPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600); openErr == nil {
+			_ = f.Close()
+		}
+	})
+
+	if fi, statErr := os.Stat(logPath); statErr == nil && fi.Size() > 10*1024*1024 {
+		_ = os.Rename(logPath, logPath+".old")
+	}
+
+	f, openErr := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+	if openErr != nil {
+		return
+	}
+	defer f.Close()
+	_ = os.Chmod(logPath, 0o600)
+
+	tStr := time.Now().Format("2006-01-02T15:04:05.000Z07:00")
+	_, _ = fmt.Fprintf(f, "%s %s\n", tStr, msg)
+}
+
 func findPredictedCommand(query string) string {
 	if !config.Get().Core.Prediction {
 		return ""
@@ -177,7 +215,8 @@ func findPredictedCommand(query string) string {
 			}
 			parts = append(parts, fmt.Sprintf("%q(tier=%d,scopes=%s,v=%s,allow=%v)", l.cmd, l.tier, scopeStr, l.verdict, l.allow))
 		}
-		logger.Infof("[PREDICT] cwd=%s prefix=%q chosen=%q top5=[%s]", cwd, prefix, chosen, strings.Join(parts, ", "))
+		msg := fmt.Sprintf("[PREDICT] cwd=%s prefix=%q chosen=%q top5=[%s]", cwd, prefix, chosen, strings.Join(parts, ", "))
+		logPredictionDebug(msg)
 	}
 
 	return chosen
