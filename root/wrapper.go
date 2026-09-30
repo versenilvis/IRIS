@@ -617,6 +617,23 @@ func runWrapper() {
 		drawAfterRepaint(draw)
 	}
 
+	acceptLine := func(cmd string) {
+		writeStdout([]byte(overlay.HideGhostTextSync()))
+		bufferMu.Lock()
+		naiveBuffer = cmd
+		replace := shell.ReplaceLine([]byte(cmd), cursorOffset)
+		cursorOffset = 0
+		bufferMu.Unlock()
+		overlay.ClearGhostTextState()
+		userNavigated.Store(false)
+		_, _ = ptmx.Write(replace)
+		drawAfterEcho(echoMarker(cmd), func() {
+			if renderer, ok := renderOverlayFn.Load().(func()); ok {
+				renderer()
+			}
+		})
+	}
+
 	// noteEcho feeds shell output to the pending draw's marker.
 	noteEcho := func(chunk []byte) {
 		echoMu.Lock()
@@ -1377,19 +1394,7 @@ func runWrapper() {
 
 						if predCmd != "" && isRelatedPred && predCmd != bufSnap {
 							intercepted = true
-							writeStdout([]byte(overlay.HideGhostTextSync()))
-							bufferMu.Lock()
-							naiveBuffer = predCmd
-							replace := shell.ReplaceLine([]byte(predCmd), cursorOffset)
-							cursorOffset = 0
-							bufferMu.Unlock()
-							userNavigated.Store(false)
-							_, _ = ptmx.Write(replace)
-							drawAfterEcho(echoMarker(predCmd), func() {
-								if renderer, ok := renderOverlayFn.Load().(func()); ok {
-									renderer()
-								}
-							})
+							acceptLine(predCmd)
 						}
 					}
 					if !intercepted {
@@ -1613,19 +1618,7 @@ func runWrapper() {
 							trimmedBuf := strings.TrimSpace(bufSnap)
 							isRelatedPred := bufSnap == "" || (trimmedBuf != "" && strings.HasPrefix(strings.ToLower(predCmd), strings.ToLower(trimmedBuf)))
 							if predCmd != "" && isRelatedPred && predCmd != bufSnap {
-								writeStdout([]byte(overlay.HideGhostTextSync()))
-								bufferMu.Lock()
-								naiveBuffer = predCmd
-								replace := shell.ReplaceLine([]byte(predCmd), cursorOffset)
-								cursorOffset = 0
-								bufferMu.Unlock()
-								userNavigated.Store(false)
-								_, _ = ptmx.Write(replace)
-								drawAfterEcho(echoMarker(predCmd), func() {
-									if renderer, ok := renderOverlayFn.Load().(func()); ok {
-										renderer()
-									}
-								})
+								acceptLine(predCmd)
 								continue
 							}
 
@@ -1634,21 +1627,7 @@ func runWrapper() {
 								ghostText = overlay.GetGhostText(bufSnap, atEnd)
 							}
 							if len(ghostText) > 0 {
-								targetCmd := bufSnap + ghostText
-								writeStdout([]byte(overlay.HideGhostTextSync()))
-								bufferMu.Lock()
-								naiveBuffer = targetCmd
-								replace := shell.ReplaceLine([]byte(targetCmd), cursorOffset)
-								cursorOffset = 0
-								bufferMu.Unlock()
-								overlay.ClearGhostTextState()
-								userNavigated.Store(false)
-								_, _ = ptmx.Write(replace)
-								drawAfterEcho(echoMarker(targetCmd), func() {
-									if renderer, ok := renderOverlayFn.Load().(func()); ok {
-										renderer()
-									}
-								})
+								acceptLine(bufSnap + ghostText)
 								continue
 							}
 
