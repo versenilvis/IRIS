@@ -116,3 +116,35 @@ func TestPredictionRightArrowExpandsPredictionWhileMenuIsOpen(t *testing.T) {
 		t.Fatalf("prompt = %q; want 'just reload'\nscreen:\n%s", got, screen(term))
 	}
 }
+
+func TestRightArrowPassesThroughWhenNoPrediction(t *testing.T) {
+	home := wordKeyHome(t)
+	term := startIn(t, home, "IRIS_CORE_MODE=history")
+	defer func() { _ = term.Close() }()
+
+	if err := term.Type("echo hello"); err != nil {
+		t.Fatal(err)
+	}
+	if err := term.WaitStable(2 * time.Second); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := term.SendKeys("\x1b[D\x1b[D"); err != nil {
+		t.Fatal(err)
+	}
+	if err := term.WaitStable(2 * time.Second); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := term.SendKeys("\x1b[C"); err != nil {
+		t.Fatal(err)
+	}
+	if err := term.WaitStable(2 * time.Second); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := promptLine(t, term); got != "echo hello" {
+		t.Fatalf("prompt = %q; want 'echo hello'", got)
+	}
+}
+

@@ -1572,10 +1572,6 @@ func runWrapper() {
 
 							bufferMu.Lock()
 							atEnd := (cursorOffset == 0)
-							ghostText := ""
-							if !disableGhostText.Load() {
-								ghostText = overlay.GetGhostText(naiveBuffer, atEnd)
-							}
 							predCmd := ""
 							if !disableGhostText.Load() && config.Get().Core.Prediction && atEnd {
 								predCmd = overlay.GetPrediction()
@@ -1601,34 +1597,16 @@ func runWrapper() {
 								continue
 							}
 
-							if !overlay.IsVisible() && len(ghostText) > 0 {
-								writeStdout([]byte(overlay.HideGhostTextSync()))
-								bufferMu.Lock()
-								naiveBuffer += ghostText
-								cursorOffset = 0
-								bufferMu.Unlock()
-								overlay.ClearGhostTextState()
-								_, _ = ptmx.Write([]byte(ghostText))
-								drawAfterEcho(echoMarker(ghostText), func() {
-									if renderer, ok := renderOverlayFn.Load().(func()); ok {
-										renderer()
-									}
-								})
-								continue
-							}
-
+							writeStdout([]byte(overlay.HideGhostTextSync()))
 							bufferMu.Lock()
-							if naiveBuffer != "" || overlay.IsVisible() {
+							if cursorOffset > 0 {
 								cursorOffset--
-								if cursorOffset < 0 {
-									cursorOffset = 0
-								}
-								shouldOverlayDraw = true
-								userNavigated.Store(false)
 							}
 							bufferMu.Unlock()
 							_, _ = ptmx.Write(rawSeq)
-							isLeftRightArrow = true
+							shouldOverlayDraw = true
+							userNavigated.Store(false)
+							continue
 						}
 					}
 
