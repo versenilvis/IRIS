@@ -62,13 +62,21 @@ type FrecencyStore struct {
 	backupOnce sync.Once
 }
 
-func (f *FrecencyStore) backupDatabase() {
-	if f.dbPath == "" || f.dbPath == ":memory:" {
+func (f *FrecencyStore) backupDatabase(ctx context.Context) {
+	if f.dbPath == "" || f.dbPath == ":memory:" || f.db == nil {
 		return
 	}
-	if fi, err := os.Stat(f.dbPath); err == nil && fi.Size() > 0 {
+	bakPath := f.dbPath + ".bak"
+	_ = os.Remove(bakPath)
+	_, err := f.db.ExecContext(ctx, "VACUUM INTO ?", bakPath)
+	if err == nil {
+		_ = os.Chmod(bakPath, 0o600)
+		return
+	}
+	_, _ = f.db.ExecContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE)")
+	if fi, errStat := os.Stat(f.dbPath); errStat == nil && fi.Size() > 0 {
 		if data, errRead := os.ReadFile(f.dbPath); errRead == nil {
-			_ = os.WriteFile(f.dbPath+".bak", data, 0o600)
+			_ = os.WriteFile(bakPath, data, 0o600)
 		}
 	}
 }
@@ -224,7 +232,7 @@ func (f *FrecencyStore) addColumnIfNotExists(ctx context.Context, table, column,
 		return false, rowsErr
 	}
 	f.backupOnce.Do(func() {
-		f.backupDatabase()
+		f.backupDatabase(ctx)
 	})
 	_, err = f.db.ExecContext(ctx, fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, column, colDef))
 	if err != nil {
