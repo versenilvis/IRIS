@@ -36,7 +36,9 @@ func TestWalkingDeepIntoTheListKeepsTheBoxWhole(t *testing.T) {
 		case 3:
 			entry = "echo " + strings.Repeat("v", 260) + fmt.Sprintf("-%02d", i)
 		}
-		b.WriteString(": 1700000000:0;" + entry + "\n")
+		b.WriteString(": 1700000000:0;")
+		b.WriteString(entry)
+		b.WriteString("\n")
 	}
 	if err := os.WriteFile(filepath.Join(home, ".zsh_history"), []byte(b.String()), 0o644); err != nil {
 		t.Fatal(err)
@@ -139,7 +141,9 @@ func TestReloadDoesNotStrandTheBox(t *testing.T) {
 		"nvim ~/.config/", "nvim ~/.config/iris/", "nvim ~/.config/opencode/",
 		"nvim ~/.config/iris/config.toml", "nvim a.cxx", "nv a.go", "nv a.cpp",
 	} {
-		b.WriteString(": 1700000000:0;" + e + "\n")
+		b.WriteString(": 1700000000:0;")
+		b.WriteString(e)
+		b.WriteString("\n")
 	}
 	if err := os.WriteFile(filepath.Join(home, ".zsh_history"), []byte(b.String()), 0o644); err != nil {
 		t.Fatal(err)

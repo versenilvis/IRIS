@@ -29,7 +29,9 @@ func TestLongCommandRendersIntact(t *testing.T) {
 		"su -", "ssh build-host", hangReport, "systemctl status",
 		"sudo pacman -Syu", "sort -u notes.txt",
 	} {
-		b.WriteString(": 1700000000:0;" + e + "\n")
+		b.WriteString(": 1700000000:0;")
+		b.WriteString(e)
+		b.WriteString("\n")
 	}
 	if err := os.WriteFile(filepath.Join(home, ".zsh_history"), []byte(b.String()), 0o644); err != nil {
 		t.Fatal(err)

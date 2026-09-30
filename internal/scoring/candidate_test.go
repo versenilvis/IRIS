@@ -512,6 +512,7 @@ GROUP BY cmd ORDER BY SUM(count) DESC LIMIT 100`, p, u, p, p)
 				defer func() { _ = rOld.Close() }()
 				for rOld.Next() {
 				}
+				_ = rOld.Err()
 			}
 		}()
 		dOld := time.Since(start)
@@ -534,6 +535,7 @@ GROUP BY cmd ORDER BY SUM(count) DESC LIMIT 100`, p, u, p, p)
 				}
 				for rNew.Next() {
 				}
+				_ = rNew.Err()
 			}
 		}()
 		dNew := time.Since(start)
