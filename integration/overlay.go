@@ -502,6 +502,17 @@ func titledEdge(left, right string, inner int, content string, border lipgloss.S
 		border.Render(strings.Repeat("─", rightDash)+right)
 }
 
+// keep word boundary space when typing subcommands and collapse redundant spaces
+func cleanGhostSuffix(buffer, suffix string) string {
+	if strings.HasSuffix(buffer, " ") {
+		return strings.TrimLeft(suffix, " ")
+	}
+	if strings.HasPrefix(suffix, " ") {
+		return " " + strings.TrimLeft(suffix, " ")
+	}
+	return suffix
+}
+
 func (o *Overlay) GetGhostText(buffer string, cursorAtEnd bool) string {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -519,8 +530,8 @@ func (o *Overlay) GetGhostText(buffer string, cursorAtEnd bool) string {
 		}
 
 		if strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(buffer)) {
-			suffix := strings.TrimLeft(topCmd[len(buffer):], " ")
-			if suffix != "" {
+			suffix := cleanGhostSuffix(buffer, topCmd[len(buffer):])
+			if strings.TrimSpace(suffix) != "" {
 				return suffix
 			}
 		}
@@ -528,7 +539,10 @@ func (o *Overlay) GetGhostText(buffer string, cursorAtEnd bool) string {
 
 	if config.Get().Core.Prediction && o.PredictedCmd != "" {
 		if strings.HasPrefix(strings.ToLower(o.PredictedCmd), strings.ToLower(buffer)) {
-			return o.PredictedCmd[len(buffer):]
+			suffix := cleanGhostSuffix(buffer, o.PredictedCmd[len(buffer):])
+			if strings.TrimSpace(suffix) != "" {
+				return suffix
+			}
 		}
 	}
 	return ""
@@ -578,9 +592,8 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 				topCmd = o.Items[0].Cmd
 			}
 			if strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(buffer)) {
-				// trim leading spaces that come from multi-space history entries (e.g. "just   reload" → suffix "  reload" → "reload")
-				suffix := strings.TrimLeft(topCmd[len(buffer):], " ")
-				if suffix != "" {
+				suffix := cleanGhostSuffix(buffer, topCmd[len(buffer):])
+				if strings.TrimSpace(suffix) != "" {
 					ghostText = suffix
 				}
 			}

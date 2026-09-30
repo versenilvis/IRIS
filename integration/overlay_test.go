@@ -422,3 +422,28 @@ func TestRenderGhostText_UnrelatedInputNoHint(t *testing.T) {
 		t.Fatalf("expected no › hint for unrelated input 'jar', got: %q", out)
 	}
 }
+
+func TestGhostText_WordBoundarySpacePreserved(t *testing.T) {
+	o := NewOverlay()
+	o.UpdateItems([]spec.Suggestion{{Cmd: "z col", Source: "history"}})
+
+	// preserve separating space so command and arg do not stick together
+	if got := o.GetGhostText("z", true); got != " col" {
+		t.Fatalf("expected ' col', got %q", got)
+	}
+
+	out := o.RenderGhostText("z", false, true)
+	if !strings.Contains(out, " col") {
+		t.Fatalf("expected rendered ghost text to contain ' col', got %q", out)
+	}
+
+	o.UpdateItems([]spec.Suggestion{{Cmd: "z   col", Source: "history"}})
+	if got := o.GetGhostText("z", true); got != " col" {
+		t.Fatalf("expected ' col' from multi-space entry, got %q", got)
+	}
+
+	if got := o.GetGhostText("z ", true); got != "col" {
+		t.Fatalf("expected 'col' after space typed, got %q", got)
+	}
+}
+
