@@ -327,8 +327,8 @@ func TestPrefixUpperBound_EdgeCases(t *testing.T) {
 	}
 
 	// case b: trailing 0xFF byte and all 0xFF bytes
-	if upper := prefixUpperBound("abc\xff"); upper != "abd" {
-		t.Fatalf("expected 'abd' for 'abc\\xff', got %q", upper)
+	if upper := prefixUpperBound("abx\xff"); upper != "aby" {
+		t.Fatalf("expected 'aby' for 'abx\\xff', got %q", upper)
 	}
 	if upper := prefixUpperBound("\xff\xff"); upper != "" {
 		t.Fatalf("expected '' for all 0xFF bytes, got %q", upper)
@@ -353,7 +353,7 @@ func TestPrefixUpperBound_EdgeCases(t *testing.T) {
 	ctx := context.Background()
 	cwd := "/home/user/utf8"
 
-	_ = store.Record(ctx, "tiếng việt nam", cwd, 0)
+	_ = store.Record(ctx, "tiếng việt", cwd, 0)
 	_ = store.Record(ctx, "café au lait", cwd, 0)
 	_ = store.Record(ctx, "こんにちは世界", cwd, 0)
 	_ = store.Record(ctx, "binary\xffspecial", cwd, 0)
@@ -361,8 +361,8 @@ func TestPrefixUpperBound_EdgeCases(t *testing.T) {
 	_ = store.Record(ctx, "\xff\xffspecial", cwd, 0)
 
 	candsTieng := store.QueryHistoryCandidates(ctx, "tiếng", cwd, cwd)
-	if len(candsTieng) != 1 || candsTieng[0].Cmd != "tiếng việt nam" {
-		t.Fatalf("expected 'tiếng việt nam', got %v", candsTieng)
+	if len(candsTieng) != 1 || candsTieng[0].Cmd != "tiếng việt" {
+		t.Fatalf("expected 'tiếng việt', got %v", candsTieng)
 	}
 
 	candsCafe := store.QueryHistoryCandidates(ctx, "café", cwd, cwd)
