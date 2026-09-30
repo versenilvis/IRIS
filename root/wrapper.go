@@ -24,6 +24,7 @@ import (
 	"github.com/versenilvis/iris/integration/shell"
 	"github.com/versenilvis/iris/internal/ai"
 	"github.com/versenilvis/iris/internal/config"
+	"github.com/versenilvis/iris/internal/ctxcheck"
 	"github.com/versenilvis/iris/internal/logger"
 	"github.com/versenilvis/iris/internal/scoring"
 	"github.com/versenilvis/iris/internal/workspace"
@@ -94,33 +95,92 @@ func findPredictedCommand(query string) string {
 	ctxTimeout, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 
-	allow := func(c scoring.Candidate) bool {
-		if c.Tier > 0 {
-			return true
-		}
-		return store.ScopeCount(ctxTimeout, c.Cmd) >= scoring.GlobalScopeThreshold
+	shName := ""
+	if shell.Current != nil {
+		shName = shell.Current.GetName()
 	}
+	dialect, _ := ctxcheck.DialectFromShell(shName)
+
+	debugPredict := os.Getenv("IRIS_DEBUG_PREDICT") == "1"
+
+	type candLog struct {
+		cmd     string
+		tier    int
+		scopes  int
+		verdict ctxcheck.Verdict
+		allow   bool
+	}
+	var logs []candLog
+
+	scopeOf := func(cmd string) int {
+		return store.ScopeCount(ctxTimeout, cmd)
+	}
+
+	evalCandidate := func(c scoring.Candidate) (bool, ctxcheck.Verdict, int) {
+		v := ctxcheck.ValidateWithTimeout(c.Cmd, cwd, dialect, 15*time.Millisecond)
+		scopes := -1
+		scopeQueryFn := func() int {
+			scopes = scopeOf(c.Cmd)
+			return scopes
+		}
+		allowed := ctxcheck.Allow(c, v, scopeQueryFn)
+		return allowed, v, scopes
+	}
+
+	var chosen string
 
 	prev := getPrevCommand()
 	if prev != "" {
 		candidates := store.QuerySequenceCandidates(ctxTimeout, prev, prefix, cwd, pid)
-		for _, c := range candidates {
-			if !strings.EqualFold(c.Cmd, prefix) && allow(c) {
-				return c.Cmd
+		limit := min(len(candidates), 12)
+		for i := range limit {
+			c := candidates[i]
+			if strings.EqualFold(c.Cmd, prefix) {
+				continue
+			}
+			allowed, v, scopes := evalCandidate(c)
+			if debugPredict && len(logs) < 5 {
+				logs = append(logs, candLog{cmd: c.Cmd, tier: c.Tier, scopes: scopes, verdict: v, allow: allowed})
+			}
+			if allowed {
+				chosen = c.Cmd
+				break
 			}
 		}
 	}
 
-	if prefix != "" {
+	if chosen == "" && prefix != "" {
 		candidates := store.QueryHistoryCandidates(ctxTimeout, prefix, cwd, pid)
-		for _, c := range candidates {
-			if !strings.EqualFold(c.Cmd, prefix) && allow(c) {
-				return c.Cmd
+		limit := min(len(candidates), 12)
+		for i := range limit {
+			c := candidates[i]
+			if strings.EqualFold(c.Cmd, prefix) {
+				continue
+			}
+			allowed, v, scopes := evalCandidate(c)
+			if debugPredict && len(logs) < 5 {
+				logs = append(logs, candLog{cmd: c.Cmd, tier: c.Tier, scopes: scopes, verdict: v, allow: allowed})
+			}
+			if allowed {
+				chosen = c.Cmd
+				break
 			}
 		}
 	}
 
-	return ""
+	if debugPredict {
+		var parts []string
+		for _, l := range logs {
+			scopeStr := "-"
+			if l.scopes >= 0 {
+				scopeStr = strconv.Itoa(l.scopes)
+			}
+			parts = append(parts, fmt.Sprintf("%q(tier=%d,scopes=%s,v=%s,allow=%v)", l.cmd, l.tier, scopeStr, l.verdict, l.allow))
+		}
+		logger.Infof("[PREDICT] cwd=%s prefix=%q chosen=%q top5=[%s]", cwd, prefix, chosen, strings.Join(parts, ", "))
+	}
+
+	return chosen
 }
 
 func loadMode() string {
@@ -745,6 +805,13 @@ func runWrapper() {
 				pLen := integration.ComputeCursorCol(lastPromptBuf)
 				if pLen >= 0 {
 					overlay.SetPromptLen(pLen)
+					if config.Get().Core.Prediction && !disableGhostText.Load() {
+						drawAfterRepaint(func() {
+							if renderer, ok := renderOverlayFn.Load().(func()); ok {
+								renderer()
+							}
+						})
+					}
 				}
 			}
 		}
@@ -796,10 +863,9 @@ func runWrapper() {
 					}
 				}
 				isCommandActive.Store(false)
-				// the shell reached a new prompt, so nothing owns the alternate
-				// screen any more even if a killed TUI never restored it
 				isAltScreenActive.Store(false)
 				SetCurrentAISuggestion(nil)
+				ctxcheck.InvalidateCache()
 				bufferMu.Lock()
 				cmdToRecord := lastSubmittedCommand
 				cwdToRecord := lastSubmittedCWD
@@ -881,6 +947,11 @@ func runWrapper() {
 				if !wasEmpty {
 					writeStdout([]byte(overlay.ClearAndDisable()))
 					SetCurrentAISuggestion(nil)
+				}
+				if config.Get().Core.Prediction && !disableGhostText.Load() {
+					if renderer, ok := renderOverlayFn.Load().(func()); ok {
+						renderer()
+					}
 				}
 				continue
 			}
@@ -1007,6 +1078,18 @@ func runWrapper() {
 			// cursor sits at the start of a line that still has content, which
 			// is not the same as nothing being typed.
 			if queryForSearch == "" && !overlay.IsVisible() {
+				if config.Get().Core.Prediction && !disableGhostText.Load() {
+					predicted := findPredictedCommand("")
+					bufferMu.Lock()
+					if naiveBuffer == "" && predicted != "" {
+						overlay.SetPrediction(predicted)
+						b.WriteString(overlay.RenderGhostText("", false, true))
+						bufferMu.Unlock()
+						writeStdout([]byte(b.String()))
+						return
+					}
+					bufferMu.Unlock()
+				}
 				writeStdout([]byte(overlay.ClearAndDisable()))
 				return
 			}
@@ -1020,7 +1103,12 @@ func runWrapper() {
 				if curr != "" && trimmedBuf != "" && strings.HasPrefix(strings.ToLower(curr), strings.ToLower(trimmedBuf)) && !strings.EqualFold(curr, trimmedBuf) {
 					// retain active prediction while user types matching prefix
 				} else {
-					overlay.SetPrediction(findPredictedCommand(bufCopy))
+					predicted := findPredictedCommand(bufCopy)
+					bufferMu.Lock()
+					if naiveBuffer == bufCopy {
+						overlay.SetPrediction(predicted)
+					}
+					bufferMu.Unlock()
 				}
 			} else {
 				overlay.SetPrediction("")
@@ -1218,7 +1306,12 @@ func runWrapper() {
 							if currPred != "" && strings.HasPrefix(strings.ToLower(currPred), strings.ToLower(trimmedSel)) {
 								overlay.SetPrediction(currPred)
 							} else if config.Get().Core.Prediction {
-								overlay.SetPrediction(findPredictedCommand(selected))
+								predicted := findPredictedCommand(selected)
+								bufferMu.Lock()
+								if naiveBuffer == selected {
+									overlay.SetPrediction(predicted)
+								}
+								bufferMu.Unlock()
 							} else {
 								overlay.SetPrediction("")
 							}
@@ -1429,7 +1522,7 @@ func runWrapper() {
 							i += navConsumed - 1
 							intercepted = true
 							bufferMu.Lock()
-							isEmptyQuery := naiveBuffer == "" && (!overlay.IsVisible() || overlay.GetTypedQuery() == "")
+							isEmptyQuery := naiveBuffer == "" && (!overlay.IsVisible() || overlay.GetTypedQuery() == "") && overlay.GetPrediction() == ""
 							bufferMu.Unlock()
 							if isEmptyQuery {
 								_, _ = ptmx.Write(rawSeq)
