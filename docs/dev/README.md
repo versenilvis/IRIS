@@ -12,4 +12,5 @@ This directory contains code architecture guides, engine design notes, and devel
 - [Spec & completion engine](spec.md): Static specifications, priority-based flag gating, and Cobra `__complete` dynamic completion
 - [File & path generator](filegen.md): File system traversal, extension filtering, and directory slash preservation
 - [History provider](history.md): Shell history indexing, search algorithms, and caching
+- [Prediction & context validation engine](prediction.md): Directory-scoped ghost text, validation tiers, and admission gate
 - [Auto updater](updater.md): Release tracking, version comparison, and atomic binary updates
