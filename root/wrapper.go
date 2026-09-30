@@ -1368,12 +1368,14 @@ func runWrapper() {
 						// only prediction and no menu selection: tab accepts prediction
 						predCmd := overlay.GetPrediction()
 						bufferMu.Lock()
+						bufSnap := naiveBuffer
 						atEnd := (cursorOffset == 0)
-						trimmedBuf := strings.TrimSpace(naiveBuffer)
-						isRelatedPred := atEnd && (naiveBuffer == "" || (trimmedBuf != "" && strings.HasPrefix(strings.ToLower(predCmd), strings.ToLower(trimmedBuf))))
 						bufferMu.Unlock()
 
-						if predCmd != "" && isRelatedPred && predCmd != naiveBuffer {
+						trimmedBuf := strings.TrimSpace(bufSnap)
+						isRelatedPred := atEnd && (bufSnap == "" || (trimmedBuf != "" && strings.HasPrefix(strings.ToLower(predCmd), strings.ToLower(trimmedBuf))))
+
+						if predCmd != "" && isRelatedPred && predCmd != bufSnap {
 							intercepted = true
 							writeStdout([]byte(overlay.HideGhostTextSync()))
 							bufferMu.Lock()
@@ -1600,6 +1602,7 @@ func runWrapper() {
 							}
 
 							bufferMu.Lock()
+							bufSnap := naiveBuffer
 							atEnd := (cursorOffset == 0)
 							predCmd := ""
 							if !disableGhostText.Load() && config.Get().Core.Prediction && atEnd {
@@ -1607,9 +1610,9 @@ func runWrapper() {
 							}
 							bufferMu.Unlock()
 
-							trimmedBuf := strings.TrimSpace(naiveBuffer)
-							isRelatedPred := naiveBuffer == "" || (trimmedBuf != "" && strings.HasPrefix(strings.ToLower(predCmd), strings.ToLower(trimmedBuf)))
-							if predCmd != "" && isRelatedPred && predCmd != naiveBuffer {
+							trimmedBuf := strings.TrimSpace(bufSnap)
+							isRelatedPred := bufSnap == "" || (trimmedBuf != "" && strings.HasPrefix(strings.ToLower(predCmd), strings.ToLower(trimmedBuf)))
+							if predCmd != "" && isRelatedPred && predCmd != bufSnap {
 								writeStdout([]byte(overlay.HideGhostTextSync()))
 								bufferMu.Lock()
 								naiveBuffer = predCmd
