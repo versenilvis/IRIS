@@ -135,6 +135,11 @@ func startInDirShell(t *testing.T, home, workDir, shellName string, extraEnv ...
 
 	switch shellName {
 	case "zsh":
+		// prevent system zshrc from prompting compinit in test pty
+		zshenv := "unsetopt GLOBAL_RCS\nskip_global_compinit=1\n"
+		if err := os.WriteFile(filepath.Join(home, ".zshenv"), []byte(zshenv), 0o644); err != nil {
+			t.Fatal(err)
+		}
 		zshrc := "PROMPT='" + prompt + "'\nRPROMPT=''\nunsetopt PROMPT_SP\neval \"$(" + bin + " init zsh)\"\n" +
 			"[[ -f $ZDOTDIR/.zshrc.extra ]] && source $ZDOTDIR/.zshrc.extra\n"
 		if err := os.WriteFile(filepath.Join(home, ".zshrc"), []byte(zshrc), 0o644); err != nil {
@@ -171,6 +176,7 @@ func startInDirShell(t *testing.T, home, workDir, shellName string, extraEnv ...
 		"IRIS_ACTIVE_SHELL=" + shellName,
 		"PATH=" + binDir + ":" + os.Getenv("PATH"),
 		"TERM=xterm-256color",
+		"skip_global_compinit=1",
 	}
 	env = append(env, extraEnv...)
 
