@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"testing"
 	"time"
 
@@ -40,7 +40,7 @@ func TestCandidate_ExactCwdBeatsFarCwd(t *testing.T) {
 	}
 
 	// high count in cwdB
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		_, err := store.db.ExecContext(ctx, `
 INSERT INTO history_entries (cmd, cwd, project_id, count, last_used)
 VALUES ('git fetch', ?, ?, 1, CURRENT_TIMESTAMP)
@@ -166,13 +166,13 @@ func TestCandidate_MergeCountAndGlobalScopes(t *testing.T) {
 	_ = os.MkdirAll(filepath.Join(otherRepo, ".git"), 0755)
 
 	// child count 5
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		_ = store.Record(ctx, "make build", backend, 0)
 	}
 	// cwd count 1
 	_ = store.Record(ctx, "make build", repoRoot, 0)
 	// other repo count 10
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		_ = store.Record(ctx, "make build", otherRepo, 0)
 	}
 
@@ -288,7 +288,7 @@ func TestCandidate_SequenceCandidates(t *testing.T) {
 
 	_ = store.RecordSequence(ctx, "git add .", "git commit -m \"local\"", cwdA, 0)
 
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		_, err := store.db.ExecContext(ctx, `
 INSERT INTO command_sequences (prev_cmd, next_cmd, cwd, project_id, count, last_used)
 VALUES ('git add .', 'git push origin main', ?, ?, 1, CURRENT_TIMESTAMP)
@@ -412,7 +412,7 @@ VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`)
 	}
 	defer func() { _ = stmt.Close() }()
 
-	for i := 0; i < 100000; i++ {
+	for i := range 100000 {
 		tool := tools[i%len(tools)]
 		cmd := fmt.Sprintf("%s action_%06d arg", tool, i)
 		cwd := fmt.Sprintf("/home/user/project_%d/sub", i%50)
@@ -430,7 +430,7 @@ VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`)
 	}
 	defer func() { _ = seqStmt.Close() }()
 
-	for i := 0; i < 20000; i++ {
+	for i := range 20000 {
 		tool := tools[i%len(tools)]
 		prev := fmt.Sprintf("%s prev_%03d", tool, i%100)
 		next := fmt.Sprintf("%s next_%06d", tool, i)
@@ -452,29 +452,25 @@ VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`)
 	shortPrefixes := []string{"g", "n", "git", "npm"}
 	iterations := len(shortPrefixes) * 25
 	latencies := make([]time.Duration, iterations)
-	for i := 0; i < iterations; i++ {
+	for i := range iterations {
 		prefix := shortPrefixes[i%len(shortPrefixes)]
 		start := time.Now()
 		_ = store.QueryHistoryCandidates(ctx, prefix, "/home/user/project_1/sub", "/home/user/project_1")
 		latencies[i] = time.Since(start)
 	}
 
-	sort.Slice(latencies, func(i, j int) bool {
-		return latencies[i] < latencies[j]
-	})
+	slices.Sort(latencies)
 	p95 := latencies[int(float64(iterations)*0.95)]
 	t.Logf("100k rows short prefix ('g','n','git','npm') QueryHistoryCandidates p95: %v (p50: %v)", p95, latencies[iterations/2])
 
 	// test empty prefix for sequences
 	seqLatencies := make([]time.Duration, 50)
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		start := time.Now()
 		_ = store.QuerySequenceCandidates(ctx, "git prev_000", "", "/home/user/project_1/sub", "/home/user/project_1")
 		seqLatencies[i] = time.Since(start)
 	}
-	sort.Slice(seqLatencies, func(i, j int) bool {
-		return seqLatencies[i] < seqLatencies[j]
-	})
+	slices.Sort(seqLatencies)
 	p95Seq := seqLatencies[int(float64(len(seqLatencies))*0.95)]
 	t.Logf("empty prefix QuerySequenceCandidates p95 latency: %v (p50: %v)", p95Seq, seqLatencies[25])
 }

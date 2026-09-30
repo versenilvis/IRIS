@@ -1,6 +1,9 @@
 package integration
 
 import (
+	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -48,5 +51,47 @@ func TestRecordSessionCommand_MergeAndDeduplicate(t *testing.T) {
 	}
 	if results[2].Cmd != "git status" {
 		t.Errorf("expected results[2] to be 'git status', got %q", results[2].Cmd)
+	}
+}
+
+func TestSearchHistory_Prefix(t *testing.T) {
+	histFile := filepath.Join(t.TempDir(), "history")
+	_ = os.WriteFile(histFile, []byte(""), 0600)
+	t.Setenv("HISTFILE", histFile)
+
+	sessionHistoryMu.Lock()
+	origSessionHistory := sessionHistory
+	sessionHistory = nil
+	sessionHistoryMu.Unlock()
+
+	mu.Lock()
+	origHistoryCache := historyCache
+	historyCache = nil
+	mu.Unlock()
+
+	t.Cleanup(func() {
+		sessionHistoryMu.Lock()
+		sessionHistory = origSessionHistory
+		sessionHistoryMu.Unlock()
+
+		mu.Lock()
+		historyCache = origHistoryCache
+		mu.Unlock()
+	})
+
+	RecordSessionCommand("npx tailwindcss -i input.css")
+	for i := range 250 {
+		RecordSessionCommand(fmt.Sprintf("git commit -m 'change %d'", i))
+	}
+
+	resN, err := SearchHistory("n", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(resN) == 0 {
+		t.Fatal("expected results, got 0")
+	}
+	if resN[0].Cmd != "npx tailwindcss -i input.css" {
+		t.Fatalf("expected prefix match 'npx tailwindcss -i input.css' at index 0, got %q", resN[0].Cmd)
 	}
 }

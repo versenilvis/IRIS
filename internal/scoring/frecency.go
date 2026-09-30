@@ -217,11 +217,9 @@ DELETE FROM command_sequences WHERE count <= 0;
 		}
 	}
 
-	f.bgWg.Add(1)
-	go func() {
-		defer f.bgWg.Done()
+	f.bgWg.Go(func() {
 		f.backfillProjectIDs()
-	}()
+	})
 	return nil
 }
 
@@ -235,7 +233,7 @@ func (f *FrecencyStore) addColumnIfNotExists(ctx context.Context, table, column,
 		var cid int
 		var name, ctype string
 		var notnull, pk int
-		var dfltValue interface{}
+		var dfltValue any
 		if scanErr := rows.Scan(&cid, &name, &ctype, &notnull, &dfltValue, &pk); scanErr == nil {
 			if strings.EqualFold(name, column) {
 				return false, nil
@@ -662,7 +660,7 @@ func (f *FrecencyStore) QueryHistoryCandidates(ctx context.Context, prefix, cwd,
 	upper := prefixUpperBound(prefix)
 
 	var localSQL string
-	var localArgs []interface{}
+	var localArgs []any
 	if pid != "" {
 		if upper != "" {
 			localSQL = `
@@ -675,7 +673,7 @@ FROM history_entries
 WHERE count > 0 AND project_id = ? AND cmd >= ? AND cmd < ? AND instr(cmd, ?) = 1 AND cmd != ?
 ORDER BY count DESC LIMIT ?
 `
-			localArgs = []interface{}{cwd, prefix, upper, prefix, prefix, pid, prefix, upper, prefix, prefix, LocalLimit}
+			localArgs = []any{cwd, prefix, upper, prefix, prefix, pid, prefix, upper, prefix, prefix, LocalLimit}
 		} else {
 			localSQL = `
 SELECT cmd, cwd, COALESCE(project_id,''), count, last_used
@@ -687,7 +685,7 @@ FROM history_entries
 WHERE count > 0 AND project_id = ? AND instr(cmd, ?) = 1 AND cmd != ?
 ORDER BY count DESC LIMIT ?
 `
-			localArgs = []interface{}{cwd, prefix, prefix, pid, prefix, prefix, LocalLimit}
+			localArgs = []any{cwd, prefix, prefix, pid, prefix, prefix, LocalLimit}
 		}
 	} else {
 		if upper != "" {
@@ -697,7 +695,7 @@ FROM history_entries
 WHERE count > 0 AND cwd = ? AND cmd >= ? AND cmd < ? AND instr(cmd, ?) = 1 AND cmd != ?
 ORDER BY count DESC LIMIT ?
 `
-			localArgs = []interface{}{cwd, prefix, upper, prefix, prefix, LocalLimit}
+			localArgs = []any{cwd, prefix, upper, prefix, prefix, LocalLimit}
 		} else {
 			localSQL = `
 SELECT cmd, cwd, COALESCE(project_id,''), count, last_used
@@ -705,12 +703,12 @@ FROM history_entries
 WHERE count > 0 AND cwd = ? AND instr(cmd, ?) = 1 AND cmd != ?
 ORDER BY count DESC LIMIT ?
 `
-			localArgs = []interface{}{cwd, prefix, prefix, LocalLimit}
+			localArgs = []any{cwd, prefix, prefix, LocalLimit}
 		}
 	}
 
 	var globalSQL string
-	var globalArgs []interface{}
+	var globalArgs []any
 	if upper != "" {
 		globalSQL = `
 SELECT cmd, SUM(count), MAX(last_used)
@@ -718,7 +716,7 @@ FROM history_entries
 WHERE count > 0 AND cmd >= ? AND cmd < ? AND instr(cmd, ?) = 1 AND cmd != ?
 GROUP BY cmd ORDER BY SUM(count) DESC LIMIT ?
 `
-		globalArgs = []interface{}{prefix, upper, prefix, prefix, GlobalLimit}
+		globalArgs = []any{prefix, upper, prefix, prefix, GlobalLimit}
 	} else {
 		globalSQL = `
 SELECT cmd, SUM(count), MAX(last_used)
@@ -726,7 +724,7 @@ FROM history_entries
 WHERE count > 0 AND instr(cmd, ?) = 1 AND cmd != ?
 GROUP BY cmd ORDER BY SUM(count) DESC LIMIT ?
 `
-		globalArgs = []interface{}{prefix, prefix, GlobalLimit}
+		globalArgs = []any{prefix, prefix, GlobalLimit}
 	}
 
 	func() {
@@ -795,9 +793,9 @@ func (f *FrecencyStore) QuerySequenceCandidates(ctx context.Context, prevCmd, pr
 	var global []globalRow
 
 	var localSQL string
-	var localArgs []interface{}
+	var localArgs []any
 	var globalSQL string
-	var globalArgs []interface{}
+	var globalArgs []any
 
 	if prefix == "" {
 		if pid != "" {
@@ -811,7 +809,7 @@ FROM command_sequences
 WHERE count > 0 AND prev_cmd = ? AND project_id = ?
 ORDER BY count DESC LIMIT ?
 `
-			localArgs = []interface{}{prevCmd, cwd, prevCmd, pid, LocalLimit}
+			localArgs = []any{prevCmd, cwd, prevCmd, pid, LocalLimit}
 		} else {
 			localSQL = `
 SELECT next_cmd, cwd, COALESCE(project_id,''), count, last_used
@@ -819,7 +817,7 @@ FROM command_sequences
 WHERE count > 0 AND prev_cmd = ? AND cwd = ?
 ORDER BY count DESC LIMIT ?
 `
-			localArgs = []interface{}{prevCmd, cwd, LocalLimit}
+			localArgs = []any{prevCmd, cwd, LocalLimit}
 		}
 
 		globalSQL = `
@@ -828,7 +826,7 @@ FROM command_sequences
 WHERE count > 0 AND prev_cmd = ?
 GROUP BY next_cmd ORDER BY SUM(count) DESC LIMIT ?
 `
-		globalArgs = []interface{}{prevCmd, GlobalLimit}
+		globalArgs = []any{prevCmd, GlobalLimit}
 	} else {
 		if pid != "" {
 			localSQL = `
@@ -841,7 +839,7 @@ FROM command_sequences
 WHERE count > 0 AND prev_cmd = ? AND project_id = ? AND instr(next_cmd, ?) = 1 AND next_cmd != ?
 ORDER BY count DESC LIMIT ?
 `
-			localArgs = []interface{}{prevCmd, cwd, prefix, prefix, prevCmd, pid, prefix, prefix, LocalLimit}
+			localArgs = []any{prevCmd, cwd, prefix, prefix, prevCmd, pid, prefix, prefix, LocalLimit}
 		} else {
 			localSQL = `
 SELECT next_cmd, cwd, COALESCE(project_id,''), count, last_used
@@ -849,7 +847,7 @@ FROM command_sequences
 WHERE count > 0 AND prev_cmd = ? AND cwd = ? AND instr(next_cmd, ?) = 1 AND next_cmd != ?
 ORDER BY count DESC LIMIT ?
 `
-			localArgs = []interface{}{prevCmd, cwd, prefix, prefix, LocalLimit}
+			localArgs = []any{prevCmd, cwd, prefix, prefix, LocalLimit}
 		}
 
 		globalSQL = `
@@ -858,7 +856,7 @@ FROM command_sequences
 WHERE count > 0 AND prev_cmd = ? AND instr(next_cmd, ?) = 1 AND next_cmd != ?
 GROUP BY next_cmd ORDER BY SUM(count) DESC LIMIT ?
 `
-		globalArgs = []interface{}{prevCmd, prefix, prefix, GlobalLimit}
+		globalArgs = []any{prevCmd, prefix, prefix, GlobalLimit}
 	}
 
 	func() {
@@ -1352,7 +1350,7 @@ func GetFrecencyStore() (*FrecencyStore, error) {
 func CloseGlobalFrecencyStore() {
 	globalFrecencyMu.Lock()
 	defer globalFrecencyMu.Unlock()
-	
+
 	if globalFrecencyStore != nil {
 		_ = globalFrecencyStore.Close()
 		globalFrecencyStore = nil

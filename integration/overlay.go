@@ -234,6 +234,31 @@ func (o *Overlay) GetPrediction() string {
 	return o.PredictedCmd
 }
 
+func (o *Overlay) GetGhostTarget(buffer string) string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+
+	if config.Get().Core.Prediction && o.PredictedCmd != "" {
+		trimmedBuf := strings.TrimSpace(buffer)
+		if buffer == "" || (trimmedBuf != "" && strings.HasPrefix(strings.ToLower(o.PredictedCmd), strings.ToLower(trimmedBuf))) {
+			return o.PredictedCmd
+		}
+	}
+
+	if o.Visible && len(o.Items) > 0 && buffer != "" {
+		topCmd := o.Items[0].Cmd
+		if o.Cursor >= 0 && o.Cursor < len(o.Items) {
+			topCmd = o.Items[o.Cursor].Cmd
+		}
+		if strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(buffer)) {
+			return topCmd
+		}
+	}
+
+	return ""
+}
+
+
 // SetSelection updates the highlighted entry without claiming the shell has
 // redrawn its line yet.
 func (o *Overlay) SetSelection(q string) {

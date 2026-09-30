@@ -1367,32 +1367,50 @@ func runWrapper() {
 								renderer()
 							}
 						})
-					} else if config.Get().Core.Prediction {
-						predCmd := overlay.GetPrediction()
+					} else {
 						bufferMu.Lock()
 						atEnd := (cursorOffset == 0)
-						trimmedBuf := strings.TrimSpace(naiveBuffer)
-						isRelatedPred := atEnd && (naiveBuffer == "" || (trimmedBuf != "" && strings.HasPrefix(strings.ToLower(predCmd), strings.ToLower(trimmedBuf))))
+						buf := naiveBuffer
 						bufferMu.Unlock()
 
-						if predCmd != "" && isRelatedPred && predCmd != naiveBuffer {
+						targetCmd := ""
+						if atEnd {
+							targetCmd = overlay.GetGhostTarget(buf)
+						}
+
+						if targetCmd != "" && targetCmd != buf {
 							intercepted = true
+							activeModeMu.RLock()
+							currentMode := activeMode
+							activeModeMu.RUnlock()
+							if currentMode == "spec" && overlay.IsVisible() {
+								s := strings.TrimSpace(targetCmd)
+								if strings.HasSuffix(s, "/") || strings.HasSuffix(s, "\\") {
+									targetCmd = s
+								} else {
+									targetCmd = s + " "
+								}
+							}
+
 							writeStdout([]byte(overlay.HideGhostTextSync()))
 							bufferMu.Lock()
-							naiveBuffer = predCmd
-							replace := shell.ReplaceLine([]byte(predCmd), cursorOffset)
+							naiveBuffer = targetCmd
+							replace := shell.ReplaceLine([]byte(targetCmd), cursorOffset)
 							cursorOffset = 0
 							bufferMu.Unlock()
 							userNavigated.Store(false)
 							_, _ = ptmx.Write(replace)
-							drawAfterEcho(echoMarker(predCmd), func() {
+							drawAfterEcho(echoMarker(targetCmd), func() {
 								if renderer, ok := renderOverlayFn.Load().(func()); ok {
 									renderer()
 								}
 							})
 						}
 					}
-					// always consume the full binding atomically, even when the overlay is hidden
+					if !intercepted {
+						rawSeq := append([]byte(nil), inputSlice[i:i+consumed]...)
+						_, _ = ptmx.Write(rawSeq)
+					}
 					i += consumed - 1
 					continue
 				}
@@ -1591,7 +1609,7 @@ func runWrapper() {
 							i += navConsumed - 1
 							intercepted = true
 							bufferMu.Lock()
-							isEmptyQuery := naiveBuffer == "" && (!overlay.IsVisible() || overlay.GetTypedQuery() == "") && overlay.GetPrediction() == ""
+							isEmptyQuery := naiveBuffer == "" && (!overlay.IsVisible() || overlay.GetTypedQuery() == "") && overlay.GetGhostTarget("") == ""
 							bufferMu.Unlock()
 							if isEmptyQuery {
 								_, _ = ptmx.Write(rawSeq)
@@ -1600,24 +1618,24 @@ func runWrapper() {
 
 							bufferMu.Lock()
 							atEnd := (cursorOffset == 0)
-							predCmd := ""
-							if !disableGhostText.Load() && config.Get().Core.Prediction && atEnd {
-								predCmd = overlay.GetPrediction()
-							}
+							buf := naiveBuffer
 							bufferMu.Unlock()
 
-							trimmedBuf := strings.TrimSpace(naiveBuffer)
-							isRelatedPred := naiveBuffer == "" || (trimmedBuf != "" && strings.HasPrefix(strings.ToLower(predCmd), strings.ToLower(trimmedBuf)))
-							if predCmd != "" && isRelatedPred && predCmd != naiveBuffer {
+							targetCmd := ""
+							if !disableGhostText.Load() && atEnd {
+								targetCmd = overlay.GetGhostTarget(buf)
+							}
+
+							if targetCmd != "" && targetCmd != buf {
 								writeStdout([]byte(overlay.HideGhostTextSync()))
 								bufferMu.Lock()
-								naiveBuffer = predCmd
-								replace := shell.ReplaceLine([]byte(predCmd), cursorOffset)
+								naiveBuffer = targetCmd
+								replace := shell.ReplaceLine([]byte(targetCmd), cursorOffset)
 								cursorOffset = 0
 								bufferMu.Unlock()
 								userNavigated.Store(false)
 								_, _ = ptmx.Write(replace)
-								drawAfterEcho(echoMarker(predCmd), func() {
+								drawAfterEcho(echoMarker(targetCmd), func() {
 									if renderer, ok := renderOverlayFn.Load().(func()); ok {
 										renderer()
 									}

@@ -80,7 +80,7 @@ func TestLongCommandRendersIntact(t *testing.T) {
 func assertCommandIntact(t *testing.T, term *tuitest.Terminal, stage string) {
 	t.Helper()
 	var typed strings.Builder
-	for _, line := range strings.Split(term.Snapshot(), "\n") {
+	for line := range strings.SplitSeq(term.Snapshot(), "\n") {
 		if strings.ContainsAny(line, "╭╮╰╯│") {
 			break
 		}
