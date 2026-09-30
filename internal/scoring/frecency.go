@@ -262,6 +262,35 @@ func (f *FrecencyStore) addColumnIfNotExists(ctx context.Context, table, column,
 	return true, nil
 }
 
+func (f *FrecencyStore) backfillTable(ctx context.Context, table string) {
+	rows, err := f.db.QueryContext(ctx, "SELECT DISTINCT cwd FROM "+table+" WHERE project_id IS NULL")
+	if err != nil {
+		return
+	}
+	defer func() { _ = rows.Close() }()
+
+	var cwds []string
+	for rows.Next() {
+		var d string
+		if errScan := rows.Scan(&d); errScan == nil && d != "" {
+			cwds = append(cwds, d)
+		}
+	}
+	if rows.Err() != nil {
+		return
+	}
+	for _, d := range cwds {
+		norm := workspace.Normalize(d)
+		pid := ""
+		if _, statErr := os.Stat(norm); statErr == nil {
+			pid = workspace.ProjectID(workspace.DetectRoot(norm))
+		}
+		f.mu.Lock()
+		_, _ = f.db.ExecContext(ctx, "UPDATE "+table+" SET project_id = ? WHERE cwd = ? AND project_id IS NULL", pid, d)
+		f.mu.Unlock()
+	}
+}
+
 func (f *FrecencyStore) backfillProjectIDs() {
 	if f == nil || f.db == nil {
 		return
@@ -269,53 +298,8 @@ func (f *FrecencyStore) backfillProjectIDs() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	rows, err := f.db.QueryContext(ctx, "SELECT DISTINCT cwd FROM history_entries WHERE project_id IS NULL")
-	if err == nil {
-		defer func() { _ = rows.Close() }()
-		var cwds []string
-		for rows.Next() {
-			var d string
-			if errScan := rows.Scan(&d); errScan == nil && d != "" {
-				cwds = append(cwds, d)
-			}
-		}
-		if rowsErr := rows.Err(); rowsErr == nil {
-			for _, d := range cwds {
-				norm := workspace.Normalize(d)
-				pid := ""
-				if _, statErr := os.Stat(norm); statErr == nil {
-					pid = workspace.ProjectID(workspace.DetectRoot(norm))
-				}
-				f.mu.Lock()
-				_, _ = f.db.ExecContext(ctx, "UPDATE history_entries SET project_id = ? WHERE cwd = ? AND project_id IS NULL", pid, d)
-				f.mu.Unlock()
-			}
-		}
-	}
-
-	seqRows, seqErr := f.db.QueryContext(ctx, "SELECT DISTINCT cwd FROM command_sequences WHERE project_id IS NULL")
-	if seqErr == nil {
-		defer func() { _ = seqRows.Close() }()
-		var cwds []string
-		for seqRows.Next() {
-			var d string
-			if errScan := seqRows.Scan(&d); errScan == nil && d != "" {
-				cwds = append(cwds, d)
-			}
-		}
-		if seqRowsErr := seqRows.Err(); seqRowsErr == nil {
-			for _, d := range cwds {
-				norm := workspace.Normalize(d)
-				pid := ""
-				if _, statErr := os.Stat(norm); statErr == nil {
-					pid = workspace.ProjectID(workspace.DetectRoot(norm))
-				}
-				f.mu.Lock()
-				_, _ = f.db.ExecContext(ctx, "UPDATE command_sequences SET project_id = ? WHERE cwd = ? AND project_id IS NULL", pid, d)
-				f.mu.Unlock()
-			}
-		}
-	}
+	f.backfillTable(ctx, "history_entries")
+	f.backfillTable(ctx, "command_sequences")
 }
 
 func (f *FrecencyStore) Record(ctx context.Context, cmd, cwd string, exitCode int) error {
@@ -669,73 +653,33 @@ func (f *FrecencyStore) QueryHistoryCandidates(ctx context.Context, prefix, cwd,
 
 	upper := prefixUpperBound(prefix)
 
+	var matchClause string
+	var matchArgs []any
+	if upper != "" {
+		matchClause = " AND cmd >= ? AND cmd < ? AND instr(cmd, ?) = 1 AND cmd != ?"
+		matchArgs = []any{prefix, upper, prefix, prefix}
+	} else {
+		matchClause = " AND instr(cmd, ?) = 1 AND cmd != ?"
+		matchArgs = []any{prefix, prefix}
+	}
+
+	baseLocal := "SELECT cmd, cwd, COALESCE(project_id,''), count, last_used FROM history_entries WHERE count > 0"
 	var localSQL string
 	var localArgs []any
 	if pid != "" {
-		if upper != "" {
-			localSQL = `
-SELECT cmd, cwd, COALESCE(project_id,''), count, last_used
-FROM history_entries
-WHERE count > 0 AND cwd = ? AND cmd >= ? AND cmd < ? AND instr(cmd, ?) = 1 AND cmd != ?
-UNION
-SELECT cmd, cwd, COALESCE(project_id,''), count, last_used
-FROM history_entries
-WHERE count > 0 AND project_id = ? AND cmd >= ? AND cmd < ? AND instr(cmd, ?) = 1 AND cmd != ?
-ORDER BY count DESC LIMIT ?
-`
-			localArgs = []any{cwd, prefix, upper, prefix, prefix, pid, prefix, upper, prefix, prefix, LocalLimit}
-		} else {
-			localSQL = `
-SELECT cmd, cwd, COALESCE(project_id,''), count, last_used
-FROM history_entries
-WHERE count > 0 AND cwd = ? AND instr(cmd, ?) = 1 AND cmd != ?
-UNION
-SELECT cmd, cwd, COALESCE(project_id,''), count, last_used
-FROM history_entries
-WHERE count > 0 AND project_id = ? AND instr(cmd, ?) = 1 AND cmd != ?
-ORDER BY count DESC LIMIT ?
-`
-			localArgs = []any{cwd, prefix, prefix, pid, prefix, prefix, LocalLimit}
-		}
+		localSQL = baseLocal + " AND cwd = ?" + matchClause + "\nUNION\n" + baseLocal + " AND project_id = ?" + matchClause + "\nORDER BY count DESC LIMIT ?"
+		localArgs = append([]any{cwd}, matchArgs...)
+		localArgs = append(localArgs, pid)
+		localArgs = append(localArgs, matchArgs...)
+		localArgs = append(localArgs, LocalLimit)
 	} else {
-		if upper != "" {
-			localSQL = `
-SELECT cmd, cwd, COALESCE(project_id,''), count, last_used
-FROM history_entries
-WHERE count > 0 AND cwd = ? AND cmd >= ? AND cmd < ? AND instr(cmd, ?) = 1 AND cmd != ?
-ORDER BY count DESC LIMIT ?
-`
-			localArgs = []any{cwd, prefix, upper, prefix, prefix, LocalLimit}
-		} else {
-			localSQL = `
-SELECT cmd, cwd, COALESCE(project_id,''), count, last_used
-FROM history_entries
-WHERE count > 0 AND cwd = ? AND instr(cmd, ?) = 1 AND cmd != ?
-ORDER BY count DESC LIMIT ?
-`
-			localArgs = []any{cwd, prefix, prefix, LocalLimit}
-		}
+		localSQL = baseLocal + " AND cwd = ?" + matchClause + "\nORDER BY count DESC LIMIT ?"
+		localArgs = append([]any{cwd}, matchArgs...)
+		localArgs = append(localArgs, LocalLimit)
 	}
 
-	var globalSQL string
-	var globalArgs []any
-	if upper != "" {
-		globalSQL = `
-SELECT cmd, SUM(count), MAX(last_used)
-FROM history_entries
-WHERE count > 0 AND cmd >= ? AND cmd < ? AND instr(cmd, ?) = 1 AND cmd != ?
-GROUP BY cmd ORDER BY SUM(count) DESC LIMIT ?
-`
-		globalArgs = []any{prefix, upper, prefix, prefix, GlobalLimit}
-	} else {
-		globalSQL = `
-SELECT cmd, SUM(count), MAX(last_used)
-FROM history_entries
-WHERE count > 0 AND instr(cmd, ?) = 1 AND cmd != ?
-GROUP BY cmd ORDER BY SUM(count) DESC LIMIT ?
-`
-		globalArgs = []any{prefix, prefix, GlobalLimit}
-	}
+	globalSQL := "SELECT cmd, SUM(count), MAX(last_used) FROM history_entries WHERE count > 0" + matchClause + "\nGROUP BY cmd ORDER BY SUM(count) DESC LIMIT ?"
+	globalArgs := append(append([]any(nil), matchArgs...), GlobalLimit)
 
 	func() {
 		f.mu.Lock()
@@ -802,72 +746,31 @@ func (f *FrecencyStore) QuerySequenceCandidates(ctx context.Context, prevCmd, pr
 	var local []localRow
 	var global []globalRow
 
+	var filterClause string
+	var filterArgs []any
+	if prefix != "" {
+		filterClause = " AND instr(next_cmd, ?) = 1 AND next_cmd != ?"
+		filterArgs = []any{prefix, prefix}
+	}
+
+	baseSeq := "SELECT next_cmd, cwd, COALESCE(project_id,''), count, last_used FROM command_sequences WHERE count > 0 AND prev_cmd = ?"
 	var localSQL string
 	var localArgs []any
-	var globalSQL string
-	var globalArgs []any
-
-	if prefix == "" {
-		if pid != "" {
-			localSQL = `
-SELECT next_cmd, cwd, COALESCE(project_id,''), count, last_used
-FROM command_sequences
-WHERE count > 0 AND prev_cmd = ? AND cwd = ?
-UNION
-SELECT next_cmd, cwd, COALESCE(project_id,''), count, last_used
-FROM command_sequences
-WHERE count > 0 AND prev_cmd = ? AND project_id = ?
-ORDER BY count DESC LIMIT ?
-`
-			localArgs = []any{prevCmd, cwd, prevCmd, pid, LocalLimit}
-		} else {
-			localSQL = `
-SELECT next_cmd, cwd, COALESCE(project_id,''), count, last_used
-FROM command_sequences
-WHERE count > 0 AND prev_cmd = ? AND cwd = ?
-ORDER BY count DESC LIMIT ?
-`
-			localArgs = []any{prevCmd, cwd, LocalLimit}
-		}
-
-		globalSQL = `
-SELECT next_cmd, SUM(count), MAX(last_used)
-FROM command_sequences
-WHERE count > 0 AND prev_cmd = ?
-GROUP BY next_cmd ORDER BY SUM(count) DESC LIMIT ?
-`
-		globalArgs = []any{prevCmd, GlobalLimit}
+	if pid != "" {
+		localSQL = baseSeq + " AND cwd = ?" + filterClause + "\nUNION\n" + baseSeq + " AND project_id = ?" + filterClause + "\nORDER BY count DESC LIMIT ?"
+		localArgs = append([]any{prevCmd, cwd}, filterArgs...)
+		localArgs = append(localArgs, prevCmd, pid)
+		localArgs = append(localArgs, filterArgs...)
+		localArgs = append(localArgs, LocalLimit)
 	} else {
-		if pid != "" {
-			localSQL = `
-SELECT next_cmd, cwd, COALESCE(project_id,''), count, last_used
-FROM command_sequences
-WHERE count > 0 AND prev_cmd = ? AND cwd = ? AND instr(next_cmd, ?) = 1 AND next_cmd != ?
-UNION
-SELECT next_cmd, cwd, COALESCE(project_id,''), count, last_used
-FROM command_sequences
-WHERE count > 0 AND prev_cmd = ? AND project_id = ? AND instr(next_cmd, ?) = 1 AND next_cmd != ?
-ORDER BY count DESC LIMIT ?
-`
-			localArgs = []any{prevCmd, cwd, prefix, prefix, prevCmd, pid, prefix, prefix, LocalLimit}
-		} else {
-			localSQL = `
-SELECT next_cmd, cwd, COALESCE(project_id,''), count, last_used
-FROM command_sequences
-WHERE count > 0 AND prev_cmd = ? AND cwd = ? AND instr(next_cmd, ?) = 1 AND next_cmd != ?
-ORDER BY count DESC LIMIT ?
-`
-			localArgs = []any{prevCmd, cwd, prefix, prefix, LocalLimit}
-		}
-
-		globalSQL = `
-SELECT next_cmd, SUM(count), MAX(last_used)
-FROM command_sequences
-WHERE count > 0 AND prev_cmd = ? AND instr(next_cmd, ?) = 1 AND next_cmd != ?
-GROUP BY next_cmd ORDER BY SUM(count) DESC LIMIT ?
-`
-		globalArgs = []any{prevCmd, prefix, prefix, GlobalLimit}
+		localSQL = baseSeq + " AND cwd = ?" + filterClause + "\nORDER BY count DESC LIMIT ?"
+		localArgs = append([]any{prevCmd, cwd}, filterArgs...)
+		localArgs = append(localArgs, LocalLimit)
 	}
+
+	globalSQL := "SELECT next_cmd, SUM(count), MAX(last_used) FROM command_sequences WHERE count > 0 AND prev_cmd = ?" + filterClause + "\nGROUP BY next_cmd ORDER BY SUM(count) DESC LIMIT ?"
+	globalArgs := append([]any{prevCmd}, filterArgs...)
+	globalArgs = append(globalArgs, GlobalLimit)
 
 	func() {
 		f.mu.Lock()
@@ -921,14 +824,6 @@ GROUP BY next_cmd ORDER BY SUM(count) DESC LIMIT ?
 	}()
 
 	return rank(local, global, cwd, pid)
-}
-
-func (f *FrecencyStore) QueryTopHistoryByPrefix(ctx context.Context, prefix, cwd string) string {
-	candidates := f.QueryHistoryCandidates(ctx, prefix, cwd, "")
-	if len(candidates) > 0 {
-		return candidates[0].Cmd
-	}
-	return ""
 }
 
 func (f *FrecencyStore) ScopeCount(ctx context.Context, cmd string) int {
