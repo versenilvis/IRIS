@@ -282,12 +282,9 @@ func splitIntoSegments(cmd string, d Dialect) ([]rawSegment, bool) {
 		// whitespace
 		if unicode.IsSpace(rune(b)) {
 			tokenStr := currentToken.String()
-			// fish words 'and' / 'or' as separators or leading connectors
-			if d == Fish && (tokenStr == "and" || tokenStr == "or") {
+			// fish words 'and' / 'or' as connectors only at command position
+			if d == Fish && len(currentTokens) == 0 && (tokenStr == "and" || tokenStr == "or") {
 				currentToken.Reset()
-				if len(currentTokens) > 0 {
-					flushSegment()
-				}
 				i++
 				continue
 			}
@@ -308,7 +305,7 @@ func splitIntoSegments(cmd string, d Dialect) ([]rawSegment, bool) {
 	}
 
 	// trailing fish 'and'/'or' check
-	if d == Fish {
+	if d == Fish && len(currentTokens) == 0 {
 		tokenStr := currentToken.String()
 		if tokenStr == "and" || tokenStr == "or" {
 			currentToken.Reset()

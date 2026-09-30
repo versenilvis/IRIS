@@ -43,13 +43,27 @@ func TestParse_SingleQuoteBackslash(t *testing.T) {
 }
 
 func TestParse_FishAndOr(t *testing.T) {
-	cmd := "git add . and git commit -m test or echo failed"
+	cmd := "git add .; and git commit -m test; or echo failed"
 	parsed := Parse(cmd, Fish)
 	if len(parsed.Segments) != 3 {
 		t.Fatalf("fish expected 3 segments, got %d", len(parsed.Segments))
 	}
 	if parsed.Segments[0].Tokens[0] != "git" || parsed.Segments[1].Tokens[0] != "git" || parsed.Segments[2].Tokens[0] != "echo" {
 		t.Fatalf("unexpected segments: %v", parsed.Segments)
+	}
+
+	// in fish, 'and' and 'or' are preserved as ordinary arguments when not at command position
+	fArgParsed := Parse("echo a and b or c", Fish)
+	if len(fArgParsed.Segments) != 1 || len(fArgParsed.Segments[0].Tokens) != 6 {
+		t.Fatalf("fish expected 1 segment with 6 tokens, got %v", fArgParsed.Segments)
+	}
+	if fArgParsed.Segments[0].Tokens[2] != "and" || fArgParsed.Segments[0].Tokens[4] != "or" {
+		t.Fatalf("fish expected 'and' and 'or' preserved as arguments, got %v", fArgParsed.Segments[0].Tokens)
+	}
+
+	fTrailing := Parse("echo a and", Fish)
+	if len(fTrailing.Segments) != 1 || len(fTrailing.Segments[0].Tokens) != 3 || fTrailing.Segments[0].Tokens[2] != "and" {
+		t.Fatalf("fish expected trailing 'and' preserved as argument, got %v", fTrailing.Segments)
 	}
 
 	// in posix, 'and' and 'or' are normal arguments
