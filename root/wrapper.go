@@ -1318,10 +1318,7 @@ func runWrapper() {
 
 				if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.SelectSuggestion); matched && config.Get().Keybindings.SelectSuggestion != "" {
 					var selected string
-					// only treat the highlighted item as a selection when the user
-					// explicitly navigated the menu -- otherwise the first item is
-					// just an auto-highlight, not an intent to select it
-					if overlay.IsVisible() && userNavigated.Load() {
+					if overlay.IsVisible() {
 						selected = overlay.GetCurrentCmd()
 					}
 					if selected != "" {
@@ -1367,40 +1364,26 @@ func runWrapper() {
 								renderer()
 							}
 						})
-					} else {
+					} else if config.Get().Core.Prediction {
+						// only prediction and no menu selection: tab accepts prediction
+						predCmd := overlay.GetPrediction()
 						bufferMu.Lock()
 						atEnd := (cursorOffset == 0)
-						buf := naiveBuffer
+						trimmedBuf := strings.TrimSpace(naiveBuffer)
+						isRelatedPred := atEnd && (naiveBuffer == "" || (trimmedBuf != "" && strings.HasPrefix(strings.ToLower(predCmd), strings.ToLower(trimmedBuf))))
 						bufferMu.Unlock()
 
-						targetCmd := ""
-						if atEnd {
-							targetCmd = overlay.GetGhostTarget(buf)
-						}
-
-						if targetCmd != "" && targetCmd != buf {
+						if predCmd != "" && isRelatedPred && predCmd != naiveBuffer {
 							intercepted = true
-							activeModeMu.RLock()
-							currentMode := activeMode
-							activeModeMu.RUnlock()
-							if currentMode == "spec" && overlay.IsVisible() {
-								s := strings.TrimSpace(targetCmd)
-								if strings.HasSuffix(s, "/") || strings.HasSuffix(s, "\\") {
-									targetCmd = s
-								} else {
-									targetCmd = s + " "
-								}
-							}
-
 							writeStdout([]byte(overlay.HideGhostTextSync()))
 							bufferMu.Lock()
-							naiveBuffer = targetCmd
-							replace := shell.ReplaceLine([]byte(targetCmd), cursorOffset)
+							naiveBuffer = predCmd
+							replace := shell.ReplaceLine([]byte(predCmd), cursorOffset)
 							cursorOffset = 0
 							bufferMu.Unlock()
 							userNavigated.Store(false)
 							_, _ = ptmx.Write(replace)
-							drawAfterEcho(echoMarker(targetCmd), func() {
+							drawAfterEcho(echoMarker(predCmd), func() {
 								if renderer, ok := renderOverlayFn.Load().(func()); ok {
 									renderer()
 								}
@@ -1609,7 +1592,7 @@ func runWrapper() {
 							i += navConsumed - 1
 							intercepted = true
 							bufferMu.Lock()
-							isEmptyQuery := naiveBuffer == "" && (!overlay.IsVisible() || overlay.GetTypedQuery() == "") && overlay.GetGhostTarget("") == ""
+							isEmptyQuery := naiveBuffer == "" && (!overlay.IsVisible() || overlay.GetTypedQuery() == "") && overlay.GetPrediction() == ""
 							bufferMu.Unlock()
 							if isEmptyQuery {
 								_, _ = ptmx.Write(rawSeq)
@@ -1618,24 +1601,24 @@ func runWrapper() {
 
 							bufferMu.Lock()
 							atEnd := (cursorOffset == 0)
-							buf := naiveBuffer
+							predCmd := ""
+							if !disableGhostText.Load() && config.Get().Core.Prediction && atEnd {
+								predCmd = overlay.GetPrediction()
+							}
 							bufferMu.Unlock()
 
-							targetCmd := ""
-							if !disableGhostText.Load() && atEnd {
-								targetCmd = overlay.GetGhostTarget(buf)
-							}
-
-							if targetCmd != "" && targetCmd != buf {
+							trimmedBuf := strings.TrimSpace(naiveBuffer)
+							isRelatedPred := naiveBuffer == "" || (trimmedBuf != "" && strings.HasPrefix(strings.ToLower(predCmd), strings.ToLower(trimmedBuf)))
+							if predCmd != "" && isRelatedPred && predCmd != naiveBuffer {
 								writeStdout([]byte(overlay.HideGhostTextSync()))
 								bufferMu.Lock()
-								naiveBuffer = targetCmd
-								replace := shell.ReplaceLine([]byte(targetCmd), cursorOffset)
+								naiveBuffer = predCmd
+								replace := shell.ReplaceLine([]byte(predCmd), cursorOffset)
 								cursorOffset = 0
 								bufferMu.Unlock()
 								userNavigated.Store(false)
 								_, _ = ptmx.Write(replace)
-								drawAfterEcho(echoMarker(targetCmd), func() {
+								drawAfterEcho(echoMarker(predCmd), func() {
 									if renderer, ok := renderOverlayFn.Load().(func()); ok {
 										renderer()
 									}

@@ -149,23 +149,39 @@ func TestRightArrowPassesThroughWhenNoPrediction(t *testing.T) {
 }
 
 func TestTabAcceptsPredictionWhenNoMenuSelection(t *testing.T) {
-	home := predictionHome(t)
+	home := wordKeyHome(t)
+	extra, _ := os.ReadFile(filepath.Join(home, ".zshrc.extra"))
+	extra = append(extra, []byte("zle -N _iris_send_lbuffer\nadd-zle-hook-widget line-pre-redraw _iris_send_lbuffer\n")...)
+	if err := os.WriteFile(filepath.Join(home, ".zshrc.extra"), extra, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	dbPath := filepath.Join(home, ".local/share/iris/history.db")
+	store, err := scoring.NewFrecencyStore(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = store.Close() }()
+
+	ctx := context.Background()
+	_ = store.Record(ctx, "custom_deploy --prod", home, 0)
+
 	term := startIn(t, home, "IRIS_CORE_MODE=history")
 	defer func() { _ = term.Close() }()
 
-	if err := term.Type("just "); err != nil {
+	if err := term.Type("custom_deploy "); err != nil {
 		t.Fatal(err)
 	}
 	if err := term.WaitStable(2 * time.Second); err != nil {
 		t.Fatal(err)
 	}
 
-	// prediction hint must be visible with no item actively selected via Tab
-	if got := screen(term); !strings.Contains(got, "just reload") {
-		t.Fatalf("expected prediction 'just reload' on screen, got:\n%s", got)
+	// prediction hint must be visible with no menu
+	if got := screen(term); !strings.Contains(got, "custom_deploy --prod") {
+		t.Fatalf("expected prediction 'custom_deploy --prod' on screen, got:\n%s", got)
 	}
 
-	// tab must expand the prediction, not do nothing
+	// tab must expand the prediction when no menu selection exists
 	if err := term.SendKeys("\t"); err != nil {
 		t.Fatal(err)
 	}
@@ -173,8 +189,8 @@ func TestTabAcceptsPredictionWhenNoMenuSelection(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if got := promptLine(t, term); got != "just reload" {
-		t.Fatalf("prompt = %q; want 'just reload'\nscreen:\n%s", got, screen(term))
+	if got := promptLine(t, term); got != "custom_deploy --prod" {
+		t.Fatalf("prompt = %q; want 'custom_deploy --prod'\nscreen:\n%s", got, screen(term))
 	}
 }
 
