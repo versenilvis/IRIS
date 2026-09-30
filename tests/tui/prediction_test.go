@@ -94,6 +94,10 @@ func TestPredictionUnrelatedInputDoesNotShowOrExpand(t *testing.T) {
 
 func TestPredictionRightArrowExpandsPredictionWhileMenuIsOpen(t *testing.T) {
 	home := predictionHome(t)
+	hist := ": 1700000000:0;just build\n: 1700000001:0;just reload\n"
+	if err := os.WriteFile(filepath.Join(home, ".zsh_history"), []byte(hist), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	term := startIn(t, home, "IRIS_CORE_MODE=history")
 	defer func() { _ = term.Close() }()
 
