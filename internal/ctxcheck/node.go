@@ -144,6 +144,11 @@ func ValidateNode(tokens []string, cwd string) Verdict {
 			break
 		}
 
+		// bun test has a native test runner that does not require package.json
+		if tool == "bun" && arg == "test" {
+			return Free
+		}
+
 		// standard short script forms
 		if arg == "test" || arg == "start" || arg == "stop" || arg == "restart" || (tool == "npm" && arg == "t") {
 			scriptName = arg
@@ -161,7 +166,7 @@ func ValidateNode(tokens []string, cwd string) Verdict {
 		}
 
 		// for npm: unknown bare subcommand
-		return Invalid
+		return Unknown
 	}
 
 	if scriptName == "" && !isExplicitRun {

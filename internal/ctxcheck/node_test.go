@@ -21,6 +21,12 @@ func TestNode_NoPackageJson(t *testing.T) {
 	if v := ValidateNode([]string{"npx", "create-react-app"}, tmpDir); v != Free {
 		t.Fatalf("expected Free for npx, got %v", v)
 	}
+	if v := ValidateNode([]string{"bun", "test"}, tmpDir); v != Free {
+		t.Fatalf("expected Free for bun test without package.json, got %v", v)
+	}
+	if v := ValidateNode([]string{"npm", "unknown_cmd"}, tmpDir); v != Unknown {
+		t.Fatalf("expected Unknown for npm unknown_cmd, got %v", v)
+	}
 }
 
 func TestNode_ScriptsAndSubcommands(t *testing.T) {
@@ -45,6 +51,7 @@ func TestNode_ScriptsAndSubcommands(t *testing.T) {
 		{[]string{"npm", "run", "missing"}, Invalid},
 		{[]string{"npm", "install"}, Free},
 		{[]string{"npm", "add", "react"}, Free},
+		{[]string{"npm", "unknown_cmd"}, Unknown},
 		{[]string{"pnpm", "dev"}, Valid},
 		{[]string{"pnpm", "build"}, Valid},
 		{[]string{"pnpm", "unknown_cmd"}, Unknown}, // bare word in pnpm/yarn/bun -> Unknown
@@ -52,7 +59,7 @@ func TestNode_ScriptsAndSubcommands(t *testing.T) {
 		{[]string{"yarn", "build"}, Valid},
 		{[]string{"yarn", "add", "lodash"}, Free},
 		{[]string{"bun", "run", "dev"}, Valid},
-		{[]string{"bun", "test"}, Valid},
+		{[]string{"bun", "test"}, Free},
 		{[]string{"bun", "install"}, Free},
 		{[]string{"bunx", "prisma", "generate"}, Free},
 		{[]string{"pnpm", "dlx", "prisma"}, Free},
