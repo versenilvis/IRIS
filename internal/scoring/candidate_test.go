@@ -146,7 +146,7 @@ func TestCandidate_NonProjectDescendantBlocked(t *testing.T) {
 	}
 
 	// gate check
-	allow := c.Tier > 0 || c.ScopeCount >= GlobalScopeThreshold
+	allow := c.Tier > 0 || store.ScopeCount(ctx, c.Cmd) >= GlobalScopeThreshold
 	if allow {
 		t.Fatalf("expected just reload to be blocked by gate outside project")
 	}
@@ -192,8 +192,9 @@ func TestCandidate_MergeCountAndGlobalScopes(t *testing.T) {
 		t.Fatalf("expected count 6 (5+1), got %d", c.Count)
 	}
 	// scope count must be tracked from global distinct projects
-	if c.ScopeCount < 2 {
-		t.Fatalf("expected scope count >= 2, got %d", c.ScopeCount)
+	scopeCount := store.ScopeCount(ctx, c.Cmd)
+	if scopeCount < 2 {
+		t.Fatalf("expected scope count >= 2, got %d", scopeCount)
 	}
 }
 
@@ -216,10 +217,11 @@ func TestCandidate_ScopeCountDisambiguation(t *testing.T) {
 		t.Fatalf("expected 1 ls candidate, got %d", len(lsCandidates))
 	}
 	lsCand := lsCandidates[0]
-	if lsCand.ScopeCount < 3 {
-		t.Fatalf("expected ls scope count >= 3, got %d", lsCand.ScopeCount)
+	lsScope := store.ScopeCount(ctx, lsCand.Cmd)
+	if lsScope < 3 {
+		t.Fatalf("expected ls scope count >= 3, got %d", lsScope)
 	}
-	if lsCand.Tier == 0 && lsCand.ScopeCount < GlobalScopeThreshold {
+	if lsCand.Tier == 0 && lsScope < GlobalScopeThreshold {
 		t.Fatalf("expected ls to pass gate with 3 scopes")
 	}
 
@@ -228,10 +230,11 @@ func TestCandidate_ScopeCountDisambiguation(t *testing.T) {
 		t.Fatalf("expected 1 just candidate, got %d", len(justCandidates))
 	}
 	justCand := justCandidates[0]
-	if justCand.ScopeCount != 1 {
-		t.Fatalf("expected just scope count 1, got %d", justCand.ScopeCount)
+	justScope := store.ScopeCount(ctx, justCand.Cmd)
+	if justScope != 1 {
+		t.Fatalf("expected just scope count 1, got %d", justScope)
 	}
-	if justCand.Tier > 0 || justCand.ScopeCount >= GlobalScopeThreshold {
+	if justCand.Tier > 0 || justScope >= GlobalScopeThreshold {
 		t.Fatalf("expected single-project command to be blocked outside")
 	}
 }
@@ -355,6 +358,8 @@ func TestPrefixUpperBound_EdgeCases(t *testing.T) {
 	_ = store.Record(ctx, "こんにちは世界", cwd, 0)
 	_ = store.Record(ctx, "binary\xffspecial", cwd, 0)
 
+	_ = store.Record(ctx, "\xff\xffspecial", cwd, 0)
+
 	candsTieng := store.QueryHistoryCandidates(ctx, "tiếng", cwd, cwd)
 	if len(candsTieng) != 1 || candsTieng[0].Cmd != "tiếng việt nam" {
 		t.Fatalf("expected 'tiếng việt nam', got %v", candsTieng)
@@ -373,6 +378,11 @@ func TestPrefixUpperBound_EdgeCases(t *testing.T) {
 	candsBin := store.QueryHistoryCandidates(ctx, "binary\xff", cwd, cwd)
 	if len(candsBin) != 1 || candsBin[0].Cmd != "binary\xffspecial" {
 		t.Fatalf("expected 'binary\\xffspecial', got %v", candsBin)
+	}
+
+	candsAllFF := store.QueryHistoryCandidates(ctx, "\xff\xff", cwd, cwd)
+	if len(candsAllFF) != 1 || candsAllFF[0].Cmd != "\xff\xffspecial" {
+		t.Fatalf("expected '\\xff\\xffspecial', got %v", candsAllFF)
 	}
 }
 
@@ -464,4 +474,78 @@ VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`)
 	})
 	p95Seq := seqLatencies[int(float64(len(seqLatencies))*0.95)]
 	t.Logf("empty prefix QuerySequenceCandidates p95 latency: %v (p50: %v)", p95Seq, seqLatencies[25])
+}
+
+func TestBenchmark_RealDB_Comparison(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Skip("no home dir")
+	}
+	realPath := filepath.Join(home, ".local/share/iris/history.db")
+	if _, statErr := os.Stat(realPath); statErr != nil {
+		t.Skip("real history.db not found")
+	}
+
+	realStore, storeErr := NewFrecencyStore(realPath)
+	if storeErr != nil {
+		t.Fatalf("open real store: %v", storeErr)
+	}
+	defer func() { _ = realStore.Close() }()
+
+	ctx := context.Background()
+	prefixes := []string{"g", "n", "git", "npm"}
+
+	t.Log("=== REAL DB MEASUREMENTS ===")
+	for _, p := range prefixes {
+		u := prefixUpperBound(p)
+
+		// 1. old global query (with count distinct)
+		start := time.Now()
+		func() {
+			rOld, qErr := realStore.db.QueryContext(ctx, `
+SELECT cmd, SUM(count), MAX(last_used),
+       COUNT(DISTINCT COALESCE(NULLIF(project_id,''), cwd))
+FROM history_entries
+WHERE count > 0 AND cmd >= ? AND cmd < ? AND instr(cmd, ?) = 1 AND cmd != ?
+GROUP BY cmd ORDER BY SUM(count) DESC LIMIT 100`, p, u, p, p)
+			if qErr == nil {
+				defer func() { _ = rOld.Close() }()
+				for rOld.Next() {
+				}
+			}
+		}()
+		dOld := time.Since(start)
+
+		// 2. new global query (without count distinct)
+		var topCmd string
+		start = time.Now()
+		func() {
+			rNew, qErr := realStore.db.QueryContext(ctx, `
+SELECT cmd, SUM(count), MAX(last_used)
+FROM history_entries
+WHERE count > 0 AND cmd >= ? AND cmd < ? AND instr(cmd, ?) = 1 AND cmd != ?
+GROUP BY cmd ORDER BY SUM(count) DESC LIMIT 100`, p, u, p, p)
+			if qErr == nil {
+				defer func() { _ = rNew.Close() }()
+				if rNew.Next() {
+					var total int
+					var lastRaw string
+					_ = rNew.Scan(&topCmd, &total, &lastRaw)
+				}
+				for rNew.Next() {
+				}
+			}
+		}()
+		dNew := time.Since(start)
+
+		// 3. lazy scope count for topCmd
+		dScope := time.Duration(0)
+		if topCmd != "" {
+			start = time.Now()
+			_ = realStore.ScopeCount(ctx, topCmd)
+			dScope = time.Since(start)
+		}
+
+		t.Logf("real DB prefix %-4q: old=%v, new=%v, lazy_scope=%v (cmd: %s)", p, dOld, dNew, dScope, topCmd)
+	}
 }

@@ -91,12 +91,15 @@ func findPredictedCommand(query string) string {
 	prefix := strings.TrimLeft(query, " ")
 
 	pid := workspace.DetectProjectIDCached(cwd)
-	allow := func(c scoring.Candidate) bool {
-		return c.Tier > 0 || c.ScopeCount >= scoring.GlobalScopeThreshold
-	}
-
 	ctxTimeout, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
+
+	allow := func(c scoring.Candidate) bool {
+		if c.Tier > 0 {
+			return true
+		}
+		return store.ScopeCount(ctxTimeout, c.Cmd) >= scoring.GlobalScopeThreshold
+	}
 
 	prev := getPrevCommand()
 	if prev != "" {

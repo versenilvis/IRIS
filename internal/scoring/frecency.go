@@ -41,11 +41,10 @@ type SequenceEntry struct {
 }
 
 type Candidate struct {
-	Cmd        string
-	Tier       int
-	Count      int
-	LastUsed   time.Time
-	ScopeCount int
+	Cmd      string
+	Tier     int
+	Count    int
+	LastUsed time.Time
 }
 
 const (
@@ -503,10 +502,9 @@ type localRow struct {
 }
 
 type globalRow struct {
-	cmd    string
-	total  int
-	last   time.Time
-	scopes int
+	cmd   string
+	total int
+	last  time.Time
 }
 
 func tierOf(rowCwd, rowPID, cwd, pid string) int {
@@ -549,11 +547,10 @@ func rank(local []localRow, global []globalRow, cwd, pid string) []Candidate {
 		}
 	}
 	for _, g := range global {
-		if c, ok := m[g.cmd]; ok {
-			c.ScopeCount = g.scopes
+		if _, ok := m[g.cmd]; ok {
 			continue
 		}
-		m[g.cmd] = &Candidate{Cmd: g.cmd, Tier: 0, Count: g.total, LastUsed: g.last, ScopeCount: g.scopes}
+		m[g.cmd] = &Candidate{Cmd: g.cmd, Tier: 0, Count: g.total, LastUsed: g.last}
 	}
 	out := make([]Candidate, 0, len(m))
 	for _, c := range m {
@@ -662,8 +659,7 @@ ORDER BY count DESC LIMIT ?
 	var globalArgs []interface{}
 	if upper != "" {
 		globalSQL = `
-SELECT cmd, SUM(count), MAX(last_used),
-       COUNT(DISTINCT COALESCE(NULLIF(project_id,''), cwd))
+SELECT cmd, SUM(count), MAX(last_used)
 FROM history_entries
 WHERE count > 0 AND cmd >= ? AND cmd < ? AND instr(cmd, ?) = 1 AND cmd != ?
 GROUP BY cmd ORDER BY SUM(count) DESC LIMIT ?
@@ -671,8 +667,7 @@ GROUP BY cmd ORDER BY SUM(count) DESC LIMIT ?
 		globalArgs = []interface{}{prefix, upper, prefix, prefix, GlobalLimit}
 	} else {
 		globalSQL = `
-SELECT cmd, SUM(count), MAX(last_used),
-       COUNT(DISTINCT COALESCE(NULLIF(project_id,''), cwd))
+SELECT cmd, SUM(count), MAX(last_used)
 FROM history_entries
 WHERE count > 0 AND instr(cmd, ?) = 1 AND cmd != ?
 GROUP BY cmd ORDER BY SUM(count) DESC LIMIT ?
@@ -709,14 +704,13 @@ GROUP BY cmd ORDER BY SUM(count) DESC LIMIT ?
 			defer func() { _ = gRows.Close() }()
 			for gRows.Next() {
 				var cmd, lastRaw string
-				var total, scopes int
-				if scanErr := gRows.Scan(&cmd, &total, &lastRaw, &scopes); scanErr == nil {
+				var total int
+				if scanErr := gRows.Scan(&cmd, &total, &lastRaw); scanErr == nil {
 					t, _ := parseTimestamp(lastRaw)
 					global = append(global, globalRow{
-						cmd:    cmd,
-						total:  total,
-						last:   t,
-						scopes: scopes,
+						cmd:   cmd,
+						total: total,
+						last:  t,
 					})
 				}
 			}
@@ -775,8 +769,7 @@ ORDER BY count DESC LIMIT ?
 		}
 
 		globalSQL = `
-SELECT next_cmd, SUM(count), MAX(last_used),
-       COUNT(DISTINCT COALESCE(NULLIF(project_id,''), cwd))
+SELECT next_cmd, SUM(count), MAX(last_used)
 FROM command_sequences
 WHERE count > 0 AND prev_cmd = ?
 GROUP BY next_cmd ORDER BY SUM(count) DESC LIMIT ?
@@ -806,8 +799,7 @@ ORDER BY count DESC LIMIT ?
 		}
 
 		globalSQL = `
-SELECT next_cmd, SUM(count), MAX(last_used),
-       COUNT(DISTINCT COALESCE(NULLIF(project_id,''), cwd))
+SELECT next_cmd, SUM(count), MAX(last_used)
 FROM command_sequences
 WHERE count > 0 AND prev_cmd = ? AND instr(next_cmd, ?) = 1 AND next_cmd != ?
 GROUP BY next_cmd ORDER BY SUM(count) DESC LIMIT ?
@@ -844,14 +836,13 @@ GROUP BY next_cmd ORDER BY SUM(count) DESC LIMIT ?
 			defer func() { _ = gRows.Close() }()
 			for gRows.Next() {
 				var nextCmd, lastRaw string
-				var total, scopes int
-				if scanErr := gRows.Scan(&nextCmd, &total, &lastRaw, &scopes); scanErr == nil {
+				var total int
+				if scanErr := gRows.Scan(&nextCmd, &total, &lastRaw); scanErr == nil {
 					t, _ := parseTimestamp(lastRaw)
 					global = append(global, globalRow{
-						cmd:    nextCmd,
-						total:  total,
-						last:   t,
-						scopes: scopes,
+						cmd:   nextCmd,
+						total: total,
+						last:  t,
 					})
 				}
 			}
@@ -870,6 +861,28 @@ func (f *FrecencyStore) QueryTopHistoryByPrefix(ctx context.Context, prefix, cwd
 		return candidates[0].Cmd
 	}
 	return ""
+}
+
+func (f *FrecencyStore) ScopeCount(ctx context.Context, cmd string) int {
+	if f == nil || cmd == "" {
+		return 0
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctxTimeout, cancel := context.WithTimeout(ctx, 50*time.Millisecond)
+	defer cancel()
+
+	var scopes int
+	row := f.db.QueryRowContext(ctxTimeout, `
+SELECT COUNT(DISTINCT COALESCE(NULLIF(project_id,''), cwd))
+FROM history_entries
+WHERE count > 0 AND cmd = ?`, cmd)
+	_ = row.Scan(&scopes)
+	return scopes
 }
 
 func (f *FrecencyStore) BootstrapSequences(ctx context.Context, historyPath, defaultCwd string) {
