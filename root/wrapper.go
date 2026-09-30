@@ -173,6 +173,9 @@ func findPredictedCommand(query string) string {
 			if strings.EqualFold(c.Cmd, prefix) {
 				continue
 			}
+			if scoring.IsNavCommand(c.Cmd) && strings.EqualFold(c.Cmd, prev) {
+				continue
+			}
 			allowed, v, scopes := evalCandidate(c)
 			if debugPredict && len(logs) < 5 {
 				logs = append(logs, candLog{cmd: c.Cmd, tier: c.Tier, scopes: scopes, verdict: v, allow: allowed})
@@ -927,7 +930,9 @@ func runWrapper() {
 								_ = store.RecordTransition(ctxRecord, pSkel, cSkel, d, code)
 							}
 							if pCmd != "" && c != "" {
-								_ = store.RecordSequence(ctxRecord, pCmd, c, d, code)
+								if !scoring.IsNavCommand(c) || !strings.EqualFold(c, pCmd) {
+									_ = store.RecordSequence(ctxRecord, pCmd, c, d, code)
+								}
 							}
 						}
 					}(cmdToRecord, cwd, exitCode, prevCmd, prevSkeleton, prevCwd, currSkeleton)

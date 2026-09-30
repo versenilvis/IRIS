@@ -74,3 +74,48 @@ func TestScore_SequencePredictionPriority(t *testing.T) {
 		t.Errorf("expected transition score 100 for exact sequence match, got %d", scored[0].Breakdown.Transition)
 	}
 }
+
+func TestIsNavCommand(t *testing.T) {
+	for _, cmd := range []string{"z po", "cd /tmp", "pushd dir", "popd", "j proj", "zi"} {
+		if !IsNavCommand(cmd) {
+			t.Errorf("expected IsNavCommand true for %q", cmd)
+		}
+	}
+	for _, cmd := range []string{"air", "just test", "git status", "ls", "echo cd"} {
+		if IsNavCommand(cmd) {
+			t.Errorf("expected IsNavCommand false for %q", cmd)
+		}
+	}
+}
+
+func TestFrecencyStore_NavSelfLoopIgnored(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "history.db")
+	store, err := NewFrecencyStore(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create frecency store: %v", err)
+	}
+	defer store.Close()
+
+	ctx := context.Background()
+	cwd := "/home/user/ai-post"
+
+	// navigation self-loop must not be recorded
+	_ = store.RecordSequence(ctx, "z po", "z po", cwd, 0)
+	_ = store.RecordSequence(ctx, "cd foo", "cd foo", cwd, 0)
+	_ = store.RecordSequence(ctx, "z po", "air", cwd, 0)
+
+	cands := store.QuerySequenceCandidates(ctx, "z po", "", cwd, cwd)
+	if len(cands) == 0 {
+		t.Fatalf("expected candidate, got 0")
+	}
+	if cands[0].Cmd != "air" {
+		t.Fatalf("expected 'air' to be top candidate, got %q", cands[0].Cmd)
+	}
+	for _, c := range cands {
+		if c.Cmd == "z po" {
+			t.Fatalf("unexpected nav self-loop 'z po' in candidates")
+		}
+	}
+}
+

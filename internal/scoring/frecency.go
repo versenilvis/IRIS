@@ -387,6 +387,24 @@ ON CONFLICT(prev_skeleton, next_skeleton, cwd) DO UPDATE SET
 	return err
 }
 
+var navCommands = map[string]bool{
+	"cd":    true,
+	"z":     true,
+	"zi":    true,
+	"j":     true,
+	"pushd": true,
+	"popd":  true,
+}
+
+// avoid repeating directory jumps after arriving at destination
+func IsNavCommand(cmd string) bool {
+	fields := strings.Fields(cmd)
+	if len(fields) == 0 {
+		return false
+	}
+	return navCommands[fields[0]]
+}
+
 func (f *FrecencyStore) RecordSequence(ctx context.Context, prevCmd, nextCmd, cwd string, nextExitCode int) error {
 	if f == nil {
 		return nil
@@ -398,6 +416,9 @@ func (f *FrecencyStore) RecordSequence(ctx context.Context, prevCmd, nextCmd, cw
 		return nil
 	}
 	if nextExitCode != 0 {
+		return nil
+	}
+	if IsNavCommand(nextCmd) && strings.EqualFold(prevCmd, nextCmd) {
 		return nil
 	}
 
@@ -850,6 +871,9 @@ GROUP BY next_cmd ORDER BY SUM(count) DESC LIMIT ?
 				var nextCmd, rCwd, rPid, lastRaw string
 				var count int
 				if scanErr := rows.Scan(&nextCmd, &rCwd, &rPid, &count, &lastRaw); scanErr == nil {
+					if IsNavCommand(nextCmd) && strings.EqualFold(nextCmd, prevCmd) {
+						continue
+					}
 					t, _ := parseTimestamp(lastRaw)
 					local = append(local, localRow{
 						cmd:   nextCmd,
@@ -871,6 +895,9 @@ GROUP BY next_cmd ORDER BY SUM(count) DESC LIMIT ?
 				var nextCmd, lastRaw string
 				var total int
 				if scanErr := gRows.Scan(&nextCmd, &total, &lastRaw); scanErr == nil {
+					if IsNavCommand(nextCmd) && strings.EqualFold(nextCmd, prevCmd) {
+						continue
+					}
 					t, _ := parseTimestamp(lastRaw)
 					global = append(global, globalRow{
 						cmd:   nextCmd,
