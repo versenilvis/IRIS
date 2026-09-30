@@ -119,6 +119,12 @@ func ValidatePathTokens(tokens []string, cwd string) Verdict {
 	// check if command is an interpreter: check first non-flag script argument
 	if interpreterNames[cmdWord] {
 		for _, arg := range tokens[1:] {
+			// inline code or module flags do not execute a local script path
+			if arg == "-m" || arg == "-c" || arg == "-e" || arg == "-p" || arg == "-r" ||
+				arg == "--eval" || arg == "--print" || arg == "--require" ||
+				strings.HasPrefix(arg, "--eval=") || strings.HasPrefix(arg, "--print=") || strings.HasPrefix(arg, "--require=") {
+				return Free
+			}
 			if strings.HasPrefix(arg, "-") {
 				continue
 			}

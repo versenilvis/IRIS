@@ -77,6 +77,36 @@ func TestPath_ExplicitPathsAndInterpreters(t *testing.T) {
 		t.Errorf("expected Valid for sh run.sh, got %v", v)
 	}
 
+	// interpreter inline code or module flags -> free
+	inlineCases := [][]string{
+		{"python", "-m", "http.server"},
+		{"python", "-c", "import sys"},
+		{"node", "-e", "console.log(1)"},
+		{"node", "-p", "process.version"},
+		{"node", "--eval", "console.log(1)"},
+		{"node", "--print", "process.version"},
+		{"node", "-r", "ts-node/register", "app.ts"},
+		{"node", "--require", "ts-node/register", "app.ts"},
+		{"node", "--eval=console.log(1)"},
+		{"node", "--print=process.version"},
+		{"node", "--require=ts-node/register", "app.ts"},
+		{"ruby", "-e", "puts 1"},
+		{"bash", "-c", "echo 1"},
+	}
+	for _, tc := range inlineCases {
+		if v := ValidatePathTokens(tc, tmpDir); v != Free {
+			t.Errorf("expected Free for %v, got %v", tc, v)
+		}
+	}
+
+	// other flags preserve script checking
+	if v := ValidatePathTokens([]string{"python", "-u", "app.py"}, tmpDir); v != Valid {
+		t.Errorf("expected Valid for python -u app.py, got %v", v)
+	}
+	if v := ValidatePathTokens([]string{"python", "-u", "missing.py"}, tmpDir); v != Invalid {
+		t.Errorf("expected Invalid for python -u missing.py, got %v", v)
+	}
+
 	// go test ./... has '...' so it is treated as Free
 	if v := ValidatePathTokens([]string{"go", "test", "./..."}, tmpDir); v != Free {
 		t.Errorf("expected Free for go test ./..., got %v", v)
