@@ -411,6 +411,18 @@ func TestFrecencyStore_LegacyMigration(t *testing.T) {
 	if err != nil || seqPid != existingDir {
 		t.Fatalf("expected project_id=%q for seq_ok, got %q (err=%v)", existingDir, seqPid, err)
 	}
+	_ = checkDB.Close()
+
+	// 4. Reopen already-migrated database: verify .bak is not recreated
+	_ = os.Remove(dbPath + ".bak")
+	store2, err := NewFrecencyStore(dbPath)
+	if err != nil {
+		t.Fatalf("reopening migrated store failed: %v", err)
+	}
+	_ = store2.Close()
+	if _, errStat := os.Stat(dbPath + ".bak"); !os.IsNotExist(errStat) {
+		t.Fatalf("expected .bak not to be created on already-migrated database: %v", errStat)
+	}
 }
 
 func TestFrecencyStore_DoNotOverwriteProjectIDWithEmpty(t *testing.T) {

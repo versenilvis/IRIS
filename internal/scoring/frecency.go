@@ -55,10 +55,22 @@ const (
 )
 
 type FrecencyStore struct {
-	db     *sql.DB
-	mu     sync.Mutex
-	bgWg   sync.WaitGroup
-	dbPath string
+	db         *sql.DB
+	mu         sync.Mutex
+	bgWg       sync.WaitGroup
+	dbPath     string
+	backupOnce sync.Once
+}
+
+func (f *FrecencyStore) backupDatabase() {
+	if f.dbPath == "" || f.dbPath == ":memory:" {
+		return
+	}
+	if fi, err := os.Stat(f.dbPath); err == nil && fi.Size() > 0 {
+		if data, errRead := os.ReadFile(f.dbPath); errRead == nil {
+			_ = os.WriteFile(f.dbPath+".bak", data, 0o600)
+		}
+	}
 }
 
 func NewFrecencyStore(dbPath string) (*FrecencyStore, error) {
@@ -80,14 +92,6 @@ func NewFrecencyStore(dbPath string) (*FrecencyStore, error) {
 		_ = f.Close()
 	}
 	_ = os.Chmod(dbPath, 0600)
-
-	if dbPath != ":memory:" {
-		if fi, err := os.Stat(dbPath); err == nil && fi.Size() > 0 {
-			if data, errRead := os.ReadFile(dbPath); errRead == nil {
-				_ = os.WriteFile(dbPath+".bak", data, 0600)
-			}
-		}
-	}
 
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
@@ -219,6 +223,9 @@ func (f *FrecencyStore) addColumnIfNotExists(ctx context.Context, table, column,
 	if rowsErr := rows.Err(); rowsErr != nil {
 		return false, rowsErr
 	}
+	f.backupOnce.Do(func() {
+		f.backupDatabase()
+	})
 	_, err = f.db.ExecContext(ctx, fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, column, colDef))
 	if err != nil {
 		return false, err
