@@ -388,6 +388,9 @@ func TestPrefixUpperBound_EdgeCases(t *testing.T) {
 
 // 8. benchmark 100k rows with p95 latency under 3ms
 func TestCandidate_Benchmark100k(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping 100k rows benchmark in short mode")
+	}
 	store := newTestStore(t)
 	ctx := context.Background()
 
@@ -477,6 +480,9 @@ VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`)
 }
 
 func TestBenchmark_RealDB_Comparison(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping real DB benchmark in short mode")
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		t.Skip("no home dir")

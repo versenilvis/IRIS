@@ -98,9 +98,6 @@ func logPredictionDebug(msg string) {
 	predictLogOnce.Do(func() {
 		_ = os.MkdirAll(cacheDir, 0o700)
 		_ = os.Chmod(cacheDir, 0o700)
-		if f, openErr := os.OpenFile(logPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600); openErr == nil {
-			_ = f.Close()
-		}
 	})
 
 	if fi, statErr := os.Stat(logPath); statErr == nil && fi.Size() > 10*1024*1024 {
