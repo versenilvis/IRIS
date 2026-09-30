@@ -19,11 +19,15 @@ Default weights:
 
 ### 2. Frecency decay calculation (`internal/scoring/frecency.go`)
 
-Frecency combines execution frequency with exponential time decay:
+Frecency combines execution count with step-based recency weights (`RawScore`):
 
-$$\text{Score} = \text{Count} \times e^{-\lambda \Delta t}$$
+$$\text{Score} = \text{Count} \times \text{Weight}(\Delta t)$$
 
-- Commands recorded recently receive higher score weights.
+- **$\le 1$ hour**: weight = 100
+- **$\le 24$ hours**: weight = 50
+- **$\le 7$ days**: weight = 20
+- **$\le 30$ days**: weight = 5
+- **$> 30$ days**: weight = 1
 - Commands with non-zero exit codes are never recorded.
 
 ### 3. Workflow sequence learning (`command_sequences` & `command_transitions`)
@@ -37,8 +41,8 @@ Iris tracks sequential command pairs to suggest developer workflows:
 When retrieving candidates for ghost text prediction (`QuerySequenceCandidates` and `QueryHistoryCandidates`), results are categorized into workspace tiers calculated in Go:
 
 - **Tier 4 (Exact CWD)**: Recorded working directory matches `cwd` exactly.
-- **Tier 3 (Descendant to Ancestor)**: Current directory is a subdirectory of the recorded working directory within the same project.
-- **Tier 2 (Ancestor to Descendant)**: Current directory is an ancestor directory of the recorded working directory within the same project.
+- **Tier 3 (Descendant)**: Recorded working directory is beneath the current directory within the same project.
+- **Tier 2 (Ancestor)**: Recorded working directory is above the current directory within the same project.
 - **Tier 1 (Project Siblings)**: Different directory branches sharing the same `project_id`.
 - **Tier 0 (Foreign Scope)**: Outside the current project scope or different non-git directories.
 
@@ -46,7 +50,7 @@ When retrieving candidates for ghost text prediction (`QuerySequenceCandidates` 
 
 1. **Local phase**: Queries `history_entries` and `command_sequences` where `cwd = ? OR project_id = ?`, bounded by `cmd >= prefix AND cmd < prefixUpperBound` and `instr(cmd, prefix) = 1`.
 2. **Global phase**: If local candidate pool is below threshold, queries foreign scopes (`project_id != ? OR project_id IS NULL`), deduplicating against local candidates.
-3. **Lazy scope gate**: Instead of running expensive `COUNT(DISTINCT)` aggregates across all candidates in the global SQL query, `store.ScopeCount` queries `COUNT(DISTINCT COALESCE(project_id, cwd))` only on-demand for Tier 0 candidates. Tier 0 candidates require `ScopeCount >= 3` to pass the admission gate.
+3. **Lazy scope gate**: Instead of running expensive `COUNT(DISTINCT)` aggregates across all candidates in the global SQL query, `store.ScopeCount` queries `COUNT(DISTINCT COALESCE(NULLIF(project_id, ''), cwd))` only on-demand for Tier 0 candidates. Tier 0 candidates require `ScopeCount >= 3` to pass the admission gate.
 
 ### 6. Storage & migration
 
