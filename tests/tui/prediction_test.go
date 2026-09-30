@@ -148,3 +148,61 @@ func TestRightArrowPassesThroughWhenNoPrediction(t *testing.T) {
 	}
 }
 
+func TestTabAcceptsPredictionWhenNoMenuSelection(t *testing.T) {
+	home := predictionHome(t)
+	term := startIn(t, home, "IRIS_CORE_MODE=history")
+	defer func() { _ = term.Close() }()
+
+	if err := term.Type("just "); err != nil {
+		t.Fatal(err)
+	}
+	if err := term.WaitStable(2 * time.Second); err != nil {
+		t.Fatal(err)
+	}
+
+	// prediction hint must be visible with no item actively selected via Tab
+	if got := screen(term); !strings.Contains(got, "just reload") {
+		t.Fatalf("expected prediction 'just reload' on screen, got:\n%s", got)
+	}
+
+	// tab must expand the prediction, not do nothing
+	if err := term.SendKeys("\t"); err != nil {
+		t.Fatal(err)
+	}
+	if err := term.WaitStable(2 * time.Second); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := promptLine(t, term); got != "just reload" {
+		t.Fatalf("prompt = %q; want 'just reload'\nscreen:\n%s", got, screen(term))
+	}
+}
+
+func TestTabPassesThroughWhenNoPredictionAndNoMenu(t *testing.T) {
+	home := wordKeyHome(t)
+	term := startIn(t, home, "IRIS_CORE_MODE=history")
+	defer func() { _ = term.Close() }()
+
+	if err := term.Type("echo hello"); err != nil {
+		t.Fatal(err)
+	}
+	if err := term.WaitStable(2 * time.Second); err != nil {
+		t.Fatal(err)
+	}
+
+	promptBefore := promptLine(t, term)
+
+	// tab with no prediction and no menu goes to shell (zsh autocomplete or noop)
+	if err := term.SendKeys("\t"); err != nil {
+		t.Fatal(err)
+	}
+	if err := term.WaitStable(2 * time.Second); err != nil {
+		t.Fatal(err)
+	}
+
+	// iris must not intercept it (the line stays as-is or shell handles it)
+	if got := promptLine(t, term); got != promptBefore && got != "echo hello" {
+		t.Fatalf("tab was intercepted unexpectedly: prompt = %q; want %q", got, promptBefore)
+	}
+}
+

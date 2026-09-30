@@ -1317,47 +1317,75 @@ func runWrapper() {
 				}
 
 				if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.SelectSuggestion); matched && config.Get().Keybindings.SelectSuggestion != "" {
-					if overlay.IsVisible() {
+					var selected string
+					// only treat the highlighted item as a selection when the user
+					// explicitly navigated the menu -- otherwise the first item is
+					// just an auto-highlight, not an intent to select it
+					if overlay.IsVisible() && userNavigated.Load() {
+						selected = overlay.GetCurrentCmd()
+					}
+					if selected != "" {
 						intercepted = true
-						selected := overlay.GetCurrentCmd()
-						if selected != "" {
-							activeModeMu.RLock()
-							currentMode := activeMode
-							activeModeMu.RUnlock()
-							if currentMode == "spec" {
-								s := strings.TrimSpace(selected)
-								if strings.HasSuffix(s, "/") || strings.HasSuffix(s, "\\") {
-									selected = s
-								} else {
-									selected = s + " "
-								}
+						activeModeMu.RLock()
+						currentMode := activeMode
+						activeModeMu.RUnlock()
+						if currentMode == "spec" {
+							s := strings.TrimSpace(selected)
+							if strings.HasSuffix(s, "/") || strings.HasSuffix(s, "\\") {
+								selected = s
+							} else {
+								selected = s + " "
 							}
-							currPred := overlay.GetPrediction()
+						}
+						currPred := overlay.GetPrediction()
+						bufferMu.Lock()
+						naiveBuffer = selected
+						replace := shell.ReplaceLine([]byte(selected), cursorOffset)
+						cursorOffset = 0
+						bufferMu.Unlock()
+						_, _ = ptmx.Write(replace)
+
+						overlay.ClearGhostTextState()
+						userNavigated.Store(false)
+
+						trimmedSel := strings.TrimSpace(selected)
+						if currPred != "" && strings.HasPrefix(strings.ToLower(currPred), strings.ToLower(trimmedSel)) {
+							overlay.SetPrediction(currPred)
+						} else if config.Get().Core.Prediction {
+							predicted := findPredictedCommand(selected)
 							bufferMu.Lock()
-							naiveBuffer = selected
-							replace := shell.ReplaceLine([]byte(selected), cursorOffset)
+							if naiveBuffer == selected {
+								overlay.SetPrediction(predicted)
+							}
+							bufferMu.Unlock()
+						} else {
+							overlay.SetPrediction("")
+						}
+
+						drawAfterEcho(echoMarker(selected), func() {
+							if renderer, ok := renderOverlayFn.Load().(func()); ok {
+								renderer()
+							}
+						})
+					} else if config.Get().Core.Prediction {
+						predCmd := overlay.GetPrediction()
+						bufferMu.Lock()
+						atEnd := (cursorOffset == 0)
+						trimmedBuf := strings.TrimSpace(naiveBuffer)
+						isRelatedPred := atEnd && (naiveBuffer == "" || (trimmedBuf != "" && strings.HasPrefix(strings.ToLower(predCmd), strings.ToLower(trimmedBuf))))
+						bufferMu.Unlock()
+
+						if predCmd != "" && isRelatedPred && predCmd != naiveBuffer {
+							intercepted = true
+							writeStdout([]byte(overlay.HideGhostTextSync()))
+							bufferMu.Lock()
+							naiveBuffer = predCmd
+							replace := shell.ReplaceLine([]byte(predCmd), cursorOffset)
 							cursorOffset = 0
 							bufferMu.Unlock()
-							_, _ = ptmx.Write(replace)
-
-							overlay.ClearGhostTextState()
 							userNavigated.Store(false)
-
-							trimmedSel := strings.TrimSpace(selected)
-							if currPred != "" && strings.HasPrefix(strings.ToLower(currPred), strings.ToLower(trimmedSel)) {
-								overlay.SetPrediction(currPred)
-							} else if config.Get().Core.Prediction {
-								predicted := findPredictedCommand(selected)
-								bufferMu.Lock()
-								if naiveBuffer == selected {
-									overlay.SetPrediction(predicted)
-								}
-								bufferMu.Unlock()
-							} else {
-								overlay.SetPrediction("")
-							}
-
-							drawAfterEcho(echoMarker(selected), func() {
+							_, _ = ptmx.Write(replace)
+							drawAfterEcho(echoMarker(predCmd), func() {
 								if renderer, ok := renderOverlayFn.Load().(func()); ok {
 									renderer()
 								}
