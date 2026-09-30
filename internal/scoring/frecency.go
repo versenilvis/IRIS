@@ -127,7 +127,12 @@ func NewFrecencyStore(dbPath string) (*FrecencyStore, error) {
 		return nil, err
 	}
 	_ = os.Chmod(dbPath, 0600)
-	go store.BootstrapSequences(context.Background(), "", "")
+	// track with bgWg and use timeout so close waits without blocking indefinitely
+	store.bgWg.Go(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		store.BootstrapSequences(ctx, "", "")
+	})
 
 	return store, nil
 }
