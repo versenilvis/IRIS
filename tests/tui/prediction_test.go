@@ -29,6 +29,7 @@ func predictionHome(t *testing.T) string {
 	defer func() { _ = store.Close() }()
 
 	ctx := context.Background()
+	_ = os.WriteFile(filepath.Join(home, "justfile"), []byte("build:\n\techo building\nreload:\n\techo reloading\n"), 0o644)
 	_ = store.Record(ctx, "just reload", home, 0)
 	_ = store.Record(ctx, "git add .", home, 0)
 	_ = store.RecordSequence(ctx, "git add .", "git commit", home, 0)

@@ -107,36 +107,69 @@ func start(t *testing.T, extraEnv ...string) *tuitest.Terminal {
 }
 
 func startIn(t *testing.T, home string, extraEnv ...string) *tuitest.Terminal {
+	return startInShell(t, home, "zsh", extraEnv...)
+}
+
+func startInShell(t *testing.T, home, shellName string, extraEnv ...string) *tuitest.Terminal {
+	return startInDirShell(t, home, home, shellName, extraEnv...)
+}
+
+func startInDirShell(t *testing.T, home, workDir, shellName string, extraEnv ...string) *tuitest.Terminal {
 	t.Helper()
 
-	if _, err := exec.LookPath("zsh"); err != nil {
-		t.Skip("zsh not installed")
+	shellBin, err := exec.LookPath(shellName)
+	if err != nil {
+		if os.Getenv("IRIS_REQUIRE_SHELLS") == "1" {
+			t.Fatalf("required shell %s not installed", shellName)
+		}
+		t.Skipf("%s not installed", shellName)
 	}
 
 	bin := binary(t)
 
-	// a bare prompt keeps the geometry assertions readable, and the iris
-	// integration has to be sourced the way a real .zshrc sources it
+	// a bare prompt keeps the geometry assertions readable
 	prompt := os.Getenv("IRIS_TUI_PROMPT")
 	if prompt == "" {
 		prompt = "> "
 	}
-	// sourced last so a test can add its own bindkeys on top of the integration
-	zshrc := "PROMPT='" + prompt + "'\nRPROMPT=''\nunsetopt PROMPT_SP\neval \"$(" + bin + " init zsh)\"\n" +
-		"[[ -f $ZDOTDIR/.zshrc.extra ]] && source $ZDOTDIR/.zshrc.extra\n"
-	if err := os.WriteFile(filepath.Join(home, ".zshrc"), []byte(zshrc), 0o644); err != nil {
-		t.Fatal(err)
+
+	switch shellName {
+	case "zsh":
+		zshrc := "PROMPT='" + prompt + "'\nRPROMPT=''\nunsetopt PROMPT_SP\neval \"$(" + bin + " init zsh)\"\n" +
+			"[[ -f $ZDOTDIR/.zshrc.extra ]] && source $ZDOTDIR/.zshrc.extra\n"
+		if err := os.WriteFile(filepath.Join(home, ".zshrc"), []byte(zshrc), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	case "bash":
+		bashrc := "PS1='" + prompt + "'\neval \"$(" + bin + " init bash)\"\n" +
+			"[[ -f $HOME/.bashrc.extra ]] && source $HOME/.bashrc.extra\n"
+		if err := os.WriteFile(filepath.Join(home, ".bashrc"), []byte(bashrc), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	case "fish":
+		fishConfDir := filepath.Join(home, ".config/fish")
+		_ = os.MkdirAll(fishConfDir, 0o755)
+		configFish := "function fish_prompt\n    echo -n '" + prompt + "'\nend\n" +
+			"function fish_update_completions\n    return 0\nend\n" +
+			bin + " init fish | source\n"
+		if err := os.WriteFile(filepath.Join(fishConfDir, "config.fish"), []byte(configFish), 0o644); err != nil {
+			t.Fatal(err)
+		}
 	}
 
+	cacheDir := filepath.Join(os.TempDir(), "iris-tui-cache")
+	_ = os.MkdirAll(cacheDir, 0o755)
+
+	binDir := filepath.Dir(bin)
 	env := []string{
 		"HOME=" + home,
 		"ZDOTDIR=" + home,
 		"XDG_CONFIG_HOME=" + filepath.Join(home, ".config"),
 		"XDG_DATA_HOME=" + filepath.Join(home, ".local/share"),
-		"XDG_CACHE_HOME=" + filepath.Join(home, ".cache"),
-		"SHELL=/bin/zsh",
-		"IRIS_ACTIVE_SHELL=zsh",
-		"PATH=" + os.Getenv("PATH"),
+		"XDG_CACHE_HOME=" + cacheDir,
+		"SHELL=" + shellBin,
+		"IRIS_ACTIVE_SHELL=" + shellName,
+		"PATH=" + binDir + ":" + os.Getenv("PATH"),
 		"TERM=xterm-256color",
 	}
 	env = append(env, extraEnv...)
@@ -144,11 +177,11 @@ func startIn(t *testing.T, home string, extraEnv ...string) *tuitest.Terminal {
 	term := tuitest.StartT(t, []string{bin},
 		tuitest.WithSize(cols, rows),
 		tuitest.WithEnv(env...),
-		tuitest.WithDir(home),
+		tuitest.WithDir(workDir),
 	)
 
 	if err := term.WaitForText(">", 20*time.Second); err != nil {
-		t.Fatalf("iris never reached a prompt: %v\n%s", err, term.Snapshot())
+		t.Fatalf("iris never reached a prompt in %s: %v\n%s", shellName, err, term.Snapshot())
 	}
 	return term
 }
