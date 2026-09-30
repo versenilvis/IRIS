@@ -127,38 +127,39 @@ func TestScopePrediction_ProjectSubdirSharing_NoParentLeak(t *testing.T) {
 			}
 			_ = store.Close()
 
-			// standing in repo root: command run in backend (descendant) appears
-			termRepo := startInDirShell(t, home, repo, sh, "IRIS_CORE_MODE=history")
-			if err := termRepo.Type("mycustomtool "); err != nil {
-				t.Fatal(err)
-			}
-			_ = termRepo.WaitStable(2 * time.Second)
-			if got := screen(termRepo); !strings.Contains(got, "mycustomtool run") {
-				t.Fatalf("expected 'mycustomtool run' in repo root, got:\n%s", got)
-			}
-			_ = termRepo.Close()
+			// isolate each terminal session in a subtest so tuitest cleanup runs before the next starts
+			t.Run("repo_root", func(t *testing.T) {
+				termRepo := startInDirShell(t, home, repo, sh, "IRIS_CORE_MODE=history")
+				if err := termRepo.Type("mycustomtool "); err != nil {
+					t.Fatal(err)
+				}
+				_ = termRepo.WaitStable(2 * time.Second)
+				if got := screen(termRepo); !strings.Contains(got, "mycustomtool run") {
+					t.Fatalf("expected 'mycustomtool run' in repo root, got:\n%s", got)
+				}
+			})
 
-			// standing in backend: command run in repo root (ancestor) appears
-			termBackend := startInDirShell(t, home, backend, sh, "IRIS_CORE_MODE=history")
-			if err := termBackend.Type("projectapp "); err != nil {
-				t.Fatal(err)
-			}
-			_ = termBackend.WaitStable(2 * time.Second)
-			if got := screen(termBackend); !strings.Contains(got, "projectapp start") {
-				t.Fatalf("expected 'projectapp start' in backend subdir, got:\n%s", got)
-			}
-			_ = termBackend.Close()
+			t.Run("backend_subdir", func(t *testing.T) {
+				termBackend := startInDirShell(t, home, backend, sh, "IRIS_CORE_MODE=history")
+				if err := termBackend.Type("projectapp "); err != nil {
+					t.Fatal(err)
+				}
+				_ = termBackend.WaitStable(2 * time.Second)
+				if got := screen(termBackend); !strings.Contains(got, "projectapp start") {
+					t.Fatalf("expected 'projectapp start' in backend subdir, got:\n%s", got)
+				}
+			})
 
-			// standing in parent directory outside repo: neither leaks
-			termParent := startInDirShell(t, home, parent, sh, "IRIS_CORE_MODE=history")
-			if err := termParent.Type("mycustomtool "); err != nil {
-				t.Fatal(err)
-			}
-			_ = termParent.WaitStable(2 * time.Second)
-			if got := screen(termParent); strings.Contains(got, "mycustomtool run") {
-				t.Fatalf("expected no leak of 'mycustomtool run' in parent, got:\n%s", got)
-			}
-			_ = termParent.Close()
+			t.Run("parent_dir", func(t *testing.T) {
+				termParent := startInDirShell(t, home, parent, sh, "IRIS_CORE_MODE=history")
+				if err := termParent.Type("mycustomtool "); err != nil {
+					t.Fatal(err)
+				}
+				_ = termParent.WaitStable(2 * time.Second)
+				if got := screen(termParent); strings.Contains(got, "mycustomtool run") {
+					t.Fatalf("expected no leak of 'mycustomtool run' in parent, got:\n%s", got)
+				}
+			})
 		})
 	}
 }
@@ -287,27 +288,28 @@ func TestScopePrediction_CompoundCd_Tier4Only(t *testing.T) {
 			}
 			_ = store.Close()
 
-			// standing in dirA (Tier 4): ghost appears
-			termA := startInDirShell(t, home, dirA, sh, "IRIS_CORE_MODE=history")
-			if err := termA.Type("cd sub"); err != nil {
-				t.Fatal(err)
-			}
-			_ = termA.WaitStable(2 * time.Second)
-			if got := screen(termA); !strings.Contains(got, compound) {
-				t.Fatalf("expected compound cd command at Tier 4 in dirA, got:\n%s", got)
-			}
-			_ = termA.Close()
+			// isolate each directory check in a subtest so pty cleanup finishes cleanly
+			t.Run("dirA", func(t *testing.T) {
+				termA := startInDirShell(t, home, dirA, sh, "IRIS_CORE_MODE=history")
+				if err := termA.Type("cd sub"); err != nil {
+					t.Fatal(err)
+				}
+				_ = termA.WaitStable(2 * time.Second)
+				if got := screen(termA); !strings.Contains(got, compound) {
+					t.Fatalf("expected compound cd command at Tier 4 in dirA, got:\n%s", got)
+				}
+			})
 
-			// standing in dirB (foreign directory, Tier 0): ghost does not appear
-			termB := startInDirShell(t, home, dirB, sh, "IRIS_CORE_MODE=history")
-			if err := termB.Type("cd sub"); err != nil {
-				t.Fatal(err)
-			}
-			_ = termB.WaitStable(2 * time.Second)
-			if got := screen(termB); strings.Contains(got, compound) {
-				t.Fatalf("expected compound cd command to be blocked at Tier 0 in dirB, got:\n%s", got)
-			}
-			_ = termB.Close()
+			t.Run("dirB", func(t *testing.T) {
+				termB := startInDirShell(t, home, dirB, sh, "IRIS_CORE_MODE=history")
+				if err := termB.Type("cd sub"); err != nil {
+					t.Fatal(err)
+				}
+				_ = termB.WaitStable(2 * time.Second)
+				if got := screen(termB); strings.Contains(got, compound) {
+					t.Fatalf("expected compound cd command to be blocked at Tier 0 in dirB, got:\n%s", got)
+				}
+			})
 		})
 	}
 }
@@ -316,49 +318,50 @@ func TestScopePrediction_CompoundCd_Tier4Only(t *testing.T) {
 func TestScopePrediction_EmptyQuerySequence_Filtered(t *testing.T) {
 	for _, sh := range testShells {
 		t.Run(sh, func(t *testing.T) {
-			// repoB has no justfile -> sequence "just reload" is Invalid and filtered
-			homeB := wordKeyHome(t)
-			repoB := filepath.Join(homeB, "repoB")
-			_ = os.MkdirAll(repoB, 0o755)
-
-			dbPathB := filepath.Join(homeB, ".local/share/iris/history.db")
-			storeB, err := scoring.NewFrecencyStore(dbPathB)
-			if err != nil {
-				t.Fatal(err)
-			}
 			ctx := context.Background()
-			_ = storeB.RecordSequence(ctx, "echo ready", "just reload", repoB, 0)
-			_ = storeB.Close()
 
-			termB := startInDirShell(t, homeB, repoB, sh, "IRIS_CORE_MODE=history")
-			_ = termB.Type("echo ready\n")
-			_ = termB.WaitStable(2 * time.Second)
-			if got := screen(termB); strings.Contains(got, "just reload") {
-				t.Fatalf("expected empty-query sequence 'just reload' blocked in repoB, got:\n%s", got)
-			}
-			_ = termB.Close()
+			t.Run("repoB_blocked", func(t *testing.T) {
+				homeB := wordKeyHome(t)
+				repoB := filepath.Join(homeB, "repoB")
+				_ = os.MkdirAll(repoB, 0o755)
 
-			// repoA has justfile with reload -> sequence "just reload" is Valid and shown
-			homeA := wordKeyHome(t)
-			repoA := filepath.Join(homeA, "repoA")
-			_ = os.MkdirAll(repoA, 0o755)
-			_ = os.WriteFile(filepath.Join(repoA, "justfile"), []byte("reload:\n\techo reloading\n"), 0o644)
+				dbPathB := filepath.Join(homeB, ".local/share/iris/history.db")
+				storeB, err := scoring.NewFrecencyStore(dbPathB)
+				if err != nil {
+					t.Fatal(err)
+				}
+				_ = storeB.RecordSequence(ctx, "echo ready", "just reload", repoB, 0)
+				_ = storeB.Close()
 
-			dbPathA := filepath.Join(homeA, ".local/share/iris/history.db")
-			storeA, err := scoring.NewFrecencyStore(dbPathA)
-			if err != nil {
-				t.Fatal(err)
-			}
-			_ = storeA.RecordSequence(ctx, "echo ready", "just reload", repoA, 0)
-			_ = storeA.Close()
+				termB := startInDirShell(t, homeB, repoB, sh, "IRIS_CORE_MODE=history")
+				_ = termB.Type("echo ready\n")
+				_ = termB.WaitStable(2 * time.Second)
+				if got := screen(termB); strings.Contains(got, "just reload") {
+					t.Fatalf("expected empty-query sequence 'just reload' blocked in repoB, got:\n%s", got)
+				}
+			})
 
-			termA := startInDirShell(t, homeA, repoA, sh, "IRIS_CORE_MODE=history")
-			_ = termA.Type("echo ready\n")
-			_ = termA.WaitStable(2 * time.Second)
-			if got := screen(termA); !strings.Contains(got, "just reload") {
-				t.Fatalf("expected empty-query sequence 'just reload' shown in repoA, got:\n%s", got)
-			}
-			_ = termA.Close()
+			t.Run("repoA_allowed", func(t *testing.T) {
+				homeA := wordKeyHome(t)
+				repoA := filepath.Join(homeA, "repoA")
+				_ = os.MkdirAll(repoA, 0o755)
+				_ = os.WriteFile(filepath.Join(repoA, "justfile"), []byte("reload:\n\techo reloading\n"), 0o644)
+
+				dbPathA := filepath.Join(homeA, ".local/share/iris/history.db")
+				storeA, err := scoring.NewFrecencyStore(dbPathA)
+				if err != nil {
+					t.Fatal(err)
+				}
+				_ = storeA.RecordSequence(ctx, "echo ready", "just reload", repoA, 0)
+				_ = storeA.Close()
+
+				termA := startInDirShell(t, homeA, repoA, sh, "IRIS_CORE_MODE=history")
+				_ = termA.Type("echo ready\n")
+				_ = termA.WaitStable(2 * time.Second)
+				if got := screen(termA); !strings.Contains(got, "just reload") {
+					t.Fatalf("expected empty-query sequence 'just reload' shown in repoA, got:\n%s", got)
+				}
+			})
 		})
 	}
 }
@@ -471,18 +474,19 @@ func TestScopePrediction_ScopeGate_Threshold3(t *testing.T) {
 			}
 			_ = store.Close()
 
-			// Standing in projB (Tier 0, scope = 1 < 3) -> no ghost
-			termB := startInDirShell(t, home, projB, sh, "IRIS_CORE_MODE=history")
-			if err = termB.Type("customrunner "); err != nil {
-				t.Fatal(err)
-			}
-			_ = termB.WaitStable(2 * time.Second)
-			if got := screen(termB); strings.Contains(got, freeCmd) {
-				t.Fatalf("expected no ghost for 1-scope command in projB, got:\n%s", got)
-			}
-			_ = termB.Close()
+			t.Run("part1_single_scope", func(t *testing.T) {
+				// standing in projB (Tier 0, scope = 1 < 3) -> no ghost
+				termB := startInDirShell(t, home, projB, sh, "IRIS_CORE_MODE=history")
+				if typeErr := termB.Type("customrunner "); typeErr != nil {
+					t.Fatal(typeErr)
+				}
+				_ = termB.WaitStable(2 * time.Second)
+				if got := screen(termB); strings.Contains(got, freeCmd) {
+					t.Fatalf("expected no ghost for 1-scope command in projB, got:\n%s", got)
+				}
+			})
 
-			// Part 2: record same command in projB and projC -> now scope count = 3
+			// part 2: record same command in projB and projC -> now scope count = 3
 			store, err = scoring.NewFrecencyStore(dbPath)
 			if err != nil {
 				t.Fatal(err)
@@ -491,18 +495,19 @@ func TestScopePrediction_ScopeGate_Threshold3(t *testing.T) {
 			_ = store.Record(ctx, freeCmd, projC, 0)
 			_ = store.Close()
 
-			// Standing in projD (Tier 0, scope = 3 >= 3) -> ghost appears
-			termD := startInDirShell(t, home, projD, sh, "IRIS_CORE_MODE=history")
-			if err = termD.Type("customrunner "); err != nil {
-				t.Fatal(err)
-			}
-			_ = termD.WaitStable(2 * time.Second)
-			if got := screen(termD); !strings.Contains(got, freeCmd) {
-				t.Fatalf("expected ghost for 3-scope command in projD, got:\n%s", got)
-			}
-			_ = termD.Close()
+			t.Run("part2_multi_scope", func(t *testing.T) {
+				// standing in projD (Tier 0, scope = 3 >= 3) -> ghost appears
+				termD := startInDirShell(t, home, projD, sh, "IRIS_CORE_MODE=history")
+				if typeErr := termD.Type("customrunner "); typeErr != nil {
+					t.Fatal(typeErr)
+				}
+				_ = termD.WaitStable(2 * time.Second)
+				if got := screen(termD); !strings.Contains(got, freeCmd) {
+					t.Fatalf("expected ghost for 3-scope command in projD, got:\n%s", got)
+				}
+			})
 
-			// Part 3: command in 3 non-project directories (tests COALESCE(project_id, cwd))
+			// part 3: command in 3 non-project directories (tests COALESCE(project_id, cwd))
 			dir1 := filepath.Join(home, "standalone1")
 			dir2 := filepath.Join(home, "standalone2")
 			dir3 := filepath.Join(home, "standalone3")
@@ -522,16 +527,17 @@ func TestScopePrediction_ScopeGate_Threshold3(t *testing.T) {
 			_ = store.Record(ctx, standaloneCmd, dir3, 0)
 			_ = store.Close()
 
-			// Standing in dir4 (Tier 0, scope = 3 non-project directories) -> ghost appears
-			termDir4 := startInDirShell(t, home, dir4, sh, "IRIS_CORE_MODE=history")
-			if err = termDir4.Type("dirtool "); err != nil {
-				t.Fatal(err)
-			}
-			_ = termDir4.WaitStable(2 * time.Second)
-			if got := screen(termDir4); !strings.Contains(got, standaloneCmd) {
-				t.Fatalf("expected ghost for standalone command with 3 cwd scopes, got:\n%s", got)
-			}
-			_ = termDir4.Close()
+			t.Run("part3_standalone", func(t *testing.T) {
+				// standing in dir4 (Tier 0, scope = 3 non-project directories) -> ghost appears
+				termDir4 := startInDirShell(t, home, dir4, sh, "IRIS_CORE_MODE=history")
+				if typeErr := termDir4.Type("dirtool "); typeErr != nil {
+					t.Fatal(typeErr)
+				}
+				_ = termDir4.WaitStable(2 * time.Second)
+				if got := screen(termDir4); !strings.Contains(got, standaloneCmd) {
+					t.Fatalf("expected ghost for standalone command with 3 cwd scopes, got:\n%s", got)
+				}
+			})
 		})
 	}
 }

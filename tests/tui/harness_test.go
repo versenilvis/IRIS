@@ -156,6 +156,7 @@ func startInDirShell(t *testing.T, home, workDir, shellName string, extraEnv ...
 		_ = os.MkdirAll(fishConfDir, 0o755)
 		configFish := "set -g fish_greeting ''\n" +
 			"set -g fish_autosuggestion_enabled 0\n" +
+			"set -g fish_history ''\n" +
 			"function fish_prompt\n    echo -n '" + prompt + "'\nend\n" +
 			"function fish_update_completions\n    return 0\nend\n" +
 			bin + " init fish | source\n"

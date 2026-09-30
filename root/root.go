@@ -9,11 +9,13 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 	_ "github.com/versenilvis/iris/commands"
@@ -132,6 +134,7 @@ func runWatchdog() {
 	cmd.Stdin = cmdStdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = w
+	setWatchdogSysProcAttr(cmd)
 
 	// give the wrapper a pipe to relay the shell's cwd back to the watchdog
 	// so it doesn't stay stuck at its initial working directory
@@ -149,6 +152,20 @@ func runWatchdog() {
 		runOriginal()
 		return
 	}
+
+	sigWatchdog := make(chan os.Signal, 2)
+	signal.Notify(sigWatchdog, syscall.SIGTERM, syscall.SIGHUP)
+	defer signal.Stop(sigWatchdog)
+	go func() {
+		s, ok := <-sigWatchdog
+		if !ok || cmd.Process == nil {
+			return
+		}
+		// forward termination signals so child exits before parent watchdog dies
+		_ = cmd.Process.Signal(s)
+		time.Sleep(500 * time.Millisecond)
+		_ = cmd.Process.Kill()
+	}()
 
 	_ = w.Close()
 	if cwdErr == nil {

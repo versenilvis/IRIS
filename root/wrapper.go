@@ -451,8 +451,8 @@ func runWrapper() {
 		logger.Warnf("stdinFile is not a terminal, skipping raw mode")
 	}
 
-	sigCh := make(chan os.Signal, 2)
-	signal.Notify(sigCh, syscall.SIGWINCH, syscall.SIGUSR1)
+	sigCh := make(chan os.Signal, 4)
+	signal.Notify(sigCh, syscall.SIGWINCH, syscall.SIGUSR1, syscall.SIGTERM, syscall.SIGHUP)
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
@@ -465,6 +465,15 @@ func runWrapper() {
 		}()
 		for s := range sigCh {
 			switch s {
+			case syscall.SIGTERM, syscall.SIGHUP:
+				restoreTerminal()
+				if c.Process != nil {
+					// kill entire shell process group to prevent orphan processes
+					_ = syscall.Kill(-c.Process.Pid, syscall.SIGKILL)
+					_ = c.Process.Kill()
+				}
+				_ = ptmx.Close()
+				os.Exit(0)
 			case syscall.SIGWINCH:
 				logger.Debugf("Received SIGWINCH terminal resize signal")
 				_ = pty.InheritSize(stdinFile, ptmx) // handle terminal window resize
