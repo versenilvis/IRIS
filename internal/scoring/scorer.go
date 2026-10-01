@@ -31,10 +31,10 @@ type ScoreConfig struct {
 }
 
 var DefaultScoreConfig = ScoreConfig{
-	WeightBasePriority: 0.30,
-	WeightContextBonus: 0.25,
-	WeightFrecency:     0.15,
-	WeightTransition:   0.10,
+	WeightBasePriority: 0.20,
+	WeightContextBonus: 0.20,
+	WeightFrecency:     0.20,
+	WeightTransition:   0.20,
 	WeightMatchQuality: 0.20,
 }
 
@@ -69,13 +69,23 @@ func ScoreWithConfig(suggestions []spec.Suggestion, signals SignalSet, config Sc
 
 	normFrec := normalizeFrecency(rawFrec)
 
+	candCmds := make([]string, len(suggestions))
+	for i, s := range suggestions {
+		candCmds[i] = s.Cmd
+	}
+	anch := NewAnchor(candCmds, signals.Query)
+
 	scored := make([]ScoredSuggestion, len(suggestions))
 	for i, s := range suggestions {
 		bp := basePriorityFor(s)
 		cb := ApplyContextRules(signals.Workspace, s.Cmd)
 		frec := normFrec[i]
-		trans := transitionScoreFor(ExtractSkeleton(s.Cmd), signals.TransitionEntries, signals.TransitionIsLocal)
+		trans := transitionScoreFor(s.Cmd, ExtractSkeleton(s.Cmd), signals.SequenceEntries, signals.SequenceIsLocal, signals.TransitionEntries, signals.TransitionIsLocal)
 		mq := matchQualityScore(s.Cmd, signals.Query)
+
+		if signals.Query != "" && !anch.Allows(s.Cmd) {
+			mq = 0
+		}
 
 		total := config.WeightBasePriority*float64(bp) +
 			config.WeightContextBonus*float64(cb) +
@@ -115,18 +125,33 @@ func ScoreWithConfig(suggestions []spec.Suggestion, signals SignalSet, config Sc
 	return scored
 }
 
-func transitionScoreFor(cmdSkeleton string, entries []TransitionEntry, isLocal bool) int {
-	if len(entries) == 0 {
-		return 0 // cold-start: no data, contributes 0 (must check before accessing entries[0])
+func transitionScoreFor(cmd, cmdSkeleton string, seqEntries []SequenceEntry, seqIsLocal bool, transEntries []TransitionEntry, transIsLocal bool) int {
+	if len(seqEntries) > 0 {
+		maxCount := seqEntries[0].Count
+		if maxCount > 0 {
+			for _, e := range seqEntries {
+				if e.NextCmd == cmd {
+					score := (float64(e.Count) / float64(maxCount)) * 100.0
+					if !seqIsLocal {
+						score *= 0.8
+					}
+					return int(math.Round(score))
+				}
+			}
+		}
 	}
-	maxCount := entries[0].Count
+
+	if len(transEntries) == 0 {
+		return 0 // cold-start: no data, contributes 0
+	}
+	maxCount := transEntries[0].Count
 	if maxCount <= 0 {
 		return 0
 	}
-	for _, e := range entries {
+	for _, e := range transEntries {
 		if e.NextSkeleton == cmdSkeleton {
 			score := (float64(e.Count) / float64(maxCount)) * 100.0
-			if !isLocal {
+			if !transIsLocal {
 				score *= 0.7
 			}
 			return int(math.Round(score))
@@ -185,8 +210,11 @@ func matchQualityScore(cmd, query string) int {
 	if strings.Contains(strings.ToLower(cmd), strings.ToLower(query)) {
 		return 50
 	}
-	if isSubsequence(strings.ToLower(query), strings.ToLower(cmd)) {
+	if isSubsequenceWithGap(strings.ToLower(query), strings.ToLower(cmd), 4) {
 		return 30
+	}
+	if isSubsequence(strings.ToLower(query), strings.ToLower(cmd)) {
+		return 15
 	}
 	return 0
 }

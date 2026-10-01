@@ -41,7 +41,15 @@ jobs:
               with:
                   version: v2.11.4
 
+            - name: Install Shells for Testing
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y zsh fish
+                  sudo chmod -R go-w /usr/local/share
+
             - name: Run Tests
+              env:
+                  IRIS_REQUIRE_SHELLS: "1"
               run: go test -v ./...
 
             - name: Create vendor tarball
@@ -89,3 +97,19 @@ jobs:
                       git commit -m "docs(changelog): update for ${GITHUB_REF_NAME} [skip ci]"
                       git push origin main
                   fi
+
+    test-macos:
+        name: Tests (macOS)
+        runs-on: macos-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Go
+              uses: actions/setup-go@v5
+              with:
+                  go-version: "1.24"
+                  cache: true
+
+            - name: Run Tests
+              run: go test -v ./internal/workspace/... ./internal/ctxcheck/...

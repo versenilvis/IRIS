@@ -7,6 +7,7 @@ import (
 
 	"golang.org/x/term"
 
+	_ "github.com/versenilvis/iris/commands"
 	"github.com/versenilvis/iris/internal/config"
 )
 
@@ -158,3 +159,5 @@ func TestMenuOnlyHidden(t *testing.T) {
 		})
 	}
 }
+
+

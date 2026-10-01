@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/versenilvis/iris/internal/config"
+	"github.com/versenilvis/iris/internal/workspace"
 	_ "modernc.org/sqlite"
 )
 
@@ -31,9 +32,67 @@ type TransitionEntry struct {
 	LastUsed     time.Time
 }
 
+type SequenceEntry struct {
+	PrevCmd  string
+	NextCmd  string
+	Cwd      string
+	Count    int
+	LastUsed time.Time
+}
+
+type Candidate struct {
+	Cmd      string
+	Tier     int
+	Count    int
+	LastUsed time.Time
+}
+
+const (
+	LocalLimit           = 200
+	GlobalLimit          = 100
+	MaxCandidates        = 30
+	GlobalScopeThreshold = 3
+)
+
 type FrecencyStore struct {
-	db *sql.DB
-	mu sync.Mutex
+	db         *sql.DB
+	mu         sync.Mutex
+	bgWg       sync.WaitGroup
+	dbPath     string
+	backupOnce sync.Once
+}
+
+func (f *FrecencyStore) backupDatabase(ctx context.Context) error {
+	if f.dbPath == "" || f.dbPath == ":memory:" || f.db == nil {
+		return nil
+	}
+	bakPath := f.dbPath + ".bak"
+
+	// create empty destination file with 0600 permissions
+	fBak, err := os.OpenFile(bakPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
+	if err != nil {
+		return fmt.Errorf("failed to create backup file %s: %w", bakPath, err)
+	}
+	_ = fBak.Close()
+
+	// VACUUM INTO writes an atomic, WAL-consistent copy into the empty file
+	_, err = f.db.ExecContext(ctx, "VACUUM INTO ?", bakPath)
+	if err == nil {
+		return nil
+	}
+
+	// fallback: truncate WAL checkpoint, then copy file bytes
+	_, _ = f.db.ExecContext(ctx, "PRAGMA wal_checkpoint(TRUNCATE)")
+	data, errRead := os.ReadFile(f.dbPath)
+	if errRead != nil {
+		_ = os.Remove(bakPath)
+		return fmt.Errorf("backup failed via VACUUM INTO (%w) and fallback read (%w)", err, errRead)
+	}
+	if errWrite := os.WriteFile(bakPath, data, 0o600); errWrite != nil {
+		_ = os.Remove(bakPath)
+		return fmt.Errorf("backup failed via VACUUM INTO (%w) and fallback write (%w)", err, errWrite)
+	}
+	return nil
 }
 
 func NewFrecencyStore(dbPath string) (*FrecencyStore, error) {
@@ -62,12 +121,18 @@ func NewFrecencyStore(dbPath string) (*FrecencyStore, error) {
 	}
 	db.SetMaxOpenConns(1)
 
-	store := &FrecencyStore{db: db}
+	store := &FrecencyStore{db: db, dbPath: dbPath}
 	if err := store.initSchema(context.Background()); err != nil {
 		_ = db.Close()
 		return nil, err
 	}
 	_ = os.Chmod(dbPath, 0600)
+	// track with bgWg and use timeout so close waits without blocking indefinitely
+	store.bgWg.Go(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		store.BootstrapSequences(ctx, "", "")
+	})
 
 	return store, nil
 }
@@ -93,6 +158,7 @@ CREATE TABLE IF NOT EXISTS history_entries (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     cmd TEXT NOT NULL,
     cwd TEXT NOT NULL,
+    project_id TEXT DEFAULT NULL,
     count INTEGER DEFAULT 1,
     last_used TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(cmd, cwd)
@@ -111,9 +177,129 @@ CREATE TABLE IF NOT EXISTS command_transitions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_transitions_prev_cwd ON command_transitions(prev_skeleton, cwd);
+
+CREATE TABLE IF NOT EXISTS command_sequences (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    prev_cmd  TEXT NOT NULL,
+    next_cmd  TEXT NOT NULL,
+    cwd       TEXT NOT NULL,
+    project_id TEXT DEFAULT NULL,
+    count     INTEGER DEFAULT 1,
+    last_used TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(prev_cmd, next_cmd, cwd)
+);
+
+CREATE INDEX IF NOT EXISTS idx_sequences_prev_cwd ON command_sequences(prev_cmd, cwd);
 `
-	_, err := f.db.ExecContext(ctxTimeout, schema)
-	return err
+	if _, err := f.db.ExecContext(ctxTimeout, schema); err != nil {
+		return err
+	}
+
+	addedHist, err := f.addColumnIfNotExists(ctxTimeout, "history_entries", "project_id", "TEXT DEFAULT NULL")
+	if err != nil {
+		return err
+	}
+	addedSeq, err := f.addColumnIfNotExists(ctxTimeout, "command_sequences", "project_id", "TEXT DEFAULT NULL")
+	if err != nil {
+		return err
+	}
+
+	indexSQL := `
+CREATE INDEX IF NOT EXISTS idx_history_project_cmd ON history_entries(project_id, cmd);
+CREATE INDEX IF NOT EXISTS idx_sequences_project_prev ON command_sequences(project_id, prev_cmd);
+`
+	if _, err := f.db.ExecContext(ctxTimeout, indexSQL); err != nil {
+		return err
+	}
+
+	if addedHist || addedSeq {
+		cleanupSQL := `
+DELETE FROM history_entries WHERE count <= 0;
+DELETE FROM command_sequences WHERE count <= 0;
+`
+		if _, err := f.db.ExecContext(ctxTimeout, cleanupSQL); err != nil {
+			return err
+		}
+	}
+
+	f.bgWg.Go(func() {
+		f.backfillProjectIDs()
+	})
+	return nil
+}
+
+func (f *FrecencyStore) addColumnIfNotExists(ctx context.Context, table, column, colDef string) (bool, error) {
+	rows, err := f.db.QueryContext(ctx, fmt.Sprintf("PRAGMA table_info(%s)", table))
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var cid int
+		var name, ctype string
+		var notnull, pk int
+		var dfltValue any
+		if scanErr := rows.Scan(&cid, &name, &ctype, &notnull, &dfltValue, &pk); scanErr == nil {
+			if strings.EqualFold(name, column) {
+				return false, nil
+			}
+		}
+	}
+	if rowsErr := rows.Err(); rowsErr != nil {
+		return false, rowsErr
+	}
+	var backupErr error
+	f.backupOnce.Do(func() {
+		backupErr = f.backupDatabase(ctx)
+	})
+	if backupErr != nil {
+		return false, fmt.Errorf("schema migration aborted: failed to create database backup: %w", backupErr)
+	}
+	_, err = f.db.ExecContext(ctx, fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, column, colDef))
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (f *FrecencyStore) backfillTable(ctx context.Context, table string) {
+	rows, err := f.db.QueryContext(ctx, "SELECT DISTINCT cwd FROM "+table+" WHERE project_id IS NULL")
+	if err != nil {
+		return
+	}
+	defer func() { _ = rows.Close() }()
+
+	var cwds []string
+	for rows.Next() {
+		var d string
+		if errScan := rows.Scan(&d); errScan == nil && d != "" {
+			cwds = append(cwds, d)
+		}
+	}
+	if rows.Err() != nil {
+		return
+	}
+	for _, d := range cwds {
+		norm := workspace.Normalize(d)
+		pid := ""
+		if _, statErr := os.Stat(norm); statErr == nil {
+			pid = workspace.ProjectID(workspace.DetectRoot(norm))
+		}
+		f.mu.Lock()
+		_, _ = f.db.ExecContext(ctx, "UPDATE "+table+" SET project_id = ? WHERE cwd = ? AND project_id IS NULL", pid, d)
+		f.mu.Unlock()
+	}
+}
+
+func (f *FrecencyStore) backfillProjectIDs() {
+	if f == nil || f.db == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	f.backfillTable(ctx, "history_entries")
+	f.backfillTable(ctx, "command_sequences")
 }
 
 func (f *FrecencyStore) Record(ctx context.Context, cmd, cwd string, exitCode int) error {
@@ -125,6 +311,12 @@ func (f *FrecencyStore) Record(ctx context.Context, cmd, cwd string, exitCode in
 	if cmd == "" || cwd == "" {
 		return nil
 	}
+	if exitCode != 0 {
+		return nil
+	}
+
+	normCwd := workspace.Normalize(cwd)
+	projectID := workspace.ProjectID(workspace.DetectRoot(normCwd))
 
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -135,24 +327,15 @@ func (f *FrecencyStore) Record(ctx context.Context, cmd, cwd string, exitCode in
 	ctxTimeout, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
 	defer cancel()
 
-	var query string
-	if exitCode == 0 {
-		query = `
-INSERT INTO history_entries (cmd, cwd, count, last_used)
-VALUES (?, ?, 1, CURRENT_TIMESTAMP)
+	query := `
+INSERT INTO history_entries (cmd, cwd, project_id, count, last_used)
+VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)
 ON CONFLICT(cmd, cwd) DO UPDATE SET
+    project_id = COALESCE(NULLIF(excluded.project_id, ''), project_id),
     count = count + 1,
     last_used = CURRENT_TIMESTAMP;
 `
-	} else {
-		query = `
-INSERT INTO history_entries (cmd, cwd, count, last_used)
-VALUES (?, ?, 0, CURRENT_TIMESTAMP)
-ON CONFLICT(cmd, cwd) DO UPDATE SET
-    last_used = CURRENT_TIMESTAMP;
-`
-	}
-	_, err := f.db.ExecContext(ctxTimeout, query, cmd, cwd)
+	_, err := f.db.ExecContext(ctxTimeout, query, cmd, normCwd, projectID)
 	return err
 }
 
@@ -166,6 +349,68 @@ func (f *FrecencyStore) RecordTransition(ctx context.Context, prevSkeleton, next
 	if prevSkeleton == "" || nextSkeleton == "" || cwd == "" {
 		return nil
 	}
+	if nextExitCode != 0 {
+		return nil
+	}
+
+	normCwd := workspace.Normalize(cwd)
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctxTimeout, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
+	defer cancel()
+
+	query := `
+INSERT INTO command_transitions (prev_skeleton, next_skeleton, cwd, count, last_used)
+VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)
+ON CONFLICT(prev_skeleton, next_skeleton, cwd) DO UPDATE SET
+    count = count + 1,
+    last_used = CURRENT_TIMESTAMP;
+`
+	_, err := f.db.ExecContext(ctxTimeout, query, prevSkeleton, nextSkeleton, normCwd)
+	return err
+}
+
+var navCommands = map[string]bool{
+	"cd":    true,
+	"z":     true,
+	"zi":    true,
+	"j":     true,
+	"pushd": true,
+	"popd":  true,
+}
+
+// avoid repeating directory jumps after arriving at destination
+func IsNavCommand(cmd string) bool {
+	fields := strings.Fields(cmd)
+	if len(fields) == 0 {
+		return false
+	}
+	return navCommands[fields[0]]
+}
+
+func (f *FrecencyStore) RecordSequence(ctx context.Context, prevCmd, nextCmd, cwd string, nextExitCode int) error {
+	if f == nil {
+		return nil
+	}
+	prevCmd = strings.TrimSpace(prevCmd)
+	nextCmd = strings.TrimSpace(nextCmd)
+	cwd = strings.TrimSpace(cwd)
+	if prevCmd == "" || nextCmd == "" || cwd == "" {
+		return nil
+	}
+	if nextExitCode != 0 {
+		return nil
+	}
+	if IsNavCommand(nextCmd) && strings.EqualFold(prevCmd, nextCmd) {
+		return nil
+	}
+
+	normCwd := workspace.Normalize(cwd)
+	projectID := workspace.ProjectID(workspace.DetectRoot(normCwd))
 
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -176,25 +421,522 @@ func (f *FrecencyStore) RecordTransition(ctx context.Context, prevSkeleton, next
 	ctxTimeout, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
 	defer cancel()
 
-	var query string
-	if nextExitCode == 0 {
-		query = `
-INSERT INTO command_transitions (prev_skeleton, next_skeleton, cwd, count, last_used)
-VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)
-ON CONFLICT(prev_skeleton, next_skeleton, cwd) DO UPDATE SET
+	query := `
+INSERT INTO command_sequences (prev_cmd, next_cmd, cwd, project_id, count, last_used)
+VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
+ON CONFLICT(prev_cmd, next_cmd, cwd) DO UPDATE SET
+    project_id = COALESCE(NULLIF(excluded.project_id, ''), project_id),
     count = count + 1,
     last_used = CURRENT_TIMESTAMP;
 `
-	} else {
-		query = `
-INSERT INTO command_transitions (prev_skeleton, next_skeleton, cwd, count, last_used)
-VALUES (?, ?, ?, 0, CURRENT_TIMESTAMP)
-ON CONFLICT(prev_skeleton, next_skeleton, cwd) DO UPDATE SET
-    last_used = CURRENT_TIMESTAMP;
-`
-	}
-	_, err := f.db.ExecContext(ctxTimeout, query, prevSkeleton, nextSkeleton, cwd)
+	_, err := f.db.ExecContext(ctxTimeout, query, prevCmd, nextCmd, normCwd, projectID)
 	return err
+}
+
+func (f *FrecencyStore) QuerySequencesWithFallback(ctx context.Context, prevCmd, cwd string) ([]SequenceEntry, bool) {
+	if f == nil {
+		return nil, false
+	}
+	prevCmd = strings.TrimSpace(prevCmd)
+	cwd = workspace.Normalize(strings.TrimSpace(cwd))
+	if prevCmd == "" {
+		return nil, false
+	}
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctxTimeout, cancel := context.WithTimeout(ctx, 1000*time.Millisecond)
+	defer cancel()
+
+	var localEntries []SequenceEntry
+	rows, err := f.db.QueryContext(ctxTimeout, `
+SELECT prev_cmd, next_cmd, cwd, count, last_used
+FROM command_sequences
+WHERE prev_cmd = ? AND cwd = ? AND count > 0
+ORDER BY count DESC
+`, prevCmd, cwd)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var prev, next, rCwd string
+			var count int
+			var lastUsedRaw string
+			if err := rows.Scan(&prev, &next, &rCwd, &count, &lastUsedRaw); err == nil {
+				t, _ := parseTimestamp(lastUsedRaw)
+				localEntries = append(localEntries, SequenceEntry{
+					PrevCmd:  prev,
+					NextCmd:  next,
+					Cwd:      rCwd,
+					Count:    count,
+					LastUsed: t,
+				})
+			}
+		}
+		if rowErr := rows.Err(); rowErr != nil {
+			localEntries = nil
+		}
+	}
+	if len(localEntries) > 0 {
+		return localEntries, true
+	}
+
+	var globalEntries []SequenceEntry
+	gRows, gErr := f.db.QueryContext(ctxTimeout, `
+SELECT prev_cmd, next_cmd, SUM(count) as total_count, MAX(last_used) as max_last_used
+FROM command_sequences
+WHERE prev_cmd = ? AND count > 0
+GROUP BY next_cmd
+ORDER BY total_count DESC
+`, prevCmd)
+	if gErr == nil {
+		defer gRows.Close()
+		for gRows.Next() {
+			var prev, next string
+			var count int
+			var lastUsedRaw string
+			if err := gRows.Scan(&prev, &next, &count, &lastUsedRaw); err == nil {
+				t, _ := parseTimestamp(lastUsedRaw)
+				globalEntries = append(globalEntries, SequenceEntry{
+					PrevCmd:  prev,
+					NextCmd:  next,
+					Cwd:      "",
+					Count:    count,
+					LastUsed: t,
+				})
+			}
+		}
+		if gRowErr := gRows.Err(); gRowErr != nil {
+			globalEntries = nil
+		}
+	}
+	if len(globalEntries) > 0 {
+		return globalEntries, false
+	}
+
+	return nil, false
+}
+
+func (f *FrecencyStore) GetLatestHistoryEntry(ctx context.Context) (string, string) {
+	if f == nil {
+		return "", ""
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var cmd, cwd string
+	row := f.db.QueryRowContext(ctx, "SELECT cmd, cwd FROM history_entries ORDER BY last_used DESC LIMIT 1")
+	if err := row.Scan(&cmd, &cwd); err == nil {
+		return cmd, cwd
+	}
+	return "", ""
+}
+
+type localRow struct {
+	cmd   string
+	cwd   string
+	pid   string
+	count int
+	last  time.Time
+}
+
+type globalRow struct {
+	cmd   string
+	total int
+	last  time.Time
+}
+
+func tierOf(rowCwd, rowPID, cwd, pid string) int {
+	rowCwd = workspace.Normalize(rowCwd)
+	cwd = workspace.Normalize(cwd)
+	if rowCwd == cwd {
+		return 4
+	}
+	// descendant or ancestor checks only apply within the same project
+	if pid == "" || rowPID != pid {
+		return 0
+	}
+	switch {
+	case isUnder(rowCwd, cwd):
+		return 3
+	case isUnder(cwd, rowCwd):
+		return 2
+	}
+	return 1
+}
+
+func isUnder(child, parent string) bool {
+	child = workspace.Normalize(child)
+	parent = workspace.Normalize(parent)
+	if parent == "" || child == "" || parent == child {
+		return false
+	}
+	return strings.HasPrefix(child, strings.TrimSuffix(parent, "/")+"/")
+}
+
+func rank(local []localRow, global []globalRow, cwd, pid string) []Candidate {
+	cwd = workspace.Normalize(cwd)
+	m := map[string]*Candidate{}
+	for _, r := range local {
+		t := tierOf(r.cwd, r.pid, cwd, pid)
+		c, ok := m[r.cmd]
+		if !ok {
+			c = &Candidate{Cmd: r.cmd}
+			m[r.cmd] = c
+		}
+		c.Tier = max(c.Tier, t)
+		c.Count += r.count
+		if r.last.After(c.LastUsed) {
+			c.LastUsed = r.last
+		}
+	}
+	for _, g := range global {
+		if _, ok := m[g.cmd]; ok {
+			continue
+		}
+		m[g.cmd] = &Candidate{Cmd: g.cmd, Tier: 0, Count: g.total, LastUsed: g.last}
+	}
+	out := make([]Candidate, 0, len(m))
+	for _, c := range m {
+		out = append(out, *c)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		a, b := out[i], out[j]
+		if a.Tier != b.Tier {
+			return a.Tier > b.Tier
+		}
+		if a.Count != b.Count {
+			return a.Count > b.Count
+		}
+		if !a.LastUsed.Equal(b.LastUsed) {
+			return a.LastUsed.After(b.LastUsed)
+		}
+		return a.Cmd < b.Cmd
+	})
+	if len(out) > MaxCandidates {
+		out = out[:MaxCandidates]
+	}
+	return out
+}
+
+func prefixUpperBound(p string) string {
+	if p == "" {
+		return ""
+	}
+	b := []byte(p)
+	for i := len(b) - 1; i >= 0; i-- {
+		if b[i] < 255 {
+			b[i]++
+			return string(b[:i+1])
+		}
+	}
+	return ""
+}
+
+func (f *FrecencyStore) QueryHistoryCandidates(ctx context.Context, prefix, cwd, pid string) []Candidate {
+	if f == nil || prefix == "" {
+		return nil
+	}
+	cwd = workspace.Normalize(strings.TrimSpace(cwd))
+	pid = strings.TrimSpace(pid)
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctxTimeout, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	defer cancel()
+
+	var local []localRow
+	var global []globalRow
+
+	upper := prefixUpperBound(prefix)
+
+	var matchClause string
+	var matchArgs []any
+	if upper != "" {
+		matchClause = " AND cmd >= ? AND cmd < ? AND instr(cmd, ?) = 1 AND cmd != ?"
+		matchArgs = []any{prefix, upper, prefix, prefix}
+	} else {
+		matchClause = " AND instr(cmd, ?) = 1 AND cmd != ?"
+		matchArgs = []any{prefix, prefix}
+	}
+
+	baseLocal := "SELECT cmd, cwd, COALESCE(project_id,''), count, last_used FROM history_entries WHERE count > 0"
+	var localSQL string
+	var localArgs []any
+	if pid != "" {
+		localSQL = baseLocal + " AND cwd = ?" + matchClause + "\nUNION\n" + baseLocal + " AND project_id = ?" + matchClause + "\nORDER BY count DESC LIMIT ?"
+		localArgs = append([]any{cwd}, matchArgs...)
+		localArgs = append(localArgs, pid)
+		localArgs = append(localArgs, matchArgs...)
+		localArgs = append(localArgs, LocalLimit)
+	} else {
+		localSQL = baseLocal + " AND cwd = ?" + matchClause + "\nORDER BY count DESC LIMIT ?"
+		localArgs = append([]any{cwd}, matchArgs...)
+		localArgs = append(localArgs, LocalLimit)
+	}
+
+	globalSQL := "SELECT cmd, SUM(count), MAX(last_used) FROM history_entries WHERE count > 0" + matchClause + "\nGROUP BY cmd ORDER BY SUM(count) DESC LIMIT ?"
+	globalArgs := append(append([]any(nil), matchArgs...), GlobalLimit)
+
+	func() {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		if rows, err := f.db.QueryContext(ctxTimeout, localSQL, localArgs...); err == nil {
+			defer func() { _ = rows.Close() }()
+			for rows.Next() {
+				var cmd, rCwd, rPid, lastRaw string
+				var count int
+				if scanErr := rows.Scan(&cmd, &rCwd, &rPid, &count, &lastRaw); scanErr == nil {
+					t, _ := parseTimestamp(lastRaw)
+					local = append(local, localRow{
+						cmd:   cmd,
+						cwd:   rCwd,
+						pid:   rPid,
+						count: count,
+						last:  t,
+					})
+				}
+			}
+			if rowErr := rows.Err(); rowErr != nil {
+				local = nil
+			}
+		}
+
+		if gRows, err := f.db.QueryContext(ctxTimeout, globalSQL, globalArgs...); err == nil {
+			defer func() { _ = gRows.Close() }()
+			for gRows.Next() {
+				var cmd, lastRaw string
+				var total int
+				if scanErr := gRows.Scan(&cmd, &total, &lastRaw); scanErr == nil {
+					t, _ := parseTimestamp(lastRaw)
+					global = append(global, globalRow{
+						cmd:   cmd,
+						total: total,
+						last:  t,
+					})
+				}
+			}
+			if gRowErr := gRows.Err(); gRowErr != nil {
+				global = nil
+			}
+		}
+	}()
+
+	return rank(local, global, cwd, pid)
+}
+
+func (f *FrecencyStore) QuerySequenceCandidates(ctx context.Context, prevCmd, prefix, cwd, pid string) []Candidate {
+	if f == nil || prevCmd == "" {
+		return nil
+	}
+	prevCmd = strings.TrimSpace(prevCmd)
+	cwd = workspace.Normalize(strings.TrimSpace(cwd))
+	pid = strings.TrimSpace(pid)
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctxTimeout, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	defer cancel()
+
+	var local []localRow
+	var global []globalRow
+
+	var filterClause string
+	var filterArgs []any
+	if prefix != "" {
+		filterClause = " AND instr(next_cmd, ?) = 1 AND next_cmd != ?"
+		filterArgs = []any{prefix, prefix}
+	}
+
+	baseSeq := "SELECT next_cmd, cwd, COALESCE(project_id,''), count, last_used FROM command_sequences WHERE count > 0 AND prev_cmd = ?"
+	var localSQL string
+	var localArgs []any
+	if pid != "" {
+		localSQL = baseSeq + " AND cwd = ?" + filterClause + "\nUNION\n" + baseSeq + " AND project_id = ?" + filterClause + "\nORDER BY count DESC LIMIT ?"
+		localArgs = append([]any{prevCmd, cwd}, filterArgs...)
+		localArgs = append(localArgs, prevCmd, pid)
+		localArgs = append(localArgs, filterArgs...)
+		localArgs = append(localArgs, LocalLimit)
+	} else {
+		localSQL = baseSeq + " AND cwd = ?" + filterClause + "\nORDER BY count DESC LIMIT ?"
+		localArgs = append([]any{prevCmd, cwd}, filterArgs...)
+		localArgs = append(localArgs, LocalLimit)
+	}
+
+	globalSQL := "SELECT next_cmd, SUM(count), MAX(last_used) FROM command_sequences WHERE count > 0 AND prev_cmd = ?" + filterClause + "\nGROUP BY next_cmd ORDER BY SUM(count) DESC LIMIT ?"
+	globalArgs := append([]any{prevCmd}, filterArgs...)
+	globalArgs = append(globalArgs, GlobalLimit)
+
+	func() {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+
+		if rows, err := f.db.QueryContext(ctxTimeout, localSQL, localArgs...); err == nil {
+			defer func() { _ = rows.Close() }()
+			for rows.Next() {
+				var nextCmd, rCwd, rPid, lastRaw string
+				var count int
+				if scanErr := rows.Scan(&nextCmd, &rCwd, &rPid, &count, &lastRaw); scanErr == nil {
+					if IsNavCommand(nextCmd) && strings.EqualFold(nextCmd, prevCmd) {
+						continue
+					}
+					t, _ := parseTimestamp(lastRaw)
+					local = append(local, localRow{
+						cmd:   nextCmd,
+						cwd:   rCwd,
+						pid:   rPid,
+						count: count,
+						last:  t,
+					})
+				}
+			}
+			if rowErr := rows.Err(); rowErr != nil {
+				local = nil
+			}
+		}
+
+		if gRows, err := f.db.QueryContext(ctxTimeout, globalSQL, globalArgs...); err == nil {
+			defer func() { _ = gRows.Close() }()
+			for gRows.Next() {
+				var nextCmd, lastRaw string
+				var total int
+				if scanErr := gRows.Scan(&nextCmd, &total, &lastRaw); scanErr == nil {
+					if IsNavCommand(nextCmd) && strings.EqualFold(nextCmd, prevCmd) {
+						continue
+					}
+					t, _ := parseTimestamp(lastRaw)
+					global = append(global, globalRow{
+						cmd:   nextCmd,
+						total: total,
+						last:  t,
+					})
+				}
+			}
+			if gRowErr := gRows.Err(); gRowErr != nil {
+				global = nil
+			}
+		}
+	}()
+
+	return rank(local, global, cwd, pid)
+}
+
+func (f *FrecencyStore) ScopeCount(ctx context.Context, cmd string) int {
+	if f == nil || cmd == "" {
+		return 0
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctxTimeout, cancel := context.WithTimeout(ctx, 50*time.Millisecond)
+	defer cancel()
+
+	var scopes int
+	row := f.db.QueryRowContext(ctxTimeout, `
+SELECT COUNT(DISTINCT COALESCE(NULLIF(project_id,''), cwd))
+FROM history_entries
+WHERE count > 0 AND cmd = ?`, cmd)
+	_ = row.Scan(&scopes)
+	return scopes
+}
+
+func (f *FrecencyStore) BootstrapSequences(ctx context.Context, historyPath, defaultCwd string) {
+	if f == nil {
+		return
+	}
+	f.mu.Lock()
+	var count int
+	_ = f.db.QueryRowContext(ctx, "SELECT count(*) FROM command_sequences").Scan(&count)
+	f.mu.Unlock()
+	if count >= 20 {
+		return
+	}
+
+	if historyPath == "" {
+		home, _ := os.UserHomeDir()
+		candidates := []string{
+			filepath.Join(home, ".zsh_history"),
+			filepath.Join(home, ".bash_history"),
+			filepath.Join(home, ".local/share/fish/fish_history"),
+		}
+		for _, p := range candidates {
+			if _, err := os.Stat(p); err == nil {
+				historyPath = p
+				break
+			}
+		}
+	}
+	if historyPath == "" {
+		return
+	}
+
+	data, err := os.ReadFile(historyPath)
+	if err != nil {
+		return
+	}
+
+	rawLines := strings.Split(string(data), "\n")
+	var cmds []string
+	for _, l := range rawLines {
+		l = strings.TrimSpace(l)
+		if l == "" {
+			continue
+		}
+		if strings.HasPrefix(l, ": ") {
+			if idx := strings.Index(l, ";"); idx != -1 {
+				l = strings.TrimSpace(l[idx+1:])
+			}
+		}
+		if l != "" && len(l) < 300 {
+			cmds = append(cmds, l)
+		}
+	}
+	if len(cmds) < 2 {
+		return
+	}
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	tx, err := f.db.BeginTx(ctx, nil)
+	if err != nil {
+		return
+	}
+	stmt, err := tx.PrepareContext(ctx, `
+INSERT INTO command_sequences (prev_cmd, next_cmd, cwd, count, last_used)
+VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP)
+ON CONFLICT(prev_cmd, next_cmd, cwd) DO UPDATE SET
+    count = command_sequences.count + 1,
+    last_used = CURRENT_TIMESTAMP;
+`)
+	if err != nil {
+		_ = tx.Rollback()
+		return
+	}
+	defer stmt.Close()
+
+	if defaultCwd == "" {
+		defaultCwd, _ = os.UserHomeDir()
+	}
+	defaultCwd = workspace.Normalize(defaultCwd)
+
+	start := max(0, len(cmds)-2000)
+	for i := start; i < len(cmds)-1; i++ {
+		prev := cmds[i]
+		next := cmds[i+1]
+		if prev != next && !strings.Contains(prev, "\n") && !strings.Contains(next, "\n") {
+			_, _ = stmt.ExecContext(ctx, prev, next, defaultCwd)
+		}
+	}
+	_ = tx.Commit()
 }
 
 func (f *FrecencyStore) QueryTransitionsWithFallback(ctx context.Context, prevSkeleton, cwd string) ([]TransitionEntry, bool) {
@@ -202,7 +944,7 @@ func (f *FrecencyStore) QueryTransitionsWithFallback(ctx context.Context, prevSk
 		return nil, false
 	}
 	prevSkeleton = strings.TrimSpace(prevSkeleton)
-	cwd = strings.TrimSpace(cwd)
+	cwd = workspace.Normalize(strings.TrimSpace(cwd))
 	if prevSkeleton == "" {
 		return nil, false
 	}
@@ -245,6 +987,9 @@ ORDER BY count DESC
 						})
 					}
 				}
+				if rowErr := rows.Err(); rowErr != nil {
+					loopEntries = nil
+				}
 			}
 		}()
 		if len(loopEntries) > 0 {
@@ -282,6 +1027,9 @@ ORDER BY total_count DESC
 							LastUsed:     t,
 						})
 					}
+				}
+				if gRowErr := rows.Err(); gRowErr != nil {
+					loopEntries = nil
 				}
 			}
 		}()
@@ -324,6 +1072,7 @@ func (f *FrecencyStore) QueryLocal(ctx context.Context, cwd, prefix string, limi
 	if limit <= 0 {
 		limit = 50
 	}
+	cwd = workspace.Normalize(strings.TrimSpace(cwd))
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -460,6 +1209,7 @@ func (f *FrecencyStore) Close() error {
 	if f == nil {
 		return nil
 	}
+	f.bgWg.Wait()
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.db != nil {
@@ -507,7 +1257,7 @@ func GetFrecencyStore() (*FrecencyStore, error) {
 func CloseGlobalFrecencyStore() {
 	globalFrecencyMu.Lock()
 	defer globalFrecencyMu.Unlock()
-	
+
 	if globalFrecencyStore != nil {
 		_ = globalFrecencyStore.Close()
 		globalFrecencyStore = nil

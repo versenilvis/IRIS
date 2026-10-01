@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -21,15 +22,15 @@ var (
 	sessionHistory   []string
 	sessionHistoryMu sync.Mutex
 
-	historyCache  []string
-	idMapCache    map[string]int
+	historyCache   []string
+	idMapCache     map[string]int
 	sourceMapCache map[string]string
-	searcherCache *fuzzy.Searcher
-	mu            sync.Mutex
-	lastModTime   int64
+	searcherCache  *fuzzy.Searcher
+	mu             sync.Mutex
+	lastModTime    int64
 
-	atuinCmds    []string
-	atuinLastMod int64
+	atuinCmds     []string
+	atuinLastMod  int64
 	lastAtuinMode int = -1
 )
 
@@ -57,6 +58,7 @@ type HistResult struct {
 	Cmd        string
 	FuzzyScore int
 	Source     string
+	Tier       int
 }
 
 func init() {
@@ -252,8 +254,8 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 		currentID := len(sessionHistory) + len(allCmds)
 
 		sessionHistoryMu.Lock()
-		for i := len(sessionHistory) - 1; i >= 0; i-- {
-			cmd := sessionHistory[i]
+		for _, cmd := range slices.Backward(sessionHistory) {
+
 			if !seen[cmd] {
 				historyCache = append(historyCache, cmd)
 				seen[cmd] = true
@@ -268,8 +270,8 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 		}
 		sessionHistoryMu.Unlock()
 
-		for i := len(allCmds) - 1; i >= 0; i-- {
-			cmd := allCmds[i]
+		for _, cmd := range slices.Backward(allCmds) {
+
 			if !seen[cmd] {
 				historyCache = append(historyCache, cmd)
 				seen[cmd] = true
@@ -293,8 +295,8 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 		for i := range limit {
 			cmd := historyCache[i]
 			results = append(results, HistResult{
-				ID:  idMapCache[cmd],
-				Cmd: cmd,
+				ID:     idMapCache[cmd],
+				Cmd:    cmd,
 				Source: sourceMapCache[cmd],
 			})
 		}
@@ -330,9 +332,8 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 	addMatches := func(q string) {
 		qLow := strings.ToLower(q)
 
-		// extract pure substring matches (all words present) based strictly on recency order (historyCache is newest-first)
-		// this ensures that long commands with exact substrings are never truncated by the fuzzy searcher's limit
-		strictMatches := 0
+		prefixMatches := 0
+		substringMatches := 0
 		words := strings.Fields(qLow)
 		if len(words) == 0 {
 			words = []string{qLow}
@@ -344,6 +345,25 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 			}
 
 			cmdLow := strings.ToLower(cmd)
+			if strings.HasPrefix(cmdLow, qLow) {
+				seenCmds[cmd] = true
+				results = append(results, HistResult{
+					ID:         idMapCache[cmd],
+					Cmd:        cmd,
+					FuzzyScore: 10000,
+					Source:     sourceMapCache[cmd],
+				})
+				prefixMatches++
+				if prefixMatches >= 100 && substringMatches >= 200 {
+					break
+				}
+				continue
+			}
+
+			if substringMatches >= 200 {
+				continue
+			}
+
 			matchAll := true
 			for _, w := range words {
 				if !strings.Contains(cmdLow, w) {
@@ -363,10 +383,7 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 				FuzzyScore: 10000,
 				Source:     sourceMapCache[cmd],
 			})
-			strictMatches++
-			if strictMatches >= 200 {
-				break
-			}
+			substringMatches++
 		}
 
 		matches := searcherCache.SearchWithScores(q, &fuzzy.SearchOptions{Limit: 1000})
@@ -420,14 +437,13 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 		return bestTier
 	}
 
-	tiers := make([]int, len(results))
-	for i, r := range results {
-		tiers[i] = getTier(r.Cmd, query)
+	for i := range results {
+		results[i].Tier = getTier(results[i].Cmd, query)
 	}
 
 	sort.SliceStable(results, func(i, j int) bool {
-		tI := tiers[i]
-		tJ := tiers[j]
+		tI := results[i].Tier
+		tJ := results[j].Tier
 		if tI != tJ {
 			return tI < tJ
 		}

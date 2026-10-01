@@ -2,8 +2,11 @@ package scoring
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -275,4 +278,341 @@ func TestFrecencyStore_TransitionCwdIsolationAndDepthFallback(t *testing.T) {
 	if !isLocalDeep || len(transDeep) != 1 || transDeep[0].NextSkeleton != "git fetch" {
 		t.Errorf("expected depth fallback to 'git fetch' from 'git remote', got %v", transDeep)
 	}
+}
+
+func TestFrecencyStore_RecordExitCodeZeroVsNonZero(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "history.db")
+	store, err := NewFrecencyStore(dbPath)
+	if err != nil {
+		t.Fatalf("NewFrecencyStore failed: %v", err)
+	}
+	defer store.Close()
+
+	cwd := tmpDir
+
+	// exitCode != 0 should not insert
+	_ = store.Record(context.Background(), "failed cmd", cwd, 1)
+	_ = store.RecordSequence(context.Background(), "prev", "failed next", cwd, 1)
+
+	ctx := context.Background()
+
+	var count int
+	_ = store.db.QueryRowContext(ctx, "SELECT count(*) FROM history_entries WHERE cmd = 'failed cmd'").Scan(&count)
+	if count != 0 {
+		t.Fatalf("expected 0 entries for failed cmd, got %d", count)
+	}
+
+	var seqCount int
+	_ = store.db.QueryRowContext(ctx, "SELECT count(*) FROM command_sequences WHERE next_cmd = 'failed next'").Scan(&seqCount)
+	if seqCount != 0 {
+		t.Fatalf("expected 0 sequence entries for failed next, got %d", seqCount)
+	}
+
+	// exitCode == 0 should insert and increment
+	_ = store.Record(ctx, "success cmd", cwd, 0)
+	_ = store.Record(ctx, "success cmd", cwd, 0)
+
+	var successCount int
+	_ = store.db.QueryRowContext(ctx, "SELECT count FROM history_entries WHERE cmd = 'success cmd'").Scan(&successCount)
+	if successCount != 2 {
+		t.Fatalf("expected count 2 for success cmd, got %d", successCount)
+	}
+}
+
+func TestFrecencyStore_LegacyMigration(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "legacy_history.db")
+	ctx := context.Background()
+
+	// 1. Create a legacy database without project_id column
+	rawDB, err := openRawLegacyDB(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create raw legacy db: %v", err)
+	}
+
+	existingDir := filepath.Join(tmpDir, "repo")
+	_ = os.MkdirAll(filepath.Join(existingDir, ".git"), 0755)
+
+	nonExistingDir := filepath.Join(tmpDir, "deleted_folder")
+
+	// Insert legacy rows: some count > 0, some count = 0
+	if _, err = rawDB.ExecContext(ctx, "INSERT INTO history_entries (cmd, cwd, count) VALUES ('git status', ?, 5)", existingDir); err != nil {
+		t.Fatalf("inserting git status failed: %v", err)
+	}
+	if _, err = rawDB.ExecContext(ctx, "INSERT INTO history_entries (cmd, cwd, count) VALUES ('failed cmd', ?, 0)", existingDir); err != nil {
+		t.Fatalf("inserting failed cmd failed: %v", err)
+	}
+	if _, err = rawDB.ExecContext(ctx, "INSERT INTO history_entries (cmd, cwd, count) VALUES ('dead folder cmd', ?, 3)", nonExistingDir); err != nil {
+		t.Fatalf("inserting dead folder cmd failed: %v", err)
+	}
+	if _, err = rawDB.ExecContext(ctx, "INSERT INTO command_sequences (prev_cmd, next_cmd, cwd, count) VALUES ('seq_failed', 'next', ?, 0)", existingDir); err != nil {
+		t.Fatalf("inserting failed sequence failed: %v", err)
+	}
+	if _, err = rawDB.ExecContext(ctx, "INSERT INTO command_sequences (prev_cmd, next_cmd, cwd, count) VALUES ('seq_ok', 'next', ?, 2)", existingDir); err != nil {
+		t.Fatalf("inserting ok sequence failed: %v", err)
+	}
+	_ = rawDB.Close()
+
+	// 2. Open via NewFrecencyStore to trigger backup, migration, cleanup, and backfill
+	store, err := NewFrecencyStore(dbPath)
+	if err != nil {
+		t.Fatalf("NewFrecencyStore on legacy db failed: %v", err)
+	}
+
+	// Verify backup file was created
+	if _, errStat := os.Stat(dbPath + ".bak"); errStat != nil {
+		t.Fatalf("expected backup file %s.bak to exist: %v", dbPath, errStat)
+	}
+
+	// Close store which waits for backfill to finish
+	_ = store.Close()
+
+	// 3. Inspect resulting database
+	checkDB, err := openRawLegacyDB(dbPath)
+	if err != nil {
+		t.Fatalf("failed to reopen db: %v", err)
+	}
+	defer checkDB.Close()
+
+	// count <= 0 rows must be deleted
+	var failedCount int
+	_ = checkDB.QueryRowContext(ctx, "SELECT count(*) FROM history_entries WHERE cmd = 'failed cmd'").Scan(&failedCount)
+	if failedCount != 0 {
+		t.Fatalf("expected failed cmd (count=0) to be deleted, found %d", failedCount)
+	}
+
+	// existingDir row must have project_id backfilled to existingDir
+	var pid string
+	err = checkDB.QueryRowContext(ctx, "SELECT project_id FROM history_entries WHERE cmd = 'git status'").Scan(&pid)
+	if err != nil || pid != existingDir {
+		t.Fatalf("expected project_id=%q for git status, got %q (err=%v)", existingDir, pid, err)
+	}
+
+	// nonExistingDir row must have project_id backfilled to empty string "" (not NULL)
+	var deadPid *string
+	err = checkDB.QueryRowContext(ctx, "SELECT project_id FROM history_entries WHERE cmd = 'dead folder cmd'").Scan(&deadPid)
+	val := "<nil>"
+	if deadPid != nil {
+		val = *deadPid
+	}
+	if err != nil || deadPid == nil || *deadPid != "" {
+		t.Fatalf("expected project_id='' for dead folder, got %q (err=%v)", val, err)
+	}
+
+	// sequence count <= 0 rows must be deleted
+	var failedSeqCount int
+	_ = checkDB.QueryRowContext(ctx, "SELECT count(*) FROM command_sequences WHERE prev_cmd = 'seq_failed'").Scan(&failedSeqCount)
+	if failedSeqCount != 0 {
+		t.Fatalf("expected failed sequence (count=0) to be deleted, found %d", failedSeqCount)
+	}
+
+	// sequence ok row must have project_id backfilled
+	var seqPid string
+	err = checkDB.QueryRowContext(ctx, "SELECT project_id FROM command_sequences WHERE prev_cmd = 'seq_ok'").Scan(&seqPid)
+	if err != nil || seqPid != existingDir {
+		t.Fatalf("expected project_id=%q for seq_ok, got %q (err=%v)", existingDir, seqPid, err)
+	}
+	_ = checkDB.Close()
+
+	// 4. Reopen already-migrated database: verify .bak is not recreated
+	_ = os.Remove(dbPath + ".bak")
+	store2, err := NewFrecencyStore(dbPath)
+	if err != nil {
+		t.Fatalf("reopening migrated store failed: %v", err)
+	}
+	_ = store2.Close()
+	if _, errStat := os.Stat(dbPath + ".bak"); !os.IsNotExist(errStat) {
+		t.Fatalf("expected .bak not to be created on already-migrated database: %v", errStat)
+	}
+}
+
+func TestFrecencyStore_LegacyMigration_WALConsistency(t *testing.T) {
+	if os.Getenv("TEST_SUBPROCESS_WAL") == "1" {
+		dbPath := os.Getenv("TEST_WAL_DBPATH")
+		rawDB, err := openRawLegacyDB(dbPath)
+		if err != nil {
+			os.Exit(1)
+		}
+		ctx := context.Background()
+		if _, err = rawDB.ExecContext(ctx, "PRAGMA journal_mode = WAL;"); err != nil {
+			os.Exit(2)
+		}
+		for i := range 20 {
+			cmd := fmt.Sprintf("cmd_%02d", i)
+			if _, err = rawDB.ExecContext(ctx, "INSERT INTO history_entries (cmd, cwd, count) VALUES (?, ?, 1)", cmd, filepath.Dir(dbPath)); err != nil {
+				os.Exit(3)
+			}
+		}
+		// Exit immediately without calling rawDB.Close() to leave uncheckpointed WAL frames on disk
+		os.Exit(0)
+	}
+
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "history.db")
+	ctx := context.Background()
+
+	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=TestFrecencyStore_LegacyMigration_WALConsistency")
+	cmd.Env = append(os.Environ(), "TEST_SUBPROCESS_WAL=1", "TEST_WAL_DBPATH="+dbPath)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("subprocess failed: %v, out: %s", err, out)
+	}
+
+	// Ensure WAL file exists with uncheckpointed frames
+	if fi, errStat := os.Stat(dbPath + "-wal"); errStat != nil || fi.Size() == 0 {
+		t.Fatalf("expected non-empty WAL file before migration: %v", errStat)
+	}
+
+	// 3. Open via NewFrecencyStore to trigger migration and backup
+	store, err := NewFrecencyStore(dbPath)
+	if err != nil {
+		t.Fatalf("NewFrecencyStore failed: %v", err)
+	}
+	_ = store.Close()
+
+	// 4. Open the .bak file independently and verify integrity and exact row count
+	bakPath := dbPath + ".bak"
+	bakDB, err := openRawLegacyDB(bakPath)
+	if err != nil {
+		t.Fatalf("failed to open backup file: %v", err)
+	}
+	defer bakDB.Close()
+
+	var integrity string
+	if err = bakDB.QueryRowContext(ctx, "PRAGMA integrity_check;").Scan(&integrity); err != nil || integrity != "ok" {
+		t.Fatalf("expected integrity_check=ok on backup, got %q (err=%v)", integrity, err)
+	}
+
+	var rowCount int
+	if err = bakDB.QueryRowContext(ctx, "SELECT count(*) FROM history_entries;").Scan(&rowCount); err != nil {
+		t.Fatalf("failed to count rows in backup: %v", err)
+	}
+	if rowCount != 20 {
+		t.Fatalf("expected 20 rows in backup from uncheckpointed WAL, got %d", rowCount)
+	}
+
+	// Verify backup file permissions are 0600
+	if fi, errStat := os.Stat(bakPath); errStat == nil {
+		if fi.Mode().Perm() != 0o600 {
+			t.Fatalf("expected 0600 permissions on backup, got %v", fi.Mode().Perm())
+		}
+	}
+}
+
+func TestFrecencyStore_DoNotOverwriteProjectIDWithEmpty(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "history.db")
+	store, err := NewFrecencyStore(dbPath)
+	if err != nil {
+		t.Fatalf("NewFrecencyStore failed: %v", err)
+	}
+	defer store.Close()
+
+	ctx := context.Background()
+	repoDir := filepath.Join(tmpDir, "repo")
+	_ = os.MkdirAll(filepath.Join(repoDir, ".git"), 0755)
+
+	// Record with valid project_id
+	_ = store.Record(ctx, "npm test", repoDir, 0)
+
+	var initialPID string
+	_ = store.db.QueryRowContext(ctx, "SELECT project_id FROM history_entries WHERE cmd = 'npm test'").Scan(&initialPID)
+	if initialPID != repoDir {
+		t.Fatalf("expected initial project_id=%q, got %q", repoDir, initialPID)
+	}
+
+	// Now delete .git to simulate a transient detection failure
+	_ = os.RemoveAll(filepath.Join(repoDir, ".git"))
+
+	// Record again - project_id must NOT be overwritten with ""
+	_ = store.Record(ctx, "npm test", repoDir, 0)
+
+	var finalPID string
+	_ = store.db.QueryRowContext(ctx, "SELECT project_id FROM history_entries WHERE cmd = 'npm test'").Scan(&finalPID)
+	if finalPID != repoDir {
+		t.Fatalf("project_id was clobbered! got %q, want %q", finalPID, repoDir)
+	}
+}
+
+func TestFrecencyStore_CwdNormalization(t *testing.T) {
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "history.db")
+	store, err := NewFrecencyStore(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create store: %v", err)
+	}
+	defer store.Close()
+
+	ctx := context.Background()
+	testDir := filepath.Join(tmpDir, "myrepo")
+	_ = os.MkdirAll(testDir, 0755)
+
+	// test Record with trailing slash and query without
+	dirWithSlash := testDir + "/"
+	if recErr := store.Record(ctx, "git status", dirWithSlash, 0); recErr != nil {
+		t.Fatalf("record failed: %v", recErr)
+	}
+	entries, qErr := store.QueryLocal(ctx, testDir, "git", 10)
+	if qErr != nil || len(entries) != 1 || entries[0].Cmd != "git status" {
+		t.Fatalf("expected 1 entry from QueryLocal, got %v (err: %v)", entries, qErr)
+	}
+
+	// query candidate exact cwd match across trailing slash difference
+	candidates := store.QueryHistoryCandidates(ctx, "git", testDir, "")
+	if len(candidates) != 1 || candidates[0].Tier != 4 {
+		t.Fatalf("expected tier 4 candidate, got %v", candidates)
+	}
+
+	// test RecordSequence and query with trailing slash mismatch
+	if err := store.RecordSequence(ctx, "git status", "git diff", dirWithSlash, 0); err != nil {
+		t.Fatalf("record sequence failed: %v", err)
+	}
+	seqEntries, ok := store.QuerySequencesWithFallback(ctx, "git status", testDir)
+	if !ok || len(seqEntries) != 1 || seqEntries[0].NextCmd != "git diff" {
+		t.Fatalf("expected sequence entry, got %v", seqEntries)
+	}
+
+	// test QueryTransitionsWithFallback across trailing slash difference
+	if err := store.RecordTransition(ctx, "git status", "git commit", dirWithSlash, 0); err != nil {
+		t.Fatalf("record transition failed: %v", err)
+	}
+	transitions, ok := store.QueryTransitionsWithFallback(ctx, "git status", testDir)
+	if !ok || len(transitions) != 1 || transitions[0].NextSkeleton != "git commit" {
+		t.Fatalf("expected transition entry, got %v", transitions)
+	}
+
+	// test tierOf with trailing slashes
+	if tier := tierOf(dirWithSlash, "proj", testDir, "proj"); tier != 4 {
+		t.Fatalf("expected tier 4 for slash mismatch, got %d", tier)
+	}
+}
+
+func openRawLegacyDB(path string) (*sql.DB, error) {
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		return nil, err
+	}
+	legacySchema := `
+CREATE TABLE IF NOT EXISTS history_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cmd TEXT NOT NULL,
+    cwd TEXT NOT NULL,
+    count INTEGER DEFAULT 1,
+    last_used TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(cmd, cwd)
+);
+
+CREATE TABLE IF NOT EXISTS command_sequences (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    prev_cmd  TEXT NOT NULL,
+    next_cmd  TEXT NOT NULL,
+    cwd       TEXT NOT NULL,
+    count     INTEGER DEFAULT 1,
+    last_used TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(prev_cmd, next_cmd, cwd)
+);
+`
+	_, err = db.ExecContext(context.Background(), legacySchema)
+	return db, err
 }

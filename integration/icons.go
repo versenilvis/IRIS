@@ -128,7 +128,10 @@ var iconMap = map[string]string{
 	"system":         "",
 	"root":           "",
 	"mas":            "",
+	"prediction":     "›",
 }
+
+const PredictionSymbol = "›"
 
 func lookupIcon(key string) string {
 	key = strings.ToLower(strings.TrimSpace(key))
@@ -140,3 +143,4 @@ func lookupIcon(key string) string {
 	}
 	return "❯"
 }
+

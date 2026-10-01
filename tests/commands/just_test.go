@@ -36,3 +36,4 @@ func TestJustGenerator(t *testing.T) {
 		t.Fatalf("expected nil when justfile cannot be read, got %v", resMissing)
 	}
 }
+
