@@ -33,7 +33,7 @@ fi
 
 # a non-interactive shell (tool runners sourcing rc files, scripts) has no
 # prompt to complete, and exec'ing here would seize the tty from the real iris
-if [[ -o interactive ]] && [ -t 0 ] && [ -z "$IRIS_PID" ] && [ -z "$IRIS_RESCUE" ]; then
+if [[ -o interactive ]] && [ -t 0 ] && [ -z "$IRIS_PID" ] && [ -z "$IRIS_RESCUE" ] && [ -z "$ZSH_EXECUTION_STRING" ]; then
     export IRIS_ACTIVE_SHELL="zsh"
     if [ -n "$FNM_MULTISHELL_PATH" ]; then
         path=(${path:#*fnm_multishells*})
@@ -84,7 +84,7 @@ fi
 
 # a non-interactive shell (tool runners sourcing rc files, scripts) has no
 # prompt to complete, and exec'ing here would seize the tty from the real iris
-if [[ $- == *i* ]] && [ -t 0 ] && [ -z "$IRIS_PID" ] && [ -z "$IRIS_RESCUE" ]; then
+if [[ $- == *i* ]] && [ -t 0 ] && [ -z "$IRIS_PID" ] && [ -z "$IRIS_RESCUE" ] && [ -z "$BASH_EXECUTION_STRING" ]; then
     export IRIS_ACTIVE_SHELL="bash"
     if [ -n "$FNM_MULTISHELL_PATH" ]; then
         PATH=":$PATH:"
@@ -134,7 +134,7 @@ if set -q IRIS_PID
     end
 end
 
-if status is-interactive; and not set -q IRIS_PID; and not set -q IRIS_RESCUE
+if status is-interactive; and test -t 0; and not set -q IRIS_PID; and not set -q IRIS_RESCUE
     set -gx IRIS_ACTIVE_SHELL "fish"
     if set -q FNM_MULTISHELL_PATH
         set -gx PATH (string match -v "*fnm_multishells*" $PATH)
