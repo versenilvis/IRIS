@@ -17,6 +17,7 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+	"unicode/utf8"
 
 	"github.com/charmbracelet/x/ansi"
 	"github.com/creack/pty"
@@ -170,6 +171,9 @@ func findPredictedCommand(query string) string {
 		limit := min(len(candidates), 12)
 		for i := range limit {
 			c := candidates[i]
+			if len(c.Cmd) > 100 || strings.ContainsAny(c.Cmd, "\r\n") {
+				continue
+			}
 			if strings.EqualFold(c.Cmd, prefix) {
 				continue
 			}
@@ -187,11 +191,17 @@ func findPredictedCommand(query string) string {
 		}
 	}
 
-	if chosen == "" && prefix != "" {
+	if chosen == "" {
 		candidates := store.QueryHistoryCandidates(ctxTimeout, prefix, cwd, pid)
 		limit := min(len(candidates), 12)
 		for i := range limit {
 			c := candidates[i]
+			if len(c.Cmd) > 100 || strings.ContainsAny(c.Cmd, "\r\n") {
+				continue
+			}
+			if prefix == "" && c.Tier < 1 {
+				continue
+			}
 			if strings.EqualFold(c.Cmd, prefix) {
 				continue
 			}
@@ -870,7 +880,10 @@ func runWrapper() {
 				pLen := integration.ComputeCursorCol(lastPromptBuf)
 				if pLen >= 0 {
 					overlay.SetPromptLen(pLen)
-					if config.Get().Core.Prediction && !disableGhostText.Load() {
+					if config.Get().UI.GhostText != config.GhostTextOff {
+						disableGhostText.Store(false)
+					}
+					if config.Get().Core.Prediction {
 						drawAfterRepaint(func() {
 							if renderer, ok := renderOverlayFn.Load().(func()); ok {
 								renderer()
@@ -1015,7 +1028,10 @@ func runWrapper() {
 					writeStdout([]byte(overlay.ClearAndDisable()))
 					SetCurrentAISuggestion(nil)
 				}
-				if config.Get().Core.Prediction && !disableGhostText.Load() {
+				if config.Get().UI.GhostText != config.GhostTextOff {
+					disableGhostText.Store(false)
+				}
+				if config.Get().Core.Prediction {
 					if renderer, ok := renderOverlayFn.Load().(func()); ok {
 						renderer()
 					}
@@ -1148,15 +1164,18 @@ func runWrapper() {
 				if config.Get().Core.Prediction && !disableGhostText.Load() {
 					predicted := findPredictedCommand("")
 					bufferMu.Lock()
-					if naiveBuffer == "" && predicted != "" {
+					if naiveBuffer == "" {
 						overlay.SetPrediction(predicted)
-						b.WriteString(overlay.RenderGhostText("", false, true))
-						bufferMu.Unlock()
-						writeStdout([]byte(b.String()))
-						return
+						if predicted != "" {
+							b.WriteString(overlay.RenderGhostText("", false, true))
+							bufferMu.Unlock()
+							writeStdout([]byte(b.String()))
+							return
+						}
 					}
 					bufferMu.Unlock()
 				}
+				overlay.SetPrediction("")
 				writeStdout([]byte(overlay.ClearAndDisable()))
 				return
 			}
@@ -1267,10 +1286,53 @@ func runWrapper() {
 				continue
 			}
 
+			if !inBracketedPaste && n > 2 && inputSlice[0] != '\033' {
+				writeStdout([]byte(overlay.HideGhostTextSync()))
+				if overlay.IsVisible() {
+					writeStdout([]byte(overlay.Clear()))
+				}
+			}
+
 			shouldOverlayDraw := false
 			for i := 0; i < n; i++ {
 				b := inputSlice[i]
 				intercepted = false
+
+				if inBracketedPaste {
+					if b == '\033' {
+						if i+5 < n && inputSlice[i+1] == '[' && inputSlice[i+2] == '2' && inputSlice[i+3] == '0' && inputSlice[i+4] == '1' && inputSlice[i+5] == '~' {
+							inBracketedPaste = false
+							_, _ = ptmx.Write(inputSlice[i : i+6])
+							i += 5
+							shouldOverlayDraw = true
+							continue
+						} else if n-i < 6 {
+							rem := inputSlice[i:n]
+							if bytes.HasPrefix([]byte("\033[201~"), rem) {
+								fullSeq := make([]byte, 6)
+								copy(fullSeq, rem)
+								if _, err := io.ReadFull(stdinFile, fullSeq[len(rem):]); err == nil && string(fullSeq) == "\033[201~" {
+									inBracketedPaste = false
+									_, _ = ptmx.Write(fullSeq)
+									i = n
+									shouldOverlayDraw = true
+									continue
+								}
+							}
+						}
+					}
+					_, _ = ptmx.Write([]byte{b})
+					bufferMu.Lock()
+					if b == '\r' || b == '\n' {
+						naiveBuffer = ""
+						cursorOffset = 0
+					} else if b >= 32 {
+						naiveBuffer += string(b)
+						cursorOffset = 0
+					}
+					bufferMu.Unlock()
+					continue
+				}
 
 				// while an auto-update confirm prompt is pending, every
 				// byte goes to it instead of normal key handling
@@ -1505,13 +1567,51 @@ func runWrapper() {
 				if b == '\033' {
 					// check for bracketed paste start/end
 					if i+5 < n && inputSlice[i+1] == '[' && inputSlice[i+2] == '2' && inputSlice[i+3] == '0' {
-						if (inputSlice[i+4] == '0' || inputSlice[i+4] == '1') && inputSlice[i+5] == '~' {
+						if inputSlice[i+4] == '0' && inputSlice[i+5] == '~' {
 							intercepted = true
-							inBracketedPaste = inputSlice[i+4] == '0'
-							logger.Debugf("Intercepted bracketed paste event inPaste=%v", inBracketedPaste)
+							inBracketedPaste = true
+							writeStdout([]byte(overlay.HideGhostTextSync()))
+							if overlay.IsVisible() {
+								writeStdout([]byte(overlay.Clear()))
+							}
 							_, _ = ptmx.Write(inputSlice[i : i+6])
 							i += 5
 							continue
+						} else if inputSlice[i+4] == '1' && inputSlice[i+5] == '~' {
+							intercepted = true
+							inBracketedPaste = false
+							_, _ = ptmx.Write(inputSlice[i : i+6])
+							i += 5
+							shouldOverlayDraw = true
+							continue
+						}
+					} else if n-i < 6 {
+						rem := inputSlice[i:n]
+						if bytes.HasPrefix([]byte("\033[200~"), rem) {
+							fullSeq := make([]byte, 6)
+							copy(fullSeq, rem)
+							if _, err := io.ReadFull(stdinFile, fullSeq[len(rem):]); err == nil && string(fullSeq) == "\033[200~" {
+								intercepted = true
+								inBracketedPaste = true
+								writeStdout([]byte(overlay.HideGhostTextSync()))
+								if overlay.IsVisible() {
+									writeStdout([]byte(overlay.Clear()))
+								}
+								_, _ = ptmx.Write(fullSeq)
+								i = n
+								continue
+							}
+						} else if bytes.HasPrefix([]byte("\033[201~"), rem) {
+							fullSeq := make([]byte, 6)
+							copy(fullSeq, rem)
+							if _, err := io.ReadFull(stdinFile, fullSeq[len(rem):]); err == nil && string(fullSeq) == "\033[201~" {
+								intercepted = true
+								inBracketedPaste = false
+								_, _ = ptmx.Write(fullSeq)
+								i = n
+								shouldOverlayDraw = true
+								continue
+							}
 						}
 					}
 
@@ -1750,6 +1850,12 @@ func runWrapper() {
 						if wasEmpty || isEmptyNow {
 							writeStdout([]byte(overlay.ClearAndDisable()))
 							userNavigated.Store(false)
+							if isEmptyNow && config.Get().Core.Prediction {
+								if config.Get().UI.GhostText != config.GhostTextOff {
+									disableGhostText.Store(false)
+								}
+								shouldOverlayDraw = true
+							}
 							continue
 						}
 						shouldOverlayDraw = true
@@ -1771,6 +1877,12 @@ func runWrapper() {
 						if wasEmpty || isEmptyNow {
 							writeStdout([]byte(overlay.ClearAndDisable()))
 							userNavigated.Store(false)
+							if isEmptyNow && config.Get().Core.Prediction {
+								if config.Get().UI.GhostText != config.GhostTextOff {
+									disableGhostText.Store(false)
+								}
+								shouldOverlayDraw = true
+							}
 							continue
 						}
 						shouldOverlayDraw = true
@@ -1780,7 +1892,24 @@ func runWrapper() {
 						userNavigated.Store(false)
 					default:
 						// track normal printable characters in the buffer for matching
-						if b >= 32 && b <= 126 {
+						if b >= 32 {
+							var charStr string
+							if b <= 126 {
+								charStr = string(b)
+							} else if utf8.RuneStart(b) {
+								rem := inputSlice[i:n]
+								r, size := utf8.DecodeRune(rem)
+								if r != utf8.RuneError && size > 1 {
+									_, _ = ptmx.Write(rem[1:size])
+									i += size - 1
+									charStr = string(r)
+								} else {
+									charStr = string(b)
+								}
+							} else {
+								charStr = string(b)
+							}
+
 							// expand alias on space, but only when typing manually (not pasting)
 							// and only if expand-alias configuration is enabled
 							bufferMu.Lock()
@@ -1805,18 +1934,14 @@ func runWrapper() {
 							}
 							bufferMu.Lock()
 							if cursorOffset == 0 {
-								naiveBuffer += string(b)
+								naiveBuffer += charStr
 							} else {
-								if cursorOffset > len(naiveBuffer) {
-									cursorOffset = len(naiveBuffer)
+								runes := []rune(naiveBuffer)
+								if cursorOffset > len(runes) {
+									cursorOffset = len(runes)
 								}
-								pos := len(naiveBuffer) - cursorOffset
-								if pos >= 0 && pos <= len(naiveBuffer) {
-									naiveBuffer = naiveBuffer[:pos] + string(b) + naiveBuffer[pos:]
-								} else {
-									naiveBuffer += string(b)
-									cursorOffset = 0
-								}
+								pos := len(runes) - cursorOffset
+								naiveBuffer = string(append(runes[:pos], append([]rune(charStr), runes[pos:]...)...))
 							}
 							bufferMu.Unlock()
 							shouldOverlayDraw = true

@@ -559,10 +559,8 @@ func (o *Overlay) HideGhostTextSync() string {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	if o.LastGhostLen > 0 {
-		padLen := o.LastGhostLen + 4
-		res := ansi.SaveCursor + strings.Repeat(" ", padLen) + ansi.RestoreCursor
 		o.LastGhostLen = 0
-		return res
+		return ansi.SaveCursor + ansi.EraseLineRight + ansi.RestoreCursor
 	}
 	return ""
 }
@@ -575,9 +573,8 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 	hasPrediction := config.Get().Core.Prediction && o.PredictedCmd != "" && cursorAtEnd
 	if !hasItems && !hasPrediction {
 		if o.LastGhostLen > 0 {
-			padLen := o.LastGhostLen + 4
 			o.LastGhostLen = 0
-			return ansi.SaveCursor + strings.Repeat(" ", padLen) + ansi.RestoreCursor
+			return ansi.SaveCursor + ansi.EraseLineRight + ansi.RestoreCursor
 		}
 		return ""
 	}
@@ -601,6 +598,9 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 		}
 		if config.Get().Core.Prediction && o.PredictedCmd != "" {
 			pred := o.PredictedCmd
+			if idx := strings.IndexAny(pred, "\r\n"); idx != -1 {
+				pred = pred[:idx]
+			}
 			normalize := func(s string) string { return strings.Join(strings.Fields(s), " ") }
 			normPred := normalize(pred)
 			normFull := normalize(buffer + ghostText)
@@ -613,10 +613,14 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 				}
 				width := termWidth()
 				totalCol := o.PromptLen + lipgloss.Width(buffer) + lipgloss.Width(ghostText)
-				cursorCol := totalCol % width
-				availableCols := width - cursorCol
-				if lipgloss.Width(hint) <= availableCols {
-					ghostText += hint
+				if width > 0 && totalCol < width {
+					availableCols := width - totalCol - 1
+					if availableCols > len(PredictionSymbol)+2 {
+						if lipgloss.Width(hint) > availableCols {
+							hint = truncateToWidth(hint, availableCols-1) + "…"
+						}
+						ghostText += hint
+					}
 				}
 			}
 		}
@@ -629,7 +633,7 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 		if width > 0 {
 			cursorCol = totalCol % width
 		}
-		availableCols := width - cursorCol
+		availableCols := width - cursorCol - 1
 		if availableCols <= 0 {
 			ghostText = ""
 		} else if lipgloss.Width(ghostText) > availableCols {
@@ -642,19 +646,12 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 	}
 
 	ghostWidth := lipgloss.Width(ghostText)
-	padLen := max(o.LastGhostLen-ghostWidth, 0)
-	if o.LastGhostLen > 0 {
-		padLen += 4
-	}
-
 	s.WriteString(ansi.SaveCursor)
 	if ghostText != "" {
 		styled := lipgloss.NewStyle().Foreground(lipgloss.Color(config.Theme().GhostText)).Render(ghostText)
 		s.WriteString(styled)
 	}
-	if padLen > 0 {
-		s.WriteString(strings.Repeat(" ", padLen))
-	}
+	s.WriteString(ansi.EraseLineRight)
 	s.WriteString(ansi.RestoreCursor)
 	o.LastGhostLen = ghostWidth
 
@@ -1066,7 +1063,7 @@ func (o *Overlay) HideMenu(query string) string {
 
 	if o.LastGhostLen > 0 {
 		s.WriteString(ansi.SaveCursor)
-		s.WriteString(strings.Repeat(" ", o.LastGhostLen+10))
+		s.WriteString(ansi.EraseLineRight)
 		s.WriteString(ansi.RestoreCursor)
 		o.LastGhostLen = 0
 	}
@@ -1101,7 +1098,7 @@ func (o *Overlay) ClearAndDisable() string {
 
 	if o.LastGhostLen > 0 {
 		s.WriteString(ansi.SaveCursor)
-		s.WriteString(strings.Repeat(" ", o.LastGhostLen+10))
+		s.WriteString(ansi.EraseLineRight)
 		s.WriteString(ansi.RestoreCursor)
 		o.LastGhostLen = 0
 	}

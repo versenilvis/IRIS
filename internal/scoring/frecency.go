@@ -636,7 +636,7 @@ func prefixUpperBound(p string) string {
 }
 
 func (f *FrecencyStore) QueryHistoryCandidates(ctx context.Context, prefix, cwd, pid string) []Candidate {
-	if f == nil || prefix == "" {
+	if f == nil {
 		return nil
 	}
 	cwd = workspace.Normalize(strings.TrimSpace(cwd))
@@ -651,16 +651,17 @@ func (f *FrecencyStore) QueryHistoryCandidates(ctx context.Context, prefix, cwd,
 	var local []localRow
 	var global []globalRow
 
-	upper := prefixUpperBound(prefix)
-
 	var matchClause string
 	var matchArgs []any
-	if upper != "" {
-		matchClause = " AND cmd >= ? AND cmd < ? AND instr(cmd, ?) = 1 AND cmd != ?"
-		matchArgs = []any{prefix, upper, prefix, prefix}
-	} else {
-		matchClause = " AND instr(cmd, ?) = 1 AND cmd != ?"
-		matchArgs = []any{prefix, prefix}
+	if prefix != "" {
+		upper := prefixUpperBound(prefix)
+		if upper != "" {
+			matchClause = " AND cmd >= ? AND cmd < ? AND instr(cmd, ?) = 1 AND cmd != ?"
+			matchArgs = []any{prefix, upper, prefix, prefix}
+		} else {
+			matchClause = " AND instr(cmd, ?) = 1 AND cmd != ?"
+			matchArgs = []any{prefix, prefix}
+		}
 	}
 
 	baseLocal := "SELECT cmd, cwd, COALESCE(project_id,''), count, last_used FROM history_entries WHERE count > 0"
