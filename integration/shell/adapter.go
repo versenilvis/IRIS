@@ -67,10 +67,52 @@ func Init(name string) {
 // BashAdapter implementation
 type BashAdapter struct{}
 
+// clean child environment to avoid duplicate multishell entries and deduplicate path
+func CleanChildEnv(envList []string, fd int, pid int) []string {
+	multishell := os.Getenv("FNM_MULTISHELL_PATH")
+	if multishell != "" {
+		_ = os.RemoveAll(multishell)
+		_ = os.RemoveAll(filepath.Dir(multishell))
+	}
+
+	var res []string
+	for _, env := range envList {
+		key, val, ok := strings.Cut(env, "=")
+		if !ok {
+			continue
+		}
+		if key == "FNM_MULTISHELL_PATH" {
+			continue
+		}
+		if key == "PATH" {
+			entries := filepath.SplitList(val)
+			seen := make(map[string]bool, len(entries))
+			var clean []string
+			for _, entry := range entries {
+				if entry == "" {
+					continue
+				}
+				if strings.Contains(entry, "fnm_multishells") || (multishell != "" && (entry == multishell || entry == filepath.Join(multishell, "bin"))) {
+					continue
+				}
+				if !seen[entry] {
+					seen[entry] = true
+					clean = append(clean, entry)
+				}
+			}
+			res = append(res, "PATH="+strings.Join(clean, string(os.PathListSeparator)))
+			continue
+		}
+		res = append(res, env)
+	}
+
+	return append(res, "IRIS_FD="+fmt.Sprint(fd), "IRIS_PID="+fmt.Sprint(pid))
+}
+
 func (b *BashAdapter) GetName() string      { return "bash" }
 func (b *BashAdapter) GetShellPath() string { return "bash" }
 func (b *BashAdapter) GetEnv(fd int, pid int) []string {
-	return append(os.Environ(), "IRIS_FD="+fmt.Sprint(fd), "IRIS_PID="+fmt.Sprint(pid))
+	return CleanChildEnv(os.Environ(), fd, pid)
 }
 func (b *BashAdapter) PrepareSelectSequence(selected string, cursorFromEnd int) []byte {
 	return ReplaceLine([]byte(selected), cursorFromEnd)
@@ -85,7 +127,7 @@ type ZshAdapter struct{}
 func (z *ZshAdapter) GetName() string      { return "zsh" }
 func (z *ZshAdapter) GetShellPath() string { return "zsh" }
 func (z *ZshAdapter) GetEnv(fd int, pid int) []string {
-	return append(os.Environ(), "IRIS_FD="+fmt.Sprint(fd), "IRIS_PID="+fmt.Sprint(pid))
+	return CleanChildEnv(os.Environ(), fd, pid)
 }
 func (z *ZshAdapter) PrepareSelectSequence(selected string, cursorFromEnd int) []byte {
 	return ReplaceLine([]byte(selected), cursorFromEnd)
@@ -145,7 +187,7 @@ type FishAdapter struct{}
 func (f *FishAdapter) GetName() string      { return "fish" }
 func (f *FishAdapter) GetShellPath() string { return "fish" }
 func (f *FishAdapter) GetEnv(fd int, pid int) []string {
-	return append(os.Environ(), "IRIS_FD="+fmt.Sprint(fd), "IRIS_PID="+fmt.Sprint(pid))
+	return CleanChildEnv(os.Environ(), fd, pid)
 }
 func (f *FishAdapter) PrepareSelectSequence(selected string, cursorFromEnd int) []byte {
 	return ReplaceLine([]byte(selected), cursorFromEnd)
