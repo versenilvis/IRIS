@@ -35,6 +35,10 @@ fi
 # prompt to complete, and exec'ing here would seize the tty from the real iris
 if [[ -o interactive ]] && [ -t 0 ] && [ -z "$IRIS_PID" ] && [ -z "$IRIS_RESCUE" ]; then
     export IRIS_ACTIVE_SHELL="zsh"
+    if [ -n "$FNM_MULTISHELL_PATH" ]; then
+        path=(${path:#*fnm_multishells*})
+        unset FNM_MULTISHELL_PATH
+    fi
     exec iris
 fi
 
@@ -82,6 +86,15 @@ fi
 # prompt to complete, and exec'ing here would seize the tty from the real iris
 if [[ $- == *i* ]] && [ -t 0 ] && [ -z "$IRIS_PID" ] && [ -z "$IRIS_RESCUE" ]; then
     export IRIS_ACTIVE_SHELL="bash"
+    if [ -n "$FNM_MULTISHELL_PATH" ]; then
+        PATH=":$PATH:"
+        PATH="${PATH//:$FNM_MULTISHELL_PATH\/bin:/:}"
+        PATH="${PATH//:$FNM_MULTISHELL_PATH:/:}"
+        PATH="${PATH#:}"
+        PATH="${PATH%%:}"
+        export PATH
+        unset FNM_MULTISHELL_PATH
+    fi
     exec iris
 fi
 
@@ -123,6 +136,10 @@ end
 
 if status is-interactive; and not set -q IRIS_PID; and not set -q IRIS_RESCUE
     set -gx IRIS_ACTIVE_SHELL "fish"
+    if set -q FNM_MULTISHELL_PATH
+        set -gx PATH (string match -v "*fnm_multishells*" $PATH)
+        set -e FNM_MULTISHELL_PATH
+    end
     exec iris
 end
 

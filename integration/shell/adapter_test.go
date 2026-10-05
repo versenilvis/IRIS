@@ -243,3 +243,44 @@ func TestPrepareSelectSequenceUsesReplaceLine(t *testing.T) {
 		}
 	}
 }
+
+func TestCleanChildEnv(t *testing.T) {
+	inputEnv := []string{
+		"USER=test",
+		"FNM_MULTISHELL_PATH=/Users/user/.local/state/fnm_multishells/5487_123/bin",
+		"PATH=/Users/user/.local/state/fnm_multishells/5487_123/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/bin",
+	}
+
+	got := CleanChildEnv(inputEnv, 13, 9999)
+
+	var hasFnmVar bool
+	var pathVal string
+	var hasFd, hasPid bool
+
+	for _, e := range got {
+		if e == "FNM_MULTISHELL_PATH" || len(e) > 19 && e[:19] == "FNM_MULTISHELL_PATH=" {
+			hasFnmVar = true
+		}
+		if len(e) > 5 && e[:5] == "PATH=" {
+			pathVal = e[5:]
+		}
+		if e == "IRIS_FD=13" {
+			hasFd = true
+		}
+		if e == "IRIS_PID=9999" {
+			hasPid = true
+		}
+	}
+
+	if hasFnmVar {
+		t.Errorf("CleanChildEnv must unset FNM_MULTISHELL_PATH, got: %v", got)
+	}
+	if !hasFd || !hasPid {
+		t.Errorf("CleanChildEnv must include IRIS_FD=13 and IRIS_PID=9999, got: %v", got)
+	}
+	wantPath := "/usr/local/bin:/usr/bin:/bin"
+	if pathVal != wantPath {
+		t.Errorf("CleanChildEnv PATH = %q; want %q", pathVal, wantPath)
+	}
+}
+
