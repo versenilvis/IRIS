@@ -83,3 +83,32 @@ func TestFishAutosuggestionsFollowGhostTextMode(t *testing.T) {
 		}
 	}
 }
+
+func TestInitAutostartSkipsExecutionString(t *testing.T) {
+	guards := map[string]string{
+		"zsh":  `[ -z "$ZSH_EXECUTION_STRING" ]`,
+		"bash": `[ -z "$BASH_EXECUTION_STRING" ]`,
+		"fish": "test -t 0",
+	}
+
+	for shell, guard := range guards {
+		t.Run(shell, func(t *testing.T) {
+			script := captureInitScript(t, shell)
+
+			head, _, found := strings.Cut(script, "exec iris")
+			if !found {
+				t.Fatalf("%s init script has no autostart", shell)
+			}
+
+			cond := strings.LastIndex(head, "\nif ")
+			if cond < 0 {
+				t.Fatalf("%s autostart is not inside an if", shell)
+			}
+
+			if !strings.Contains(head[cond:], guard) {
+				t.Fatalf("%s autostart is not guarded by %q:\n%s", shell, guard, head[cond:])
+			}
+		})
+	}
+}
+
