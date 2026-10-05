@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.7.2](https://github.com/versenilvis/iris/releases/tag/v0.7.2) - 2026-10-05
+
+### Bug fixes
+
+- Complete make targets without duplicated prefix ([#168](https://github.com/versenilvis/iris/issues/168)) ([492846](https://github.com/versenilvis/iris/commit/49284651046099e224c23b977c1cf2925a231aeb))
+- Prevent duplicate fnm multishell entries in PATH ([#171](https://github.com/versenilvis/iris/issues/171)) ([587f91](https://github.com/versenilvis/iris/commit/587f91d98a9fddc2a4fe5b0995246e0fbc45ee3a))
+- Skip autostart when command is provided via -c ([#172](https://github.com/versenilvis/iris/issues/172)) ([c2a692](https://github.com/versenilvis/iris/commit/c2a692dc7d3224e17d2076d1f41610a2a6aac7db))
+
+### Features
+
+- Complete pnpm scripts directly ([#165](https://github.com/versenilvis/iris/issues/165)) ([40256d](https://github.com/versenilvis/iris/commit/40256d5c9d37ae604ebd17e52fe444decd96c757))
+
 ## [v0.7.1](https://github.com/versenilvis/iris/releases/tag/v0.7.1) - 2026-09-26
 
 ### Features
