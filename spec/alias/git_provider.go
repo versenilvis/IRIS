@@ -123,8 +123,8 @@ func (p *GitProvider) parse(cwd string) []AliasEntry {
 
 func (p *GitProvider) parseOutput(out []byte, hasScope bool) []AliasEntry {
 	var entries []AliasEntry
-	lines := strings.Split(string(bytes.TrimSpace(out)), "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(string(bytes.TrimSpace(out)), "\n")
+	for line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue

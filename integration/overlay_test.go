@@ -335,3 +335,115 @@ func TestDrawLeavesTheLineAloneWhenTheCursorIsNotAtTheEnd(t *testing.T) {
 		t.Error("redraw erased to end of line while the cursor was mid-command")
 	}
 }
+
+func TestRenderGhostText_WithPrediction(t *testing.T) {
+	o := NewOverlay()
+	items := []spec.Suggestion{
+		{Cmd: "mkdir ripgrep"},
+	}
+	o.UpdateItems(items)
+	o.SetPrediction("cd ripgrep")
+
+	out := o.RenderGhostText("mkdir rip", false, true)
+	if !strings.Contains(out, "grep") {
+		t.Fatalf("expected primary ghost text 'grep', got: %q", out)
+	}
+	// › hint is NOT shown when buffer is non-empty
+	if strings.Contains(out, PredictionSymbol) {
+		t.Fatalf("expected no › hint when buffer is non-empty, got: %q", out)
+	}
+
+	renderOut := o.Render()
+	if !strings.Contains(renderOut, "Predict") {
+		t.Fatalf("expected footer to contain 'Predict', got: %q", renderOut)
+	}
+}
+
+func TestRenderGhostText_WithPredictionContinuation(t *testing.T) {
+	o := NewOverlay()
+	o.SetPrediction("just reload")
+
+	out := o.RenderGhostText("just ", false, true)
+	if !strings.Contains(out, "reload") {
+		t.Fatalf("expected continuation ghost text 'reload', got: %q", out)
+	}
+	if !strings.Contains(out, PredictionSymbol) {
+		t.Fatalf("expected prediction symbol %q in ghost text, got: %q", PredictionSymbol, out)
+	}
+	if got := o.GetGhostText("just ", true); got != "reload" {
+		t.Fatalf("expected GetGhostText 'reload', got: %q", got)
+	}
+}
+
+func TestRenderGhostText_EmptyBufferShowsHint(t *testing.T) {
+	o := NewOverlay()
+	o.SetPrediction("just reload")
+
+	out := o.RenderGhostText("", false, true)
+	if !strings.Contains(out, PredictionSymbol) || !strings.Contains(out, "just reload") {
+		t.Fatalf("expected prediction hint for empty buffer, got: %q", out)
+	}
+}
+
+func TestHideMenu_KeepsPrediction(t *testing.T) {
+	o := NewOverlay()
+	o.SetPrediction("just reload")
+	o.HideMenu("just ")
+	if got := o.GetPrediction(); got != "just reload" {
+		t.Fatalf("expected prediction 'just reload' preserved, got: %q", got)
+	}
+}
+
+func TestRenderGhostText_MultiSpaceHistoryNoDuplicate(t *testing.T) {
+	// history entry recorded with extra spaces must not produce "reload reload"
+	o := NewOverlay()
+	o.UpdateItems([]spec.Suggestion{{Cmd: "just   reload", Source: "history"}})
+	o.SetPrediction("just reload")
+
+	out := o.RenderGhostText("just ", false, true)
+	// should contain "reload" exactly once (no "reload reload")
+	_, after, ok := strings.Cut(out, "reload")
+	if !ok {
+		t.Fatalf("expected 'reload' in ghost, got: %q", out)
+	}
+	if strings.Contains(after, "reload") {
+		t.Fatalf("got duplicate 'reload' in ghost text: %q", out)
+	}
+}
+
+func TestRenderGhostText_UnrelatedInputNoHint(t *testing.T) {
+	// when buffer doesn't match prediction prefix and there's no item completion,
+	// the › hint must not appear
+	o := NewOverlay()
+	o.SetPrediction("just reload")
+
+	out := o.RenderGhostText("jar", false, true)
+	if strings.Contains(out, PredictionSymbol) {
+		t.Fatalf("expected no › hint for unrelated input 'jar', got: %q", out)
+	}
+}
+
+func TestGhostText_WordBoundarySpacePreserved(t *testing.T) {
+	o := NewOverlay()
+	o.UpdateItems([]spec.Suggestion{{Cmd: "z col", Source: "history"}})
+
+	// preserve separating space so command and arg do not stick together
+	if got := o.GetGhostText("z", true); got != " col" {
+		t.Fatalf("expected ' col', got %q", got)
+	}
+
+	out := o.RenderGhostText("z", false, true)
+	if !strings.Contains(out, " col") {
+		t.Fatalf("expected rendered ghost text to contain ' col', got %q", out)
+	}
+
+	o.UpdateItems([]spec.Suggestion{{Cmd: "z   col", Source: "history"}})
+	if got := o.GetGhostText("z", true); got != " col" {
+		t.Fatalf("expected ' col' from multi-space entry, got %q", got)
+	}
+
+	if got := o.GetGhostText("z ", true); got != "col" {
+		t.Fatalf("expected 'col' after space typed, got %q", got)
+	}
+}
+

@@ -108,7 +108,7 @@ func (p *CargoProvider) parse(cwd string) []AliasEntry {
 
 func (p *CargoProvider) parseFile(path, scope string) []AliasEntry {
 	var config struct {
-		Alias map[string]interface{} `toml:"alias"`
+		Alias map[string]any `toml:"alias"`
 	}
 	if _, err := toml.DecodeFile(path, &config); err != nil {
 		return nil
@@ -119,7 +119,7 @@ func (p *CargoProvider) parseFile(path, scope string) []AliasEntry {
 		switch val := v.(type) {
 		case string:
 			entries = append(entries, AliasEntry{Name: k, Expansion: val, Scope: scope})
-		case []interface{}:
+		case []any:
 			var parts []string
 			for _, item := range val {
 				if s, ok := item.(string); ok {

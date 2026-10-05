@@ -16,7 +16,10 @@ func seedHistory(t *testing.T, home, prefix string) {
 	t.Helper()
 	var b strings.Builder
 	for _, suffix := range []string{"alpha", "bravo", "charlie", "delta", "echo", "foxtrot"} {
-		b.WriteString(": 1700000000:0;" + prefix + suffix + "\n")
+		b.WriteString(": 1700000000:0;")
+		b.WriteString(prefix)
+		b.WriteString(suffix)
+		b.WriteString("\n")
 	}
 	if err := os.WriteFile(filepath.Join(home, ".zsh_history"), []byte(b.String()), 0o644); err != nil {
 		t.Fatal(err)

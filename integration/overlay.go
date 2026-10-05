@@ -218,8 +218,22 @@ type Overlay struct {
 	// ScreenLine is what iris believes the shell is currently displaying. It
 	// trails TypedQuery while a rewrite is held back during navigation, and the
 	// box is placed against this, not against the entry being highlighted.
-	ScreenLine string
+	ScreenLine   string
+	PredictedCmd string
 }
+
+func (o *Overlay) SetPrediction(cmd string) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.PredictedCmd = cmd
+}
+
+func (o *Overlay) GetPrediction() string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.PredictedCmd
+}
+
 
 // SetSelection updates the highlighted entry without claiming the shell has
 // redrawn its line yet.
@@ -489,23 +503,48 @@ func titledEdge(left, right string, inner int, content string, border lipgloss.S
 		border.Render(strings.Repeat("─", rightDash)+right)
 }
 
+// keep word boundary space when typing subcommands and collapse redundant spaces
+func cleanGhostSuffix(buffer, suffix string) string {
+	if strings.HasSuffix(buffer, " ") {
+		return strings.TrimLeft(suffix, " ")
+	}
+	if strings.HasPrefix(suffix, " ") {
+		return " " + strings.TrimLeft(suffix, " ")
+	}
+	return suffix
+}
+
 func (o *Overlay) GetGhostText(buffer string, cursorAtEnd bool) string {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
-	if !o.Visible || len(o.Items) == 0 || !cursorAtEnd || buffer == "" {
+	if !cursorAtEnd || buffer == "" {
 		return ""
 	}
 
-	var topCmd string
-	if o.Cursor >= 0 && o.Cursor < len(o.Items) {
-		topCmd = o.Items[o.Cursor].Cmd
-	} else {
-		topCmd = o.Items[0].Cmd
+	if o.Visible && len(o.Items) > 0 {
+		var topCmd string
+		if o.Cursor >= 0 && o.Cursor < len(o.Items) {
+			topCmd = o.Items[o.Cursor].Cmd
+		} else {
+			topCmd = o.Items[0].Cmd
+		}
+
+		if strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(buffer)) {
+			suffix := cleanGhostSuffix(buffer, topCmd[len(buffer):])
+			if strings.TrimSpace(suffix) != "" {
+				return suffix
+			}
+		}
 	}
 
-	if strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(buffer)) {
-		return topCmd[len(buffer):]
+	if config.Get().Core.Prediction && o.PredictedCmd != "" {
+		if strings.HasPrefix(strings.ToLower(o.PredictedCmd), strings.ToLower(buffer)) {
+			suffix := cleanGhostSuffix(buffer, o.PredictedCmd[len(buffer):])
+			if strings.TrimSpace(suffix) != "" {
+				return suffix
+			}
+		}
 	}
 	return ""
 }
@@ -520,10 +559,8 @@ func (o *Overlay) HideGhostTextSync() string {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	if o.LastGhostLen > 0 {
-		padLen := o.LastGhostLen + 4
-		res := ansi.SaveCursor + strings.Repeat(" ", padLen) + ansi.RestoreCursor
 		o.LastGhostLen = 0
-		return res
+		return ansi.SaveCursor + ansi.EraseLineRight + ansi.RestoreCursor
 	}
 	return ""
 }
@@ -532,26 +569,60 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
-	if !o.Visible || len(o.Items) == 0 {
+	hasItems := o.Visible && len(o.Items) > 0
+	hasPrediction := config.Get().Core.Prediction && o.PredictedCmd != "" && cursorAtEnd
+	if !hasItems && !hasPrediction {
 		if o.LastGhostLen > 0 {
-			padLen := o.LastGhostLen + 4
 			o.LastGhostLen = 0
-			return ansi.SaveCursor + strings.Repeat(" ", padLen) + ansi.RestoreCursor
+			return ansi.SaveCursor + ansi.EraseLineRight + ansi.RestoreCursor
 		}
 		return ""
 	}
 
 	var s strings.Builder
 	ghostText := ""
-	if cursorAtEnd && buffer != "" {
-		var topCmd string
-		if o.Cursor >= 0 && o.Cursor < len(o.Items) {
-			topCmd = o.Items[o.Cursor].Cmd
-		} else {
-			topCmd = o.Items[0].Cmd
+	if cursorAtEnd {
+		if buffer != "" && len(o.Items) > 0 {
+			var topCmd string
+			if o.Cursor >= 0 && o.Cursor < len(o.Items) {
+				topCmd = o.Items[o.Cursor].Cmd
+			} else {
+				topCmd = o.Items[0].Cmd
+			}
+			if strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(buffer)) {
+				suffix := cleanGhostSuffix(buffer, topCmd[len(buffer):])
+				if strings.TrimSpace(suffix) != "" {
+					ghostText = suffix
+				}
+			}
 		}
-		if strings.HasPrefix(strings.ToLower(topCmd), strings.ToLower(buffer)) {
-			ghostText = topCmd[len(buffer):]
+		if config.Get().Core.Prediction && o.PredictedCmd != "" {
+			pred := o.PredictedCmd
+			if idx := strings.IndexAny(pred, "\r\n"); idx != -1 {
+				pred = pred[:idx]
+			}
+			normalize := func(s string) string { return strings.Join(strings.Fields(s), " ") }
+			normPred := normalize(pred)
+			normFull := normalize(buffer + ghostText)
+			normBuf := normalize(buffer)
+			isRelated := normBuf == "" || strings.HasPrefix(strings.ToLower(normPred), strings.ToLower(normBuf))
+			if isRelated && !strings.EqualFold(normPred, normFull) {
+				hint := " " + PredictionSymbol + " " + pred
+				if (normBuf == "" && ghostText == "") || (strings.HasSuffix(buffer, " ") && ghostText == "") {
+					hint = PredictionSymbol + " " + pred
+				}
+				width := termWidth()
+				totalCol := o.PromptLen + lipgloss.Width(buffer) + lipgloss.Width(ghostText)
+				if width > 0 && totalCol < width {
+					availableCols := width - totalCol - 1
+					if availableCols > len(PredictionSymbol)+2 {
+						if lipgloss.Width(hint) > availableCols {
+							hint = truncateToWidth(hint, availableCols-1) + "…"
+						}
+						ghostText += hint
+					}
+				}
+			}
 		}
 	}
 
@@ -562,7 +633,7 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 		if width > 0 {
 			cursorCol = totalCol % width
 		}
-		availableCols := width - cursorCol
+		availableCols := width - cursorCol - 1
 		if availableCols <= 0 {
 			ghostText = ""
 		} else if lipgloss.Width(ghostText) > availableCols {
@@ -575,19 +646,12 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 	}
 
 	ghostWidth := lipgloss.Width(ghostText)
-	padLen := max(o.LastGhostLen-ghostWidth, 0)
-	if o.LastGhostLen > 0 {
-		padLen += 4
-	}
-
 	s.WriteString(ansi.SaveCursor)
 	if ghostText != "" {
 		styled := lipgloss.NewStyle().Foreground(lipgloss.Color(config.Theme().GhostText)).Render(ghostText)
 		s.WriteString(styled)
 	}
-	if padLen > 0 {
-		s.WriteString(strings.Repeat(" ", padLen))
-	}
+	s.WriteString(ansi.EraseLineRight)
 	s.WriteString(ansi.RestoreCursor)
 	o.LastGhostLen = ghostWidth
 
@@ -927,7 +991,18 @@ func (o *Overlay) draw() string {
 		ctrlRKey := keyStyle.Render(config.FormatKeyName(config.Get().Keybindings.ToggleMode))
 		acceptText := lipgloss.NewStyle().Foreground(lipgloss.Color(t.ScrollInfo)).Render(" Accept")
 		modeText := lipgloss.NewStyle().Foreground(lipgloss.Color(t.ScrollInfo)).Render(" Mode")
-		footerInfo = fmt.Sprintf(" %s%s • %s%s ", selectKey, acceptText, ctrlRKey, modeText)
+		if o.PredictedCmd != "" && config.Get().Core.Prediction {
+			rightArrowKey := keyStyle.Render("→")
+			predictText := lipgloss.NewStyle().Foreground(lipgloss.Color(t.ScrollInfo)).Render(" Predict")
+			candidate := fmt.Sprintf(" %s%s • %s%s • %s%s ", selectKey, acceptText, rightArrowKey, predictText, ctrlRKey, modeText)
+			if lipgloss.Width(candidate)+2 <= inner {
+				footerInfo = candidate
+			} else {
+				footerInfo = fmt.Sprintf(" %s%s • %s%s ", selectKey, acceptText, ctrlRKey, modeText)
+			}
+		} else {
+			footerInfo = fmt.Sprintf(" %s%s • %s%s ", selectKey, acceptText, ctrlRKey, modeText)
+		}
 	}
 
 	s.WriteString(titledEdge("╰", "╯", inner, footerInfo, border, inner-lipgloss.Width(footerInfo)-2))
@@ -988,7 +1063,7 @@ func (o *Overlay) HideMenu(query string) string {
 
 	if o.LastGhostLen > 0 {
 		s.WriteString(ansi.SaveCursor)
-		s.WriteString(strings.Repeat(" ", o.LastGhostLen+10))
+		s.WriteString(ansi.EraseLineRight)
 		s.WriteString(ansi.RestoreCursor)
 		o.LastGhostLen = 0
 	}
@@ -1016,13 +1091,14 @@ func (o *Overlay) ClearAndDisable() string {
 	o.UserNavigated = false
 	o.Cursor = 0
 	o.StartIdx = 0
+	o.PredictedCmd = ""
 
 	var s strings.Builder
 	s.WriteString(ansi.ResetModeAutoWrap)
 
 	if o.LastGhostLen > 0 {
 		s.WriteString(ansi.SaveCursor)
-		s.WriteString(strings.Repeat(" ", o.LastGhostLen+10))
+		s.WriteString(ansi.EraseLineRight)
 		s.WriteString(ansi.RestoreCursor)
 		o.LastGhostLen = 0
 	}

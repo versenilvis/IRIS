@@ -59,9 +59,12 @@ func Init(logFilePath string, debug bool) {
 		_ = os.Rename(logFilePath, logFilePath+".old")
 	}
 
-	_ = os.MkdirAll(filepath.Dir(logFilePath), 0755)
-	f, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	dir := filepath.Dir(logFilePath)
+	_ = os.MkdirAll(dir, 0700)
+	_ = os.Chmod(dir, 0700)
+	f, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err == nil {
+		_ = os.Chmod(logFilePath, 0600)
 		logFile = f
 	}
 }

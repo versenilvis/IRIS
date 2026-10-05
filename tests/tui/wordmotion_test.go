@@ -32,9 +32,9 @@ func wordKeyHome(t *testing.T) string {
 
 func promptLine(t *testing.T, term *tuitest.Terminal) string {
 	t.Helper()
-	for _, line := range strings.Split(screen(term), "\n") {
-		if strings.HasPrefix(line, "> ") {
-			return strings.TrimSpace(strings.TrimPrefix(line, "> "))
+	for line := range strings.SplitSeq(screen(term), "\n") {
+		if after, ok := strings.CutPrefix(line, "> "); ok {
+			return strings.TrimSpace(after)
 		}
 	}
 	return ""

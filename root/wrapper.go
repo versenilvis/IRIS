@@ -17,6 +17,7 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+	"unicode/utf8"
 
 	"github.com/charmbracelet/x/ansi"
 	"github.com/creack/pty"
@@ -24,8 +25,10 @@ import (
 	"github.com/versenilvis/iris/integration/shell"
 	"github.com/versenilvis/iris/internal/ai"
 	"github.com/versenilvis/iris/internal/config"
+	"github.com/versenilvis/iris/internal/ctxcheck"
 	"github.com/versenilvis/iris/internal/logger"
 	"github.com/versenilvis/iris/internal/scoring"
+	"github.com/versenilvis/iris/internal/workspace"
 	"github.com/versenilvis/iris/spec"
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
@@ -36,6 +39,22 @@ var (
 	prevCmdCwd          string
 	prevCmdMu           sync.Mutex
 )
+
+func getPrevCommand() string {
+	prevCmdMu.Lock()
+	defer prevCmdMu.Unlock()
+	if prevRecordedCommand == "" {
+		if store, err := scoring.GetFrecencyStore(); err == nil && store != nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+			defer cancel()
+			if cmd, cwd := store.GetLatestHistoryEntry(ctx); cmd != "" {
+				prevRecordedCommand = cmd
+				prevCmdCwd = cwd
+			}
+		}
+	}
+	return prevRecordedCommand
+}
 
 func getPrevSkeleton() string {
 	prevCmdMu.Lock()
@@ -60,6 +79,157 @@ func setPrevRecordedInfo(cmd, cwd string) {
 	defer prevCmdMu.Unlock()
 	prevRecordedCommand = cmd
 	prevCmdCwd = cwd
+}
+
+var (
+	predictLogOnce sync.Once
+	predictLogMu   sync.Mutex
+)
+
+func logPredictionDebug(msg string) {
+	cacheDir, err := config.CachePath()
+	if err != nil {
+		return
+	}
+	logPath := filepath.Join(cacheDir, "predict.log")
+
+	predictLogMu.Lock()
+	defer predictLogMu.Unlock()
+
+	predictLogOnce.Do(func() {
+		_ = os.MkdirAll(cacheDir, 0o700)
+		_ = os.Chmod(cacheDir, 0o700)
+	})
+
+	if fi, statErr := os.Stat(logPath); statErr == nil && fi.Size() > 10*1024*1024 {
+		_ = os.Rename(logPath, logPath+".old")
+	}
+
+	f, openErr := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+	if openErr != nil {
+		return
+	}
+	defer f.Close()
+	_ = os.Chmod(logPath, 0o600)
+
+	tStr := time.Now().Format("2006-01-02T15:04:05.000Z07:00")
+	_, _ = fmt.Fprintf(f, "%s %s\n", tStr, msg)
+}
+
+func findPredictedCommand(query string) string {
+	if !config.Get().Core.Prediction {
+		return ""
+	}
+	store, err := scoring.GetFrecencyStore()
+	if err != nil || store == nil {
+		return ""
+	}
+	cwd := spec.GetCWD()
+	prefix := strings.TrimLeft(query, " ")
+
+	pid := workspace.DetectProjectIDCached(cwd)
+	ctxTimeout, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	shName := ""
+	if shell.Current != nil {
+		shName = shell.Current.GetName()
+	}
+	dialect, _ := ctxcheck.DialectFromShell(shName)
+
+	debugPredict := os.Getenv("IRIS_DEBUG_PREDICT") == "1"
+
+	type candLog struct {
+		cmd     string
+		tier    int
+		scopes  int
+		verdict ctxcheck.Verdict
+		allow   bool
+	}
+	var logs []candLog
+
+	scopeOf := func(cmd string) int {
+		return store.ScopeCount(ctxTimeout, cmd)
+	}
+
+	evalCandidate := func(c scoring.Candidate) (bool, ctxcheck.Verdict, int) {
+		v := ctxcheck.ValidateWithTimeout(c.Cmd, cwd, dialect, 15*time.Millisecond)
+		scopes := -1
+		scopeQueryFn := func() int {
+			scopes = scopeOf(c.Cmd)
+			return scopes
+		}
+		allowed := ctxcheck.Allow(c, v, scopeQueryFn)
+		return allowed, v, scopes
+	}
+
+	var chosen string
+
+	prev := getPrevCommand()
+	if prev != "" {
+		candidates := store.QuerySequenceCandidates(ctxTimeout, prev, prefix, cwd, pid)
+		limit := min(len(candidates), 12)
+		for i := range limit {
+			c := candidates[i]
+			if len(c.Cmd) > 100 || strings.ContainsAny(c.Cmd, "\r\n") {
+				continue
+			}
+			if strings.EqualFold(c.Cmd, prefix) {
+				continue
+			}
+			if scoring.IsNavCommand(c.Cmd) && strings.EqualFold(c.Cmd, prev) {
+				continue
+			}
+			allowed, v, scopes := evalCandidate(c)
+			if debugPredict && len(logs) < 5 {
+				logs = append(logs, candLog{cmd: c.Cmd, tier: c.Tier, scopes: scopes, verdict: v, allow: allowed})
+			}
+			if allowed {
+				chosen = c.Cmd
+				break
+			}
+		}
+	}
+
+	if chosen == "" {
+		candidates := store.QueryHistoryCandidates(ctxTimeout, prefix, cwd, pid)
+		limit := min(len(candidates), 12)
+		for i := range limit {
+			c := candidates[i]
+			if len(c.Cmd) > 100 || strings.ContainsAny(c.Cmd, "\r\n") {
+				continue
+			}
+			if prefix == "" && c.Tier < 1 {
+				continue
+			}
+			if strings.EqualFold(c.Cmd, prefix) {
+				continue
+			}
+			allowed, v, scopes := evalCandidate(c)
+			if debugPredict && len(logs) < 5 {
+				logs = append(logs, candLog{cmd: c.Cmd, tier: c.Tier, scopes: scopes, verdict: v, allow: allowed})
+			}
+			if allowed {
+				chosen = c.Cmd
+				break
+			}
+		}
+	}
+
+	if debugPredict {
+		var parts []string
+		for _, l := range logs {
+			scopeStr := "-"
+			if l.scopes >= 0 {
+				scopeStr = strconv.Itoa(l.scopes)
+			}
+			parts = append(parts, fmt.Sprintf("%q(tier=%d,scopes=%s,v=%s,allow=%v)", l.cmd, l.tier, scopeStr, l.verdict, l.allow))
+		}
+		msg := fmt.Sprintf("[PREDICT] cwd=%s prefix=%q chosen=%q top5=[%s]", cwd, prefix, chosen, strings.Join(parts, ", "))
+		logPredictionDebug(msg)
+	}
+
+	return chosen
 }
 
 func loadMode() string {
@@ -197,6 +367,7 @@ func runWrapper() {
 
 	var naiveBuffer string
 	var lastSubmittedCommand string
+	var lastSubmittedCWD string
 	cursorOffset := 0
 	var bufferMu sync.Mutex
 	var userNavigated atomic.Bool
@@ -290,8 +461,8 @@ func runWrapper() {
 		logger.Warnf("stdinFile is not a terminal, skipping raw mode")
 	}
 
-	sigCh := make(chan os.Signal, 2)
-	signal.Notify(sigCh, syscall.SIGWINCH, syscall.SIGUSR1)
+	sigCh := make(chan os.Signal, 4)
+	signal.Notify(sigCh, syscall.SIGWINCH, syscall.SIGUSR1, syscall.SIGTERM, syscall.SIGHUP)
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
@@ -304,6 +475,15 @@ func runWrapper() {
 		}()
 		for s := range sigCh {
 			switch s {
+			case syscall.SIGTERM, syscall.SIGHUP:
+				restoreTerminal()
+				if c.Process != nil {
+					// kill entire shell process group to prevent orphan processes
+					_ = syscall.Kill(-c.Process.Pid, syscall.SIGKILL)
+					_ = c.Process.Kill()
+				}
+				_ = ptmx.Close()
+				os.Exit(0)
 			case syscall.SIGWINCH:
 				logger.Debugf("Received SIGWINCH terminal resize signal")
 				_ = pty.InheritSize(stdinFile, ptmx) // handle terminal window resize
@@ -454,6 +634,23 @@ func runWrapper() {
 		// the timer stays armed as a backstop, in case the echo never arrives
 		// in a form iris recognises
 		drawAfterRepaint(draw)
+	}
+
+	acceptLine := func(cmd string) {
+		writeStdout([]byte(overlay.HideGhostTextSync()))
+		bufferMu.Lock()
+		naiveBuffer = cmd
+		replace := shell.ReplaceLine([]byte(cmd), cursorOffset)
+		cursorOffset = 0
+		bufferMu.Unlock()
+		overlay.ClearGhostTextState()
+		userNavigated.Store(false)
+		_, _ = ptmx.Write(replace)
+		drawAfterEcho(echoMarker(cmd), func() {
+			if renderer, ok := renderOverlayFn.Load().(func()); ok {
+				renderer()
+			}
+		})
 	}
 
 	// noteEcho feeds shell output to the pending draw's marker.
@@ -683,6 +880,16 @@ func runWrapper() {
 				pLen := integration.ComputeCursorCol(lastPromptBuf)
 				if pLen >= 0 {
 					overlay.SetPromptLen(pLen)
+					if config.Get().UI.GhostText != config.GhostTextOff {
+						disableGhostText.Store(false)
+					}
+					if config.Get().Core.Prediction {
+						drawAfterRepaint(func() {
+							if renderer, ok := renderOverlayFn.Load().(func()); ok {
+								renderer()
+							}
+						})
+					}
 				}
 			}
 		}
@@ -707,6 +914,7 @@ func runWrapper() {
 
 			if cwd, ok := strings.CutPrefix(query, "IRIS_CWD:"); ok {
 				spec.SetCWD(cwd)
+				workspace.InvalidateProjectIDCache()
 				syncProcessCWD(cwd)
 				if watchdogCWD != nil {
 					_, _ = fmt.Fprintf(watchdogCWD, "%s\x00", cwd)
@@ -733,19 +941,21 @@ func runWrapper() {
 					}
 				}
 				isCommandActive.Store(false)
-				// the shell reached a new prompt, so nothing owns the alternate
-				// screen any more even if a killed TUI never restored it
 				isAltScreenActive.Store(false)
 				SetCurrentAISuggestion(nil)
+				ctxcheck.InvalidateCache()
 				bufferMu.Lock()
 				cmdToRecord := lastSubmittedCommand
+				cwdToRecord := lastSubmittedCWD
 				lastSubmittedCommand = ""
+				lastSubmittedCWD = ""
 				bufferMu.Unlock()
-				if cmdToRecord != "" {
-					cwd := spec.GetCWD()
+				if cmdToRecord != "" && cwdToRecord != "" {
+					cwd := cwdToRecord
+					prevCmd := getPrevCommand()
 					prevSkeleton, prevCwd := getPrevRecordedInfo()
 					currSkeleton := scoring.ExtractSkeleton(cmdToRecord)
-					go func(c, d string, code int, pSkel, pCwd, cSkel string) {
+					go func(c, d string, code int, pCmd, pSkel, pCwd, cSkel string) {
 						defer func() {
 							if r := recover(); r != nil {
 								WriteCrashLog(r)
@@ -758,8 +968,13 @@ func runWrapper() {
 							if pSkel != "" && cSkel != "" {
 								_ = store.RecordTransition(ctxRecord, pSkel, cSkel, d, code)
 							}
+							if pCmd != "" && c != "" {
+								if !scoring.IsNavCommand(c) || !strings.EqualFold(c, pCmd) {
+									_ = store.RecordSequence(ctxRecord, pCmd, c, d, code)
+								}
+							}
 						}
-					}(cmdToRecord, cwd, exitCode, prevSkeleton, prevCwd, currSkeleton)
+					}(cmdToRecord, cwd, exitCode, prevCmd, prevSkeleton, prevCwd, currSkeleton)
 					setPrevRecordedInfo(cmdToRecord, cwd)
 				}
 				// hook: after user executes a command, print the update notice exactly once per session
@@ -812,6 +1027,14 @@ func runWrapper() {
 				if !wasEmpty {
 					writeStdout([]byte(overlay.ClearAndDisable()))
 					SetCurrentAISuggestion(nil)
+				}
+				if config.Get().UI.GhostText != config.GhostTextOff {
+					disableGhostText.Store(false)
+				}
+				if config.Get().Core.Prediction {
+					if renderer, ok := renderOverlayFn.Load().(func()); ok {
+						renderer()
+					}
 				}
 				continue
 			}
@@ -938,6 +1161,21 @@ func runWrapper() {
 			// cursor sits at the start of a line that still has content, which
 			// is not the same as nothing being typed.
 			if queryForSearch == "" && !overlay.IsVisible() {
+				if config.Get().Core.Prediction && !disableGhostText.Load() {
+					predicted := findPredictedCommand("")
+					bufferMu.Lock()
+					if naiveBuffer == "" {
+						overlay.SetPrediction(predicted)
+						if predicted != "" {
+							b.WriteString(overlay.RenderGhostText("", false, true))
+							bufferMu.Unlock()
+							writeStdout([]byte(b.String()))
+							return
+						}
+					}
+					bufferMu.Unlock()
+				}
+				overlay.SetPrediction("")
 				writeStdout([]byte(overlay.ClearAndDisable()))
 				return
 			}
@@ -945,8 +1183,28 @@ func runWrapper() {
 			results := MergeResults(queryForSearch, modeCopy)
 			logger.Debugf("Render results found: %d", len(results))
 
+			if config.Get().Core.Prediction {
+				curr := overlay.GetPrediction()
+				trimmedBuf := strings.TrimSpace(bufCopy)
+				if curr != "" && trimmedBuf != "" && strings.HasPrefix(strings.ToLower(curr), strings.ToLower(trimmedBuf)) && !strings.EqualFold(curr, trimmedBuf) {
+					// retain active prediction while user types matching prefix
+				} else {
+					predicted := findPredictedCommand(bufCopy)
+					bufferMu.Lock()
+					if naiveBuffer == bufCopy {
+						overlay.SetPrediction(predicted)
+					}
+					bufferMu.Unlock()
+				}
+			} else {
+				overlay.SetPrediction("")
+			}
+
 			if len(results) == 0 || (len(results) == 1 && strings.TrimSpace(results[0].Cmd) == strings.TrimSpace(bufCopy) && !strings.HasSuffix(bufCopy, " ")) {
 				b.WriteString(overlay.HideMenu(bufCopy))
+				if !disableGhostText.Load() && overlay.GetPrediction() != "" {
+					b.WriteString(overlay.RenderGhostText(bufCopy, false, offsetCopy == 0))
+				}
 				writeStdout([]byte(b.String()))
 				return
 			}
@@ -1028,10 +1286,53 @@ func runWrapper() {
 				continue
 			}
 
+			if !inBracketedPaste && n > 2 && inputSlice[0] != '\033' {
+				writeStdout([]byte(overlay.HideGhostTextSync()))
+				if overlay.IsVisible() {
+					writeStdout([]byte(overlay.Clear()))
+				}
+			}
+
 			shouldOverlayDraw := false
 			for i := 0; i < n; i++ {
 				b := inputSlice[i]
 				intercepted = false
+
+				if inBracketedPaste {
+					if b == '\033' {
+						if i+5 < n && inputSlice[i+1] == '[' && inputSlice[i+2] == '2' && inputSlice[i+3] == '0' && inputSlice[i+4] == '1' && inputSlice[i+5] == '~' {
+							inBracketedPaste = false
+							_, _ = ptmx.Write(inputSlice[i : i+6])
+							i += 5
+							shouldOverlayDraw = true
+							continue
+						} else if n-i < 6 {
+							rem := inputSlice[i:n]
+							if bytes.HasPrefix([]byte("\033[201~"), rem) {
+								fullSeq := make([]byte, 6)
+								copy(fullSeq, rem)
+								if _, err := io.ReadFull(stdinFile, fullSeq[len(rem):]); err == nil && string(fullSeq) == "\033[201~" {
+									inBracketedPaste = false
+									_, _ = ptmx.Write(fullSeq)
+									i = n
+									shouldOverlayDraw = true
+									continue
+								}
+							}
+						}
+					}
+					_, _ = ptmx.Write([]byte{b})
+					bufferMu.Lock()
+					if b == '\r' || b == '\n' {
+						naiveBuffer = ""
+						cursorOffset = 0
+					} else if b >= 32 {
+						naiveBuffer += string(b)
+						cursorOffset = 0
+					}
+					bufferMu.Unlock()
+					continue
+				}
 
 				// while an auto-update confirm prompt is pending, every
 				// byte goes to it instead of normal key handling
@@ -1104,34 +1405,73 @@ func runWrapper() {
 				}
 
 				if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.SelectSuggestion); matched && config.Get().Keybindings.SelectSuggestion != "" {
+					var selected string
 					if overlay.IsVisible() {
+						selected = overlay.GetCurrentCmd()
+					}
+					if selected != "" {
 						intercepted = true
-						selected := overlay.GetCurrentCmd()
-						if selected != "" {
-							activeModeMu.RLock()
-							currentMode := activeMode
-							activeModeMu.RUnlock()
-							if currentMode == "spec" {
-								s := strings.TrimSpace(selected)
-								if strings.HasSuffix(s, "/") || strings.HasSuffix(s, "\\") {
-									selected = s
-								} else {
-									selected = s + " "
-								}
+						activeModeMu.RLock()
+						currentMode := activeMode
+						activeModeMu.RUnlock()
+						if currentMode == "spec" {
+							s := strings.TrimSpace(selected)
+							if strings.HasSuffix(s, "/") || strings.HasSuffix(s, "\\") {
+								selected = s
+							} else {
+								selected = s + " "
 							}
-							bufferMu.Lock()
-							naiveBuffer = selected
-							replace := shell.ReplaceLine([]byte(selected), cursorOffset)
-							cursorOffset = 0
-							bufferMu.Unlock()
-							_, _ = ptmx.Write(replace)
+						}
+						currPred := overlay.GetPrediction()
+						bufferMu.Lock()
+						naiveBuffer = selected
+						replace := shell.ReplaceLine([]byte(selected), cursorOffset)
+						cursorOffset = 0
+						bufferMu.Unlock()
+						_, _ = ptmx.Write(replace)
 
-							overlay.ClearGhostTextState()
-							userNavigated.Store(false)
-							writeStdout([]byte(overlay.Render()))
+						overlay.ClearGhostTextState()
+						userNavigated.Store(false)
+
+						trimmedSel := strings.TrimSpace(selected)
+						if currPred != "" && strings.HasPrefix(strings.ToLower(currPred), strings.ToLower(trimmedSel)) {
+							overlay.SetPrediction(currPred)
+						} else if config.Get().Core.Prediction {
+							predicted := findPredictedCommand(selected)
+							bufferMu.Lock()
+							if naiveBuffer == selected {
+								overlay.SetPrediction(predicted)
+							}
+							bufferMu.Unlock()
+						} else {
+							overlay.SetPrediction("")
+						}
+
+						drawAfterEcho(echoMarker(selected), func() {
+							if renderer, ok := renderOverlayFn.Load().(func()); ok {
+								renderer()
+							}
+						})
+					} else if config.Get().Core.Prediction {
+						// only prediction and no menu selection: tab accepts prediction
+						predCmd := overlay.GetPrediction()
+						bufferMu.Lock()
+						bufSnap := naiveBuffer
+						atEnd := (cursorOffset == 0)
+						bufferMu.Unlock()
+
+						trimmedBuf := strings.TrimSpace(bufSnap)
+						isRelatedPred := atEnd && (bufSnap == "" || (trimmedBuf != "" && strings.HasPrefix(strings.ToLower(predCmd), strings.ToLower(trimmedBuf))))
+
+						if predCmd != "" && isRelatedPred && predCmd != bufSnap {
+							intercepted = true
+							acceptLine(predCmd)
 						}
 					}
-					// always consume the full binding atomically, even when the overlay is hidden
+					if !intercepted {
+						rawSeq := append([]byte(nil), inputSlice[i:i+consumed]...)
+						_, _ = ptmx.Write(rawSeq)
+					}
 					i += consumed - 1
 					continue
 				}
@@ -1209,6 +1549,7 @@ func runWrapper() {
 					integration.RecordSessionCommand(cmdToSubmit)
 					bufferMu.Lock()
 					lastSubmittedCommand = strings.TrimSpace(cmdToSubmit)
+					lastSubmittedCWD = spec.GetCWD()
 					naiveBuffer = ""
 					cursorOffset = 0
 					bufferMu.Unlock()
@@ -1226,13 +1567,51 @@ func runWrapper() {
 				if b == '\033' {
 					// check for bracketed paste start/end
 					if i+5 < n && inputSlice[i+1] == '[' && inputSlice[i+2] == '2' && inputSlice[i+3] == '0' {
-						if (inputSlice[i+4] == '0' || inputSlice[i+4] == '1') && inputSlice[i+5] == '~' {
+						if inputSlice[i+4] == '0' && inputSlice[i+5] == '~' {
 							intercepted = true
-							inBracketedPaste = inputSlice[i+4] == '0'
-							logger.Debugf("Intercepted bracketed paste event inPaste=%v", inBracketedPaste)
+							inBracketedPaste = true
+							writeStdout([]byte(overlay.HideGhostTextSync()))
+							if overlay.IsVisible() {
+								writeStdout([]byte(overlay.Clear()))
+							}
 							_, _ = ptmx.Write(inputSlice[i : i+6])
 							i += 5
 							continue
+						} else if inputSlice[i+4] == '1' && inputSlice[i+5] == '~' {
+							intercepted = true
+							inBracketedPaste = false
+							_, _ = ptmx.Write(inputSlice[i : i+6])
+							i += 5
+							shouldOverlayDraw = true
+							continue
+						}
+					} else if n-i < 6 {
+						rem := inputSlice[i:n]
+						if bytes.HasPrefix([]byte("\033[200~"), rem) {
+							fullSeq := make([]byte, 6)
+							copy(fullSeq, rem)
+							if _, err := io.ReadFull(stdinFile, fullSeq[len(rem):]); err == nil && string(fullSeq) == "\033[200~" {
+								intercepted = true
+								inBracketedPaste = true
+								writeStdout([]byte(overlay.HideGhostTextSync()))
+								if overlay.IsVisible() {
+									writeStdout([]byte(overlay.Clear()))
+								}
+								_, _ = ptmx.Write(fullSeq)
+								i = n
+								continue
+							}
+						} else if bytes.HasPrefix([]byte("\033[201~"), rem) {
+							fullSeq := make([]byte, 6)
+							copy(fullSeq, rem)
+							if _, err := io.ReadFull(stdinFile, fullSeq[len(rem):]); err == nil && string(fullSeq) == "\033[201~" {
+								intercepted = true
+								inBracketedPaste = false
+								_, _ = ptmx.Write(fullSeq)
+								i = n
+								shouldOverlayDraw = true
+								continue
+							}
 						}
 					}
 
@@ -1329,7 +1708,7 @@ func runWrapper() {
 							i += navConsumed - 1
 							intercepted = true
 							bufferMu.Lock()
-							isEmptyQuery := naiveBuffer == "" && (!overlay.IsVisible() || overlay.GetTypedQuery() == "")
+							isEmptyQuery := naiveBuffer == "" && (!overlay.IsVisible() || overlay.GetTypedQuery() == "") && overlay.GetPrediction() == ""
 							bufferMu.Unlock()
 							if isEmptyQuery {
 								_, _ = ptmx.Write(rawSeq)
@@ -1337,36 +1716,40 @@ func runWrapper() {
 							}
 
 							bufferMu.Lock()
+							bufSnap := naiveBuffer
 							atEnd := (cursorOffset == 0)
-							ghostText := ""
-							if !disableGhostText.Load() {
-								ghostText = overlay.GetGhostText(naiveBuffer, atEnd)
+							predCmd := ""
+							if !disableGhostText.Load() && config.Get().Core.Prediction && atEnd {
+								predCmd = overlay.GetPrediction()
 							}
 							bufferMu.Unlock()
 
-							if len(ghostText) > 0 {
-								bufferMu.Lock()
-								naiveBuffer += ghostText
-								cursorOffset = 0
-								bufferMu.Unlock()
-								overlay.ClearGhostTextState()
-								_, _ = ptmx.Write([]byte(ghostText))
-								shouldOverlayDraw = true
+							trimmedBuf := strings.TrimSpace(bufSnap)
+							isRelatedPred := bufSnap == "" || (trimmedBuf != "" && strings.HasPrefix(strings.ToLower(predCmd), strings.ToLower(trimmedBuf)))
+							if predCmd != "" && isRelatedPred && predCmd != bufSnap {
+								acceptLine(predCmd)
 								continue
 							}
 
+							ghostText := ""
+							if !disableGhostText.Load() && atEnd {
+								ghostText = overlay.GetGhostText(bufSnap, atEnd)
+							}
+							if len(ghostText) > 0 {
+								acceptLine(bufSnap + ghostText)
+								continue
+							}
+
+							writeStdout([]byte(overlay.HideGhostTextSync()))
 							bufferMu.Lock()
-							if naiveBuffer != "" || overlay.IsVisible() {
+							if cursorOffset > 0 {
 								cursorOffset--
-								if cursorOffset < 0 {
-									cursorOffset = 0
-								}
-								shouldOverlayDraw = true
-								userNavigated.Store(false)
 							}
 							bufferMu.Unlock()
 							_, _ = ptmx.Write(rawSeq)
-							isLeftRightArrow = true
+							shouldOverlayDraw = true
+							userNavigated.Store(false)
+							continue
 						}
 					}
 
@@ -1467,6 +1850,12 @@ func runWrapper() {
 						if wasEmpty || isEmptyNow {
 							writeStdout([]byte(overlay.ClearAndDisable()))
 							userNavigated.Store(false)
+							if isEmptyNow && config.Get().Core.Prediction {
+								if config.Get().UI.GhostText != config.GhostTextOff {
+									disableGhostText.Store(false)
+								}
+								shouldOverlayDraw = true
+							}
 							continue
 						}
 						shouldOverlayDraw = true
@@ -1488,6 +1877,12 @@ func runWrapper() {
 						if wasEmpty || isEmptyNow {
 							writeStdout([]byte(overlay.ClearAndDisable()))
 							userNavigated.Store(false)
+							if isEmptyNow && config.Get().Core.Prediction {
+								if config.Get().UI.GhostText != config.GhostTextOff {
+									disableGhostText.Store(false)
+								}
+								shouldOverlayDraw = true
+							}
 							continue
 						}
 						shouldOverlayDraw = true
@@ -1497,7 +1892,24 @@ func runWrapper() {
 						userNavigated.Store(false)
 					default:
 						// track normal printable characters in the buffer for matching
-						if b >= 32 && b <= 126 {
+						if b >= 32 {
+							var charStr string
+							if b <= 126 {
+								charStr = string(b)
+							} else if utf8.RuneStart(b) {
+								rem := inputSlice[i:n]
+								r, size := utf8.DecodeRune(rem)
+								if r != utf8.RuneError && size > 1 {
+									_, _ = ptmx.Write(rem[1:size])
+									i += size - 1
+									charStr = string(r)
+								} else {
+									charStr = string(b)
+								}
+							} else {
+								charStr = string(b)
+							}
+
 							// expand alias on space, but only when typing manually (not pasting)
 							// and only if expand-alias configuration is enabled
 							bufferMu.Lock()
@@ -1522,18 +1934,14 @@ func runWrapper() {
 							}
 							bufferMu.Lock()
 							if cursorOffset == 0 {
-								naiveBuffer += string(b)
+								naiveBuffer += charStr
 							} else {
-								if cursorOffset > len(naiveBuffer) {
-									cursorOffset = len(naiveBuffer)
+								runes := []rune(naiveBuffer)
+								if cursorOffset > len(runes) {
+									cursorOffset = len(runes)
 								}
-								pos := len(naiveBuffer) - cursorOffset
-								if pos >= 0 && pos <= len(naiveBuffer) {
-									naiveBuffer = naiveBuffer[:pos] + string(b) + naiveBuffer[pos:]
-								} else {
-									naiveBuffer += string(b)
-									cursorOffset = 0
-								}
+								pos := len(runes) - cursorOffset
+								naiveBuffer = string(append(runes[:pos], append([]rune(charStr), runes[pos:]...)...))
 							}
 							bufferMu.Unlock()
 							shouldOverlayDraw = true

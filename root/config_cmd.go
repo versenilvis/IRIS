@@ -72,6 +72,9 @@ cobra-probe-enabled = true
 # "history" = browse iris history, "shell" = leave the key to the shell (e.g. atuin)
 navigate-closed = "history"
 
+# predict next command based on learned command sequences
+prediction = true
+
 [ui]
 # visual style: "modern" (icons, category pills, shortcut footer) or "classic" (minimalist, centered number, no icons)
 style = "modern"

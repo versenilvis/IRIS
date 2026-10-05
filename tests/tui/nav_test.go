@@ -33,7 +33,9 @@ func TestNavigatingOntoALongEntryKeepsTheBoxWhole(t *testing.T) {
 	}
 	var b strings.Builder
 	for _, e := range entries {
-		b.WriteString(": 1700000000:0;" + e + "\n")
+		b.WriteString(": 1700000000:0;")
+		b.WriteString(e)
+		b.WriteString("\n")
 	}
 	if err := os.WriteFile(filepath.Join(home, ".zsh_history"), []byte(b.String()), 0o644); err != nil {
 		t.Fatal(err)
@@ -87,7 +89,9 @@ func TestBoxHoldsItsColumnWhileNavigating(t *testing.T) {
 		"nvim x",
 		"nvim ~/.local/share/iris/history.db",
 	} {
-		b.WriteString(": 1700000000:0;" + e + "\n")
+		b.WriteString(": 1700000000:0;")
+		b.WriteString(e)
+		b.WriteString("\n")
 	}
 	if err := os.WriteFile(filepath.Join(home, ".zsh_history"), []byte(b.String()), 0o644); err != nil {
 		t.Fatal(err)

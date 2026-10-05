@@ -201,8 +201,10 @@ func (f *FishAdapter) ScanAbbrs() map[string]string {
 }
 
 func GetFishConfigDir() string {
-	// $__fish_config_dir is a shell variable rather than an env var, so it is
-	// resolved once per process the same way ZDOTDIR is.
+	if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
+		return filepath.Join(xdg, "fish")
+	}
+
 	fishConfigDirOnce.Do(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 		defer cancel()

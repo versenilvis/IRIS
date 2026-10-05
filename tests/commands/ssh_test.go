@@ -84,5 +84,8 @@ func sshHostGeneratorFromPath(configPath string) []spec.Suggestion {
 			results = append(results, spec.Suggestion{Cmd: host, Desc: "ssh host"})
 		}
 	}
+	if err := scanner.Err(); err != nil {
+		return nil
+	}
 	return results
 }
