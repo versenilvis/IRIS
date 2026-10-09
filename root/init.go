@@ -54,9 +54,19 @@ if [ -n "$IRIS_PID" ] && [ -n "$IRIS_FD" ]; then
     print -u $IRIS_FD -N -r -- "IRIS_CWD:$PWD" 2>/dev/null
   }
 
+  _iris_send_aliases() {
+    local a
+    a="$(alias -L 2>/dev/null)"
+    if [[ "$a" != "$_iris_last_aliases" ]]; then
+      _iris_last_aliases="$a"
+      print -u $IRIS_FD -N -r -- "IRIS_ALIASES:$a" 2>/dev/null
+    fi
+  }
+
   _iris_precmd() {
     local iris_exit_code=$?
     _iris_sync_cwd
+    _iris_send_aliases
     print -u $IRIS_FD -N -r -- "IRIS_CMD_STOP:$iris_exit_code" 2>/dev/null
   }
 
@@ -100,8 +110,18 @@ fi
 
 # Iris Autocomplete Hook
 if [ -n "$IRIS_PID" ] && [ -n "$IRIS_FD" ]; then
+  _iris_send_aliases() {
+    local a
+    a="$(alias -p 2>/dev/null)"
+    if [[ "$a" != "$_iris_last_aliases" ]]; then
+      _iris_last_aliases="$a"
+      printf "IRIS_ALIASES:%%s\x00" "$a" >&$IRIS_FD 2>/dev/null
+    fi
+  }
+
   _iris_bash_precmd() {
     local iris_exit_code=$?
+    _iris_send_aliases
     printf "IRIS_CWD:%%s\x00" "$PWD" >&$IRIS_FD 2>/dev/null
     printf "IRIS_CMD_STOP:%%s\x00" "$iris_exit_code" >&$IRIS_FD 2>/dev/null
   }
@@ -152,6 +172,19 @@ if set -q IRIS_PID; and set -q IRIS_FD
     end
     function _iris_fish_prompt --on-event fish_prompt
         printf "IRIS_CWD:%%s\x00" "$PWD" >&$IRIS_FD 2>/dev/null
+        set -l abbrs (abbr --show 2>/dev/null | string collect)
+        if test "$abbrs" != "$_iris_last_abbrs"
+            set -g _iris_last_abbrs "$abbrs"
+            printf "IRIS_ABBRS:%%s\x00" "$abbrs" >&$IRIS_FD 2>/dev/null
+        end
+        set -l func_count (functions -n 2>/dev/null | count)
+        if test "$func_count" != "$_iris_last_func_count"
+            set -g _iris_last_func_count "$func_count"
+            set -l aliases (alias 2>/dev/null | string collect)
+            set -g _iris_last_func_count (functions -n 2>/dev/null | count)
+            set -g _iris_last_aliases "$aliases"
+            printf "IRIS_ALIASES:%%s\x00" "$aliases" >&$IRIS_FD 2>/dev/null
+        end
     end
     function _iris_fish_preexec --on-event fish_preexec
         printf "IRIS_CMD_START\x00" >&$IRIS_FD 2>/dev/null

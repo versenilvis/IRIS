@@ -284,3 +284,42 @@ func TestCleanChildEnv(t *testing.T) {
 	}
 }
 
+func TestParsePosixAliasDump(t *testing.T) {
+	dump := `alias run-help=man
+alias which-command=whence
+alias gst='git status'
+alias -g G='| grep'
+alias -- mycmd='echo 1'
+alias gwip='git add -A && git commit -m '\''WIP'\'''
+alias zsh_wip='git add -A && git commit -m '\''WIP'\'
+alias ansi=$'echo \'hi\nthere\''
+alias multiline='echo '\''hello
+world'\'''
+alias dev='cd ~/dev; ls'
+`
+	got := ParsePosixAliasDump(dump)
+
+	want := map[string]string{
+		"run-help":      "man",
+		"which-command": "whence",
+		"gst":           "git status",
+		"G":             "| grep",
+		"mycmd":         "echo 1",
+		"gwip":          "git add -A && git commit -m 'WIP'",
+		"zsh_wip":       "git add -A && git commit -m 'WIP'",
+		"ansi":          "echo 'hi\nthere'",
+		"multiline":     "echo 'hello\nworld'",
+		"dev":           "cd ~/dev; ls",
+	}
+
+	for k, w := range want {
+		if got[k] != w {
+			t.Errorf("ParsePosixAliasDump() key %q = %q; want %q", k, got[k], w)
+		}
+	}
+
+	if len(got) != len(want) {
+		t.Errorf("ParsePosixAliasDump() got %d keys; want %d", len(got), len(want))
+	}
+}
+

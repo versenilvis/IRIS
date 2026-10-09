@@ -700,6 +700,8 @@ func runWrapper() {
 			}
 		}()
 		scanner := bufio.NewScanner(r)
+		// enlarge scanner buffer so large alias dumps never trigger ErrTooLong
+		scanner.Buffer(make([]byte, 64*1024), 4*1024*1024)
 		scanner.Split(nullTokenSplit)
 
 		for scanner.Scan() {
@@ -710,6 +712,20 @@ func runWrapper() {
 				syncProcessCWD(cwd)
 				if watchdogCWD != nil {
 					_, _ = fmt.Fprintf(watchdogCWD, "%s\x00", cwd)
+				}
+				continue
+			}
+
+			if payload, ok := strings.CutPrefix(query, "IRIS_ALIASES:"); ok {
+				if adapter != nil {
+					spec.SetLiveAliases(adapter.ParseLiveAliases(payload))
+				}
+				continue
+			}
+
+			if payload, ok := strings.CutPrefix(query, "IRIS_ABBRS:"); ok {
+				if parser, ok := adapter.(shell.LiveAbbrParser); ok {
+					spec.SetLiveAbbrs(parser.ParseLiveAbbrs(payload))
 				}
 				continue
 			}

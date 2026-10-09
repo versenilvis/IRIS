@@ -390,3 +390,54 @@ func TestLookup_RealGitProvider(t *testing.T) {
 	}
 }
 
+func TestLiveAliasesAndAbbrs(t *testing.T) {
+	ResetLiveAliases()
+	t.Cleanup(ResetLiveAliases)
+
+	SetLiveAliases(map[string]string{
+		"livealias": "git status",
+	})
+	SetLiveAbbrs(map[string]string{
+		"liveabbr": "git checkout",
+	})
+
+	if val, ok := GetAlias("livealias"); !ok || val != "git status" {
+		t.Errorf("GetAlias('livealias') = %q, %v; want 'git status', true", val, ok)
+	}
+
+	aliases := GetAliasesCopy()
+	if aliases["livealias"] != "git status" {
+		t.Errorf("GetAliasesCopy()['livealias'] = %q; want 'git status'", aliases["livealias"])
+	}
+
+	results := Lookup("livea")
+	found := false
+	for _, r := range results {
+		if r.Cmd == "livealias" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected 'livealias' in suggestions for 'livea', got: %v", results)
+	}
+
+	abbrResults := Lookup("liveab")
+	foundAbbr := false
+	for _, r := range abbrResults {
+		if r.Cmd == "liveabbr" {
+			foundAbbr = true
+			break
+		}
+	}
+	if !foundAbbr {
+		t.Errorf("expected 'liveabbr' in suggestions for 'liveab', got: %v", abbrResults)
+	}
+
+	ResetLiveAliases()
+	if _, ok := GetAlias("livealias"); ok {
+		t.Errorf("expected livealias to be removed after ResetLiveAliases")
+	}
+}
+
+
