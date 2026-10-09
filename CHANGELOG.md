@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.7.3](https://github.com/versenilvis/iris/releases/tag/v0.7.3) - 2026-10-09
+
+### Features
+
+- Extract and sync aliases dynamically via IPC ([#173](https://github.com/versenilvis/iris/issues/173)) ([55fc61](https://github.com/versenilvis/iris/commit/55fc612e40934ab31b9894f4f13e3e2708b4b7aa))
+- User-defined completion specs and refactor cli commands ([#174](https://github.com/versenilvis/iris/issues/174)) ([66bcd9](https://github.com/versenilvis/iris/commit/66bcd95b53871ab2b714d75dc9c369a1ee849b45))
+
 ## [v0.7.2](https://github.com/versenilvis/iris/releases/tag/v0.7.2) - 2026-10-05
 
 ### Bug fixes
