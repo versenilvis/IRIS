@@ -51,25 +51,33 @@ var SpecInitCmd = &cobra.Command{
 			return
 		}
 
+		const schemaURL = "https://raw.githubusercontent.com/versenilvis/iris/main/spec/schema.json"
 		content := fmt.Sprintf(`{
+  // $schema enables autocomplete and validation in VS Code / Zed
+  "$schema": "%s",
   "name": "%s",
   "description": "%s command completion",
   "options": [
     {
-      "name": "--help",
-      "aliases": ["-h"],
-      "description": "Show help message"
+      "name": "--verbose",
+      "aliases": ["-v"],
+      "description": "Enable verbose output"
     }
   ],
   "subcommands": [
     {
       "name": "run",
-      "description": "Run target",
-      "generator": "file"
+      "description": "Run a file",
+      // suggest files by extension
+      "generator": [".go", ".js", ".ts", ".py", ".sh"]
+    },
+    {
+      "name": "help",
+      "description": "Show help for a command"
     }
   ]
 }
-`, stem, stem)
+`, schemaURL, stem, stem)
 
 		if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
 			fmt.Fprintf(cmd.ErrOrStderr(), "failed to write spec file: %v\n", err)
