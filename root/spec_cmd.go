@@ -80,7 +80,21 @@ var SpecInitCmd = &cobra.Command{
 	},
 }
 
+var SpecPathCmd = &cobra.Command{
+	Use:   "path",
+	Short: "show the specs directory path",
+	Run: func(cmd *cobra.Command, args []string) {
+		dir := spec.GetUserSpecsDir()
+		if dir == "" {
+			fmt.Fprintln(cmd.ErrOrStderr(), "failed to resolve specs directory")
+			return
+		}
+		fmt.Fprintln(cmd.OutOrStdout(), dir)
+	},
+}
+
 func init() {
 	SpecCmd.AddCommand(SpecInitCmd)
+	SpecCmd.AddCommand(SpecPathCmd)
 	rootCmd.AddCommand(SpecCmd)
 }

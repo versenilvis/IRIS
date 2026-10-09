@@ -37,3 +37,19 @@ func TestSpecInitCmd(t *testing.T) {
 		t.Errorf("expected already exists warning, got: %s", buf.String())
 	}
 }
+
+func TestSpecPathCmd(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+	buf := new(bytes.Buffer)
+	SpecPathCmd.SetOut(buf)
+
+	SpecPathCmd.Run(SpecPathCmd, []string{})
+	out := strings.TrimSpace(buf.String())
+	expected := filepath.Join(tmpDir, "iris", "specs")
+	if out != expected {
+		t.Fatalf("expected path %s, got: %s", expected, out)
+	}
+}
