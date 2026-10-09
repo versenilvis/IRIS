@@ -520,3 +520,96 @@ func parseFishAliasFunction(segment string, aliases map[string]string) {
 		return
 	}
 }
+
+func ParseFishAliasDump(dump string) map[string]string {
+	aliases := make(map[string]string)
+	if strings.TrimSpace(dump) == "" {
+		return aliases
+	}
+
+	for line := range strings.SplitSeq(dump, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "alias ") {
+			continue
+		}
+		body := strings.TrimSpace(strings.TrimPrefix(line, "alias"))
+		if body == "" {
+			continue
+		}
+
+		if before, after, ok := strings.Cut(body, "="); ok {
+			key := unquoteShellString(strings.TrimSpace(before))
+			val := unquoteShellString(strings.TrimSpace(after))
+			if key != "" && val != "" {
+				aliases[key] = val
+			}
+			continue
+		}
+
+		tokens := SplitAliasTokens(body)
+		if len(tokens) >= 2 {
+			key := unquoteShellString(tokens[0])
+			val := unquoteShellString(tokens[1])
+			if key != "" && val != "" {
+				aliases[key] = val
+			}
+		}
+	}
+	return aliases
+}
+
+func ParseFishAbbrDump(dump string) map[string]string {
+	abbrs := make(map[string]string)
+	if strings.TrimSpace(dump) == "" {
+		return abbrs
+	}
+
+	for line := range strings.SplitSeq(dump, "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "abbr ") {
+			continue
+		}
+		body := strings.TrimSpace(strings.TrimPrefix(line, "abbr"))
+		tokens := SplitAliasTokens(body)
+		if len(tokens) < 2 {
+			continue
+		}
+
+		dashDashIdx := -1
+		for i, tok := range tokens {
+			if tok == "--" {
+				dashDashIdx = i
+				break
+			}
+		}
+
+		var key, val string
+		if dashDashIdx >= 0 && dashDashIdx+2 < len(tokens) {
+			key = unquoteShellString(tokens[dashDashIdx+1])
+			val = unquoteShellString(tokens[dashDashIdx+2])
+		} else if dashDashIdx >= 0 && dashDashIdx+1 < len(tokens) {
+			key = unquoteShellString(tokens[dashDashIdx+1])
+		} else {
+			var pos []string
+			for i := 0; i < len(tokens); i++ {
+				t := tokens[i]
+				if strings.HasPrefix(t, "-") {
+					if (t == "--position" || t == "-p") && i+1 < len(tokens) {
+						i++
+					}
+					continue
+				}
+				pos = append(pos, t)
+			}
+			if len(pos) >= 2 {
+				key = unquoteShellString(pos[len(pos)-2])
+				val = unquoteShellString(pos[len(pos)-1])
+			}
+		}
+
+		if key != "" && val != "" {
+			abbrs[key] = val
+		}
+	}
+	return abbrs
+}

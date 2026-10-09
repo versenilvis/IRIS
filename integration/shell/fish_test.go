@@ -309,3 +309,63 @@ func writeFish(t *testing.T, path, content string) {
 		t.Fatal(err)
 	}
 }
+
+func TestFishAdapterImplementsLiveAbbrParser(t *testing.T) {
+	if _, ok := Adapter(&FishAdapter{}).(LiveAbbrParser); !ok {
+		t.Error("FishAdapter does not implement LiveAbbrParser")
+	}
+	for _, a := range []Adapter{&BashAdapter{}, &ZshAdapter{}} {
+		if _, ok := a.(LiveAbbrParser); ok {
+			t.Errorf("%s implements LiveAbbrParser; only fish has abbreviations", a.GetName())
+		}
+	}
+}
+
+func TestParseFishAliasDump(t *testing.T) {
+	dump := `alias gst 'git status'
+alias ll 'ls -la'
+alias myecho 'echo 123'
+alias eq=nvim
+`
+	got := ParseFishAliasDump(dump)
+	want := map[string]string{
+		"gst":    "git status",
+		"ll":     "ls -la",
+		"myecho": "echo 123",
+		"eq":     "nvim",
+	}
+
+	for k, w := range want {
+		if got[k] != w {
+			t.Errorf("ParseFishAliasDump() key %q = %q; want %q", k, got[k], w)
+		}
+	}
+	if len(got) != len(want) {
+		t.Errorf("ParseFishAliasDump() got %d keys; want %d", len(got), len(want))
+	}
+}
+
+func TestParseFishAbbrDump(t *testing.T) {
+	dump := `abbr -a -- gst 'git status'
+abbr -a -g -- myls 'ls -la'
+abbr -a --position anywhere -- gc 'git commit'
+abbr -a -- testabbr "echo 'hello world'"
+`
+	got := ParseFishAbbrDump(dump)
+	want := map[string]string{
+		"gst":      "git status",
+		"myls":     "ls -la",
+		"gc":       "git commit",
+		"testabbr": "echo 'hello world'",
+	}
+
+	for k, w := range want {
+		if got[k] != w {
+			t.Errorf("ParseFishAbbrDump() key %q = %q; want %q", k, got[k], w)
+		}
+	}
+	if len(got) != len(want) {
+		t.Errorf("ParseFishAbbrDump() got %d keys; want %d", len(got), len(want))
+	}
+}
+
