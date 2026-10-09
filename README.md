@@ -317,6 +317,8 @@ mode = "last"                  # "last", "spec", or "history"
 debug = false                  # verbose logging to iris.log (also: iris -d)
 expand-alias = true            # expand aliases before matching
 auto-execute = false           # run suggestion immediately instead of inserting it
+# "auto" filters exact matches when auto-execute is off, and keeps them first when on.
+filter-exact-match = "auto"    # true: always filter; false: always keep first
 atuin-history = 0              # 0 = shell history, 1 = atuin, 2 = both
 atuin-db-path = ""             # path to atuin's history.db, empty = use default
 cobra-probe-enabled = true     # fall back to probing cobra binaries for completions

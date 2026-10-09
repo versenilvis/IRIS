@@ -204,6 +204,7 @@ type Overlay struct {
 	StartIdx      int
 	LastGhostLen  int
 	TypedQuery    string
+	rankedLine    string
 	UserNavigated bool
 	PromptLen     int
 	// CursorAtEnd gates the erase that follows the input onto a new wrapped
@@ -292,6 +293,7 @@ func (o *Overlay) SetTypedQuery(q string) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	o.TypedQuery = q
+	o.rankedLine = q
 	o.ScreenLine = q
 }
 
@@ -299,6 +301,15 @@ func (o *Overlay) GetCurrentCmd() string {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	if len(o.Items) > 0 && o.Cursor >= 0 && o.Cursor < len(o.Items) {
+		return o.Items[o.Cursor].Cmd
+	}
+	return ""
+}
+
+func (o *Overlay) GetCurrentCmdForLine(line string) string {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if o.rankedLine == line && len(o.Items) > 0 && o.Cursor >= 0 && o.Cursor < len(o.Items) {
 		return o.Items[o.Cursor].Cmd
 	}
 	return ""
@@ -327,9 +338,14 @@ func (o *Overlay) ResetCursor() {
 }
 
 func (o *Overlay) SetQueryAndItems(query string, items []spec.Suggestion) {
+	o.SetQueryAndItemsForLine(query, query, items)
+}
+
+func (o *Overlay) SetQueryAndItemsForLine(query, line string, items []spec.Suggestion) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	o.TypedQuery = query
+	o.rankedLine = line
 	o.ScreenLine = query
 	o.UserNavigated = false
 	o.Items = items
@@ -349,6 +365,19 @@ func (o *Overlay) InjectAISuggestion(sugg spec.Suggestion) bool {
 	if o.UserNavigated {
 		return false
 	}
+	normalizedQuery := strings.TrimSpace(o.TypedQuery)
+	normalizedCmd := strings.TrimSpace(sugg.Cmd)
+	if normalizedQuery == "" || normalizedCmd == "" {
+		return false
+	}
+	isExact := normalizedCmd == normalizedQuery
+	filterExact := config.Get().Core.FilterExactMatches()
+	if isExact && filterExact {
+		return false
+	}
+	if !isExact && !filterExact && len(o.Items) > 0 && strings.TrimSpace(o.Items[0].Cmd) == normalizedQuery {
+		return false
+	}
 
 	var currentConf int
 	if len(o.Items) > 0 {
@@ -362,10 +391,10 @@ func (o *Overlay) InjectAISuggestion(sugg spec.Suggestion) bool {
 		}
 	}
 
-	if !strings.HasPrefix(strings.ToLower(sugg.Cmd), strings.ToLower(o.TypedQuery)) {
+	if !isExact && !strings.HasPrefix(strings.ToLower(sugg.Cmd), strings.ToLower(o.TypedQuery)) {
 		return false
 	}
-	if sugg.Confidence <= currentConf && len(o.Items) > 0 {
+	if !isExact && sugg.Confidence <= currentConf && len(o.Items) > 0 {
 		return false
 	}
 
@@ -972,6 +1001,7 @@ func (o *Overlay) HideMenu(query string) string {
 	defer o.mu.Unlock()
 
 	o.TypedQuery = query
+	o.rankedLine = query
 	o.ScreenLine = query
 	if !o.Visible && len(o.Items) == 0 && o.LastGhostLen == 0 {
 		return ""
@@ -1012,6 +1042,7 @@ func (o *Overlay) ClearAndDisable() string {
 	o.Visible = false
 	o.Items = nil
 	o.TypedQuery = ""
+	o.rankedLine = ""
 	o.ScreenLine = ""
 	o.UserNavigated = false
 	o.Cursor = 0

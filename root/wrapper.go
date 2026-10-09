@@ -975,7 +975,7 @@ func runWrapper() {
 			if overlay.IsVisible() {
 				b.WriteString(overlay.Clear())
 			}
-			overlay.SetQueryAndItems(bufCopy, results)
+			overlay.SetQueryAndItemsForLine(bufCopy, queryForSearch, results)
 		} else {
 			if overlay.IsVisible() {
 				b.WriteString(overlay.Clear())
@@ -1166,7 +1166,15 @@ func runWrapper() {
 					var selectedCmd string
 					var shouldAutoExecute bool
 					if overlay.IsVisible() && (config.Get().Core.AutoExecute || userNavigated.Load()) {
-						selectedCmd = overlay.GetCurrentCmd()
+						if userNavigated.Load() {
+							selectedCmd = overlay.GetCurrentCmd()
+						} else {
+							bufferMu.Lock()
+							query := naiveBuffer
+							bufferMu.Unlock()
+							// A pending redraw must not submit a suggestion for an older line.
+							selectedCmd = overlay.GetCurrentCmdForLine(query)
+						}
 						if selectedCmd != "" {
 							shouldAutoExecute = true
 						}

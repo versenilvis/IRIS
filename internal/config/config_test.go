@@ -3,11 +3,89 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/BurntSushi/toml"
 )
+
+func TestLoadFilterExactMatch(t *testing.T) {
+	for _, tt := range []struct {
+		name       string
+		content    string
+		wantMode   FilterExactMatchMode
+		wantFilter bool
+	}{
+		{"omitted/auto-execute-off", "auto-execute = false\n", FilterExactMatchAuto, true},
+		{"omitted/auto-execute-on", "auto-execute = true\n", FilterExactMatchAuto, false},
+		{"auto/auto-execute-off", "auto-execute = false\nfilter-exact-match = \"auto\"\n", FilterExactMatchAuto, true},
+		{"auto/auto-execute-on", "auto-execute = true\nfilter-exact-match = \"auto\"\n", FilterExactMatchAuto, false},
+		{"true/auto-execute-off", "auto-execute = false\nfilter-exact-match = true\n", FilterExactMatchOn, true},
+		{"true/auto-execute-on", "auto-execute = true\nfilter-exact-match = true\n", FilterExactMatchOn, true},
+		{"false/auto-execute-off", "auto-execute = false\nfilter-exact-match = false\n", FilterExactMatchOff, false},
+		{"false/auto-execute-on", "auto-execute = true\nfilter-exact-match = false\n", FilterExactMatchOff, false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			t.Setenv("IRIS_CONFIG_DIR", dir)
+			if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte("[core]\n"+tt.content), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			cfg, err := Load()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := cfg.Core.FilterExactMatches(); got != tt.wantFilter {
+				t.Fatalf("FilterExactMatches() = %v; want %v", got, tt.wantFilter)
+			}
+			if cfg.Core.FilterExactMatch != tt.wantMode {
+				t.Fatalf("FilterExactMatch = %v; want %v", cfg.Core.FilterExactMatch, tt.wantMode)
+			}
+			if saveErr := Save(cfg); saveErr != nil {
+				t.Fatal(saveErr)
+			}
+			reloaded, err := Load()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if reloaded.Core.FilterExactMatches() != tt.wantFilter || reloaded.Core.FilterExactMatch != tt.wantMode {
+				t.Fatal("saving and reloading changed filter-exact-match behavior")
+			}
+		})
+	}
+}
+
+func TestLoadFilterExactMatchRejectsInvalidValues(t *testing.T) {
+	for _, value := range []string{`""`, `"always"`, `"true"`, `"AUTO"`, `0`, `-1`, `1.5`, `[]`, `{ value = true }`} {
+		t.Run(value, func(t *testing.T) {
+			dir := t.TempDir()
+			t.Setenv("IRIS_CONFIG_DIR", dir)
+			content := "[core]\nfilter-exact-match = " + value + "\n"
+			if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte(content), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := Load(); err == nil || !strings.Contains(err.Error(), "filter-exact-match") {
+				t.Fatalf("Load() error = %v; want invalid filter-exact-match", err)
+			}
+		})
+	}
+}
+
+func TestSaveDefaultFilterExactMatch(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("IRIS_CONFIG_DIR", dir)
+	if err := Save(DefaultConfig()); err != nil {
+		t.Fatal(err)
+	}
+	content, err := os.ReadFile(filepath.Join(dir, "config.toml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(content), `filter-exact-match = "auto"`) {
+		t.Fatal("default config must emit filter-exact-match = \"auto\"")
+	}
+}
 
 func TestDefaultConfigAndState(t *testing.T) {
 	cfg := DefaultConfig()
