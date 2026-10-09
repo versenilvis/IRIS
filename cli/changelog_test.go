@@ -1,4 +1,4 @@
-package root
+package cli
 
 import (
 	"bytes"
@@ -14,6 +14,7 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 	"github.com/versenilvis/iris/internal/config"
+	"github.com/versenilvis/iris/internal/updater"
 )
 
 func TestFetchReleasesFiltersPrereleasesOnStableChannel(t *testing.T) {
@@ -23,7 +24,7 @@ func TestFetchReleasesFiltersPrereleasesOnStableChannel(t *testing.T) {
 	cfg.Updater.Channel = "stable"
 	config.Init(cfg)
 
-	releases := []Release{
+	releases := []updater.Release{
 		{TagName: "v0.6.0-nightly.abc", Prerelease: true, Body: "nightly"},
 		{TagName: "v0.5.2", Prerelease: false, Body: "stable"},
 		{TagName: "v0.5.1", Prerelease: false, Body: "stable"},
@@ -54,7 +55,7 @@ func TestFetchReleasesLimitsCount(t *testing.T) {
 	t.Cleanup(func() { config.Init(originalConfig) })
 	config.Init(config.DefaultConfig())
 
-	releases := []Release{
+	releases := []updater.Release{
 		{TagName: "v0.5.2"}, {TagName: "v0.5.1"}, {TagName: "v0.5.0"},
 	}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -73,7 +74,7 @@ func TestFetchReleasesLimitsCount(t *testing.T) {
 	}
 }
 
-func seedChangelogCache(t *testing.T, fetchedAt time.Time, releases []Release) {
+func seedChangelogCache(t *testing.T, fetchedAt time.Time, releases []updater.Release) {
 	t.Helper()
 	path, err := changelogCachePath()
 	if err != nil {
@@ -93,9 +94,8 @@ func seedChangelogCache(t *testing.T, fetchedAt time.Time, releases []Release) {
 
 func TestFetchReleasesCachedServesWithinTTL(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	seedChangelogCache(t, time.Now(), []Release{{TagName: "v1.0.0", Body: "cached"}})
+	seedChangelogCache(t, time.Now(), []updater.Release{{TagName: "v1.0.0", Body: "cached"}})
 
-	// point at an address nothing listens on: a network call here is a test failure
 	t.Setenv("IRIS_CHANGELOG_URL", "http://127.0.0.1:1/unreachable")
 
 	got, rateLimited, err := FetchReleasesCached(1, false)
@@ -118,14 +118,14 @@ func TestFetchReleasesCachedChannelChangeBypassesStaleCache(t *testing.T) {
 	config.Init(cfg)
 
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	seedChangelogCache(t, time.Now(), []Release{{TagName: "v1.0.0-nightly.abc", Body: "nightly cache", Prerelease: true}})
+	seedChangelogCache(t, time.Now(), []updater.Release{{TagName: "v1.0.0-nightly.abc", Body: "nightly cache", Prerelease: true}})
 
 	cfg.Updater.Channel = "stable"
 	config.Init(cfg)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode([]Release{{TagName: "v1.0.0", Body: "stable release"}})
+		_ = json.NewEncoder(w).Encode([]updater.Release{{TagName: "v1.0.0", Body: "stable release"}})
 	}))
 	defer srv.Close()
 	t.Setenv("IRIS_CHANGELOG_URL", srv.URL)
@@ -145,11 +145,11 @@ func TestFetchReleasesCachedRefreshBypassesTTL(t *testing.T) {
 	config.Init(config.DefaultConfig())
 
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	seedChangelogCache(t, time.Now(), []Release{{TagName: "v1.0.0", Body: "stale-but-fresh"}})
+	seedChangelogCache(t, time.Now(), []updater.Release{{TagName: "v1.0.0", Body: "stale-but-fresh"}})
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode([]Release{{TagName: "v2.0.0", Body: "fresh"}})
+		_ = json.NewEncoder(w).Encode([]updater.Release{{TagName: "v2.0.0", Body: "fresh"}})
 	}))
 	defer srv.Close()
 	t.Setenv("IRIS_CHANGELOG_URL", srv.URL)
@@ -165,7 +165,7 @@ func TestFetchReleasesCachedRefreshBypassesTTL(t *testing.T) {
 
 func TestFetchReleasesCachedRateLimitFallsBackToStaleCache(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	seedChangelogCache(t, time.Now().Add(-2*changelogCacheTTL), []Release{{TagName: "v1.0.0", Body: "stale"}})
+	seedChangelogCache(t, time.Now().Add(-2*changelogCacheTTL), []updater.Release{{TagName: "v1.0.0", Body: "stale"}})
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
@@ -195,7 +195,7 @@ func TestFetchReleasesCachedRateLimitNoCacheReturnsError(t *testing.T) {
 	t.Setenv("IRIS_CHANGELOG_URL", srv.URL)
 
 	_, _, err := FetchReleasesCached(1, false)
-	if !errors.Is(err, ErrRateLimited) {
+	if !errors.Is(err, updater.ErrRateLimited) {
 		t.Fatalf("expected ErrRateLimited, got %v", err)
 	}
 }
@@ -206,7 +206,7 @@ func TestPrintReleaseSuppressesUpdateCTAWhenCurrent(t *testing.T) {
 	t.Cleanup(func() { Version = originalVersion })
 
 	var buf bytes.Buffer
-	printRelease(&buf, Release{TagName: "v1.0.0", Body: "## Changelog\n### Bug fixes\n* abc1234  fix something\n"}, true)
+	printRelease(&buf, updater.Release{TagName: "v1.0.0", Body: "## Changelog\n### Bug fixes\n* abc1234  fix something\n"}, true)
 
 	if strings.Contains(buf.String(), "run `iris update`") {
 		t.Error("expected no update CTA when already on the latest version")
@@ -222,7 +222,7 @@ func TestPrintReleaseShowsUpdateCTAWhenNewer(t *testing.T) {
 	t.Cleanup(func() { Version = originalVersion })
 
 	var buf bytes.Buffer
-	printRelease(&buf, Release{TagName: "v1.0.0", Body: "## Changelog\n### Bug fixes\n* abc1234  fix something\n"}, true)
+	printRelease(&buf, updater.Release{TagName: "v1.0.0", Body: "## Changelog\n### Bug fixes\n* abc1234  fix something\n"}, true)
 
 	if !strings.Contains(buf.String(), "run `iris update`") {
 		t.Error("expected an update CTA when a newer release is shown")
@@ -319,7 +319,7 @@ func TestChangelogCmdShowsSpecificVersion(t *testing.T) {
 
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 
-	releases := []Release{
+	releases := []updater.Release{
 		{TagName: "v0.5.2", Body: "## Changelog\n### Bug fixes\n* xyz9999  unrelated fix\n"},
 		{TagName: "v0.5.1", Body: "## Changelog\n### Bug fixes\n* abc1234  fix mode\n"},
 	}
@@ -359,7 +359,7 @@ func TestChangelogCmdVersionNotFound(t *testing.T) {
 
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 
-	releases := []Release{{TagName: "v0.5.2", Body: "latest"}}
+	releases := []updater.Release{{TagName: "v0.5.2", Body: "latest"}}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(releases)

@@ -1,4 +1,4 @@
-package root
+package cli
 
 import (
 	"bytes"
@@ -16,8 +16,6 @@ func TestConfigCommands(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	// UserConfigDir follows HOME on macOS and XDG_CONFIG_HOME on Unix.
-	// Override both so the command cannot read or write the user's real config.
 	t.Setenv("HOME", tmpDir)
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 

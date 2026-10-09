@@ -1,4 +1,4 @@
-package root
+package cli
 
 import (
 	"encoding/json"
@@ -15,20 +15,14 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/spf13/cobra"
 	"github.com/versenilvis/iris/internal/config"
+	"github.com/versenilvis/iris/internal/updater"
 	"golang.org/x/term"
 )
 
-type Release struct {
-	TagName     string    `json:"tag_name"`
-	PublishedAt time.Time `json:"published_at"`
-	Body        string    `json:"body"`
-	Prerelease  bool      `json:"prerelease"`
-}
-
 type changelogCache struct {
-	FetchedAt time.Time `json:"fetched_at"`
-	Channel   string    `json:"channel"`
-	Releases  []Release `json:"releases"`
+	FetchedAt time.Time         `json:"fetched_at"`
+	Channel   string            `json:"channel"`
+	Releases  []updater.Release `json:"releases"`
 }
 
 const changelogCacheTTL = time.Hour
@@ -57,7 +51,7 @@ func loadChangelogCache() (*changelogCache, error) {
 	return &cache, nil
 }
 
-func saveChangelogCache(releases []Release) {
+func saveChangelogCache(releases []updater.Release) {
 	path, err := changelogCachePath()
 	if err != nil {
 		return
@@ -70,8 +64,8 @@ func saveChangelogCache(releases []Release) {
 	_ = os.WriteFile(path, data, 0o644)
 }
 
-func FetchReleases(limit int) ([]Release, error) {
-	ctx, cancel := newGitHubRequestContext()
+func FetchReleases(limit int) ([]updater.Release, error) {
+	ctx, cancel := updater.NewGitHubRequestContext()
 	defer cancel()
 
 	endpoint := os.Getenv("IRIS_CHANGELOG_URL")
@@ -79,12 +73,12 @@ func FetchReleases(limit int) ([]Release, error) {
 		endpoint = "https://api.github.com/repos/versenilvis/iris/releases?per_page=100"
 	}
 
-	body, err := fetchGitHubBody(ctx, endpoint)
+	body, err := updater.FetchGitHubBody(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	var releases []Release
+	var releases []updater.Release
 	if err := json.Unmarshal(body, &releases); err != nil {
 		return nil, err
 	}
@@ -102,15 +96,14 @@ func FetchReleases(limit int) ([]Release, error) {
 	return truncateReleases(releases, limit), nil
 }
 
-func truncateReleases(releases []Release, limit int) []Release {
+func truncateReleases(releases []updater.Release, limit int) []updater.Release {
 	if limit > 0 && len(releases) > limit {
 		return releases[:limit]
 	}
 	return releases
 }
 
-// falls back to a stale cache rather than failing outright when rate limited
-func FetchReleasesCached(limit int, refresh bool) (releases []Release, rateLimited bool, err error) {
+func FetchReleasesCached(limit int, refresh bool) (releases []updater.Release, rateLimited bool, err error) {
 	channel := config.Get().Updater.Channel
 
 	if !refresh {
@@ -121,7 +114,7 @@ func FetchReleasesCached(limit int, refresh bool) (releases []Release, rateLimit
 
 	fresh, fetchErr := FetchReleases(100)
 	if fetchErr != nil {
-		if errors.Is(fetchErr, ErrRateLimited) {
+		if errors.Is(fetchErr, updater.ErrRateLimited) {
 			if cache, cacheErr := loadChangelogCache(); cacheErr == nil && cache.Channel == channel && len(cache.Releases) > 0 {
 				return truncateReleases(cache.Releases, limit), true, nil
 			}
@@ -175,7 +168,6 @@ func stripRedundantHeading(body string) string {
 	return strings.Join(filtered, "\n")
 }
 
-// judged post-strip: glamour's margin padding has color codes but no glyphs
 func isBlankLine(line string) bool {
 	return strings.TrimSpace(ansi.Strip(line)) == ""
 }
@@ -208,8 +200,6 @@ func trimBlankLines(s string) string {
 	return strings.Join(lines[start:end], "\n")
 }
 
-// the CTA is rendered separately by printRelease based on IsNewer, so the
-// GoReleaser footer is cut before handing the body to glamour
 func printChangelogBody(out io.Writer, body string) {
 	if idx := strings.Index(body, "## Update"); idx != -1 {
 		body = body[:idx]
@@ -227,7 +217,7 @@ func printChangelogBody(out io.Writer, body string) {
 	fmt.Fprintln(out, trimBlankLines(squeezeBlankLines(rendered)))
 }
 
-func printRelease(out io.Writer, release Release, showUpdateCTA bool) {
+func printRelease(out io.Writer, release updater.Release, showUpdateCTA bool) {
 	label := release.TagName
 	if strings.TrimPrefix(release.TagName, "v") == strings.TrimPrefix(Version, "v") {
 		label += " (current)"
@@ -239,7 +229,7 @@ func printRelease(out io.Writer, release Release, showUpdateCTA bool) {
 
 	printChangelogBody(out, release.Body)
 
-	if showUpdateCTA && IsNewer(Version, release.TagName) {
+	if showUpdateCTA && updater.IsNewer(Version, release.TagName) {
 		fmt.Fprintln(out)
 		fmt.Fprintln(out, "run `iris update` to install")
 	}
@@ -257,12 +247,12 @@ var ChangelogCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		limit := changelogCount
 		if len(args) == 1 {
-			limit = 0 // searching a specific version, not just the most recent N
+			limit = 0
 		}
 
 		releases, rateLimited, err := FetchReleasesCached(limit, changelogRefresh)
 		if err != nil {
-			if errors.Is(err, ErrRateLimited) {
+			if errors.Is(err, updater.ErrRateLimited) {
 				fmt.Fprintln(cmd.ErrOrStderr(), "\033[31m[IRIS] rate limited by GitHub API, try again later\033[0m")
 				return
 			}
@@ -308,5 +298,4 @@ var ChangelogCmd = &cobra.Command{
 func init() {
 	ChangelogCmd.Flags().IntVarP(&changelogCount, "count", "n", 1, "number of releases to show")
 	ChangelogCmd.Flags().BoolVar(&changelogRefresh, "refresh", false, "bypass the cache and fetch fresh data")
-	rootCmd.AddCommand(ChangelogCmd)
 }

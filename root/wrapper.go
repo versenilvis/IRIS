@@ -390,6 +390,11 @@ func runWrapper() {
 			renderer()
 		}
 	})
+	spec.AutoDetectSpecsChange(spec.GetUserSpecsDir(), func() {
+		if renderer, ok := renderOverlayFn.Load().(func()); ok {
+			renderer()
+		}
+	})
 	// A line rewrite reaches the terminal through the shell: iris writes the
 	// replacement to the pty, the shell repaints, and only then does the cursor
 	// sit on the row the box has to hang off. Drawing straight away anchors the
@@ -700,6 +705,8 @@ func runWrapper() {
 			}
 		}()
 		scanner := bufio.NewScanner(r)
+		// enlarge scanner buffer so large alias dumps never trigger ErrTooLong
+		scanner.Buffer(make([]byte, 64*1024), 4*1024*1024)
 		scanner.Split(nullTokenSplit)
 
 		for scanner.Scan() {
@@ -710,6 +717,20 @@ func runWrapper() {
 				syncProcessCWD(cwd)
 				if watchdogCWD != nil {
 					_, _ = fmt.Fprintf(watchdogCWD, "%s\x00", cwd)
+				}
+				continue
+			}
+
+			if payload, ok := strings.CutPrefix(query, "IRIS_ALIASES:"); ok {
+				if adapter != nil {
+					spec.SetLiveAliases(adapter.ParseLiveAliases(payload))
+				}
+				continue
+			}
+
+			if payload, ok := strings.CutPrefix(query, "IRIS_ABBRS:"); ok {
+				if parser, ok := adapter.(shell.LiveAbbrParser); ok {
+					spec.SetLiveAbbrs(parser.ParseLiveAbbrs(payload))
 				}
 				continue
 			}

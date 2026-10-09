@@ -44,10 +44,15 @@ type Adapter interface {
 	PrepareSelectSequence(selected string, cursorFromEnd int) []byte
 	// ScanAliases returns a map of alias name to target command
 	ScanAliases() map[string]string
+	ParseLiveAliases(dump string) map[string]string
 }
 
 type AbbrScanner interface {
 	ScanAbbrs() map[string]string
+}
+
+type LiveAbbrParser interface {
+	ParseLiveAbbrs(dump string) map[string]string
 }
 
 // Current shell instance
@@ -120,6 +125,9 @@ func (b *BashAdapter) PrepareSelectSequence(selected string, cursorFromEnd int) 
 func (b *BashAdapter) ScanAliases() map[string]string {
 	return ScanPosixAliases([]string{".bashrc", ".bash_profile", ".bash_aliases"})
 }
+func (b *BashAdapter) ParseLiveAliases(dump string) map[string]string {
+	return ParsePosixAliasDump(dump)
+}
 
 // ZshAdapter implementation
 type ZshAdapter struct{}
@@ -136,19 +144,22 @@ func (z *ZshAdapter) ScanAliases() map[string]string {
 	envSet := os.Getenv("ZDOTDIR") != ""
 	zdotdir := GetZshConfigDir()
 	home, _ := os.UserHomeDir()
-	
+
 	var files []string
 	if !envSet && zdotdir != home {
 		files = append(files, filepath.Join(home, ".zshenv"))
 	}
-	
+
 	files = append(files,
 		filepath.Join(zdotdir, ".zshenv"),
 		filepath.Join(zdotdir, ".zprofile"),
 		filepath.Join(zdotdir, ".zshrc"),
 	)
-	
+
 	return ScanPosixAliases(files)
+}
+func (z *ZshAdapter) ParseLiveAliases(dump string) map[string]string {
+	return ParsePosixAliasDump(dump)
 }
 
 func GetZshConfigDir() string {
@@ -198,6 +209,12 @@ func (f *FishAdapter) ScanAliases() map[string]string {
 
 func (f *FishAdapter) ScanAbbrs() map[string]string {
 	return scanFishDefs(GetFishConfigDir()).abbrs
+}
+func (f *FishAdapter) ParseLiveAliases(dump string) map[string]string {
+	return ParseFishAliasDump(dump)
+}
+func (f *FishAdapter) ParseLiveAbbrs(dump string) map[string]string {
+	return ParseFishAbbrDump(dump)
 }
 
 func GetFishConfigDir() string {
@@ -612,4 +629,203 @@ func SplitAliasTokens(s string) []string {
 		tokens = append(tokens, cur.String())
 	}
 	return tokens
+}
+
+func ParsePosixAliasDump(dump string) map[string]string {
+	aliases := make(map[string]string)
+	if strings.TrimSpace(dump) == "" {
+		return aliases
+	}
+
+	var current strings.Builder
+	inQuote := false
+	var quoteChar rune
+
+	lines := strings.SplitSeq(dump, "\n")
+	for rawLine := range lines {
+		line := strings.TrimRight(rawLine, "\r")
+		if current.Len() == 0 {
+			trimmed := strings.TrimSpace(line)
+			if !strings.HasPrefix(trimmed, "alias ") {
+				continue
+			}
+			current.WriteString(trimmed)
+		} else {
+			current.WriteByte('\n')
+			current.WriteString(line)
+		}
+
+		// preserve multiline aliases across raw newlines
+		runes := []rune(line)
+		for i := range runes {
+			c := runes[i]
+			switch {
+			case !inQuote && (c == '\'' || c == '"'):
+				bsCount := 0
+				for j := i - 1; j >= 0 && runes[j] == '\\'; j-- {
+					bsCount++
+				}
+				if bsCount%2 == 0 {
+					inQuote = true
+					if c == '\'' && i > 0 && runes[i-1] == '$' {
+						quoteChar = '$'
+					} else {
+						quoteChar = c
+					}
+				}
+			case inQuote && quoteChar == '\'' && c == '\'':
+				inQuote = false
+			case inQuote && quoteChar == '$' && c == '\'':
+				bsCount := 0
+				for j := i - 1; j >= 0 && runes[j] == '\\'; j-- {
+					bsCount++
+				}
+				if bsCount%2 == 0 {
+					inQuote = false
+				}
+			case inQuote && quoteChar == '"' && c == '"':
+				bsCount := 0
+				for j := i - 1; j >= 0 && runes[j] == '\\'; j-- {
+					bsCount++
+				}
+				if bsCount%2 == 0 {
+					inQuote = false
+				}
+			}
+		}
+
+		if !inQuote {
+			parseSinglePosixAlias(current.String(), aliases)
+			current.Reset()
+		}
+	}
+
+	if current.Len() > 0 {
+		parseSinglePosixAlias(current.String(), aliases)
+	}
+
+	return aliases
+}
+
+func parseSinglePosixAlias(entry string, aliases map[string]string) {
+	entry = strings.TrimSpace(entry)
+	if !strings.HasPrefix(entry, "alias ") {
+		return
+	}
+	body := strings.TrimSpace(strings.TrimPrefix(entry, "alias"))
+	for strings.HasPrefix(body, "-") {
+		idx := strings.IndexByte(body, ' ')
+		if idx == -1 {
+			return
+		}
+		body = strings.TrimSpace(body[idx+1:])
+	}
+
+	before, after, ok := strings.Cut(body, "=")
+	if !ok {
+		return
+	}
+	key := strings.TrimSpace(before)
+	key = strings.Trim(key, `"'`)
+	val := unquoteShellString(strings.TrimSpace(after))
+	if key != "" && val != "" {
+		aliases[key] = val
+	}
+}
+
+func unquoteShellString(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return ""
+	}
+	if strings.HasPrefix(s, "$'") && strings.HasSuffix(s, "'") && len(s) >= 3 {
+		return unescapeAnsiC(s[2 : len(s)-1])
+	}
+
+	var sb strings.Builder
+	inSingle := false
+	inDouble := false
+	escaped := false
+
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if inSingle {
+			if c == '\'' {
+				inSingle = false
+			} else {
+				sb.WriteByte(c)
+			}
+			continue
+		}
+
+		if inDouble {
+			if escaped {
+				switch c {
+				case '$', '`', '"', '\\':
+					sb.WriteByte(c)
+				case 'n':
+					sb.WriteByte('\n')
+				case 't':
+					sb.WriteByte('\t')
+				default:
+					sb.WriteByte('\\')
+					sb.WriteByte(c)
+				}
+				escaped = false
+			} else if c == '\\' {
+				escaped = true
+			} else if c == '"' {
+				inDouble = false
+			} else {
+				sb.WriteByte(c)
+			}
+			continue
+		}
+
+		if escaped {
+			sb.WriteByte(c)
+			escaped = false
+			continue
+		}
+
+		switch c {
+		case '\\':
+			escaped = true
+		case '\'':
+			inSingle = true
+		case '"':
+			inDouble = true
+		default:
+			sb.WriteByte(c)
+		}
+	}
+	return sb.String()
+}
+
+func unescapeAnsiC(s string) string {
+	var sb strings.Builder
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\\' && i+1 < len(s) {
+			i++
+			switch s[i] {
+			case 'n':
+				sb.WriteByte('\n')
+			case 't':
+				sb.WriteByte('\t')
+			case 'r':
+				sb.WriteByte('\r')
+			case '\'':
+				sb.WriteByte('\'')
+			case '"':
+				sb.WriteByte('"')
+			case '\\':
+				sb.WriteByte('\\')
+			default:
+				sb.WriteByte(s[i])
+			}
+		} else {
+			sb.WriteByte(s[i])
+		}
+	}
+	return sb.String()
 }

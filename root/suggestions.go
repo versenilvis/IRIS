@@ -31,7 +31,7 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 		if normalizedCmd == "" {
 			return
 		}
-		preserveAlias := s.Source == "alias" && cfg.Core.FilterExactMatch == config.FilterExactMatchAuto
+		preserveAlias := (s.Source == "alias" || s.Source == "abbr") && cfg.Core.FilterExactMatch == config.FilterExactMatchAuto
 		if filterExactMatch && !preserveAlias && normalizedCmd == normalizedQuery {
 			return
 		}

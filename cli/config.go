@@ -1,4 +1,4 @@
-package root
+package cli
 
 import (
 	"fmt"
@@ -156,5 +156,4 @@ var ConfigShowCmd = &cobra.Command{
 func init() {
 	ConfigCmd.AddCommand(ConfigInitCmd)
 	ConfigCmd.AddCommand(ConfigShowCmd)
-	rootCmd.AddCommand(ConfigCmd)
 }

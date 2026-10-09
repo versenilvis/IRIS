@@ -8,7 +8,17 @@ if [[ -n "$IRIS_FD" ]]; then
     print -u $IRIS_FD -N -r -- "$LBUFFER" 2>/dev/null
   }
 
+  _iris_send_aliases() {
+    local a
+    a="$(alias -L 2>/dev/null)"
+    if [[ "$a" != "$_iris_last_aliases" ]]; then
+      _iris_last_aliases="$a"
+      print -u $IRIS_FD -N -r -- "IRIS_ALIASES:$a" 2>/dev/null
+    fi
+  }
+
   _iris_precmd() {
+    _iris_send_aliases
     print -u $IRIS_FD -N -r -- "IRIS_CMD_STOP" 2>/dev/null
   }
 

@@ -4,9 +4,9 @@
   <img width="15%" alt="logo" src="https://github.com/user-attachments/assets/10b7ca98-872b-44a2-bdcd-265f18aa0564" />
 
   <!-- <h1>IRIS</h1> -->
-  
-   
-  
+
+
+
   [![macOS](https://img.shields.io/badge/macOS-FFFFFF?style=for-the-badge&logo=apple&logoColor=black)](https://www.apple.com/macos/)
   [![Linux](https://img.shields.io/badge/Linux-131415?style=for-the-badge&logo=linux&logoColor=white)](https://www.kernel.org/)
 <br>
@@ -16,7 +16,7 @@
   [![License: 0BSD](https://img.shields.io/badge/License-0BSD-blue?style=for-the-badge&logo=github&logoColor=white)](./LICENSE)
   [![Documentation](https://img.shields.io/badge/docs-available-brightgreen?style=for-the-badge&logo=github&logoColor=white)](#install)
   [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=for-the-badge&logo=github&logoColor=white)](./CONTRIBUTING.md)
-  
+
   <a href="#why-iris-instead-of-fig">Comparison</a> · <a href="#install">Install</a> · <a href="#default-shortcuts">Shortcuts</a> · <a href="#configuration-guide">Configuration</a> · <a href="#reporting-bugs">Reporting bugs</a>
   <p>IRIS (Intelligent Real-time Input Suggestion) - A shell auto-completion tool that works like code editor's IntelliSense</p>
 
@@ -50,7 +50,7 @@ Run iris wherever you already work; your local machine, a remote server, or anyw
 ## Why IRIS instead of Fig
 
 > [!IMPORTANT]
-> **[Fig](https://app.fig.io/) was officially sunset in September 2024 and migrated to Amazon Q Developer (which requires cloud authentication and proprietary bloat)**  
+> **[Fig](https://app.fig.io/) was officially sunset in September 2024 and migrated to Amazon Q Developer (which requires cloud authentication and proprietary bloat)**
 > **IRIS is the lightweight, open-source, zero-telemetry alternative built purely on native Go and TTY with no accounts, no GUI app, and no background daemons required**
 
 ### How it compares
@@ -410,7 +410,7 @@ timeout_ms = 5000  # ms before giving up
 </div>
 
 > [!TIP]
-> **We keep all available theme templates in the [`themes/`](./themes) directory**  
+> **We keep all available theme templates in the [`themes/`](./themes) directory**
 > **Feel free to create your own theme or contribute a new color scheme by adding it to this directory**
 
 IRIS has theme TOML configuration file located at `~/.config/iris/theme.toml`
@@ -466,6 +466,103 @@ alias_sel = "#a277ff"
   </tr>
 </table>
 
+## Custom completion specs
+
+Adds support for user-defined shell completion specs via two new CLI commands:
+
+- `iris spec init [name]`: scaffolds a `.jsonc` spec file in the user's specs directory with a ready-to-edit template
+- `iris spec path`: prints (and creates) the specs directory so users can open it directly
+
+Spec files are picked up automatically on startup and merged with built-in specs, so custom completions work without any extra config.
+
+### Commands example
+
+```sh
+# create a new spec for "mycli"
+iris spec init mycli
+# → initialized spec file at ~/.config/iris/specs/mycli.jsonc
+
+# open the specs folder
+cd $(iris spec path)
+```
+
+### Spec format example (JSONC)
+
+```jsonc
+{
+  // $schema enables autocomplete and validation in VS Code / Zed
+  "$schema": "https://raw.githubusercontent.com/versenilvis/iris/main/spec/schema.json",
+
+  // command name must match the binary on PATH
+  "name": "mycli",
+
+  // optional short aliases for the same binary (e.g. "mc" → "mycli")
+  "aliases": ["mc"],
+
+  "description": "Demo custom completion spec",
+
+  // top-level flags shared by all subcommands
+  "options": [
+    {
+      "name": "--verbose",
+      "aliases": ["-v"],
+      "description": "Enable verbose output"
+    },
+    {
+      "name": "--config",
+      "aliases": ["-c"],
+      "description": "Path to config file"
+    }
+  ],
+
+  "subcommands": [
+    {
+      "name": "run",
+      "description": "Run a script or entry file",
+      // generator: suggest files by extension (array) or "file" / "dir" keywords
+      "generator": [".go", ".js", ".ts", ".py"]
+    },
+    {
+      "name": "service",
+      "description": "Manage background services",
+      // nested subcommands are supported at any depth
+      "subcommands": [
+        {
+          "name": "start",
+          "description": "Start the service daemon",
+          "options": [
+            { "name": "--daemon", "aliases": ["-d"], "description": "Run in background" }
+          ]
+        },
+        { "name": "stop", "description": "Stop the running service" },
+        { "name": "restart", "description": "Restart the service" }
+      ]
+    },
+    {
+      "name": "deploy",
+      "description": "Deploy to an environment",
+      "options": [
+        { "name": "--dry-run", "description": "Simulate without making changes" },
+        { "name": "--env", "aliases": ["-e"], "description": "Target environment" }
+      ]
+    }
+  ]
+}
+```
+
+> [!NOTE]
+> - `$schema` enables autocomplete and inline validation in VS Code, Zed, and any LSP-aware editor, no plugin needed
+> - JSONC is fully supported: `//` line comments, `/* */` block comments, and trailing commas are all stripped before parsing
+> - Multiple commands per file are supported, use an array `[{...}, {...}]` or a `{"specs": [...]}` wrapper, each file is independent, so you can split specs however you like:
+>
+>```
+>specs/
+>  ab.jsonc   ← defines commands "a" and "b"
+>  c.jsonc    ← defines command "c" only
+>```
+>
+>All three commands are registered and work normally!
+
 ## Reporting bugs
 > [!NOTE]
 > When submitting a bug report, please include:
@@ -489,7 +586,7 @@ If IRIS crashes, it will automatically save a crash log and show the path on you
 iris crash-log
 ```
 Please include this file when reporting a crash.
- 
+
 ## Developer documentation
 
 For system architecture overview, engine design, and contribution guide, please refer to the [Developer documentation](./docs/dev/README.md).
