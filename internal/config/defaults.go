@@ -14,6 +14,7 @@ func DefaultConfig() *Config {
 			Debug:             false,
 			ExpandAlias:       true,
 			AutoExecute:       false,
+			FilterExactMatch:  FilterExactMatchAuto,
 			CobraProbeEnabled: true,
 			NavigateClosed:    "history",
 		},

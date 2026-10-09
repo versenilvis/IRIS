@@ -58,13 +58,14 @@ func (d Duration) MarshalText() ([]byte, error) {
 }
 
 type CoreConfig struct {
-	Version     int    `toml:"version"`
-	Shell       string `toml:"shell"`
-	ShellLogin  bool   `toml:"shell-login"`
-	Mode        string `toml:"mode"`
-	Debug       bool   `toml:"debug"`
-	ExpandAlias bool   `toml:"expand-alias"`
-	AutoExecute bool   `toml:"auto-execute"`
+	Version          int                  `toml:"version"`
+	Shell            string               `toml:"shell"`
+	ShellLogin       bool                 `toml:"shell-login"`
+	Mode             string               `toml:"mode"`
+	Debug            bool                 `toml:"debug"`
+	ExpandAlias      bool                 `toml:"expand-alias"`
+	AutoExecute      bool                 `toml:"auto-execute"`
+	FilterExactMatch FilterExactMatchMode `toml:"filter-exact-match"`
 	// 0 = shell history, 1 = atuin only, 2 = atuin + shell
 	Atuin             int    `toml:"atuin-history"`
 	AtuinDBPath       string `toml:"atuin-db-path"`
@@ -78,6 +79,17 @@ type CoreConfig struct {
 	// instance. Without it the only way to keep that binding is to move iris
 	// onto other keys, which costs arrow-key navigation of the menu entirely.
 	NavigateClosed string `toml:"navigate-closed"`
+}
+
+func (c CoreConfig) FilterExactMatches() bool {
+	switch c.FilterExactMatch {
+	case FilterExactMatchOn:
+		return true
+	case FilterExactMatchOff:
+		return false
+	default:
+		return !c.AutoExecute
+	}
 }
 
 type UIConfig struct {
@@ -325,6 +337,10 @@ func Save(cfg *Config) error {
 }
 
 func validate(cfg *Config) error {
+	if cfg.Core.FilterExactMatch < FilterExactMatchAuto || cfg.Core.FilterExactMatch > FilterExactMatchOff {
+		return fmt.Errorf("core.filter-exact-match: invalid value %d (want: auto|true|false)", cfg.Core.FilterExactMatch)
+	}
+
 	validModes := map[string]bool{"last": true, "spec": true, "history": true}
 	if cfg.Core.Mode != "" && !validModes[cfg.Core.Mode] {
 		return fmt.Errorf("core.mode: invalid value %q (want: last|spec|history)", cfg.Core.Mode)

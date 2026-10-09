@@ -59,6 +59,9 @@ expand-alias = true
 # automatically execute command after accepting suggestion
 auto-execute = false
 
+# "auto" filters exact matches when auto-execute is off, and keeps them first when on.
+filter-exact-match = "auto" # true: always filter; false: always keep first
+
 # 0 = off, 1 = atuin history only, 2 = atuin history + default history
 atuin-history = 0
 

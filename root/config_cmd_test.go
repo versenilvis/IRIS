@@ -37,6 +37,9 @@ func TestConfigCommands(t *testing.T) {
 	if !strings.Contains(string(content), "shell-login = false") {
 		t.Error("expected initialized config to include shell-login = false")
 	}
+	if !strings.Contains(string(content), `filter-exact-match = "auto"`) {
+		t.Error("expected initialized config to include filter-exact-match = auto")
+	}
 
 	buf := new(bytes.Buffer)
 	ConfigShowCmd.SetOut(buf)
