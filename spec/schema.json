@@ -1,0 +1,175 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IrisCompletionSpec",
+  "description": "Iris shell completion specification schema",
+  "oneOf": [
+    { "$ref": "#/definitions/spec" },
+    {
+      "type": "array",
+      "items": { "$ref": "#/definitions/spec" }
+    },
+    {
+      "type": "object",
+      "properties": {
+        "$schema": { "type": "string" },
+        "specs": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/spec" }
+        }
+      },
+      "required": ["specs"],
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "spec": {
+      "type": "object",
+      "properties": {
+        "$schema": { "type": "string" },
+        "name": {
+          "type": "string",
+          "description": "Primary command name (e.g. 'mycmd')"
+        },
+        "aliases": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Alternative command names triggering this spec"
+        },
+        "description": {
+          "type": "string",
+          "description": "Brief command summary shown in the completion menu"
+        },
+        "icon": {
+          "type": "string",
+          "description": "Nerd Font icon or emoji"
+        },
+        "max_args": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum positional arguments allowed"
+        },
+        "generator": {
+          "$ref": "#/definitions/generator",
+          "description": "Argument generator type or file filter"
+        },
+        "options": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/option" },
+          "description": "Command flags and options"
+        },
+        "subcommands": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/subcommand" },
+          "description": "Subcommands supported under this command"
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    },
+    "subcommand": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Subcommand name (e.g. 'build')"
+        },
+        "aliases": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Subcommand aliases"
+        },
+        "description": {
+          "type": "string",
+          "description": "Subcommand summary shown in the completion menu"
+        },
+        "icon": {
+          "type": "string",
+          "description": "Nerd Font icon or emoji"
+        },
+        "priority": {
+          "type": "integer",
+          "description": "Sorting priority score (higher appears earlier)"
+        },
+        "max_args": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Maximum positional arguments allowed"
+        },
+        "generator": {
+          "$ref": "#/definitions/generator",
+          "description": "Argument generator type or file filter"
+        },
+        "options": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/option" },
+          "description": "Options accepted by this subcommand"
+        },
+        "subcommands": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/subcommand" },
+          "description": "Nested subcommands"
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    },
+    "option": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Flag name including prefix (e.g. '--verbose' or '-v')"
+        },
+        "aliases": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Alternative flag names (e.g. ['-v'])"
+        },
+        "description": {
+          "type": "string",
+          "description": "Flag description"
+        },
+        "priority": {
+          "type": "integer",
+          "description": "Sorting priority score (higher appears earlier)"
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    },
+    "generator": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": ["file", "files", "dir", "dirs", "directory"],
+          "description": "Preset file or directory generator"
+        },
+        {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "File extension filters (e.g. ['.go', '.ts'])"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["file", "files", "dir", "dirs", "directory"]
+            },
+            "filter": {
+              "oneOf": [
+                { "type": "string" },
+                {
+                  "type": "array",
+                  "items": { "type": "string" }
+                }
+              ]
+            }
+          },
+          "required": ["type"],
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}
