@@ -1,4 +1,4 @@
-package root
+package cli
 
 import (
 	"io"
@@ -19,7 +19,7 @@ func captureInitScript(t *testing.T, shell string) string {
 
 	original := os.Stdout
 	os.Stdout = w
-	initCmd.Run(initCmd, []string{shell})
+	InitCmd.Run(InitCmd, []string{shell})
 	_ = w.Close()
 	os.Stdout = original
 
@@ -30,8 +30,6 @@ func captureInitScript(t *testing.T, shell string) string {
 	return string(out)
 }
 
-// a tool runner that sources the rc file in a non-interactive shell must not
-// exec a second iris, which would seize the tty from the one already running
 func TestInitAutostartRequiresInteractiveShell(t *testing.T) {
 	guards := map[string]string{
 		"zsh":  "[[ -o interactive ]]",
@@ -111,4 +109,3 @@ func TestInitAutostartSkipsExecutionString(t *testing.T) {
 		})
 	}
 }
-

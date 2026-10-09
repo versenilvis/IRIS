@@ -16,9 +16,11 @@ import (
 	"syscall"
 
 	"github.com/spf13/cobra"
+	"github.com/versenilvis/iris/cli"
 	_ "github.com/versenilvis/iris/commands"
 	"github.com/versenilvis/iris/internal/config"
 	"github.com/versenilvis/iris/internal/logger"
+	"github.com/versenilvis/iris/spec"
 	"golang.org/x/term"
 )
 
@@ -80,7 +82,9 @@ func init() {
 			cfg := config.Get()
 			logger.Debugf("IRIS loaded config: shell=%q, shell-login=%v, mode=%q, ghost-text=%v, max-suggestions=%d", cfg.Core.Shell, cfg.Core.ShellLogin, cfg.Core.Mode, cfg.UI.GhostText, cfg.UI.MaxSuggestions)
 		}
+		_ = spec.LoadUserSpecs(spec.GetUserSpecsDir())
 	}
+	cli.Register(rootCmd, Version)
 }
 
 // relayWatchdogCWD reads null-delimited cwd updates the wrapper relays over

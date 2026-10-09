@@ -390,6 +390,11 @@ func runWrapper() {
 			renderer()
 		}
 	})
+	spec.AutoDetectSpecsChange(spec.GetUserSpecsDir(), func() {
+		if renderer, ok := renderOverlayFn.Load().(func()); ok {
+			renderer()
+		}
+	})
 	// A line rewrite reaches the terminal through the shell: iris writes the
 	// replacement to the pty, the shell repaints, and only then does the cursor
 	// sit on the row the box has to hang off. Drawing straight away anchors the

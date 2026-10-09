@@ -1,4 +1,4 @@
-package root
+package cli
 
 import (
 	"os"
@@ -8,15 +8,13 @@ import (
 	"github.com/versenilvis/iris/internal/config"
 )
 
-func TestThemeInitCommand(t *testing.T) {
+func TestThemeInitCmd(t *testing.T) {
 	tmpDir, err := os.MkdirTemp("", "iris-theme-cmd-test")
 	if err != nil {
 		t.Fatalf("failed to create temp dir: %v", err)
 	}
 	defer os.RemoveAll(tmpDir)
 
-	// UserConfigDir follows HOME on macOS and XDG_CONFIG_HOME on Unix.
-	// Override both so the command cannot read or write the user's real theme.
 	t.Setenv("HOME", tmpDir)
 	t.Setenv("XDG_CONFIG_HOME", tmpDir)
 
@@ -33,7 +31,7 @@ func TestThemeInitCommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read theme file: %v", err)
 	}
-	if !strings.Contains(string(content), "sel_text = \"#110f18\"") {
-		t.Error("expected initialized theme to include sel_text = \"#110f18\"")
+	if !strings.Contains(string(content), `accent = "#61ffca"`) {
+		t.Error("expected initialized theme to include default accent color")
 	}
 }

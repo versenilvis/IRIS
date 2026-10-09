@@ -1,4 +1,4 @@
-package root
+package cli
 
 import (
 	"bufio"
@@ -12,11 +12,7 @@ import (
 	"github.com/versenilvis/iris/internal/config"
 )
 
-func init() {
-	rootCmd.AddCommand(uninstallCmd)
-}
-
-var uninstallCmd = &cobra.Command{
+var UninstallCmd = &cobra.Command{
 	Use:   "uninstall",
 	Short: "Uninstall Iris and remove shell integrations",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -41,7 +37,6 @@ var uninstallCmd = &cobra.Command{
 			}
 		}
 
-		// Remove config, state, and cache directories
 		if cfgPath, err := config.ConfigPath(); err == nil {
 			if cfgDir := filepath.Dir(cfgPath); os.RemoveAll(cfgDir) == nil {
 				fmt.Printf("✓ Removed config directory: %s\n", cfgDir)

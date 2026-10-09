@@ -1,4 +1,4 @@
-package root
+package cli
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 	"github.com/versenilvis/iris/internal/config"
 )
 
-var initCmd = &cobra.Command{
+var InitCmd = &cobra.Command{
 	Use:   "init [bash|zsh|fish]",
 	Short: "Generate the autostart script for your shell",
 	Long: `Add the output of this command to your shell's configuration file to start Iris automatically.
@@ -20,8 +20,8 @@ For example, add this to your ~/.zshrc:
 	ValidArgs: []string{"bash", "zsh", "fish"},
 	Args:      cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
 	Run: func(cmd *cobra.Command, args []string) {
-		shell := args[0]
-		switch shell {
+		shellName := args[0]
+		switch shellName {
 		case "zsh":
 			fmt.Printf(`
 # Iris Autostart Hook
@@ -97,7 +97,6 @@ fi
 if [[ $- == *i* ]] && [ -t 0 ] && [ -z "$IRIS_PID" ] && [ -z "$IRIS_RESCUE" ] && [ -z "$BASH_EXECUTION_STRING" ]; then
     export IRIS_ACTIVE_SHELL="bash"
     if [ -n "$FNM_MULTISHELL_PATH" ]; then
-        PATH=":$PATH:"
         PATH="${PATH//:$FNM_MULTISHELL_PATH\/bin:/:}"
         PATH="${PATH//:$FNM_MULTISHELL_PATH:/:}"
         PATH="${PATH#:}"
@@ -110,54 +109,65 @@ fi
 
 # Iris Autocomplete Hook
 if [ -n "$IRIS_PID" ] && [ -n "$IRIS_FD" ]; then
+  _iris_last_line=""
+  _iris_last_aliases=""
+
   _iris_send_aliases() {
     local a
     a="$(alias -p 2>/dev/null)"
     if [[ "$a" != "$_iris_last_aliases" ]]; then
       _iris_last_aliases="$a"
-      printf "IRIS_ALIASES:%%s\x00" "$a" >&$IRIS_FD 2>/dev/null
+      printf 'IRIS_ALIASES:%%s\0' "$a" >&$IRIS_FD 2>/dev/null
     fi
   }
 
-  _iris_bash_precmd() {
-    local iris_exit_code=$?
-    _iris_send_aliases
-    printf "IRIS_CWD:%%s\x00" "$PWD" >&$IRIS_FD 2>/dev/null
-    printf "IRIS_CMD_STOP:%%s\x00" "$iris_exit_code" >&$IRIS_FD 2>/dev/null
+  _iris_bash_cmd_start() {
+    printf 'IRIS_CMD_START\0' >&$IRIS_FD 2>/dev/null
   }
 
-  if [[ ";$PROMPT_COMMAND;" != *";_iris_bash_precmd;"* ]]; then
-    PROMPT_COMMAND="_iris_bash_precmd${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
-  fi
-fi
+  _iris_send_line() {
+    if [[ "$READLINE_LINE" != "$_iris_last_line" ]]; then
+      _iris_last_line="$READLINE_LINE"
+      printf 'IRIS_LINE:%%d:%%s\0' "$READLINE_POINT" "$READLINE_LINE" >&$IRIS_FD 2>/dev/null
+    fi
+  }
 
+  _iris_precmd() {
+    local iris_exit_code=$?
+    printf 'IRIS_CWD:%%s\0' "$PWD" >&$IRIS_FD 2>/dev/null
+    _iris_send_aliases
+    printf 'IRIS_CMD_STOP:%%d\0' "$iris_exit_code" >&$IRIS_FD 2>/dev/null
+  }
+
+  trap '_iris_bash_cmd_start' DEBUG
+  PROMPT_COMMAND="_iris_precmd${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
+  bind -x '"\e[200~": _iris_send_line' 2>/dev/null
+fi
 `)
 		case "fish":
-			// fish's own autosuggestions collide with iris ghost text, but only
-			// turn them off when ghost text is actually on
 			disableFishAutosuggest := ""
 			if config.Get().UI.GhostText != config.GhostTextOff {
-				disableFishAutosuggest = "    set -g fish_autosuggestion_enabled 0\n"
+				disableFishAutosuggest = `
+    set -g fish_autosuggestion_enabled 0
+`
 			}
 			fmt.Printf(`
 # Iris Autostart Hook
 # a multiplexer pane inherits IRIS_* but runs on its own tty, so those vars
 # point at an iris that is not driving this terminal
-if set -q IRIS_PID
-    set -l iris_ppid (ps -o ppid= -p $fish_pid 2>/dev/null | string trim)
-    set -l iris_cur_tty (tty 2>/dev/null)
-    if test "$IRIS_PID" != "$iris_ppid"; and test "$iris_cur_tty" != "$IRIS_TTY"
-        set -e IRIS_PID
-        set -e IRIS_IS_CHILD
-        set -e IRIS_FD
-        set -e IRIS_TTY
-    end
+if set -q IRIS_PID; and test "$IRIS_PID" != "$fish_pid"; and test (tty 2>/dev/null) != "$IRIS_TTY"
+    set -e IRIS_PID IRIS_IS_CHILD IRIS_FD IRIS_TTY
 end
 
+# a non-interactive shell (tool runners sourcing rc files, scripts) has no
+# prompt to complete, and exec'ing here would seize the tty from the real iris
 if status is-interactive; and test -t 0; and not set -q IRIS_PID; and not set -q IRIS_RESCUE
     set -gx IRIS_ACTIVE_SHELL "fish"
     if set -q FNM_MULTISHELL_PATH
-        set -gx PATH (string match -v "*fnm_multishells*" $PATH)
+        set -l fnm_idx (contains -i $FNM_MULTISHELL_PATH $fish_user_paths)
+        if test -n "$fnm_idx"
+            set -e fish_user_paths[$fnm_idx]
+        end
         set -e FNM_MULTISHELL_PATH
     end
     exec iris
@@ -165,18 +175,27 @@ end
 
 # Iris Autocomplete Hook
 if set -q IRIS_PID; and set -q IRIS_FD
-%s    function _iris_fish_postexec --on-event fish_postexec
-        set -l iris_exit_code $status
-        printf "IRIS_CWD:%%s\x00" "$PWD" >&$IRIS_FD 2>/dev/null
-        printf "IRIS_CMD_STOP:%%s\x00" "$iris_exit_code" >&$IRIS_FD 2>/dev/null
+%s
+    set -g _iris_last_line ""
+    set -g _iris_last_aliases ""
+    set -g _iris_last_abbrs ""
+    set -g _iris_last_func_count 0
+
+    function _iris_postexec --on-event fish_postexec
+        printf "IRIS_CMD_STOP:%%d\x00" $status >&$IRIS_FD 2>/dev/null
     end
-    function _iris_fish_prompt --on-event fish_prompt
+
+    function _iris_fish_precmd --on-event fish_prompt
         printf "IRIS_CWD:%%s\x00" "$PWD" >&$IRIS_FD 2>/dev/null
+
+        # fish abbr is builtin and faster, so we check it first
         set -l abbrs (abbr --show 2>/dev/null | string collect)
         if test "$abbrs" != "$_iris_last_abbrs"
             set -g _iris_last_abbrs "$abbrs"
             printf "IRIS_ABBRS:%%s\x00" "$abbrs" >&$IRIS_FD 2>/dev/null
         end
+
+        # alias in fish is wrapper of function, so we count function first to avoid call alias every prompt
         set -l func_count (functions -n 2>/dev/null | count)
         if test "$func_count" != "$_iris_last_func_count"
             set -g _iris_last_func_count "$func_count"
@@ -195,12 +214,7 @@ end
 	},
 }
 
-func init() {
-	rootCmd.AddCommand(initCmd)
-	rootCmd.AddCommand(setupCmd)
-}
-
-var setupCmd = &cobra.Command{
+var SetupCmd = &cobra.Command{
 	Use:   "setup [shell]",
 	Short: "Automatically setup iris shell integration and install binary",
 	Args:  cobra.MaximumNArgs(1),
@@ -274,7 +288,6 @@ var setupCmd = &cobra.Command{
 			fmt.Printf("✓ Added iris integration to top of %s\n", configFile)
 		}
 
-		// initialize default config file if it does not exist
 		if path, err := config.ConfigPath(); err == nil {
 			if _, statErr := os.Stat(path); os.IsNotExist(statErr) {
 				_ = os.MkdirAll(filepath.Dir(path), 0755)
@@ -282,80 +295,35 @@ var setupCmd = &cobra.Command{
 # iris configuration file
 
 [core]
-# schema version
-# do not edit this field manually
 version = 1
-
-# override shell: "bash", "zsh", "fish", keep empty for auto detection
 shell = ""
-
-# run the selected shell as a login shell
 shell-login = false
-
-# startup mode: "last", "spec", "history"
-# "last" = remember last mode used
 mode = "last"
-
-# enable debug logging
 debug = false
-
-# automatically expand aliases on space
 expand-alias = true
-
-# automatically execute command after accepting suggestion
 auto-execute = false
-
-# what navigate-up/navigate-down do while the menu is closed:
-# "history" = browse iris history, "shell" = leave the key to the shell (e.g. atuin)
 navigate-closed = "history"
 
 [ui]
-# visual style: "modern" (icons, category pills, shortcut footer) or "classic" (minimalist, centered number, no icons)
 style = "modern"
-
-# enable Nerd Fonts icons in overlay menu
 nerd-fonts = true
-
-# show hidden files with dot prefix
 hidden-files = false
-
-# 0 = off, 1 = on, 2 = ghost text only (menu opens on toggle key)
-# legacy true/false still accepted
 ghost-text = 1
-
-# maximum suggestions to display
 max-suggestions = 100
-
-# maximum suggestion rows shown in the menu
 max-height = 6
-
-# overlay width, as columns (80) or a share of the terminal ("80%")
-# 0 keeps the built-in default width
 max-width = 0
 
 [git]
-# hide current branch in checkout/switch list
 filter-active-branch = true
-
-# merge remote and local branches with same name
 deduplicate-branches = true
 
 [updater]
-# check for updates on startup
 check-on-startup = true
-
-# update channel: "stable", "nightly"
 channel = "stable"
-
-# interval between update checks, e.g. "24h", "6h", "30m"
 check-interval = "24h"
-
-# 0 = off (default, notify only), 1 = auto-install, 2 = always confirm first
 auto-update = 0
 
 [zoxide]
-# also complete cd from zoxide's frecency database, not just the
-# children of the current directory (requires zoxide on PATH)
 extend-cd = false
 
 [keybindings]
@@ -365,7 +333,6 @@ select = "tab"
 navigate-up = "up"
 navigate-down = "down"
 navigate-right = "right"
-
 `
 				if errWrite := os.WriteFile(path, []byte(defaultContent), 0644); errWrite == nil {
 					fmt.Printf("✓ Initialized default config file at %s\n", path)
