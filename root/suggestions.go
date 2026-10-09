@@ -28,7 +28,7 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 		if normalizedCmd == "" {
 			return
 		}
-		if s.Source != "alias" && normalizedCmd == normalizedQuery {
+		if s.Source != "alias" && s.Source != "abbr" && normalizedCmd == normalizedQuery {
 			return
 		}
 		if s.Source == "" {

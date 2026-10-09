@@ -144,7 +144,7 @@ func basePriorityFor(s spec.Suggestion) int {
 	}
 
 	switch s.Source {
-	case "spec", "abbr":
+	case "spec", "abbr", "alias":
 		return 60
 	case "ai":
 		if s.Confidence > 0 {
@@ -174,7 +174,7 @@ func matchQualityScore(cmd, query string) int {
 		return 100
 	}
 	if cmd == query {
-		return 100
+		return 200
 	}
 	if strings.HasPrefix(cmd, query) {
 		return 100

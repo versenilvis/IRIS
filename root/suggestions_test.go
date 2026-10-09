@@ -65,6 +65,23 @@ func TestMergeResults(t *testing.T) {
 			t.Errorf("expected 'git co' alias suggestion in results for query 'git co', got %v", res)
 		}
 	})
+
+	t.Run("Shell Alias Preserved When Matching Query", func(t *testing.T) {
+		spec.ResetLiveAliases()
+		defer spec.ResetLiveAliases()
+		spec.SetLiveAliases(map[string]string{
+			"gc":  "git commit -v",
+			"gc!": "git commit -v --amend",
+			"gca": "git commit -v -a",
+		})
+		res := MergeResults("gc", "spec")
+		if len(res) == 0 {
+			t.Fatalf("expected suggestions for 'gc', got 0")
+		}
+		if res[0].Cmd != "gc" {
+			t.Errorf("expected top suggestion to be 'gc', got %q", res[0].Cmd)
+		}
+	})
 }
 
 func TestPrevRecordedCommandState(t *testing.T) {

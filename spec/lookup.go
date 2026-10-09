@@ -15,7 +15,32 @@ var (
 	ShellAliases   = map[string]string{}
 	ShellAbbrs     = map[string]string{}
 	shellAliasesMu sync.RWMutex
+	hasLiveAliases bool
+	hasLiveAbbrs   bool
 )
+
+func SetLiveAliases(aliases map[string]string) {
+	shellAliasesMu.Lock()
+	ShellAliases = aliases
+	hasLiveAliases = true
+	shellAliasesMu.Unlock()
+}
+
+func SetLiveAbbrs(abbrs map[string]string) {
+	shellAliasesMu.Lock()
+	ShellAbbrs = abbrs
+	hasLiveAbbrs = true
+	shellAliasesMu.Unlock()
+}
+
+func ResetLiveAliases() {
+	shellAliasesMu.Lock()
+	hasLiveAliases = false
+	hasLiveAbbrs = false
+	ShellAliases = map[string]string{}
+	ShellAbbrs = map[string]string{}
+	shellAliasesMu.Unlock()
+}
 
 func GetAlias(name string) (string, bool) {
 	shellAliasesMu.RLock()
@@ -37,15 +62,30 @@ func GetAliasesCopy() map[string]string {
 // e.g. Lookup("git che") -> suggests "git checkout"
 // e.g. Lookup("git checkout ") -> suggests branch names via generator
 func Lookup(input string) []Suggestion {
-	if shell.Current != nil {
-		aliases := shell.Current.ScanAliases()
-		abbrs := map[string]string{}
-		if scanner, ok := shell.Current.(shell.AbbrScanner); ok {
-			abbrs = scanner.ScanAbbrs()
+	shellAliasesMu.RLock()
+	needsAliasScan := shell.Current != nil && !hasLiveAliases
+	needsAbbrScan := shell.Current != nil && !hasLiveAbbrs
+	shellAliasesMu.RUnlock()
+
+	// fallback to static file scan before live shell IPC arrives
+	if needsAliasScan || needsAbbrScan {
+		var aliases map[string]string
+		if needsAliasScan {
+			aliases = shell.Current.ScanAliases()
+		}
+		var abbrs map[string]string
+		if needsAbbrScan {
+			if scanner, ok := shell.Current.(shell.AbbrScanner); ok {
+				abbrs = scanner.ScanAbbrs()
+			}
 		}
 		shellAliasesMu.Lock()
-		ShellAliases = aliases
-		ShellAbbrs = abbrs
+		if needsAliasScan && !hasLiveAliases {
+			ShellAliases = aliases
+		}
+		if needsAbbrScan && !hasLiveAbbrs {
+			ShellAbbrs = abbrs
+		}
 		shellAliasesMu.Unlock()
 	}
 
@@ -396,7 +436,7 @@ func topLevelSuggestions(query string, aliases, abbrs map[string]string) []Sugge
 	for name, target := range aliases {
 		if !seen[name] && (query == "" || HasPrefix(name, query)) {
 			results = append(results, Suggestion{
-				Cmd: name, Desc: target, Icon: "alias",
+				Cmd: name, Desc: target, Icon: "alias", Source: "alias",
 			})
 			seen[name] = true
 		}
