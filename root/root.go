@@ -16,6 +16,7 @@ import (
 	"syscall"
 
 	"github.com/spf13/cobra"
+	"github.com/versenilvis/iris/cli"
 	_ "github.com/versenilvis/iris/commands"
 	"github.com/versenilvis/iris/internal/config"
 	"github.com/versenilvis/iris/internal/logger"
@@ -83,6 +84,7 @@ func init() {
 		}
 		_ = spec.LoadUserSpecs(spec.GetUserSpecsDir())
 	}
+	cli.Register(rootCmd, Version)
 }
 
 // relayWatchdogCWD reads null-delimited cwd updates the wrapper relays over

@@ -1,4 +1,4 @@
-package root
+package cli
 
 import (
 	"fmt"
@@ -89,6 +89,7 @@ var SpecPathCmd = &cobra.Command{
 			fmt.Fprintln(cmd.ErrOrStderr(), "failed to resolve specs directory")
 			return
 		}
+		_ = os.MkdirAll(dir, 0755)
 		fmt.Fprintln(cmd.OutOrStdout(), dir)
 	},
 }
@@ -96,5 +97,4 @@ var SpecPathCmd = &cobra.Command{
 func init() {
 	SpecCmd.AddCommand(SpecInitCmd)
 	SpecCmd.AddCommand(SpecPathCmd)
-	rootCmd.AddCommand(SpecCmd)
 }

@@ -1,51 +1,13 @@
 package root
 
 import (
-	"context"
 	"fmt"
-	"os"
-	"os/exec"
 	"strings"
 	"sync/atomic"
-	"time"
 
 	"github.com/versenilvis/iris/internal/config"
+	"github.com/versenilvis/iris/internal/updater"
 )
-
-const installScriptURL = "https://raw.githubusercontent.com/versenilvis/iris/main/scripts/install.sh"
-
-func resolveInstallScriptURL() string {
-	if url := os.Getenv("IRIS_INSTALL_URL"); url != "" {
-		return url
-	}
-	return installScriptURL
-}
-
-// non-interactive output is captured, not streamed - the wrapper's terminal
-// is in raw mode, so streaming installer output would corrupt the display
-func performUpdate(latest string, interactive bool) (output string, err error) {
-	ctx := context.Background()
-	if !interactive {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, 5*time.Minute)
-		defer cancel()
-	}
-
-	cmdRun := exec.CommandContext(ctx, "sh", "-c", "curl -sSL "+resolveInstallScriptURL()+" | sh")
-	if config.Get().Updater.Channel == "nightly" {
-		cmdRun.Env = append(os.Environ(), "IRIS_RELEASE_TAG="+latest)
-	}
-
-	if interactive {
-		cmdRun.Stdout = os.Stdout
-		cmdRun.Stderr = os.Stderr
-		cmdRun.Stdin = os.Stdin
-		return "", cmdRun.Run()
-	}
-
-	out, runErr := cmdRun.CombinedOutput()
-	return string(out), runErr
-}
 
 type autoUpdateAction int
 
@@ -119,7 +81,7 @@ func runConfirmedAutoUpdate(version string) {
 	}
 	writeStdout([]byte("\r\033[K\033[36m[IRIS] updating...\033[0m\n"))
 
-	if _, err := performUpdate(version, false); err != nil {
+	if _, err := updater.PerformUpdate(version, false); err != nil {
 		writeStdout(fmt.Appendf(nil, "\033[31m[IRIS] update failed: %v\033[0m\n", err))
 		return
 	}

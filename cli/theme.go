@@ -1,4 +1,4 @@
-package root
+package cli
 
 import (
 	"fmt"
@@ -102,5 +102,4 @@ alias_sel = "#a277ff"
 
 func init() {
 	ThemeCmd.AddCommand(ThemeInitCmd)
-	rootCmd.AddCommand(ThemeCmd)
 }
