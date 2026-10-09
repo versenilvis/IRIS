@@ -9,6 +9,57 @@ import (
 	"github.com/versenilvis/iris/spec"
 )
 
+func TestInjectAISuggestionExactMatch(t *testing.T) {
+	original := config.Get()
+	t.Cleanup(func() { config.Init(original) })
+	const exact = "echo IRIS_EXACT"
+	const longer = exact + "_WRONG"
+	for _, tt := range []struct {
+		name        string
+		autoExecute bool
+		filter      config.FilterExactMatchMode
+		current     spec.Suggestion
+		incoming    spec.Suggestion
+		navigated   bool
+		want        string
+		changed     bool
+	}{
+		{"auto-retains", true, config.FilterExactMatchAuto, spec.Suggestion{Cmd: exact, Confidence: 75}, spec.Suggestion{Cmd: longer, Confidence: 90}, false, exact, false},
+		{"forced-retention", false, config.FilterExactMatchOff, spec.Suggestion{Cmd: exact, Confidence: 75}, spec.Suggestion{Cmd: longer, Confidence: 90}, false, exact, false},
+		{"forced-filtering", true, config.FilterExactMatchOn, spec.Suggestion{Cmd: longer, Confidence: 75}, spec.Suggestion{Cmd: exact, Confidence: 90}, false, longer, false},
+		{"auto-filters", false, config.FilterExactMatchAuto, spec.Suggestion{Cmd: longer, Confidence: 75}, spec.Suggestion{Cmd: exact, Confidence: 90}, false, longer, false},
+		{"exact-beats-confidence", true, config.FilterExactMatchAuto, spec.Suggestion{Cmd: longer, Confidence: 90}, spec.Suggestion{Cmd: exact, Confidence: 10}, false, exact, true},
+		{"preserve-navigation", true, config.FilterExactMatchAuto, spec.Suggestion{Cmd: longer, Confidence: 75}, spec.Suggestion{Cmd: exact, Confidence: 90}, true, longer, false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := config.DefaultConfig()
+			cfg.Core.AutoExecute = tt.autoExecute
+			cfg.Core.FilterExactMatch = tt.filter
+			config.Init(cfg)
+			o := NewOverlay()
+			o.SetQueryAndItems(exact, []spec.Suggestion{tt.current})
+			o.SetUserNavigated(tt.navigated)
+			if got := o.InjectAISuggestion(tt.incoming); got != tt.changed {
+				t.Errorf("InjectAISuggestion() = %v; want %v", got, tt.changed)
+			}
+			if got := o.GetCurrentCmd(); got != tt.want {
+				t.Fatalf("selected %q; want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCurrentCmdForLine(t *testing.T) {
+	o := NewOverlay()
+	o.SetQueryAndItemsForLine("echo IRIS_EXA", "echo IRIS_EXAC", []spec.Suggestion{{Cmd: "echo IRIS_EXACT"}})
+	if got := o.GetCurrentCmdForLine("echo IRIS_EXAC"); got != "echo IRIS_EXACT" {
+		t.Fatalf("fresh mid-line selection = %q; want echo IRIS_EXACT", got)
+	}
+	if got := o.GetCurrentCmdForLine("echo IRIS_EXACT"); got != "" {
+		t.Fatalf("stale selection = %q; want empty", got)
+	}
+}
+
 func TestRenderGhostText_CursorAtEnd(t *testing.T) {
 	o := NewOverlay()
 	items := []spec.Suggestion{

@@ -17,7 +17,10 @@ import (
 
 // MergeResults collects and dedupes suggestions for a query and mode
 func MergeResults(query string, mode string) []spec.Suggestion {
-	maxSugg := config.Get().UI.MaxSuggestions
+	cfg := config.Get()
+	maxSugg := cfg.UI.MaxSuggestions
+	filterExactMatch := cfg.Core.FilterExactMatches()
+	prioritizeExactMatch := !filterExactMatch
 	seen := make(map[string]bool)
 	deduped := []spec.Suggestion{}
 	normalizedQuery := strings.TrimSpace(query)
@@ -28,7 +31,8 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 		if normalizedCmd == "" {
 			return
 		}
-		if s.Source != "alias" && normalizedCmd == normalizedQuery {
+		preserveAlias := s.Source == "alias" && cfg.Core.FilterExactMatch == config.FilterExactMatchAuto
+		if filterExactMatch && !preserveAlias && normalizedCmd == normalizedQuery {
 			return
 		}
 		if s.Source == "" {
@@ -55,12 +59,12 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 		baseConf := 75
 		for i, h := range histResults {
 			conf := max(baseConf-(i*2), 60)
-			
+
 			icon := "history"
 			if h.Source == "atuin" {
 				icon = "atuin"
 			}
-			
+
 			addSuggestion(spec.Suggestion{
 				Cmd:        h.Cmd,
 				Desc:       h.Source,
@@ -82,7 +86,7 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 		return deduped
 	}
 
-	injectAISuggestion(&deduped, seen, normalizedQuery)
+	injectAISuggestion(&deduped, seen, normalizedQuery, prioritizeExactMatch)
 
 	var finalResults []spec.Suggestion
 	if mode == "history" {
@@ -97,7 +101,7 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 		if len(tokens) > 0 {
 			rootCmd = tokens[0]
 		}
-		
+
 		ctxTimeout, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 		defer cancel()
 		store, _ := scoring.GetFrecencyStore()
@@ -110,16 +114,26 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 		}
 	}
 
+	if prioritizeExactMatch && normalizedQuery != "" {
+		for i, s := range finalResults {
+			if strings.TrimSpace(s.Cmd) == normalizedQuery {
+				copy(finalResults[1:i+1], finalResults[:i])
+				finalResults[0] = s
+				break
+			}
+		}
+	}
+
 	if len(finalResults) > maxSugg {
 		return finalResults[:maxSugg]
 	}
 	return finalResults
 }
 
-func injectAISuggestion(deduped *[]spec.Suggestion, seen map[string]bool, normalizedQuery string) {
+func injectAISuggestion(deduped *[]spec.Suggestion, seen map[string]bool, normalizedQuery string, exactMatch bool) {
 	if aiSugg := GetCurrentAISuggestion(); aiSugg != nil {
 		normalizedCmd := strings.TrimSpace(aiSugg.Cmd)
-		if normalizedCmd != "" && normalizedCmd != normalizedQuery && strings.HasPrefix(strings.ToLower(normalizedCmd), strings.ToLower(normalizedQuery)) {
+		if normalizedCmd != "" && (exactMatch || normalizedCmd != normalizedQuery) && strings.HasPrefix(strings.ToLower(normalizedCmd), strings.ToLower(normalizedQuery)) {
 			if !seen[aiSugg.Cmd] {
 				seen[aiSugg.Cmd] = true
 				*deduped = append(*deduped, *aiSugg)
