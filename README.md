@@ -24,7 +24,7 @@
 <div align="center">
   <!-- <img width="800" height="450" alt="output" src="https://github.com/user-attachments/assets/fd586c5b-89b6-4f6a-af9c-29248db5edc3" />-->
   <!-- <img width="1280" height="720" alt="output" src="https://github.com/user-attachments/assets/a1003bda-7722-4185-9514-f1bf83fbb504" /> -->
-  <img width="1920" height="1080" alt="Ghostty terminal showcase" src="https://github.com/user-attachments/assets/dc2434c2-4f59-4432-b77f-78e65c4d412e" />
+  <img width="100%" alt="Ghostty terminal showcase" src="https://github.com/user-attachments/assets/dc2434c2-4f59-4432-b77f-78e65c4d412e" />
   👻 <i>Ghostty terminal</i>
 </div>
 
@@ -43,7 +43,7 @@ Run iris wherever you already work; your local machine, a remote server, or anyw
 ## AI suggestions
 
 <div align="center">
-  <img width="1920" height="1080" alt="output" src="https://github.com/user-attachments/assets/ab80fe75-b5dd-4acd-84bb-45bca17ee3b7" />
+  <img width="100%" alt="output" src="https://github.com/user-attachments/assets/ab80fe75-b5dd-4acd-84bb-45bca17ee3b7" />
   <i>IRIS has AI suggestions like your code editor (API key/Local)</i>
 </div>
 
@@ -403,7 +403,7 @@ timeout_ms = 5000  # ms before giving up
 ## Theme
 
 <div align="center">
-  <img width="1920" height="1080" alt="Kitty terminal showcase" src="https://github.com/user-attachments/assets/d45cf36e-6d7d-437a-9af9-28cd994bf55f" />
+  <img width="100%" alt="Kitty terminal showcase" src="https://github.com/user-attachments/assets/d45cf36e-6d7d-437a-9af9-28cd994bf55f" />
   😺 <i>Kitty terminal</i>
 </div>
 
