@@ -141,7 +141,16 @@ if [ -n "$IRIS_PID" ] && [ -n "$IRIS_FD" ]; then
 
   trap '_iris_bash_cmd_start' DEBUG
   PROMPT_COMMAND="_iris_precmd${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
-  bind -x '"\e[200~": _iris_send_line' 2>/dev/null
+  # binding the paste-start sequence itself would replace readline's
+  # bracketed-paste-begin, so a pasted newline would run the line. Report the
+  # line from a private sequence, then hand the paste to readline as usual.
+  # ble.sh reads pastes with its own editor and runs the first line of a
+  # multiline paste if anything is bound to the paste-start sequence.
+  if [[ -z "${BLE_VERSION-}" ]]; then
+    bind -x '"\e[9200~": _iris_send_line' 2>/dev/null
+    bind '"\e[9201~": bracketed-paste-begin' 2>/dev/null
+    bind '"\e[200~": "\e[9200~\e[9201~"' 2>/dev/null
+  fi
 fi
 `)
 		case "fish":
