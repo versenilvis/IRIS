@@ -109,3 +109,20 @@ func TestInitAutostartSkipsExecutionString(t *testing.T) {
 		})
 	}
 }
+
+func TestMigrateFishEvalCmd(t *testing.T) {
+	legacy := "# Iris Autocomplete\niris init fish | source\n\nset -gx EDITOR nvim\n"
+
+	got, ok := migrateFishEvalCmd(legacy)
+	if !ok {
+		t.Fatal("legacy fish integration line was not migrated")
+	}
+	want := "# Iris Autocomplete\neval (iris init fish | string collect)\n\nset -gx EDITOR nvim\n"
+	if got != want {
+		t.Fatalf("migrated config = %q, want %q", got, want)
+	}
+
+	if _, ok := migrateFishEvalCmd(want); ok {
+		t.Fatal("current fish integration line should not be migrated again")
+	}
+}

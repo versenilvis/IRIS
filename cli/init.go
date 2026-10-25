@@ -214,6 +214,22 @@ end
 	},
 }
 
+// fishEvalCmd loads the fish integration with eval, which keeps the shell's stdin.
+// `iris init fish | source` runs the script with the pipe as stdin, so the
+// `test -t 0` autostart guard is always false and iris never starts.
+const fishEvalCmd = `eval (iris init fish | string collect)`
+
+const legacyFishEvalCmd = `iris init fish | source`
+
+// migrateFishEvalCmd rewrites the integration line written by older versions of
+// `iris setup`. It reports false when content has no such line.
+func migrateFishEvalCmd(content string) (string, bool) {
+	if !strings.Contains(content, legacyFishEvalCmd) {
+		return content, false
+	}
+	return strings.ReplaceAll(content, legacyFishEvalCmd, fishEvalCmd), true
+}
+
 var SetupCmd = &cobra.Command{
 	Use:   "setup [shell]",
 	Short: "Automatically setup iris shell integration and install binary",
@@ -260,14 +276,20 @@ var SetupCmd = &cobra.Command{
 			evalCmd = `eval "$(iris init bash)"`
 		case "fish":
 			configFile = filepath.Join(shell.GetFishConfigDir(), "config.fish")
-			evalCmd = `iris init fish | source`
+			evalCmd = fishEvalCmd
 		default:
 			fmt.Printf("Unsupported shell: %s. Please add iris init manually.\n", shellName)
 			return
 		}
 
 		content, readErr := os.ReadFile(configFile)
-		if strings.Contains(string(content), "iris init") {
+		if migrated, ok := migrateFishEvalCmd(string(content)); shellName == "fish" && ok {
+			if writeErr := os.WriteFile(configFile, []byte(migrated), 0644); writeErr != nil {
+				fmt.Printf("Failed to update %s: %v\n", configFile, writeErr)
+				return
+			}
+			fmt.Printf("✓ Updated iris integration in %s to %s\n", configFile, fishEvalCmd)
+		} else if strings.Contains(string(content), "iris init") {
 			fmt.Printf("Iris is already configured in %s\n", configFile)
 		} else {
 			var newContent string
