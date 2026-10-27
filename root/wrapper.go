@@ -1246,6 +1246,13 @@ func runWrapper() {
 				}
 
 				if b == '\033' {
+					if isRel, consumedRel := config.IsKeyRelease(inputSlice[i:]); isRel {
+						intercepted = true
+						_, _ = ptmx.Write(inputSlice[i : i+consumedRel])
+						i += consumedRel - 1
+						continue
+					}
+
 					// check for bracketed paste start/end
 					if i+5 < n && inputSlice[i+1] == '[' && inputSlice[i+2] == '2' && inputSlice[i+3] == '0' {
 						if (inputSlice[i+4] == '0' || inputSlice[i+4] == '1') && inputSlice[i+5] == '~' {
@@ -1298,98 +1305,72 @@ func runWrapper() {
 					// handle escape sequences like arrow keys and functional shortcuts
 					// left/right arrow cursor tracking
 					isLeftRightArrow := false
-					if i+2 < n && (inputSlice[i+1] == '[' || inputSlice[i+1] == 'O') {
-						if inputSlice[i+2] == 'D' {
-							intercepted = true
-							rawSeq := append([]byte(nil), inputSlice[i:i+3]...)
-							i += 2
+					if matchedLeft, leftConsumed := config.MatchKey(inputSlice[i:], "left"); matchedLeft {
+						intercepted = true
+						rawSeq := append([]byte(nil), inputSlice[i:i+leftConsumed]...)
+						i += leftConsumed - 1
 
-							bufferMu.Lock()
-							isEmptyQuery := naiveBuffer == "" && (!overlay.IsVisible() || overlay.GetTypedQuery() == "")
-							bufferMu.Unlock()
-							if isEmptyQuery {
-								// nothing to track, but the shell may still have
-								// a line of its own to move through
-								_, _ = ptmx.Write(rawSeq)
-								continue
-							}
-
-							writeStdout([]byte(overlay.HideGhostTextSync()))
-							bufferMu.Lock()
-							cursorOffset = min(cursorOffset+1, len([]rune(naiveBuffer)))
-							bufferMu.Unlock()
+						bufferMu.Lock()
+						isEmptyQuery := naiveBuffer == "" && (!overlay.IsVisible() || overlay.GetTypedQuery() == "")
+						bufferMu.Unlock()
+						if isEmptyQuery {
+							// nothing to track, but the shell may still have
+							// a line of its own to move through
 							_, _ = ptmx.Write(rawSeq)
+							continue
+						}
+
+						writeStdout([]byte(overlay.HideGhostTextSync()))
+						bufferMu.Lock()
+						cursorOffset = min(cursorOffset+1, len([]rune(naiveBuffer)))
+						bufferMu.Unlock()
+						_, _ = ptmx.Write(rawSeq)
+						shouldOverlayDraw = true
+						userNavigated.Store(false)
+						continue
+					} else if matchedRight, navConsumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateRight); matchedRight {
+						rawSeq := append([]byte(nil), inputSlice[i:i+navConsumed]...)
+						i += navConsumed - 1
+						intercepted = true
+						bufferMu.Lock()
+						isEmptyQuery := naiveBuffer == "" && (!overlay.IsVisible() || overlay.GetTypedQuery() == "")
+						bufferMu.Unlock()
+						if isEmptyQuery {
+							_, _ = ptmx.Write(rawSeq)
+							continue
+						}
+
+						bufferMu.Lock()
+						atEnd := (cursorOffset == 0)
+						ghostText := ""
+						if !disableGhostText.Load() {
+							ghostText = overlay.GetGhostText(naiveBuffer, atEnd)
+						}
+						bufferMu.Unlock()
+
+						if len(ghostText) > 0 {
+							bufferMu.Lock()
+							naiveBuffer += ghostText
+							cursorOffset = 0
+							bufferMu.Unlock()
+							overlay.ClearGhostTextState()
+							_, _ = ptmx.Write([]byte(ghostText))
+							shouldOverlayDraw = true
+							continue
+						}
+
+						bufferMu.Lock()
+						if naiveBuffer != "" || overlay.IsVisible() {
+							cursorOffset--
+							if cursorOffset < 0 {
+								cursorOffset = 0
+							}
 							shouldOverlayDraw = true
 							userNavigated.Store(false)
-							continue
-						} else if inputSlice[i+2] == 'C' {
-							_, navConsumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.NavigateRight)
-							if navConsumed == 0 {
-								if !intercepted {
-									writeStdout([]byte(overlay.ClearAndDisable()))
-									disableGhostText.Store(true)
-									isStandaloneEsc := n == 1 && b == '\033'
-									if !isStandaloneEsc {
-										bufferMu.Lock()
-										naiveBuffer = ""
-										cursorOffset = 0
-										bufferMu.Unlock()
-									}
-									_, _ = ptmx.Write([]byte{b})
-									for j := i + 1; j < n; j++ {
-										char := inputSlice[j]
-										_, _ = ptmx.Write([]byte{char})
-										i = j
-										if (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || char == '~' {
-											break
-										}
-									}
-								}
-								continue
-							}
-							rawSeq := append([]byte(nil), inputSlice[i:i+navConsumed]...)
-							i += navConsumed - 1
-							intercepted = true
-							bufferMu.Lock()
-							isEmptyQuery := naiveBuffer == "" && (!overlay.IsVisible() || overlay.GetTypedQuery() == "")
-							bufferMu.Unlock()
-							if isEmptyQuery {
-								_, _ = ptmx.Write(rawSeq)
-								continue
-							}
-
-							bufferMu.Lock()
-							atEnd := (cursorOffset == 0)
-							ghostText := ""
-							if !disableGhostText.Load() {
-								ghostText = overlay.GetGhostText(naiveBuffer, atEnd)
-							}
-							bufferMu.Unlock()
-
-							if len(ghostText) > 0 {
-								bufferMu.Lock()
-								naiveBuffer += ghostText
-								cursorOffset = 0
-								bufferMu.Unlock()
-								overlay.ClearGhostTextState()
-								_, _ = ptmx.Write([]byte(ghostText))
-								shouldOverlayDraw = true
-								continue
-							}
-
-							bufferMu.Lock()
-							if naiveBuffer != "" || overlay.IsVisible() {
-								cursorOffset--
-								if cursorOffset < 0 {
-									cursorOffset = 0
-								}
-								shouldOverlayDraw = true
-								userNavigated.Store(false)
-							}
-							bufferMu.Unlock()
-							_, _ = ptmx.Write(rawSeq)
-							isLeftRightArrow = true
 						}
+						bufferMu.Unlock()
+						_, _ = ptmx.Write(rawSeq)
+						isLeftRightArrow = true
 					}
 
 					if !intercepted {

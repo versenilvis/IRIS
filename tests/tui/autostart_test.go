@@ -43,7 +43,8 @@ func TestAutostartDoesNotSwallowCommand(t *testing.T) {
 		case <-ctx.Done():
 			_ = cmd.Process.Kill()
 			t.Fatalf("timed out waiting for bash command, output:\n%s", out.String())
-		case <-done:
+		case err := <-done:
+			_ = err
 		}
 
 		if !bytes.Contains(out.Bytes(), []byte("RAN_BASH_42")) {
@@ -80,7 +81,8 @@ func TestAutostartDoesNotSwallowCommand(t *testing.T) {
 		case <-ctx.Done():
 			_ = cmd.Process.Kill()
 			t.Fatalf("timed out waiting for zsh command, output:\n%s", out.String())
-		case <-done:
+		case err := <-done:
+			_ = err
 		}
 
 		if !bytes.Contains(out.Bytes(), []byte("RAN_ZSH_42")) {
