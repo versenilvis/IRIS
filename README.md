@@ -274,7 +274,7 @@ eval "$(iris init bash)"
 
 **Fish (`~/.config/fish/config.fish`):**
 ```fish
-iris init fish | source
+eval (iris init fish | string collect)
 ```
 
 ## Configuration guide
