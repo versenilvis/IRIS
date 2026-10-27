@@ -978,6 +978,10 @@ func (o *Overlay) draw() string {
 // clearLinesBelow erases n lines below the cursor, leaving the cursor where
 // it started. Caller is responsible for wrapping/resetting auto-wrap mode.
 func clearLinesBelow(s *strings.Builder, skip, n int) {
+	// Cursor-down clamps at the bottom row, so reserve space before erasing
+	// or a clear intended for the menu can erase the command instead.
+	s.WriteString(strings.Repeat("\n", skip+n))
+	s.WriteString(ansi.CursorUp(skip + n))
 	s.WriteString(ansi.SaveCursor)
 	for i := range n {
 		s.WriteString(ansi.RestoreCursor)
