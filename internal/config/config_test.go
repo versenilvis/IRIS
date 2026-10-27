@@ -325,6 +325,7 @@ func TestMatchKey(t *testing.T) {
 		{[]byte("\x1b[1;1A"), "up", true, 6},
 		{[]byte("\x1b[1A"), "up", true, 4},
 		{[]byte("\x1b[57352u"), "up", true, 8},
+		{[]byte("\x1b[57318u"), "up", true, 8},
 		{[]byte("\x1b[57352;1u"), "up", true, 10},
 		{[]byte("\x1b[57352;1:1u"), "up", true, 12},
 		{[]byte("\x1b[57352:3u"), "up", false, 0},

@@ -74,7 +74,7 @@ func MatchKey(input []byte, expected string) (matched bool, consumed int) {
 		if k, ok := parseModifiedCSI(input); ok && k.final == 'A' && (k.modifiers == 1 || k.modifiers == 0) && k.eventType != 3 {
 			return true, k.consumed
 		}
-		if k, ok := parseKittySequence(input); ok && k.codepoint == 57352 && (k.modifiers == 1 || k.modifiers == 0) && k.eventType != 3 {
+		if k, ok := parseKittySequence(input); ok && (k.codepoint == 57352 || k.codepoint == 57318) && (k.modifiers == 1 || k.modifiers == 0) && k.eventType != 3 {
 			return true, k.consumed
 		}
 	case "down":
@@ -88,14 +88,14 @@ func MatchKey(input []byte, expected string) (matched bool, consumed int) {
 		if k, ok := parseModifiedCSI(input); ok && k.final == 'C' && (k.modifiers == 1 || k.modifiers == 0) && k.eventType != 3 {
 			return true, k.consumed
 		}
-		if k, ok := parseKittySequence(input); ok && (k.codepoint == 57351 || k.codepoint == 57320) && (k.modifiers == 1 || k.modifiers == 0) && k.eventType != 3 {
+		if k, ok := parseKittySequence(input); ok && (k.codepoint == 57351 || k.codepoint == 57321 || k.codepoint == 57320) && (k.modifiers == 1 || k.modifiers == 0) && k.eventType != 3 {
 			return true, k.consumed
 		}
 	case "left":
 		if k, ok := parseModifiedCSI(input); ok && k.final == 'D' && (k.modifiers == 1 || k.modifiers == 0) && k.eventType != 3 {
 			return true, k.consumed
 		}
-		if k, ok := parseKittySequence(input); ok && (k.codepoint == 57350 || k.codepoint == 57321) && (k.modifiers == 1 || k.modifiers == 0) && k.eventType != 3 {
+		if k, ok := parseKittySequence(input); ok && (k.codepoint == 57350 || k.codepoint == 57320 || k.codepoint == 57321) && (k.modifiers == 1 || k.modifiers == 0) && k.eventType != 3 {
 			return true, k.consumed
 		}
 	case "enter", "cr", "return":
