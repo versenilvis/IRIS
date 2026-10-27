@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.7.5](https://github.com/versenilvis/iris/releases/tag/v0.7.5) - 2026-10-27
+
+### Bug fixes
+
+- Prevent bottom-row menu clearing from erasing commands ([#180](https://github.com/versenilvis/iris/issues/180)) ([31d2cf](https://github.com/versenilvis/iris/commit/31d2cfdb7091430d5f84d43344df62c02ff1b5a5))
+- Load fish integration with eval so autostart runs ([#185](https://github.com/versenilvis/iris/issues/185)) ([f94cab](https://github.com/versenilvis/iris/commit/f94cabecfeff7d8da3ca587dfebbc6a0938a1156))
+- Keep bash bracketed paste working ([#184](https://github.com/versenilvis/iris/issues/184)) ([83c57b](https://github.com/versenilvis/iris/commit/83c57ba41abc9a365d643313c6c94fc6e868ccfa))
+- Support Kitty keyboard protocol and prevent command active freeze ([#186](https://github.com/versenilvis/iris/issues/186)) ([3b7678](https://github.com/versenilvis/iris/commit/3b7678f83462fedf4960eae9560fd6d5c6c2ba7b))
+
 ## [v0.7.4](https://github.com/versenilvis/iris/releases/tag/v0.7.4) - 2026-10-17
 
 ### Bug fixes
