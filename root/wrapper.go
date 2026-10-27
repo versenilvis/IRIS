@@ -502,13 +502,11 @@ func runWrapper() {
 			return true
 		}
 		if isCommandActive.Load() {
-			// for bash: no preexec/precmd hooks, so fall back to TIOCGPGRP to detect when shell returns
-			if shellName == "bash" {
-				pgrp, pgrpErr := unix.IoctlGetInt(int(ptmx.Fd()), unix.TIOCGPGRP)
-				if pgrpErr == nil && pgrp == shellPGID {
-					isCommandActive.Store(false)
-					return false
-				}
+			// fall back to TIOCGPGRP to detect when shell returns to prompt
+			pgrp, pgrpErr := unix.IoctlGetInt(int(ptmx.Fd()), unix.TIOCGPGRP)
+			if pgrpErr == nil && pgrp == shellPGID {
+				isCommandActive.Store(false)
+				return false
 			}
 			return true
 		}
