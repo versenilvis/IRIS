@@ -42,13 +42,9 @@ func MatchKey(input []byte, expected string) (matched bool, consumed int) {
 			if input[0] == targetByte {
 				return true, 1
 			}
-		// Some terminals (foot, kitty, etc.) send kitty keyboard protocol
-		// escape sequences for Ctrl+letter instead of raw control bytes:
-		// CSI <keycode> ; <modifiers> <action>
-		// where modifiers include Ctrl=4 and action='u' means press.
-		if matched, consumed := matchKittyCtrl(input, int(char)); matched {
-			return matched, consumed
-		}
+			if matched, consumed := matchKittyCtrl(input, int(char)); matched {
+				return matched, consumed
+			}
 		}
 	}
 
@@ -57,84 +53,231 @@ func MatchKey(input []byte, expected string) (matched bool, consumed int) {
 		if input[0] == 0x00 {
 			return true, 1
 		}
+		if k, ok := parseKittySequence(input); ok && (k.codepoint == 32 || k.codepoint == 0) && (k.modifiers&4 != 0 || (k.modifiers-1)&4 != 0) && k.eventType != 3 {
+			return true, k.consumed
+		}
 	case "tab":
 		if input[0] == 0x09 {
 			return true, 1
 		}
+		if k, ok := parseKittySequence(input); ok && k.codepoint == 9 && (k.modifiers == 1 || (k.modifiers-1)&1 == 0) && k.eventType != 3 {
+			return true, k.consumed
+		}
 	case "shift+tab":
-		// typically \033[Z
-		if len(input) >= 3 && input[0] == 0x1b && input[1] == '[' && input[2] == 'Z' {
-			return true, 3
+		if k, ok := parseModifiedCSI(input); ok && k.final == 'Z' && k.eventType != 3 {
+			return true, k.consumed
+		}
+		if k, ok := parseKittySequence(input); ok && k.codepoint == 9 && (k.modifiers == 2 || (k.modifiers-1)&1 != 0) && k.eventType != 3 {
+			return true, k.consumed
 		}
 	case "up":
-		if len(input) >= 3 && input[0] == 0x1b && (input[1] == '[' || input[1] == 'O') && input[2] == 'A' {
-			return true, 3
+		if k, ok := parseModifiedCSI(input); ok && k.final == 'A' && (k.modifiers == 1 || k.modifiers == 0) && k.eventType != 3 {
+			return true, k.consumed
+		}
+		if k, ok := parseKittySequence(input); ok && (k.codepoint == 57352 || k.codepoint == 57318) && (k.modifiers == 1 || k.modifiers == 0) && k.eventType != 3 {
+			return true, k.consumed
 		}
 	case "down":
-		if len(input) >= 3 && input[0] == 0x1b && (input[1] == '[' || input[1] == 'O') && input[2] == 'B' {
-			return true, 3
+		if k, ok := parseModifiedCSI(input); ok && k.final == 'B' && (k.modifiers == 1 || k.modifiers == 0) && k.eventType != 3 {
+			return true, k.consumed
+		}
+		if k, ok := parseKittySequence(input); ok && (k.codepoint == 57353 || k.codepoint == 57319) && (k.modifiers == 1 || k.modifiers == 0) && k.eventType != 3 {
+			return true, k.consumed
 		}
 	case "right":
-		// typically \033[C or \033OC
-		if len(input) >= 3 && input[0] == 0x1b && (input[1] == '[' || input[1] == 'O') && input[2] == 'C' {
-			return true, 3
+		if k, ok := parseModifiedCSI(input); ok && k.final == 'C' && (k.modifiers == 1 || k.modifiers == 0) && k.eventType != 3 {
+			return true, k.consumed
+		}
+		if k, ok := parseKittySequence(input); ok && (k.codepoint == 57351 || k.codepoint == 57321 || k.codepoint == 57320) && (k.modifiers == 1 || k.modifiers == 0) && k.eventType != 3 {
+			return true, k.consumed
 		}
 	case "left":
-		if len(input) >= 3 && input[0] == 0x1b && (input[1] == '[' || input[1] == 'O') && input[2] == 'D' {
-			return true, 3
+		if k, ok := parseModifiedCSI(input); ok && k.final == 'D' && (k.modifiers == 1 || k.modifiers == 0) && k.eventType != 3 {
+			return true, k.consumed
+		}
+		if k, ok := parseKittySequence(input); ok && (k.codepoint == 57350 || k.codepoint == 57320 || k.codepoint == 57321) && (k.modifiers == 1 || k.modifiers == 0) && k.eventType != 3 {
+			return true, k.consumed
 		}
 	case "enter", "cr", "return":
 		if input[0] == 0x0d || input[0] == 0x0a {
 			return true, 1
+		}
+		if k, ok := parseKittySequence(input); ok && (k.codepoint == 13 || k.codepoint == 10) && k.eventType != 3 {
+			return true, k.consumed
 		}
 	}
 
 	return false, 0
 }
 
-// matchKittyCtrl matches the kitty keyboard protocol CSI sequence for Ctrl+<letter>.
-// Format: ESC [ <keycode> ; <modifiers> <action>
-// For Ctrl+<letter>: keycode is the ASCII code of the letter, modifiers must have bit 2 (value 4) set, action is 'u'.
-func matchKittyCtrl(input []byte, expectedASCII int) (matched bool, consumed int) {
-	if len(input) < 6 || input[0] != 0x1b || input[1] != '[' {
-		return false, 0
-	}
+type kittyKey struct {
+	codepoint int
+	modifiers int
+	eventType int
+	consumed  int
+}
 
+func parseKittySequence(input []byte) (kittyKey, bool) {
+	if len(input) < 4 || input[0] != 0x1b || input[1] != '[' {
+		return kittyKey{}, false
+	}
 	uIdx := -1
 	for i := 2; i < len(input); i++ {
 		if input[i] == 'u' {
 			uIdx = i
 			break
 		}
+		if input[i] < 0x20 || input[i] > 0x3f {
+			return kittyKey{}, false
+		}
 	}
 	if uIdx == -1 {
-		return false, 0
+		return kittyKey{}, false
 	}
 
 	body := string(input[2:uIdx])
 	parts := strings.Split(body, ";")
-	if len(parts) != 2 {
-		return false, 0
+	if len(parts) == 0 {
+		return kittyKey{}, false
 	}
 
-	keycode, err := strconv.Atoi(parts[0])
+	codeSub := strings.Split(parts[0], ":")
+	codepoint, err := strconv.Atoi(codeSub[0])
 	if err != nil {
-		return false, 0
-	}
-	modifiers, err := strconv.Atoi(parts[1])
-	if err != nil {
-		return false, 0
+		return kittyKey{}, false
 	}
 
-	if modifiers&4 == 0 {
-		return false, 0
+	modifiers := 1
+	eventType := 1
+
+	if len(codeSub) >= 2 {
+		if ev, err := strconv.Atoi(codeSub[1]); err == nil {
+			eventType = ev
+		}
 	}
 
-	if keycode != expectedASCII {
-		return false, 0
+	if len(parts) >= 2 {
+		modSub := strings.Split(parts[1], ":")
+		if m, err := strconv.Atoi(modSub[0]); err == nil {
+			modifiers = m
+		}
+		if len(modSub) >= 2 {
+			if ev, err := strconv.Atoi(modSub[1]); err == nil {
+				eventType = ev
+			}
+		}
 	}
 
-	return true, uIdx + 1
+	return kittyKey{
+		codepoint: codepoint,
+		modifiers: modifiers,
+		eventType: eventType,
+		consumed:  uIdx + 1,
+	}, true
+}
+
+type csiKey struct {
+	final     byte
+	modifiers int
+	eventType int
+	consumed  int
+}
+
+func parseModifiedCSI(input []byte) (csiKey, bool) {
+	if len(input) < 3 || input[0] != 0x1b {
+		return csiKey{}, false
+	}
+	if input[1] == 'O' {
+		switch input[2] {
+		case 'A', 'B', 'C', 'D':
+			return csiKey{final: input[2], modifiers: 1, eventType: 1, consumed: 3}, true
+		}
+		return csiKey{}, false
+	}
+	if input[1] != '[' {
+		return csiKey{}, false
+	}
+
+	if len(input) >= 3 {
+		switch input[2] {
+		case 'A', 'B', 'C', 'D', 'Z':
+			return csiKey{final: input[2], modifiers: 1, eventType: 1, consumed: 3}, true
+		}
+	}
+
+	finalIdx := -1
+	for i := 2; i < len(input); i++ {
+		b := input[i]
+		if (b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z') || b == '~' {
+			finalIdx = i
+			break
+		}
+		if b < 0x20 || b > 0x3f {
+			return csiKey{}, false
+		}
+	}
+	if finalIdx == -1 {
+		return csiKey{}, false
+	}
+
+	finalByte := input[finalIdx]
+	body := string(input[2:finalIdx])
+	parts := strings.Split(body, ";")
+
+	modifiers := 1
+	eventType := 1
+
+	if len(parts) > 0 && parts[0] != "" {
+		sub := strings.Split(parts[0], ":")
+		if len(sub) >= 2 {
+			if ev, err := strconv.Atoi(sub[1]); err == nil {
+				eventType = ev
+			}
+		}
+	}
+
+	if len(parts) >= 2 {
+		sub := strings.Split(parts[1], ":")
+		if m, err := strconv.Atoi(sub[0]); err == nil {
+			modifiers = m
+		}
+		if len(sub) >= 2 {
+			if ev, err := strconv.Atoi(sub[1]); err == nil {
+				eventType = ev
+			}
+		}
+	}
+
+	return csiKey{
+		final:     finalByte,
+		modifiers: modifiers,
+		eventType: eventType,
+		consumed:  finalIdx + 1,
+	}, true
+}
+
+func matchKittyCtrl(input []byte, expectedASCII int) (bool, int) {
+	k, ok := parseKittySequence(input)
+	if !ok || k.eventType == 3 {
+		return false, 0
+	}
+	if (k.modifiers&4 != 0 || (k.modifiers-1)&4 != 0) && k.codepoint == expectedASCII {
+		return true, k.consumed
+	}
+	return false, 0
+}
+
+func IsKeyRelease(input []byte) (bool, int) {
+	if len(input) == 0 || input[0] != 0x1b {
+		return false, 0
+	}
+	if k, ok := parseKittySequence(input); ok && k.eventType == 3 {
+		return true, k.consumed
+	}
+	if k, ok := parseModifiedCSI(input); ok && k.eventType == 3 {
+		return true, k.consumed
+	}
+	return false, 0
 }
 
 // FormatKeyName takes a config key string like "ctrl+r" and formats it for UI display, e.g. "<Ctrl+R>".

@@ -320,6 +320,39 @@ func TestMatchKey(t *testing.T) {
 		{[]byte("\x1b[97;4u"), "ctrl+a", true, 7},
 		{[]byte("\x1b[106;4U"), "ctrl+j", false, 0},
 		{[]byte("\x1b[106u"), "ctrl+j", false, 0},
+		{[]byte("\x1b[A"), "up", true, 3},
+		{[]byte("\x1bOA"), "up", true, 3},
+		{[]byte("\x1b[1;1A"), "up", true, 6},
+		{[]byte("\x1b[1A"), "up", true, 4},
+		{[]byte("\x1b[57352u"), "up", true, 8},
+		{[]byte("\x1b[57318u"), "up", true, 8},
+		{[]byte("\x1b[57352;1u"), "up", true, 10},
+		{[]byte("\x1b[57352;1:1u"), "up", true, 12},
+		{[]byte("\x1b[57352:3u"), "up", false, 0},
+		{[]byte("\x1b[B"), "down", true, 3},
+		{[]byte("\x1bOB"), "down", true, 3},
+		{[]byte("\x1b[1;1B"), "down", true, 6},
+		{[]byte("\x1b[57353u"), "down", true, 8},
+		{[]byte("\x1b[57319u"), "down", true, 8},
+		{[]byte("\x1b[C"), "right", true, 3},
+		{[]byte("\x1bOC"), "right", true, 3},
+		{[]byte("\x1b[1;1C"), "right", true, 6},
+		{[]byte("\x1b[57351u"), "right", true, 8},
+		{[]byte("\x1b[57320u"), "right", true, 8},
+		{[]byte("\x1b[D"), "left", true, 3},
+		{[]byte("\x1bOD"), "left", true, 3},
+		{[]byte("\x1b[1;1D"), "left", true, 6},
+		{[]byte("\x1b[57350u"), "left", true, 8},
+		{[]byte("\x1b[57321u"), "left", true, 8},
+		{[]byte("\x1b[Z"), "shift+tab", true, 3},
+		{[]byte("\x1b[1;2Z"), "shift+tab", true, 6},
+		{[]byte("\x1b[9;2u"), "shift+tab", true, 6},
+		{[]byte("\x1b[9;2:1u"), "shift+tab", true, 8},
+		{[]byte("\x1b[9;2:3u"), "shift+tab", false, 0},
+		{[]byte("\x1b[9u"), "tab", true, 4},
+		{[]byte("\x1b[9;1u"), "tab", true, 6},
+		{[]byte("\x1b[9;1:1u"), "tab", true, 8},
+		{[]byte("\x1b[9;2u"), "tab", false, 0},
 	}
 
 	for _, tt := range tests {
@@ -327,6 +360,13 @@ func TestMatchKey(t *testing.T) {
 		if m != tt.matched || c != tt.consumed {
 			t.Errorf("MatchKey(%v, %q) = (%v, %d); want (%v, %d)", tt.input, tt.expected, m, c, tt.matched, tt.consumed)
 		}
+	}
+
+	if isRel, c := IsKeyRelease([]byte("\x1b[57352:3u")); !isRel || c != 10 {
+		t.Errorf("IsKeyRelease(\\x1b[57352:3u) = (%v, %d); want (true, 10)", isRel, c)
+	}
+	if isRel, _ := IsKeyRelease([]byte("\x1b[57352u")); isRel {
+		t.Errorf("IsKeyRelease(\\x1b[57352u) should be false")
 	}
 }
 
