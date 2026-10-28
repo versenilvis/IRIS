@@ -7,6 +7,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/versenilvis/iris/internal/config"
 	"github.com/versenilvis/iris/spec/alias"
 )
 
@@ -157,6 +158,29 @@ func TestLookup_AliasFileGenerator(t *testing.T) {
 	for _, r := range results {
 		if !strings.HasPrefix(r.Cmd, "nvim ") {
 			t.Errorf("expected suggestion to start with 'nvim ', got %q", r.Cmd)
+		}
+	}
+}
+
+func TestLookup_AliasExpansionFollowsConfig(t *testing.T) {
+	ResetRegistry()
+	ShellAliases = map[string]string{"cat": "/opt/homebrew/bin/bat"}
+	t.Cleanup(func() {
+		ShellAliases = map[string]string{}
+		config.Init(config.DefaultConfig())
+	})
+
+	cfg := config.DefaultConfig()
+	cfg.Core.ExpandAlias = false
+	config.Init(cfg)
+
+	results := Lookup("cat ")
+	if len(results) == 0 {
+		t.Fatal("expected file suggestions for 'cat '")
+	}
+	for _, r := range results {
+		if !strings.HasPrefix(r.Cmd, "cat ") {
+			t.Fatalf("expected suggestion to keep the typed alias 'cat', got %q", r.Cmd)
 		}
 	}
 }

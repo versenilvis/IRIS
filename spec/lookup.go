@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/versenilvis/iris/integration/shell"
+	"github.com/versenilvis/iris/internal/config"
 	"github.com/versenilvis/iris/internal/logger"
 	"github.com/versenilvis/iris/spec/alias"
 )
@@ -118,7 +119,7 @@ func Lookup(input string) []Suggestion {
 	// only expand when there's a trailing space — i.e. the user has committed
 	// to the alias name and is now typing arguments (tokens last elem == "")
 	hasTrailingSpace := len(tokens) > 0 && tokens[len(tokens)-1] == ""
-	if hasTrailingSpace || len(tokens) > 1 {
+	if config.Get().Core.ExpandAlias && (hasTrailingSpace || len(tokens) > 1) {
 		if target, ok := aliases[tokens[0]]; ok {
 			aliasTokens := Tokenize(target)
 			if len(aliasTokens) > 0 && aliasTokens[len(aliasTokens)-1] == "" {
