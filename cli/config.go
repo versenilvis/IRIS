@@ -53,7 +53,7 @@ mode = "last"
 # enable debug logging
 debug = false
 
-# automatically expand aliases on space
+# expand aliases on space and in the suggestion menu
 expand-alias = true
 
 # automatically execute command after accepting suggestion
