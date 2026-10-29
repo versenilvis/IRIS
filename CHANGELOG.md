@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.7.6](https://github.com/versenilvis/iris/releases/tag/v0.7.6) - 2026-10-29
+
+### Bug fixes
+
+- Honor expand-alias in the suggestion menu ([#188](https://github.com/versenilvis/iris/issues/188)) ([42feeb](https://github.com/versenilvis/iris/commit/42feeb179398e7c614e625d26e8d516bb9b1b50a))
+
 ## [v0.7.5](https://github.com/versenilvis/iris/releases/tag/v0.7.5) - 2026-10-27
 
 ### Bug fixes
