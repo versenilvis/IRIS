@@ -41,7 +41,7 @@ type Suggestion struct {
 	Cmd        string
 	Desc       string
 	Icon       string
-	Source     string // "history", "spec", "ai"
+	Source     string // "history", "spec", "file", "ai"
 	Confidence int    // 0-100
 	Priority   int    // static author priority
 }

@@ -62,7 +62,23 @@ func GetAliasesCopy() map[string]string {
 // it changes aliases to real commands, finds subcommands inside others, and runs generators for more suggestions
 // e.g. Lookup("git che") -> suggests "git checkout"
 // e.g. Lookup("git checkout ") -> suggests branch names via generator
-func Lookup(input string) []Suggestion {
+func Lookup(input string) (matches []Suggestion) {
+	tokens, quote := tokenize(input)
+	files := fileSuggestions(input, tokens, quote)
+	preferCommandGenerator := false
+	defer func() {
+		if len(files) == 0 {
+			return
+		}
+		if !preferCommandGenerator {
+			matches = files
+		} else {
+			for i := range matches {
+				matches[i].Source = "file"
+			}
+		}
+	}()
+
 	shellAliasesMu.RLock()
 	needsAliasScan := shell.Current != nil && !hasLiveAliases
 	needsAbbrScan := shell.Current != nil && !hasLiveAbbrs
@@ -99,7 +115,6 @@ func Lookup(input string) []Suggestion {
 		return topLevelSuggestions("", aliases, abbrs)
 	}
 
-	tokens := Tokenize(input)
 	originalTokens := append([]string(nil), tokens...)
 	originalPrefix := ""
 	expandedPrefix := ""
@@ -211,7 +226,7 @@ func Lookup(input string) []Suggestion {
 		if strings.HasPrefix(partial, "-") {
 			return nil
 		}
-		spec = &Spec{Generator: FileGenerator()}
+		spec = &Spec{}
 	}
 
 	currentSubs, currentOpts, currentGen := spec.Subcommands, spec.Options, spec.Generator
@@ -275,6 +290,14 @@ func Lookup(input string) []Suggestion {
 	}
 
 	allowMoreArgs := currentLimit <= 0 || argCount < currentLimit
+	// Explicit paths bypass command validation, while custom generators retain their filters.
+	preferCommandGenerator = currentGen != nil && allowMoreArgs && !strings.Contains(partial, "=")
+	if !preferCommandGenerator && len(files) > 0 {
+		return files
+	}
+	if currentGen == nil {
+		currentGen = fileGenerator
+	}
 
 	logger.Debugf("core query tokens: %v (partial: '%s')", tokens, partial)
 	logger.Debugf("core depth: %d, argCount: %d, limit: %d, allowMore: %v", depth, argCount, currentLimit, allowMoreArgs)

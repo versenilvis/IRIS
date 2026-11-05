@@ -266,7 +266,6 @@ func init() {
 			{
 				Name:        "add",
 				Description: "stage changes",
-				Generator:   spec.FileGenerator(),
 				Options: []spec.Option{
 					{Name: "-A", Description: "add all files"},
 					{Name: "-p", Description: "interactive patch"},
@@ -370,7 +369,6 @@ func init() {
 			{
 				Name:        "log",
 				Description: "show commit log",
-				Generator:   spec.FileGenerator(),
 				Options: []spec.Option{
 					{Name: "--oneline", Description: "compact format"},
 					{Name: "--graph", Description: "show graph"},
@@ -380,7 +378,6 @@ func init() {
 			{
 				Name:        "diff",
 				Description: "show changes",
-				Generator:   spec.FileGenerator(),
 				Options: []spec.Option{
 					{Name: "--staged", Description: "staged changes"},
 					{Name: "--stat", Description: "diffstat only"},
@@ -439,7 +436,6 @@ func init() {
 			{
 				Name:        "restore",
 				Description: "restore working tree files",
-				Generator:   spec.FileGenerator(),
 				Options: []spec.Option{
 					{Name: "-s", Description: "source tree"},
 					{Name: "-W", Description: "working tree"},
@@ -448,7 +444,6 @@ func init() {
 			{
 				Name:        "rm",
 				Description: "remove files",
-				Generator:   spec.FileGenerator(),
 				Options: []spec.Option{
 					{Name: "-f", Description: "force"},
 					{Name: "-r", Description: "recursive"},

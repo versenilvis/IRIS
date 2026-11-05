@@ -361,6 +361,10 @@ func (o *Overlay) InjectAISuggestion(sugg spec.Suggestion) bool {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
+	if len(o.Items) > 0 && o.Items[0].Source == "file" {
+		return false
+	}
+
 	if o.TypedQuery == "" {
 		return false
 	}

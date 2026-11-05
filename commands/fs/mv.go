@@ -8,7 +8,6 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "mv",
 		Description: "move (rename) files",
-		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-i", Description: "interactive"},
 			{Name: "-f", Description: "force (overwrite)"},

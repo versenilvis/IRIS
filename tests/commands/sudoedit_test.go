@@ -12,9 +12,6 @@ func TestSudoeditSpec(t *testing.T) {
 	if s == nil {
 		t.Fatal("expected sudoedit spec to be registered")
 	}
-	if s.Generator == nil {
-		t.Fatal("expected sudoedit to have file generator")
-	}
 
 	foundAskpass := false
 	for _, opt := range s.Options {

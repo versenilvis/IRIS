@@ -46,6 +46,12 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 	// always call lookup to scan aliases and get spec suggestions
 	logger.Debugf("Merge Calling Lookup for '%s'", query)
 	cmdResults := spec.Lookup(query)
+	if len(cmdResults) > 0 && cmdResults[0].Source == "file" {
+		for _, s := range cmdResults {
+			addSuggestion(s)
+		}
+		return deduped[:min(len(deduped), maxSugg)]
+	}
 
 	if mode == "history" {
 		aliases := spec.GetAliasesCopy()

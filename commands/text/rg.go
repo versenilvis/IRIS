@@ -8,7 +8,6 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "rg",
 		Description: "ripgrep (fast search)",
-		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-i", Description: "case insensitive"},
 			{Name: "-s", Description: "case sensitive"},

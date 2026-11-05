@@ -8,7 +8,6 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "rm",
 		Description: "remove files or directories",
-		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-r", Description: "recursive"},
 			{Name: "-f", Description: "force"},

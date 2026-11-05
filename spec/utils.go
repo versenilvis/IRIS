@@ -7,6 +7,11 @@ import (
 // SplitAliasTokens parses the input string into shell-like tokens handling quotes
 // example: SplitAliasTokens("git commit -m \"hello world\"")
 func Tokenize(s string) []string {
+	tokens, _ := tokenize(s)
+	return tokens
+}
+
+func tokenize(s string) ([]string, rune) {
 	tokens := []string{}
 	var current strings.Builder
 	inQuote := false
@@ -39,7 +44,10 @@ func Tokenize(s string) []string {
 	}
 
 	tokens = append(tokens, current.String())
-	return tokens
+	if !inQuote {
+		quoteChar = 0
+	}
+	return tokens, quoteChar
 }
 
 // HasPrefix checks if s starts with prefix using case-insensitive matching

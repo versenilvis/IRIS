@@ -204,3 +204,52 @@ func FileGenerator(filters ...string) GeneratorFunc {
 		return results
 	}
 }
+
+var fileGenerator = FileGenerator()
+
+// Strip assignment and redirection prefixes because FileGenerator expects a path fragment,
+// allowing file lookup even when the surrounding command is invalid.
+func fileSuggestions(input string, tokens []string, quote rune) []Suggestion {
+	partial := tokens[len(tokens)-1]
+	for partial != "" {
+		if strings.ContainsAny(partial, "/\\") {
+			var results []Suggestion
+			for _, result := range fileGenerator(tokens, "", partial) {
+				if !strings.HasPrefix(result.Cmd, partial) {
+					continue
+				}
+				result.Cmd = input + escapeFilePath(result.Cmd[len(partial):], byte(quote))
+				if quote != 0 && result.Desc != "directory" {
+					result.Cmd += string(quote)
+				}
+				result.Source = "file"
+				result.Confidence = 50
+				results = append(results, result)
+			}
+			if len(results) > 0 {
+				return results
+			}
+		}
+		i := strings.IndexAny(partial, "=<>|;&:")
+		if i < 0 || strings.HasPrefix(partial[i:], "://") {
+			break
+		}
+		partial = partial[i+1:]
+	}
+	return nil
+}
+
+func escapeFilePath(suffix string, quote byte) string {
+	var escaped strings.Builder
+	for _, c := range suffix {
+		if quote == '\'' && c == '\'' {
+			escaped.WriteString("'\\''")
+			continue
+		}
+		if quote == 0 && strings.ContainsRune(" \t\n\r\\\"'`$&;|<>(){}[]*?!#~", c) || quote == '"' && strings.ContainsRune("\\\"`$", c) {
+			escaped.WriteByte('\\')
+		}
+		escaped.WriteRune(c)
+	}
+	return escaped.String()
+}

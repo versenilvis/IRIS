@@ -8,7 +8,6 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "grep",
 		Description: "search text in files",
-		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-r", Description: "recursive"},
 			{Name: "-R", Description: "recursive + follow symlinks"},
@@ -41,7 +40,6 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "egrep",
 		Description: "grep with extended regex",
-		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-r", Description: "recursive"},
 			{Name: "-i", Description: "ignore case"},

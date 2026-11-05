@@ -9,7 +9,6 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "awk",
 		Description: "pattern-directed scanning",
-		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-F", Description: "field separator"},
 			{Name: "-v", Description: "assign variable"},
@@ -24,7 +23,6 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "gawk",
 		Description: "GNU awk",
-		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-F", Description: "field separator"},
 			{Name: "-v", Description: "assign variable"},
@@ -39,7 +37,6 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "sed",
 		Description: "stream editor",
-		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-e", Description: "add expression"},
 			{Name: "-f", Description: "read script from file"},
@@ -84,7 +81,6 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "sort",
 		Description: "sort lines of text",
-		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-n", Description: "numeric sort"},
 			{Name: "-r", Description: "reverse sort"},
@@ -103,7 +99,6 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "uniq",
 		Description: "filter adjacent duplicate lines",
-		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-c", Description: "prefix count"},
 			{Name: "-d", Description: "only duplicates"},
@@ -118,7 +113,6 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "cut",
 		Description: "extract columns from lines",
-		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-d", Description: "delimiter"},
 			{Name: "-f", Description: "field numbers (e.g. 1,3 or 1-3)"},
@@ -131,7 +125,6 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "tee",
 		Description: "read stdin, write to stdout and files",
-		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-a", Description: "append to files"},
 			{Name: "-i", Description: "ignore interrupts"},

@@ -8,7 +8,6 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "ls",
 		Description: "list directory contents",
-		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-a", Description: "all files"},
 			{Name: "-l", Description: "long format"},

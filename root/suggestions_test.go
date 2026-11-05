@@ -1,11 +1,31 @@
 package root
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/versenilvis/iris/integration"
 	"github.com/versenilvis/iris/spec"
 	"github.com/versenilvis/iris/spec/alias"
 )
+
+func TestPathResultsOverrideHistoryAndAI(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "file.txt"), nil, 0644); err != nil {
+		t.Fatal(err)
+	}
+	query := "ROOT=" + dir + "/fi"
+	integration.RecordSessionCommand(query + "missing-history")
+	SetCurrentAISuggestion(&spec.Suggestion{Cmd: query + "missing-ai", Source: "ai", Confidence: 100})
+	t.Cleanup(func() { SetCurrentAISuggestion(nil) })
+	for _, mode := range []string{"spec", "history"} {
+		results := MergeResults(query, mode)
+		if len(results) != 1 || results[0].Cmd != query+"le.txt" {
+			t.Errorf("%s mode should return only the existing file, got %v", mode, results)
+		}
+	}
+}
 
 func TestMergeResults(t *testing.T) {
 

@@ -4,7 +4,11 @@ The `FileGenerator` is a dynamic suggestion engine bridging static command specs
 
 ## How it works
 
-The generator is assigned to commands or options expecting file path arguments (e.g. `cat`, `go run`).
+File lookup is the default for command arguments, so commands do not register an unfiltered file generator. Existing directory/extension filters and custom generators (such as git, chmod, and zoxide) keep their special handling.
+
+A matching path also triggers lookup for unknown commands, invalid subcommands, assignments such as `export ROOT=./src/`, and redirections. Command validation and argument limits cannot block this fallback. The lookup preserves quotes and shell syntax when extending a path.
+
+File results take priority over history and AI suggestions when an existing path is being entered.
 
 ### Path resolution
 

@@ -8,7 +8,6 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "xed",
 		Description: "Xcode text editor invocation tool",
-		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "--launch", Description: "Launches Xcode, opening a new empty unsaved file"},
 			{Name: "--create", Description: "Selects the given line in the last file opened"},

@@ -8,7 +8,6 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "vim",
 		Description: "Vi IMproved, a programmer",
-		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-v", Description: "Vi mode (like 'vi')"},
 			{Name: "-e", Description: "Ex mode (like 'ex')"},

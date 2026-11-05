@@ -9,7 +9,6 @@ func init() {
 		Name:        "rich",
 		Description: "Rich terminal text formatting",
 		MaxArgs:     1,
-		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-p", Description: "Print console markup. See https://rich.readthedocs.io/en/latest/markup.html"},
 			{Name: "-u", Description: "Display a horizontal rule"},

@@ -8,7 +8,6 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "micro",
 		Description: "True/false",
-		Generator:   spec.FileGenerator(),
 		Subcommands: []spec.Subcommand{
 			{Name: "remove", Description: "Remove plugin(s)"},
 			{Name: "update", Description: "Update plugin(s) (if no argument is given, updates all plugins)"},

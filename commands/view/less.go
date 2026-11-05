@@ -9,6 +9,5 @@ func init() {
 		Name:        "less",
 		Description: "view file contents (scrollable)",
 		MaxArgs:     1,
-		Generator:   spec.FileGenerator(),
 	})
 }

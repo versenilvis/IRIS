@@ -8,7 +8,6 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "curl",
 		Description: "transfer data via URL",
-		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-X", Description: "request method (GET/POST/PUT/DELETE)"},
 			{Name: "-H", Description: "request header"},
@@ -38,7 +37,6 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "wget",
 		Description: "non-interactive downloader",
-		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-O", Description: "output filename"},
 			{Name: "-q", Description: "quiet"},

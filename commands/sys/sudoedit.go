@@ -8,7 +8,6 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "sudoedit",
 		Description: "Edit files as another user",
-		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-A", Description: "Use helper program for password prompting"},
 			{Name: "--askpass", Description: "Use helper program for password prompting"},

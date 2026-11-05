@@ -11,6 +11,48 @@ import (
 	"github.com/versenilvis/iris/spec/alias"
 )
 
+func TestLookupGlobalFileGenerator(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"hello.go", "hello.txt"} {
+		if err := os.WriteFile(filepath.Join(dir, name), nil, 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	originalRegistry, originalCWD := Registry, GetCWD()
+	Registry = map[string]*Spec{
+		"restricted": {Name: "restricted", Subcommands: []Subcommand{
+			{Name: "sub", MaxArgs: 1, Generator: FileGenerator(".go")},
+		}},
+	}
+	SetCWD(dir)
+	t.Cleanup(func() {
+		Registry = originalRegistry
+		SetCWD(originalCWD)
+	})
+
+	for _, prefix := range []string{"", "unknown ", "export ROOT=", "unknown --file=", "restricted ", "restricted invalid ", "restricted sub first ", "unknown>"} {
+		input := prefix + "./he"
+		results := Lookup(input)
+		if len(results) != 2 {
+			t.Errorf("Lookup(%q) = %v; want two file suggestions", input, results)
+		}
+		for _, result := range results {
+			if result.Cmd != prefix+"./hello.go" && result.Cmd != prefix+"./hello.txt" {
+				t.Errorf("Lookup(%q) returned unexpected %q", input, result.Cmd)
+			}
+		}
+	}
+	if results := Lookup(`export ROOT="./he`); len(results) != 2 || results[0].Cmd != `export ROOT="./hello.go"` {
+		t.Errorf("quoted assignment completion lost its syntax: %v", results)
+	}
+	for _, input := range []string{"restricted sub ", "restricted sub he", "restricted sub ./he"} {
+		results := Lookup(input)
+		if len(results) != 1 || !strings.HasSuffix(results[0].Cmd, "hello.go") {
+			t.Errorf("Lookup(%q) = %v; want the command's filtered .go suggestion", input, results)
+		}
+	}
+}
+
 func TestLookup(t *testing.T) {
 	// Setup Registry
 	Registry = make(map[string]*Spec)
@@ -463,5 +505,3 @@ func TestLiveAliasesAndAbbrs(t *testing.T) {
 		t.Errorf("expected livealias to be removed after ResetLiveAliases")
 	}
 }
-
-

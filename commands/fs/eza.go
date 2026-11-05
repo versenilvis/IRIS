@@ -8,7 +8,6 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "eza",
 		Description: "A modern replacement for ls",
-		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "-?", Description: "Show list of command-line options"},
 			{Name: "-v", Description: "Show version of eza"},

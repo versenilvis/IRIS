@@ -8,7 +8,6 @@ func init() {
 	spec.Register(&spec.Spec{
 		Name:        "lvim",
 		Description: "Hyperextensible Vim-based text editor",
-		Generator:   spec.FileGenerator(),
 		Options: []spec.Option{
 			{Name: "--cmd", Description: "Execute <cmd> before any config"},
 			{Name: "-c", Description: "Execute <cmd> after config and first file"},
