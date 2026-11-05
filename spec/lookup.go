@@ -125,7 +125,12 @@ func Lookup(input string) []Suggestion {
 			if len(aliasTokens) > 0 && aliasTokens[len(aliasTokens)-1] == "" {
 				aliasTokens = aliasTokens[:len(aliasTokens)-1]
 			}
-			tokens = append(aliasTokens, tokens[1:]...)
+			// The wrapper may already have expanded a self-referencing alias (e.g alias ls="ls
+			// --color=auto"), so we don't want to suggest infinitely
+			alreadyExpanded := len(tokens) >= len(aliasTokens) && slices.Equal(tokens[:len(aliasTokens)], aliasTokens)
+			if !alreadyExpanded {
+				tokens = append(aliasTokens, tokens[1:]...)
+			}
 		}
 	}
 
