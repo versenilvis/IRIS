@@ -185,6 +185,27 @@ func TestLookup_AliasExpansionFollowsConfig(t *testing.T) {
 	}
 }
 
+func TestLookup_AliasExpansionDoesNotRepeat(t *testing.T) {
+	originalRegistry, originalConfig := Registry, config.Get()
+	t.Cleanup(func() {
+		Registry = originalRegistry
+		config.Init(originalConfig)
+		ResetLiveAliases()
+	})
+	config.Init(config.DefaultConfig())
+	ResetRegistry()
+	SetLiveAliases(map[string]string{"ls": "ls --color=auto"})
+	Register(&Spec{
+		Name:    "ls",
+		Options: []Option{{Name: "--help"}},
+	})
+
+	results := Lookup("ls --color=auto ")
+	if len(results) != 1 || results[0].Cmd != "ls --color=auto --help" {
+		t.Fatalf("expected completion without repeated alias flags, got %v", results)
+	}
+}
+
 func TestLookup_NvimFileGenerator(t *testing.T) {
 	ResetRegistry()
 	Register(&Spec{
@@ -463,5 +484,3 @@ func TestLiveAliasesAndAbbrs(t *testing.T) {
 		t.Errorf("expected livealias to be removed after ResetLiveAliases")
 	}
 }
-
-
