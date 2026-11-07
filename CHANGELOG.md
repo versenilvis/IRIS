@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.8.0](https://github.com/versenilvis/iris/releases/tag/v0.8.0) - 2026-11-07
+
+### Bug fixes
+
+- Stop infinitely suggesting the same argument w/ self-referencing aliases ([#189](https://github.com/versenilvis/iris/issues/189)) ([d9402b](https://github.com/versenilvis/iris/commit/d9402b392bab507a4c275587efd2ebdb082750eb))
+
+### Features
+
+- Smart input, spec generator, and on-demand ai ([#191](https://github.com/versenilvis/iris/issues/191)) ([a7ad70](https://github.com/versenilvis/iris/commit/a7ad70a2cefbf70383d024f7eb0aa9fa9445674c))
+
 ## [v0.7.6](https://github.com/versenilvis/iris/releases/tag/v0.7.6) - 2026-10-29
 
 ### Bug fixes
