@@ -199,6 +199,8 @@ func runWrapper() {
 	var lastSubmittedCommand string
 	cursorOffset := 0
 	var bufferMu sync.Mutex
+	var bufferSynced atomic.Bool
+	bufferSynced.Store(true)
 	var userNavigated atomic.Bool
 	var renderMenuNow func()
 	var intercepted bool
@@ -735,6 +737,7 @@ func runWrapper() {
 
 			if query == "IRIS_CMD_START" {
 				isCommandActive.Store(true)
+				bufferSynced.Store(true)
 				bufferMu.Lock()
 				naiveBuffer = ""
 				cursorOffset = 0
@@ -823,6 +826,7 @@ func runWrapper() {
 			}
 
 			if line == "" {
+				bufferSynced.Store(true)
 				bufferMu.Lock()
 				wasEmpty := naiveBuffer == ""
 				naiveBuffer = ""
@@ -835,6 +839,7 @@ func runWrapper() {
 				continue
 			}
 
+			bufferSynced.Store(true)
 			bufferMu.Lock()
 			// the cursor alone moving still has to redraw, so it counts as a change
 			if naiveBuffer == line && cursorOffset == offset {
@@ -1211,6 +1216,7 @@ func runWrapper() {
 							disableGhostText.Store(newCfg.UI.GhostText == config.GhostTextOff)
 						}
 						msg := "echo -e '\\033[32m✓ Iris configuration reloaded successfully.\\033[0m'\r"
+						bufferSynced.Store(true)
 						bufferMu.Lock()
 						replace := shell.ReplaceLine([]byte(msg), cursorOffset)
 						naiveBuffer = ""
@@ -1227,6 +1233,7 @@ func runWrapper() {
 					}
 
 					integration.RecordSessionCommand(cmdToSubmit)
+					bufferSynced.Store(true)
 					bufferMu.Lock()
 					lastSubmittedCommand = strings.TrimSpace(cmdToSubmit)
 					naiveBuffer = ""
@@ -1377,6 +1384,7 @@ func runWrapper() {
 
 						isStandaloneEsc := n == 1 && b == '\033'
 						if !isLeftRightArrow && !isStandaloneEsc {
+							bufferSynced.Store(false)
 							bufferMu.Lock()
 							naiveBuffer = ""
 							cursorOffset = 0
@@ -1406,6 +1414,7 @@ func runWrapper() {
 					}
 					renderMu.Unlock()
 					isCommandActive.Store(false)
+					bufferSynced.Store(true)
 					_, _ = ptmx.Write([]byte{b})
 					bufferMu.Lock()
 					naiveBuffer = ""
@@ -1421,6 +1430,27 @@ func runWrapper() {
 				}
 
 				if !intercepted {
+					bufferMu.Lock()
+					decision := HandleAutoclose(b, naiveBuffer, cursorOffset, config.Get().Core.AutoClose, inBracketedPaste || n > 1, isAltScreenActive.Load(), bufferSynced.Load())
+					if decision.Action != AutocloseNone {
+						naiveBuffer = decision.NewBuffer
+						cursorOffset = decision.NewOffset
+						isEmptyNow := len(naiveBuffer) == 0
+						bufferMu.Unlock()
+
+						_, _ = ptmx.Write(decision.PtySequence)
+						if isEmptyNow {
+							writeStdout([]byte(overlay.ClearAndDisable()))
+							userNavigated.Store(false)
+						} else {
+							shouldOverlayDraw = true
+							userNavigated.Store(false)
+							overlay.SetUserNavigated(false)
+						}
+						continue
+					}
+					bufferMu.Unlock()
+
 					_, _ = ptmx.Write([]byte{b})
 					// we handle line editing keys manually to keep naiveBuffer in sync
 					// since terminal is in raw mode, we must update our state for every change

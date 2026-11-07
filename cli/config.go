@@ -59,6 +59,10 @@ expand-alias = true
 # automatically execute command after accepting suggestion
 auto-execute = false
 
+# automatically close brackets and quotes
+# conflicts with shell autopair plugins (e.g. zsh-autopair, fish autopair), do not enable both
+auto-close = false
+
 # 0 = off, 1 = atuin history only, 2 = atuin history + default history
 atuin-history = 0
 

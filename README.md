@@ -317,6 +317,7 @@ mode = "last"                  # "last", "spec", or "history"
 debug = false                  # verbose logging to iris.log (also: iris -d)
 expand-alias = true            # expand aliases on space and in suggestions
 auto-execute = false           # run suggestion immediately instead of inserting it
+auto-close = false             # automatically close brackets and quotes (conflicts with shell autopair plugins)
 atuin-history = 0              # 0 = shell history, 1 = atuin, 2 = both
 atuin-db-path = ""             # path to atuin's history.db, empty = use default
 cobra-probe-enabled = true     # fall back to probing cobra binaries for completions
@@ -375,6 +376,9 @@ timeout_ms = 5000  # ms before giving up
 
 > [!NOTE]
 > `ghost-text` used to be a boolean. Existing configs keep working: `true` is read as `1` and `false` as `0`, so there is nothing to change on upgrade.
+
+> [!NOTE]
+> `auto-close` conflicts with shell-side autopair plugins (such as `zsh-autopair` or fish autopair). Do not enable both at the same time.
 
 
 ## Default shortcuts

@@ -18,6 +18,11 @@ func applyEnv(cfg *Config) {
 	if val := os.Getenv("IRIS_CORE_MODE"); val != "" {
 		cfg.Core.Mode = val
 	}
+	if val := os.Getenv("IRIS_CORE_AUTO_CLOSE"); val != "" {
+		if b, err := strconv.ParseBool(val); err == nil {
+			cfg.Core.AutoClose = b
+		}
+	}
 	if val := os.Getenv("IRIS_UI_GHOST_TEXT"); val != "" {
 		if i, err := strconv.Atoi(val); err == nil {
 			cfg.UI.GhostText = GhostTextMode(i)

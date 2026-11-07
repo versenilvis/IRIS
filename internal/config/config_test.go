@@ -17,6 +17,9 @@ func TestDefaultConfigAndState(t *testing.T) {
 	if cfg.Core.ShellLogin {
 		t.Errorf("expected login shell to be disabled by default")
 	}
+	if cfg.Core.AutoClose {
+		t.Errorf("expected auto-close to be disabled by default")
+	}
 	if cfg.UI.MaxSuggestions != 100 {
 		t.Errorf("expected suggestions 100, got %d", cfg.UI.MaxSuggestions)
 	}
@@ -130,6 +133,7 @@ model = "qwen-2.5-coder-32b"
 	}
 
 	t.Setenv("IRIS_CORE_DEBUG", "true")
+	t.Setenv("IRIS_CORE_AUTO_CLOSE", "true")
 	t.Setenv("IRIS_CORE_SHELL", "fish")
 	t.Setenv("IRIS_CORE_MODE", "history")
 	t.Setenv("IRIS_UI_GHOST_TEXT", "0")
@@ -148,6 +152,9 @@ model = "qwen-2.5-coder-32b"
 
 	if !cfg.Core.Debug {
 		t.Errorf("expected debug to be true")
+	}
+	if !cfg.Core.AutoClose {
+		t.Errorf("expected auto-close to be true from env")
 	}
 	if !cfg.Core.ShellLogin {
 		t.Errorf("expected login shell to be enabled from TOML")
