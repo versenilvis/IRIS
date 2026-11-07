@@ -50,6 +50,36 @@ func TestMergeResults(t *testing.T) {
 		}
 	})
 
+	t.Run("AI Suggestion Overrides Existing History Metadata", func(t *testing.T) {
+		deduped := []spec.Suggestion{
+			{
+				Cmd:        "git checkout main",
+				Desc:       "history",
+				Icon:       "history",
+				Source:     "history",
+				Confidence: 70,
+			},
+		}
+		seen := map[string]bool{"git checkout main": true}
+		aiSugg := &spec.Suggestion{
+			Cmd:        "git checkout main",
+			Desc:       "ai suggestion",
+			Icon:       "ai",
+			Source:     "ai",
+			Confidence: 85,
+		}
+		SetCurrentAISuggestion(aiSugg)
+		defer SetCurrentAISuggestion(nil)
+
+		injectAISuggestion(&deduped, seen, "git ch")
+		if len(deduped) != 1 {
+			t.Fatalf("expected 1 suggestion, got %d", len(deduped))
+		}
+		if deduped[0].Desc != "ai suggestion" || deduped[0].Icon != "ai" || deduped[0].Source != "ai" {
+			t.Errorf("expected AI metadata to replace history metadata, got %+v", deduped[0])
+		}
+	})
+
 	t.Run("Tool Alias Preserved When Matching Query", func(t *testing.T) {
 		alias.Register(&mockGitProvider{})
 		defer alias.Reset()

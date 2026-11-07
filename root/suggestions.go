@@ -144,18 +144,15 @@ func injectAISuggestion(deduped *[]spec.Suggestion, seen map[string]bool, normal
 	if aiSugg := GetCurrentAISuggestion(); aiSugg != nil {
 		normalizedCmd := strings.TrimSpace(aiSugg.Cmd)
 		if normalizedCmd != "" && normalizedCmd != normalizedQuery {
-			isFix := aiSugg.Desc == "ai fix"
+			isFix := aiSugg.Desc == "ai fix" || aiSugg.Confidence == 100
 			if isFix || strings.HasPrefix(strings.ToLower(normalizedCmd), strings.ToLower(normalizedQuery)) {
 				if !seen[aiSugg.Cmd] {
 					seen[aiSugg.Cmd] = true
 					*deduped = append(*deduped, *aiSugg)
 				} else {
 					for i, item := range *deduped {
-						if item.Cmd == aiSugg.Cmd && aiSugg.Confidence > item.Confidence {
-							(*deduped)[i].Confidence = aiSugg.Confidence
-							if (*deduped)[i].Source == "" || (*deduped)[i].Source == "spec" || (*deduped)[i].Source == "history" {
-								(*deduped)[i].Source = "ai"
-							}
+						if item.Cmd == aiSugg.Cmd {
+							(*deduped)[i] = *aiSugg
 							break
 						}
 					}
