@@ -534,14 +534,29 @@ func (o *Overlay) ClearGhostTextState() {
 	o.LastGhostLen = 0
 }
 
+func (o *Overlay) clearGhostTextAtEnd(s *strings.Builder, padLen int) {
+	s.WriteString(ansi.SaveCursor)
+	if o.cursorOffset > 0 {
+		if rows := o.rowsBelowCursor(); rows > 0 {
+			s.WriteString(ansi.CursorDown(rows))
+		}
+		s.WriteString("\r")
+		if col := (o.PromptLen + lipgloss.Width(o.ScreenLine)) % termWidth(); col > 0 {
+			s.WriteString(ansi.CursorForward(col))
+		}
+	}
+	s.WriteString(strings.Repeat(" ", padLen))
+	s.WriteString(ansi.RestoreCursor)
+}
+
 func (o *Overlay) HideGhostTextSync() string {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	if o.LastGhostLen > 0 {
-		padLen := o.LastGhostLen + 4
-		res := ansi.SaveCursor + strings.Repeat(" ", padLen) + ansi.RestoreCursor
+		var s strings.Builder
+		o.clearGhostTextAtEnd(&s, o.LastGhostLen+4)
 		o.LastGhostLen = 0
-		return res
+		return s.String()
 	}
 	return ""
 }
@@ -552,9 +567,10 @@ func (o *Overlay) RenderGhostText(buffer string, userNavigated bool, cursorAtEnd
 
 	if !o.Visible || len(o.Items) == 0 {
 		if o.LastGhostLen > 0 {
-			padLen := o.LastGhostLen + 4
+			var s strings.Builder
+			o.clearGhostTextAtEnd(&s, o.LastGhostLen+4)
 			o.LastGhostLen = 0
-			return ansi.SaveCursor + strings.Repeat(" ", padLen) + ansi.RestoreCursor
+			return s.String()
 		}
 		return ""
 	}
@@ -1022,9 +1038,7 @@ func (o *Overlay) HideMenu(query string) string {
 	s.WriteString(ansi.ResetModeAutoWrap)
 
 	if o.LastGhostLen > 0 {
-		s.WriteString(ansi.SaveCursor)
-		s.WriteString(strings.Repeat(" ", o.LastGhostLen+10))
-		s.WriteString(ansi.RestoreCursor)
+		o.clearGhostTextAtEnd(&s, o.LastGhostLen+10)
 		o.LastGhostLen = 0
 	}
 
@@ -1055,9 +1069,7 @@ func (o *Overlay) ClearAndDisable() string {
 	s.WriteString(ansi.ResetModeAutoWrap)
 
 	if o.LastGhostLen > 0 {
-		s.WriteString(ansi.SaveCursor)
-		s.WriteString(strings.Repeat(" ", o.LastGhostLen+10))
-		s.WriteString(ansi.RestoreCursor)
+		o.clearGhostTextAtEnd(&s, o.LastGhostLen+10)
 		o.LastGhostLen = 0
 	}
 

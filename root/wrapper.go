@@ -1534,6 +1534,7 @@ func runWrapper() {
 						isEmptyNow := len(naiveBuffer) == 0
 						bufferMu.Unlock()
 
+						writeStdout([]byte(overlay.HideGhostTextSync()))
 						_, _ = ptmx.Write(decision.PtySequence)
 						if isEmptyNow {
 							writeStdout([]byte(overlay.ClearAndDisable()))
@@ -1642,6 +1643,7 @@ func runWrapper() {
 								naiveBuffer = target + " "
 								cursorOffset = 0
 								bufferMu.Unlock()
+								writeStdout([]byte(overlay.HideGhostTextSync()))
 								// clear the current alias and replace it with the full command
 								_, _ = ptmx.Write(replace)
 								shouldOverlayDraw = true
