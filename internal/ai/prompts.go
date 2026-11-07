@@ -12,7 +12,7 @@ RULES:
 2. Output ONLY the completed shell command line. No explanation, no markdown, no code fences, no backticks.
 3. If an argument contains spaces or parentheses (e.g. a git commit message), wrap that argument in double quotes "...".
 4. If nothing meaningful can be added, return the buffer unchanged.
-5. Base your completion only on the context given below. Do not invent container names, branch names, file names, or other facts not present in the context.
+5. Base your completion only on the context given below. Always use real, valid, working commands and official subcommands supported by the tool (for example: "hyprctl monitors" not "hyprctl monitor"). Do not invent non-existent subcommands, flags, container names, branch names, or file names.
 
 EXAMPLES:
 
@@ -66,13 +66,13 @@ func BuildCompletionPrompt(buf string, env EnvSnapshot, dynamicCtx string) strin
 }
 
 const FixSystemPrompt = `You are a concise shell command repair assistant.
-A previous shell command failed with a non-zero exit code. Suggest a corrected command line to fix the failure.
+A shell command failed or needs correction. Suggest a working, corrected command line to fix the failure.
 
 RULES:
 1. Output ONLY the fixed shell command line. No explanation, no markdown, no code fences, no backticks.
 2. If an argument contains spaces or parentheses, wrap that argument in double quotes "...".
-3. Base your fix only on the failed command, exit code, and context (cwd, git status, recent commands).
-4. Do not invent container names, branch names, file names, or flags not supported by the tool.`
+3. Base your fix only on the command, exit code, and context (cwd, git status, recent commands).
+4. The fixed command MUST be a valid, real, functional shell command that actually works (for example: "hyprctl monitors" instead of "hyprctl monitor"). Do not invent flags or subcommands not supported by the tool.`
 
 func BuildFixPrompt(failedCmd string, exitCode int, env EnvSnapshot) string {
 	var sb strings.Builder
