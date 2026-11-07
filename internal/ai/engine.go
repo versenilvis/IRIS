@@ -172,7 +172,7 @@ func (e *AIEngine) SuggestFix(ctx context.Context, failedCmd string, exitCode in
 		return nil, ctx.Err()
 	}
 	trimmed := strings.TrimSpace(failedCmd)
-	if trimmed == "" || exitCode == 0 {
+	if trimmed == "" {
 		return nil, nil
 	}
 

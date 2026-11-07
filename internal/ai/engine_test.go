@@ -149,12 +149,9 @@ func TestAIEngine_SuggestFix(t *testing.T) {
 	ctx := context.Background()
 	engine := NewAIEngine(nil)
 
-	// empty command or zero exit code returns nil
+	// empty command returns nil
 	if s, err := engine.SuggestFix(ctx, "", 1, EnvSnapshot{}); err != nil || s != nil {
 		t.Errorf("expected nil for empty command, got %v, %v", s, err)
-	}
-	if s, err := engine.SuggestFix(ctx, "git push", 0, EnvSnapshot{}); err != nil || s != nil {
-		t.Errorf("expected nil for zero exit code, got %v, %v", s, err)
 	}
 
 	callCount := 0

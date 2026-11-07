@@ -178,6 +178,6 @@ func (c *OpenAIClient) SuggestFix(ctx context.Context, failedCmd string, exitCod
 		Desc:       "ai fix",
 		Icon:       "ai",
 		Source:     string(SourceAI),
-		Confidence: 85,
+		Confidence: 100,
 	}, nil
 }

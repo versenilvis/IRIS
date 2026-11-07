@@ -81,6 +81,16 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 		sort.SliceStable(deduped, func(i, j int) bool {
 			return deduped[i].Confidence > deduped[j].Confidence
 		})
+		if aiSugg := GetCurrentAISuggestion(); aiSugg != nil {
+			for i, s := range deduped {
+				if s.Cmd == aiSugg.Cmd && s.Source == "ai" {
+					if i > 0 {
+						deduped = append([]spec.Suggestion{s}, append(deduped[:i], deduped[i+1:]...)...)
+					}
+					break
+				}
+			}
+		}
 		if len(deduped) > maxSugg {
 			return deduped[:maxSugg]
 		}
@@ -133,18 +143,21 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 func injectAISuggestion(deduped *[]spec.Suggestion, seen map[string]bool, normalizedQuery string) {
 	if aiSugg := GetCurrentAISuggestion(); aiSugg != nil {
 		normalizedCmd := strings.TrimSpace(aiSugg.Cmd)
-		if normalizedCmd != "" && normalizedCmd != normalizedQuery && strings.HasPrefix(strings.ToLower(normalizedCmd), strings.ToLower(normalizedQuery)) {
-			if !seen[aiSugg.Cmd] {
-				seen[aiSugg.Cmd] = true
-				*deduped = append(*deduped, *aiSugg)
-			} else {
-				for i, item := range *deduped {
-					if item.Cmd == aiSugg.Cmd && aiSugg.Confidence > item.Confidence {
-						(*deduped)[i].Confidence = aiSugg.Confidence
-						if (*deduped)[i].Source == "" || (*deduped)[i].Source == "spec" || (*deduped)[i].Source == "history" {
-							(*deduped)[i].Source = "ai"
+		if normalizedCmd != "" && normalizedCmd != normalizedQuery {
+			isFix := aiSugg.Desc == "ai fix"
+			if isFix || strings.HasPrefix(strings.ToLower(normalizedCmd), strings.ToLower(normalizedQuery)) {
+				if !seen[aiSugg.Cmd] {
+					seen[aiSugg.Cmd] = true
+					*deduped = append(*deduped, *aiSugg)
+				} else {
+					for i, item := range *deduped {
+						if item.Cmd == aiSugg.Cmd && aiSugg.Confidence > item.Confidence {
+							(*deduped)[i].Confidence = aiSugg.Confidence
+							if (*deduped)[i].Source == "" || (*deduped)[i].Source == "spec" || (*deduped)[i].Source == "history" {
+								(*deduped)[i].Source = "ai"
+							}
+							break
 						}
-						break
 					}
 				}
 			}

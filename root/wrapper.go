@@ -1125,11 +1125,22 @@ func runWrapper() {
 				if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.AIFix); matched && config.Get().Keybindings.AIFix != "" {
 					cfg := config.Get()
 					bufferMu.Lock()
-					isBufEmpty := naiveBuffer == ""
+					currentBuf := naiveBuffer
 					bufferMu.Unlock()
 					prevCmd, prevCwd, prevExitCode := getPrevRecordedCommandAndExitCode()
 
-					if cfg.AI.Enabled && isBufEmpty && prevCmd != "" && prevExitCode != 0 {
+					targetCmd := strings.TrimSpace(currentBuf)
+					targetExitCode := 0
+					targetCwd := spec.GetCWD()
+					if targetCmd == "" {
+						targetCmd = strings.TrimSpace(prevCmd)
+						targetExitCode = prevExitCode
+						if prevCwd != "" {
+							targetCwd = prevCwd
+						}
+					}
+
+					if cfg.AI.Enabled && targetCmd != "" {
 						if _, ok := cfg.AI.GetActiveProvider(); ok {
 							intercepted = true
 							i += consumed - 1
@@ -1142,7 +1153,7 @@ func runWrapper() {
 							aiCancel = cancel
 							aiMu.Unlock()
 
-							go func(failedCmd, cwd string, code int) {
+							go func(failedCmd, cwd string, code int, initiatedWithEmptyBuf bool) {
 								defer cancel()
 								var recentCmds []string
 								if hist, err := integration.SearchHistory("", nil); err == nil {
@@ -1155,18 +1166,20 @@ func runWrapper() {
 								if err != nil || sugg == nil || ctx.Err() != nil {
 									return
 								}
-								bufferMu.Lock()
-								bufEmptyNow := naiveBuffer == ""
-								bufferMu.Unlock()
-								if !bufEmptyNow {
-									return
+								if initiatedWithEmptyBuf {
+									bufferMu.Lock()
+									bufEmptyNow := naiveBuffer == ""
+									bufferMu.Unlock()
+									if !bufEmptyNow {
+										return
+									}
 								}
 								SetCurrentAISuggestion(sugg)
 								overlay.Show()
 								if renderer, ok := renderOverlayFn.Load().(func()); ok {
 									renderer()
 								}
-							}(prevCmd, prevCwd, prevExitCode)
+							}(targetCmd, targetCwd, targetExitCode, currentBuf == "")
 							continue
 						}
 					}
