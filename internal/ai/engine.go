@@ -19,7 +19,9 @@ type suggestionCacheItem struct {
 
 type AIEngine struct {
 	handler        AIHandler
+	fixHandler     AIFixHandler
 	cache          *ProviderCache
+	fixCache       *ContextCache
 	providers      []ContextProvider
 	lastCallTime   time.Time
 	rateLimitUntil time.Time
@@ -32,10 +34,18 @@ func NewAIEngine(h AIHandler) *AIEngine {
 		h = defaultAIHandler
 	}
 	return &AIEngine{
-		handler:   h,
-		cache:     NewProviderCache(4 * time.Second),
-		providers: []ContextProvider{},
+		handler:    h,
+		fixHandler: defaultAIFixHandler,
+		cache:      NewProviderCache(4 * time.Second),
+		fixCache:   NewContextCache(),
+		providers:  []ContextProvider{},
 	}
+}
+
+func (e *AIEngine) SetFixHandler(h AIFixHandler) {
+	e.mu.Lock()
+	e.fixHandler = h
+	e.mu.Unlock()
 }
 
 func (e *AIEngine) RegisterProvider(p ContextProvider) {
@@ -155,4 +165,91 @@ func defaultAIHandler(ctx context.Context, buf string, env EnvSnapshot, dynamicC
 		return nil, err
 	}
 	return client.Suggest(ctx, buf, env, dynamicCtx)
+}
+
+func (e *AIEngine) SuggestFix(ctx context.Context, failedCmd string, exitCode int, env EnvSnapshot) (*spec.Suggestion, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+	trimmed := strings.TrimSpace(failedCmd)
+	if trimmed == "" || exitCode == 0 {
+		return nil, nil
+	}
+
+	if env.LastCmd == "" {
+		env.LastCmd = trimmed
+	}
+	if env.LastExitCode == 0 {
+		env.LastExitCode = exitCode
+	}
+
+	e.mu.Lock()
+	if !e.rateLimitUntil.IsZero() && time.Now().Before(e.rateLimitUntil) {
+		e.mu.Unlock()
+		return nil, nil
+	}
+	e.mu.Unlock()
+
+	minIntervalMS := config.Get().AI.MinIntervalMS
+	if minIntervalMS <= 0 {
+		minIntervalMS = 1000
+	}
+	if e.fixCache != nil && !e.fixCache.ShouldCallAI(env, time.Duration(minIntervalMS)*time.Millisecond) {
+		if cached := e.fixCache.GetCachedSuggestion(env); cached != nil {
+			cachedCopy := *cached
+			return &cachedCopy, nil
+		}
+	}
+
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
+	e.mu.Lock()
+	handler := e.fixHandler
+	if handler == nil {
+		handler = defaultAIFixHandler
+	}
+	e.mu.Unlock()
+
+	sugg, err := handler(ctx, trimmed, exitCode, env)
+	if err != nil {
+		errStr := strings.ToLower(err.Error())
+		if strings.Contains(errStr, "429") || strings.Contains(errStr, "rate limit") || strings.Contains(errStr, "too many requests") {
+			e.mu.Lock()
+			e.rateLimitUntil = time.Now().Add(20 * time.Second)
+			e.mu.Unlock()
+			logger.Warnf("AI provider rate limited (HTTP 429). Cooldown for 20s. Error: %v", err)
+		} else {
+			logger.Debugf("AI provider error for fix: %v", err)
+		}
+		return nil, err
+	}
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+	if sugg != nil {
+		if e.fixCache != nil {
+			e.fixCache.Update(env, sugg)
+		}
+		cachedCopy := *sugg
+		return &cachedCopy, nil
+	}
+	return nil, nil
+}
+
+func defaultAIFixHandler(ctx context.Context, failedCmd string, exitCode int, env EnvSnapshot) (*spec.Suggestion, error) {
+	cfg := config.Get()
+	if !cfg.AI.Enabled {
+		return nil, nil
+	}
+	pCfg, ok := cfg.AI.GetActiveProvider()
+	if !ok {
+		return nil, nil
+	}
+	client, err := NewClient(pCfg)
+	if err != nil {
+		return nil, err
+	}
+	return client.SuggestFix(ctx, failedCmd, exitCode, env)
 }

@@ -483,3 +483,24 @@ func TestGhostTextEnvAcceptsBoolAndInt(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateAIFixKeybinding(t *testing.T) {
+	cfg := DefaultConfig()
+	if cfg.Keybindings.AIFix != "" {
+		t.Errorf("expected default ai-fix keybinding to be empty (disabled), got %q", cfg.Keybindings.AIFix)
+	}
+
+	for _, valid := range []string{"ctrl+f", "ctrl+x", "shift+tab", "tab", "up", "none", "off", ""} {
+		cfg.Keybindings.AIFix = valid
+		if err := validate(cfg); err != nil {
+			t.Errorf("expected keybinding %q to be valid, got error: %v", valid, err)
+		}
+	}
+
+	for _, invalid := range []string{"ctrl+m", "enter", "cr", "return", "invalid_combo"} {
+		cfg.Keybindings.AIFix = invalid
+		if err := validate(cfg); err == nil {
+			t.Errorf("expected keybinding %q to be rejected", invalid)
+		}
+	}
+}

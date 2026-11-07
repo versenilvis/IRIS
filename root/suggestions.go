@@ -75,14 +75,17 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 		addSuggestion(s)
 	}
 
+	injectAISuggestion(&deduped, seen, normalizedQuery)
+
 	if mode == "history" && normalizedQuery == "" {
+		sort.SliceStable(deduped, func(i, j int) bool {
+			return deduped[i].Confidence > deduped[j].Confidence
+		})
 		if len(deduped) > maxSugg {
 			return deduped[:maxSugg]
 		}
 		return deduped
 	}
-
-	injectAISuggestion(&deduped, seen, normalizedQuery)
 
 	var finalResults []spec.Suggestion
 	if mode == "history" {
@@ -107,6 +110,17 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 		finalResults = make([]spec.Suggestion, 0, len(scored))
 		for _, sc := range scored {
 			finalResults = append(finalResults, sc.Suggestion)
+		}
+	}
+
+	if aiSugg := GetCurrentAISuggestion(); aiSugg != nil {
+		for i, s := range finalResults {
+			if s.Cmd == aiSugg.Cmd && s.Source == "ai" {
+				if i > 0 {
+					finalResults = append([]spec.Suggestion{s}, append(finalResults[:i], finalResults[i+1:]...)...)
+				}
+				break
+			}
 		}
 	}
 

@@ -32,9 +32,10 @@ import (
 )
 
 var (
-	prevRecordedCommand string
-	prevCmdCwd          string
-	prevCmdMu           sync.Mutex
+	prevRecordedCommand  string
+	prevCmdCwd           string
+	prevRecordedExitCode int
+	prevCmdMu            sync.Mutex
 )
 
 func getPrevSkeleton() string {
@@ -55,11 +56,18 @@ func getPrevRecordedInfo() (string, string) {
 	return scoring.ExtractSkeleton(prevRecordedCommand), prevCmdCwd
 }
 
-func setPrevRecordedInfo(cmd, cwd string) {
+func getPrevRecordedCommandAndExitCode() (string, string, int) {
+	prevCmdMu.Lock()
+	defer prevCmdMu.Unlock()
+	return prevRecordedCommand, prevCmdCwd, prevRecordedExitCode
+}
+
+func setPrevRecordedInfo(cmd, cwd string, exitCode int) {
 	prevCmdMu.Lock()
 	defer prevCmdMu.Unlock()
 	prevRecordedCommand = cmd
 	prevCmdCwd = cwd
+	prevRecordedExitCode = exitCode
 }
 
 func loadMode() string {
@@ -519,7 +527,8 @@ func runWrapper() {
 		return pgrp != shellPGID
 	}
 
-	suggestionsEnabled := config.Get().UI.GhostText != config.GhostTextIndividual
+	var suggestionsEnabled atomic.Bool
+	suggestionsEnabled.Store(config.Get().UI.GhostText != config.GhostTextIndividual)
 
 	// Shared handler for configured navigation keys (e.g. ctrl+j / ctrl+k).
 	// Moves the overlay cursor when visible, otherwise opens history/spec
@@ -578,7 +587,7 @@ func runWrapper() {
 			} else {
 				draw()
 			}
-		} else if suggestionsEnabled {
+		} else if suggestionsEnabled.Load() {
 			// hidden-overlay history navigation only when suggestions are enabled;
 			// otherwise let the navigation keys pass through to the shell
 			intercepted = true
@@ -782,7 +791,7 @@ func runWrapper() {
 							}
 						}
 					}(cmdToRecord, cwd, exitCode, prevSkeleton, prevCwd, currSkeleton)
-					setPrevRecordedInfo(cmdToRecord, cwd)
+					setPrevRecordedInfo(cmdToRecord, cwd, exitCode)
 				}
 				// hook: after user executes a command, print the update notice exactly once per session
 				if !updatePrinted {
@@ -941,7 +950,11 @@ func runWrapper() {
 						lastCmd = recentCmds[0]
 					}
 				}
-				env := ai.NewEnvSnapshot(cwd, lastCmd, 0, recentCmds)
+				lastCode := 0
+				if prevCmd, _, prevCode := getPrevRecordedCommandAndExitCode(); prevCmd == lastCmd {
+					lastCode = prevCode
+				}
+				env := ai.NewEnvSnapshot(cwd, lastCmd, lastCode, recentCmds)
 				sugg, err := GetAIEngine().Suggest(ctx, queryTarget, env, "")
 				if err != nil || sugg == nil || ctx.Err() != nil {
 					return
@@ -993,7 +1006,7 @@ func runWrapper() {
 		}
 		currentCmd := overlay.GetCurrentCmd()
 		logger.Debugf("RenderOverlay nav: %v, typedQuery: '%s', currentCmd: '%s'", navCopy, overlay.GetTypedQuery(), currentCmd)
-		if menuOnlyHidden(config.Get().UI.GhostText, suggestionsEnabled) {
+		if menuOnlyHidden(config.Get().UI.GhostText, suggestionsEnabled.Load()) {
 			// Clear() erases the drawn box without dropping item state, so the
 			// ghost text written above still has a suggestion behind it
 			b.WriteString(overlay.Clear())
@@ -1007,7 +1020,7 @@ func runWrapper() {
 		renderMu.Lock()
 		defer renderMu.Unlock()
 
-		if isExecuting() || (!suggestionsEnabled && !menuOnlyHidden(config.Get().UI.GhostText, suggestionsEnabled)) {
+		if isExecuting() || (!suggestionsEnabled.Load() && !menuOnlyHidden(config.Get().UI.GhostText, suggestionsEnabled.Load())) {
 			if renderTimer != nil {
 				renderTimer.Stop()
 				renderTimer = nil
@@ -1066,9 +1079,10 @@ func runWrapper() {
 
 				if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.ToggleMenu); matched {
 					intercepted = true
-					suggestionsEnabled = !suggestionsEnabled
-					if !suggestionsEnabled {
-						if menuOnlyHidden(config.Get().UI.GhostText, suggestionsEnabled) {
+					newVal := !suggestionsEnabled.Load()
+					suggestionsEnabled.Store(newVal)
+					if !newVal {
+						if menuOnlyHidden(config.Get().UI.GhostText, newVal) {
 							writeStdout([]byte(overlay.Clear()))
 						} else {
 							writeStdout([]byte(overlay.ClearAndDisable()))
@@ -1106,6 +1120,56 @@ func runWrapper() {
 					overlay.Show()
 					shouldOverlayDraw = true
 					continue
+				}
+
+				if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.AIFix); matched && config.Get().Keybindings.AIFix != "" {
+					cfg := config.Get()
+					bufferMu.Lock()
+					isBufEmpty := naiveBuffer == ""
+					bufferMu.Unlock()
+					prevCmd, prevCwd, prevExitCode := getPrevRecordedCommandAndExitCode()
+
+					if cfg.AI.Enabled && isBufEmpty && prevCmd != "" && prevExitCode != 0 {
+						if _, ok := cfg.AI.GetActiveProvider(); ok {
+							intercepted = true
+							i += consumed - 1
+							suggestionsEnabled.Store(true)
+							aiMu.Lock()
+							if aiCancel != nil {
+								aiCancel()
+							}
+							ctx, cancel := context.WithCancel(context.Background())
+							aiCancel = cancel
+							aiMu.Unlock()
+
+							go func(failedCmd, cwd string, code int) {
+								defer cancel()
+								var recentCmds []string
+								if hist, err := integration.SearchHistory("", nil); err == nil {
+									for j := 0; j < len(hist) && j < 3; j++ {
+										recentCmds = append(recentCmds, hist[j].Cmd)
+									}
+								}
+								env := ai.NewEnvSnapshot(cwd, failedCmd, code, recentCmds)
+								sugg, err := GetAIEngine().SuggestFix(ctx, failedCmd, code, env)
+								if err != nil || sugg == nil || ctx.Err() != nil {
+									return
+								}
+								bufferMu.Lock()
+								bufEmptyNow := naiveBuffer == ""
+								bufferMu.Unlock()
+								if !bufEmptyNow {
+									return
+								}
+								SetCurrentAISuggestion(sugg)
+								overlay.Show()
+								if renderer, ok := renderOverlayFn.Load().(func()); ok {
+									renderer()
+								}
+							}(prevCmd, prevCwd, prevExitCode)
+							continue
+						}
+					}
 				}
 
 				var isNavUp, isNavDown bool

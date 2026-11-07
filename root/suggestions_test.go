@@ -98,7 +98,7 @@ func TestPrevRecordedCommandState(t *testing.T) {
 		},
 	})
 
-	setPrevRecordedInfo("git checkout feature-abc", "/repo/dir")
+	setPrevRecordedInfo("git checkout feature-abc", "/repo/dir", 1)
 	skel, cwd := getPrevRecordedInfo()
 	if skel != "git checkout" || cwd != "/repo/dir" {
 		t.Errorf("expected skel='git checkout' and cwd='/repo/dir', got skel=%q, cwd=%q", skel, cwd)
@@ -106,9 +106,43 @@ func TestPrevRecordedCommandState(t *testing.T) {
 	if gotSkel := getPrevSkeleton(); gotSkel != "git checkout" {
 		t.Errorf("expected getPrevSkeleton()='git checkout', got %q", gotSkel)
 	}
+	if cmd, cDir, code := getPrevRecordedCommandAndExitCode(); cmd != "git checkout feature-abc" || cDir != "/repo/dir" || code != 1 {
+		t.Errorf("expected cmd='git checkout feature-abc', cwd='/repo/dir', code=1, got cmd=%q, cwd=%q, code=%d", cmd, cDir, code)
+	}
 
-	setPrevRecordedInfo("", "")
+	setPrevRecordedInfo("", "", 0)
 	if gotSkel := getPrevSkeleton(); gotSkel != "" {
 		t.Errorf("expected empty getPrevSkeleton() after reset, got %q", gotSkel)
+	}
+	if _, _, code := getPrevRecordedCommandAndExitCode(); code != 0 {
+		t.Errorf("expected exit code 0 after reset, got %d", code)
+	}
+}
+
+func TestMergeResults_AIFixPromotionOnEmptyQuery(t *testing.T) {
+	aiSugg := &spec.Suggestion{
+		Cmd:        "docker ps",
+		Desc:       "ai fix",
+		Icon:       "ai",
+		Source:     "ai",
+		Confidence: 85,
+	}
+	SetCurrentAISuggestion(aiSugg)
+	defer SetCurrentAISuggestion(nil)
+
+	resHist := MergeResults("", "history")
+	if len(resHist) == 0 {
+		t.Fatalf("expected suggestions, got 0")
+	}
+	if resHist[0].Cmd != "docker ps" || resHist[0].Source != "ai" {
+		t.Errorf("expected top suggestion 'docker ps' with source 'ai' in history mode, got %+v", resHist[0])
+	}
+
+	resSpec := MergeResults("", "spec")
+	if len(resSpec) == 0 {
+		t.Fatalf("expected suggestions, got 0")
+	}
+	if resSpec[0].Cmd != "docker ps" || resSpec[0].Source != "ai" {
+		t.Errorf("expected top suggestion 'docker ps' with source 'ai' in spec mode, got %+v", resSpec[0])
 	}
 }

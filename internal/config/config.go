@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -111,6 +112,7 @@ type KeybindingsConfig struct {
 	NavigateUp       string `toml:"navigate-up"`
 	NavigateDown     string `toml:"navigate-down"`
 	NavigateRight    string `toml:"navigate-right"`
+	AIFix            string `toml:"ai-fix"`
 }
 
 type ZoxideConfig struct {
@@ -360,5 +362,36 @@ func validate(cfg *Config) error {
 		return fmt.Errorf("ui.max-height: must be between 1 and 50")
 	}
 
+	if err := validateKeybinding(cfg.Keybindings.AIFix); err != nil {
+		return fmt.Errorf("keybindings.ai-fix: %w", err)
+	}
+
 	return nil
+}
+
+func validateKeybinding(k string) error {
+	k = strings.ToLower(strings.TrimSpace(k))
+	k = strings.TrimPrefix(k, "<")
+	k = strings.TrimSuffix(k, ">")
+	k = strings.ReplaceAll(k, "-", "+")
+	if k == "" || k == "none" || k == "off" {
+		return nil
+	}
+	if k == "enter" || k == "cr" || k == "return" || k == "ctrl+m" {
+		return fmt.Errorf("reserved key %q cannot be used as keybinding", k)
+	}
+	if len(k) == 1 {
+		return nil
+	}
+	if strings.HasPrefix(k, "ctrl+") && len(k) == 6 {
+		ch := k[5]
+		if ch >= 'a' && ch <= 'z' {
+			return nil
+		}
+	}
+	switch k {
+	case "ctrl+space", "tab", "shift+tab", "up", "down", "right", "left":
+		return nil
+	}
+	return fmt.Errorf("unsupported key %q", k)
 }

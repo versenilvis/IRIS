@@ -48,23 +48,13 @@ type chatResponse struct {
 	Choices []chatChoice `json:"choices"`
 }
 
-func (c *OpenAIClient) Suggest(ctx context.Context, buf string, env EnvSnapshot, dynamicCtx string) (*spec.Suggestion, error) {
-	if ctx.Err() != nil {
-		return nil, ctx.Err()
-	}
+func (c *OpenAIClient) executeChat(ctx context.Context, messages []chatMessage) (string, error) {
 	endpoint := strings.TrimSpace(c.cfg.Endpoint)
 	if endpoint == "" {
-		return nil, fmt.Errorf("empty endpoint in ai provider config")
+		return "", fmt.Errorf("empty endpoint in ai provider config")
 	}
 	if !strings.HasSuffix(endpoint, "/chat/completions") && !strings.Contains(endpoint, "/chat/completions?") {
 		endpoint = strings.TrimRight(endpoint, "/") + "/chat/completions"
-	}
-
-	userPrompt := BuildCompletionPrompt(buf, env, dynamicCtx)
-
-	messages := []chatMessage{
-		{Role: "system", Content: SystemPrompt},
-		{Role: "user", Content: userPrompt},
 	}
 
 	reqMap := map[string]any{
@@ -77,7 +67,7 @@ func (c *OpenAIClient) Suggest(ctx context.Context, buf string, env EnvSnapshot,
 
 	bodyBytes, err := json.Marshal(reqMap)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal ai request: %w", err)
+		return "", fmt.Errorf("failed to marshal ai request: %w", err)
 	}
 
 	timeoutMS := c.cfg.TimeoutMS
@@ -89,7 +79,7 @@ func (c *OpenAIClient) Suggest(ctx context.Context, buf string, env EnvSnapshot,
 
 	req, err := http.NewRequestWithContext(ctxWithTimeout, http.MethodPost, endpoint, bytes.NewBuffer(bodyBytes))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create http request: %w", err)
+		return "", fmt.Errorf("failed to create http request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
@@ -100,30 +90,51 @@ func (c *OpenAIClient) Suggest(ctx context.Context, buf string, env EnvSnapshot,
 
 	res, err := sharedHTTPClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("http request failed: %w", err)
+		return "", fmt.Errorf("http request failed: %w", err)
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
 		errBody, _ := io.ReadAll(io.LimitReader(res.Body, 512))
-		return nil, fmt.Errorf("ai server returned status %d: %s", res.StatusCode, string(errBody))
+		return "", fmt.Errorf("ai server returned status %d: %s", res.StatusCode, string(errBody))
 	}
 
 	resBytes, err := io.ReadAll(io.LimitReader(res.Body, 65536))
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
+		return "", fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	var chatRes chatResponse
 	if err := json.Unmarshal(resBytes, &chatRes); err != nil {
-		return nil, fmt.Errorf("failed to parse ai response json: %w", err)
+		return "", fmt.Errorf("failed to parse ai response json: %w", err)
 	}
 
 	if len(chatRes.Choices) == 0 {
+		return "", nil
+	}
+
+	return chatRes.Choices[0].Message.Content, nil
+}
+
+func (c *OpenAIClient) Suggest(ctx context.Context, buf string, env EnvSnapshot, dynamicCtx string) (*spec.Suggestion, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+	userPrompt := BuildCompletionPrompt(buf, env, dynamicCtx)
+
+	messages := []chatMessage{
+		{Role: "system", Content: SystemPrompt},
+		{Role: "user", Content: userPrompt},
+	}
+
+	rawContent, err := c.executeChat(ctx, messages)
+	if err != nil {
+		return nil, err
+	}
+	if rawContent == "" {
 		return nil, nil
 	}
 
-	rawContent := chatRes.Choices[0].Message.Content
 	cleaned := NormalizeSuggestion(buf, rawContent)
 	if cleaned == "" || cleaned == strings.TrimSpace(buf) {
 		return nil, nil
@@ -132,6 +143,39 @@ func (c *OpenAIClient) Suggest(ctx context.Context, buf string, env EnvSnapshot,
 	return &spec.Suggestion{
 		Cmd:        cleaned,
 		Desc:       "ai suggestion",
+		Icon:       "ai",
+		Source:     string(SourceAI),
+		Confidence: 85,
+	}, nil
+}
+
+func (c *OpenAIClient) SuggestFix(ctx context.Context, failedCmd string, exitCode int, env EnvSnapshot) (*spec.Suggestion, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+	userPrompt := BuildFixPrompt(failedCmd, exitCode, env)
+
+	messages := []chatMessage{
+		{Role: "system", Content: FixSystemPrompt},
+		{Role: "user", Content: userPrompt},
+	}
+
+	rawContent, err := c.executeChat(ctx, messages)
+	if err != nil {
+		return nil, err
+	}
+	if rawContent == "" {
+		return nil, nil
+	}
+
+	cleaned := CleanSuggestion(rawContent)
+	if cleaned == "" || cleaned == strings.TrimSpace(failedCmd) {
+		return nil, nil
+	}
+
+	return &spec.Suggestion{
+		Cmd:        cleaned,
+		Desc:       "ai fix",
 		Icon:       "ai",
 		Source:     string(SourceAI),
 		Confidence: 85,
