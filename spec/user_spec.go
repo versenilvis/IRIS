@@ -23,6 +23,7 @@ var (
 )
 
 type UserSpecJSON struct {
+	Schema      string               `json:"$schema,omitempty"`
 	Name        string               `json:"name"`
 	Aliases     []string             `json:"aliases,omitempty"`
 	Description string               `json:"description,omitempty"`
@@ -326,18 +327,15 @@ func GetUserSpecsDir() string {
 	return filepath.Join(cfgDir, "specs")
 }
 
-func LoadUserSpecs(dir string) error {
-	if dir == "" {
-		return nil
-	}
-	entries, err := os.ReadDir(dir)
+func GetCachedSpecsDir() string {
+	dir, err := config.SpecCacheDir()
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return err
+		return ""
 	}
+	return dir
+}
 
+func LoadSpecs(cacheDir, userDir string) error {
 	userSpecsMu.Lock()
 	defer userSpecsMu.Unlock()
 
@@ -355,6 +353,43 @@ func LoadUserSpecs(dir string) error {
 	}
 	clear(loadedUserSpecs)
 
+	if cacheDir != "" {
+		if err := loadSpecsFromDir(cacheDir, false); err != nil {
+			return err
+		}
+	}
+
+	if userDir != "" {
+		if err := loadSpecsFromDir(userDir, true); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func LoadUserSpecs(dirs ...string) error {
+	if len(dirs) == 0 {
+		return LoadSpecs(GetCachedSpecsDir(), GetUserSpecsDir())
+	}
+	if len(dirs) == 1 {
+		if dirs[0] == GetCachedSpecsDir() {
+			return LoadSpecs(dirs[0], "")
+		}
+		return LoadSpecs("", dirs[0])
+	}
+	return LoadSpecs(dirs[0], dirs[1])
+}
+
+func loadSpecsFromDir(dir string, canOverrideBuiltin bool) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
@@ -368,27 +403,38 @@ func LoadUserSpecs(dir string) error {
 		filePath := filepath.Join(dir, name)
 		data, readErr := os.ReadFile(filePath)
 		if readErr != nil {
-			logger.Errorf("failed to read user spec file %s: %v", filePath, readErr)
+			logger.Errorf("failed to read spec file %s: %v", filePath, readErr)
 			continue
 		}
 
 		defaultName := strings.TrimSuffix(name, filepath.Ext(name))
 		specs, parseErr := LoadUserSpecBytes(data, defaultName)
 		if parseErr != nil {
-			logger.Errorf("failed to parse user spec file %s: %v", filePath, parseErr)
+			logger.Errorf("failed to parse spec file %s: %v", filePath, parseErr)
 			continue
 		}
 
 		for _, s := range specs {
+			if !canOverrideBuiltin {
+				// avoid shadowing built-in commands with cached specs
+				if _, isBuiltin := builtinSnapshot[s.Name]; isBuiltin {
+					continue
+				}
+			}
 			Registry[s.Name] = s
 			loadedUserSpecs[s.Name] = true
 			for _, alias := range s.Aliases {
-				if _, exists := Registry[alias]; !exists {
+				if !canOverrideBuiltin {
+					if _, isBuiltin := builtinSnapshot[alias]; isBuiltin {
+						continue
+					}
+				}
+				if _, exists := Registry[alias]; !exists || canOverrideBuiltin {
 					Registry[alias] = s
 					loadedUserSpecs[alias] = true
 				}
 			}
-			logger.Debugf("registered user spec: %s from %s", s.Name, filePath)
+			logger.Debugf("registered spec: %s from %s", s.Name, filePath)
 		}
 	}
 
@@ -396,6 +442,9 @@ func LoadUserSpecs(dir string) error {
 }
 
 func dirSignature(dir string) string {
+	if dir == "" {
+		return ""
+	}
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return ""
@@ -424,17 +473,18 @@ func AutoDetectSpecsChange(dir string, onReload func()) {
 	if dir == "" {
 		return
 	}
+	cacheDir := GetCachedSpecsDir()
 
 	go func() {
-		lastSig := dirSignature(dir)
+		lastSig := dirSignature(dir) + "|" + dirSignature(cacheDir)
 		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 
 		for range ticker.C {
-			currentSig := dirSignature(dir)
+			currentSig := dirSignature(dir) + "|" + dirSignature(cacheDir)
 			if currentSig != lastSig {
 				lastSig = currentSig
-				if err := LoadUserSpecs(dir); err == nil {
+				if err := LoadUserSpecs(cacheDir, dir); err == nil {
 					if onReload != nil {
 						onReload()
 					}

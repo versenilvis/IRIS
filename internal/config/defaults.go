@@ -14,6 +14,7 @@ func DefaultConfig() *Config {
 			Debug:             false,
 			ExpandAlias:       true,
 			AutoExecute:       false,
+			AutoClose:         false,
 			CobraProbeEnabled: true,
 			NavigateClosed:    "history",
 		},
@@ -57,6 +58,8 @@ func DefaultConfig() *Config {
 			SelectSuggestion: "tab",
 			NavigateUp:       "up",
 			NavigateDown:     "down",
+			AIToggle:         "",
+			AIFix:            "",
 		},
 	}
 }

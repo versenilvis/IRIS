@@ -232,3 +232,76 @@ func TestNormalizeSuggestion(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildFixPrompt(t *testing.T) {
+	env := EnvSnapshot{
+		Cwd:       "/home/user/app",
+		GitStatus: "modified: main.go",
+		RecentCmds: []string{
+			"go build",
+		},
+	}
+	prompt := BuildFixPrompt("git psh origin", 1, env)
+
+	if !strings.Contains(prompt, "Command: git psh origin\nExitCode: 1") {
+		t.Errorf("prompt missing failed command or exit code: %s", prompt)
+	}
+	if !strings.Contains(prompt, "Cwd: /home/user/app") {
+		t.Errorf("prompt missing cwd: %s", prompt)
+	}
+	if !strings.Contains(prompt, "GitStatus: modified: main.go") {
+		t.Errorf("prompt missing git status: %s", prompt)
+	}
+	if !strings.Contains(prompt, "go build") {
+		t.Errorf("prompt missing recent commands: %s", prompt)
+	}
+}
+
+func TestOpenAIClient_SuggestFix(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		res := map[string]any{
+			"choices": []map[string]any{
+				{"message": map[string]any{"role": "assistant", "content": "```bash\ngit push origin main\n```"}},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(res)
+	}))
+	defer server.Close()
+
+	cfg := config.ProviderConfig{
+		InheritedFrom: "openai",
+		Endpoint:      server.URL,
+		APIKey:        "test-key",
+		Model:         "test-model",
+	}
+
+	client, err := NewClient(cfg)
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	ctx := context.Background()
+	env := EnvSnapshot{Cwd: "/home/user"}
+	sugg, err := client.SuggestFix(ctx, "git psh origin main", 1, env)
+	if err != nil {
+		t.Fatalf("SuggestFix failed: %v", err)
+	}
+	if sugg == nil {
+		t.Fatalf("expected suggestion, got nil")
+	}
+	if sugg.Cmd != "git push origin main" {
+		t.Errorf("expected fixed command, got %q", sugg.Cmd)
+	}
+	if sugg.Source != "ai" {
+		t.Errorf("expected source 'ai', got %q", sugg.Source)
+	}
+
+	sameSugg, err := client.SuggestFix(ctx, "git push origin main", 1, env)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if sameSugg != nil {
+		t.Errorf("expected nil when ai returns same command without fix, got %v", sameSugg)
+	}
+}

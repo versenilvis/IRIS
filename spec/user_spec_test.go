@@ -210,3 +210,46 @@ func TestLoadUserSpecs_DirectoryAndReload(t *testing.T) {
 		t.Error("second_cmd should remain registered")
 	}
 }
+
+func TestLoadSpecs_CacheDoesNotOverrideBuiltin_UserSpecOverrides(t *testing.T) {
+	cacheDir := t.TempDir()
+	userDir := t.TempDir()
+
+	origSpec := &Spec{Name: "builtin_dummy", Description: "Original Built-in"}
+	Register(origSpec)
+
+	cacheSpecFile := filepath.Join(cacheDir, "builtin_dummy.json")
+	if err := os.WriteFile(cacheSpecFile, []byte(`{"name": "builtin_dummy", "description": "From Cache"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	newCacheFile := filepath.Join(cacheDir, "new_cache_tool.json")
+	if err := os.WriteFile(newCacheFile, []byte(`{"name": "new_cache_tool", "description": "New in Cache"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := LoadSpecs(cacheDir, ""); err != nil {
+		t.Fatalf("LoadSpecs failed: %v", err)
+	}
+
+	if Registry["builtin_dummy"].Description != "Original Built-in" {
+		t.Errorf("cache spec should not override built-in, got: %s", Registry["builtin_dummy"].Description)
+	}
+
+	if Registry["new_cache_tool"] == nil {
+		t.Error("new_cache_tool should be registered from cache")
+	}
+
+	userSpecFile := filepath.Join(userDir, "builtin_dummy.json")
+	if err := os.WriteFile(userSpecFile, []byte(`{"name": "builtin_dummy", "description": "User Custom Override"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := LoadSpecs(cacheDir, userDir); err != nil {
+		t.Fatalf("LoadSpecs failed: %v", err)
+	}
+
+	if Registry["builtin_dummy"].Description != "User Custom Override" {
+		t.Errorf("user spec should override built-in, got: %s", Registry["builtin_dummy"].Description)
+	}
+}

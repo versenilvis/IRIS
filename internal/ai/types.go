@@ -76,6 +76,7 @@ type ContextProvider interface {
 
 type Client interface {
 	Suggest(ctx context.Context, buf string, env EnvSnapshot, dynamicCtx string) (*spec.Suggestion, error)
+	SuggestFix(ctx context.Context, failedCmd string, exitCode int, env EnvSnapshot) (*spec.Suggestion, error)
 }
 
 type Suggester interface {
@@ -87,3 +88,5 @@ type ContextSuggester interface {
 }
 
 type AIHandler func(ctx context.Context, buf string, env EnvSnapshot, dynamicCtx string) (*spec.Suggestion, error)
+
+type AIFixHandler func(ctx context.Context, failedCmd string, exitCode int, env EnvSnapshot) (*spec.Suggestion, error)

@@ -333,6 +333,7 @@ mode = "last"
 debug = false
 expand-alias = true
 auto-execute = false
+auto-close = false
 navigate-closed = "history"
 
 [ui]

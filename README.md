@@ -317,6 +317,7 @@ mode = "last"                  # "last", "spec", or "history"
 debug = false                  # verbose logging to iris.log (also: iris -d)
 expand-alias = true            # expand aliases on space and in suggestions
 auto-execute = false           # run suggestion immediately instead of inserting it
+auto-close = false             # automatically close brackets and quotes (conflicts with shell autopair plugins)
 atuin-history = 0              # 0 = shell history, 1 = atuin, 2 = both
 atuin-db-path = ""             # path to atuin's history.db, empty = use default
 cobra-probe-enabled = true     # fall back to probing cobra binaries for completions
@@ -338,6 +339,7 @@ select = "tab"             # accept the selected suggestion
 navigate-up = "up"         # select up, or open history if empty
 navigate-down = "down"     # select down, or open history if empty
 navigate-right = "right"   # accept ghost text
+ai-toggle = ""             # trigger on-demand AI suggestion or fix (e.g. "ctrl+x", disabled by default; when set, automatic AI requests on typing are disabled)
 
 [git]
 filter-active-branch = true  # exclude current branch from suggestions
@@ -376,6 +378,9 @@ timeout_ms = 5000  # ms before giving up
 > [!NOTE]
 > `ghost-text` used to be a boolean. Existing configs keep working: `true` is read as `1` and `false` as `0`, so there is nothing to change on upgrade.
 
+> [!NOTE]
+> `auto-close` conflicts with shell-side autopair plugins (such as `zsh-autopair` or fish autopair). Do not enable both at the same time.
+
 
 ## Default shortcuts
 
@@ -390,12 +395,16 @@ timeout_ms = 5000  # ms before giving up
 | <kbd>→</kbd>                       | Accept ghost text       | Accept the faded ghost text suggestion when the menu is open.             |
 | <kbd>←</kbd> / <kbd>→</kbd>        | Move cursor             | Move the cursor inside the input buffer. Disabled when the prompt is empty|
 | <kbd>Ctrl</kbd> + <kbd>R</kbd>     | Switch mode             | Toggle between `spec` and `history` mode.                                 |
+| *(configurable)*                   | Toggle AI suggestion    | Request or toggle AI suggestion/fix for the current or previous command (`keybindings.ai-toggle`, disabled by default). |
 | <kbd>Ctrl</kbd> + <kbd>A</kbd>     | Beginning of line       | Move the cursor to the start of the command line.                         |
 | <kbd>Ctrl</kbd> + <kbd>E</kbd>     | End of line             | Move the cursor to the end of the command line.                           |
 | <kbd>Ctrl</kbd> + <kbd>L</kbd>     | Clear screen            | Clear the terminal while preserving the input buffer and redrawing the menu. |
 | <kbd>Ctrl</kbd> + <kbd>U</kbd>     | Clear command           | Remove the entire current command and close the menu.                     |
 | <kbd>Ctrl</kbd> + <kbd>C</kbd>     | Cancel command          | Send `SIGINT`, clear the input buffer, and close the menu.                |
 | <kbd>Ctrl</kbd> + <kbd>W</kbd>     | Delete word             | Delete the word immediately before the cursor.                            |
+
+> [!WARNING]
+> When `ai-fix` is triggered, the failed command and its exit code, current working directory, git status, and up to 3 recent commands are sent to the configured AI endpoint. Be mindful that command arguments may contain sensitive data or secrets.
 
 > [!NOTE]
 > With <kbd>Ctrl</kbd> + <kbd>A</kbd>, <kbd>Ctrl</kbd> + <kbd>E</kbd>, <kbd>Ctrl</kbd> + <kbd>W</kbd>, <kbd>Ctrl</kbd> + <kbd>U</kbd>, <kbd>Ctrl</kbd> + <kbd>L</kbd>, and <kbd>Ctrl</kbd> + <kbd>C</kbd>: they belong to your shell by default. IRIS handles them directly in raw mode so your cursor and menu stay in sync

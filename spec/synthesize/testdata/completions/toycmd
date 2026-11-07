@@ -1,0 +1,19 @@
+_toycmd() {
+    local cur prev OPTS
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    case $prev in
+        '-f'|'--file')
+            return 0
+            ;;
+    esac
+    case $cur in
+        -*)
+            OPTS="--verbose --dry-run --output"
+            COMPREPLY=( $(compgen -W "${OPTS[*]}" -- $cur) )
+            return 0
+            ;;
+    esac
+}
+complete -F _toycmd toycmd

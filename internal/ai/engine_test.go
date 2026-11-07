@@ -144,3 +144,49 @@ func TestAIEngine_Suggest_Immutability(t *testing.T) {
 		t.Fatalf("expected cache to remain 'echo original', got corrupted cmd: %q", sugg2.Cmd)
 	}
 }
+
+func TestAIEngine_SuggestFix(t *testing.T) {
+	ctx := context.Background()
+	engine := NewAIEngine(nil)
+
+	// empty command returns nil
+	if s, err := engine.SuggestFix(ctx, "", 1, EnvSnapshot{}); err != nil || s != nil {
+		t.Errorf("expected nil for empty command, got %v, %v", s, err)
+	}
+
+	callCount := 0
+	engine.SetFixHandler(func(ctx context.Context, failedCmd string, exitCode int, env EnvSnapshot) (*spec.Suggestion, error) {
+		callCount++
+		return &spec.Suggestion{
+			Cmd:        "git push origin main",
+			Desc:       "ai fix",
+			Icon:       "ai",
+			Source:     "ai",
+			Confidence: 85,
+		}, nil
+	})
+
+	env := EnvSnapshot{Cwd: "/home/user", LastCmd: "git psh origin main", LastExitCode: 1}
+	sugg1, err := engine.SuggestFix(ctx, "git psh origin main", 1, env)
+	if err != nil || sugg1 == nil {
+		t.Fatalf("expected fix suggestion, got sugg: %v, err: %v", sugg1, err)
+	}
+	if sugg1.Cmd != "git push origin main" {
+		t.Errorf("expected fixed command, got %q", sugg1.Cmd)
+	}
+	if callCount != 1 {
+		t.Errorf("expected handler called once, got %d", callCount)
+	}
+
+	// second call with same snapshot should hit cache
+	sugg2, err := engine.SuggestFix(ctx, "git psh origin main", 1, env)
+	if err != nil || sugg2 == nil {
+		t.Fatalf("expected cached fix suggestion, got sugg: %v, err: %v", sugg2, err)
+	}
+	if sugg2.Cmd != "git push origin main" {
+		t.Errorf("expected cached command, got %q", sugg2.Cmd)
+	}
+	if callCount != 1 {
+		t.Errorf("expected handler not called on cache hit, callCount=%d", callCount)
+	}
+}

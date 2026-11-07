@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -65,6 +66,7 @@ type CoreConfig struct {
 	Debug       bool   `toml:"debug"`
 	ExpandAlias bool   `toml:"expand-alias"`
 	AutoExecute bool   `toml:"auto-execute"`
+	AutoClose   bool   `toml:"auto-close"`
 	// 0 = shell history, 1 = atuin only, 2 = atuin + shell
 	Atuin             int    `toml:"atuin-history"`
 	AtuinDBPath       string `toml:"atuin-db-path"`
@@ -110,6 +112,15 @@ type KeybindingsConfig struct {
 	NavigateUp       string `toml:"navigate-up"`
 	NavigateDown     string `toml:"navigate-down"`
 	NavigateRight    string `toml:"navigate-right"`
+	AIToggle         string `toml:"ai-toggle"`
+	AIFix            string `toml:"ai-fix"`
+}
+
+func (k *KeybindingsConfig) GetAIToggle() string {
+	if k.AIToggle != "" {
+		return k.AIToggle
+	}
+	return k.AIFix
 }
 
 type ZoxideConfig struct {
@@ -145,11 +156,22 @@ type ProviderConfig struct {
 
 type AIConfig struct {
 	Enabled        bool                      `toml:"enabled"`
+	Auto           *bool                     `toml:"auto"`
 	Provider       string                    `toml:"provider"`
 	DebounceMS     int                       `toml:"debounce_ms"`
 	MinIntervalMS  int                       `toml:"min_interval_ms"`
 	Providers      map[string]ProviderConfig `toml:"providers"`
 	SuggestOnEmpty SuggestOnEmptyConfig      `toml:"suggest_on_empty"`
+}
+
+func (c *AIConfig) IsAuto(aiToggleKey string) bool {
+	if !c.Enabled {
+		return false
+	}
+	if c.Auto != nil {
+		return *c.Auto
+	}
+	return aiToggleKey == ""
 }
 
 func (c *AIConfig) GetActiveProvider() (ProviderConfig, bool) {
@@ -359,5 +381,39 @@ func validate(cfg *Config) error {
 		return fmt.Errorf("ui.max-height: must be between 1 and 50")
 	}
 
+	if err := validateKeybinding(cfg.Keybindings.AIToggle); err != nil {
+		return fmt.Errorf("keybindings.ai-toggle: %w", err)
+	}
+	if err := validateKeybinding(cfg.Keybindings.AIFix); err != nil {
+		return fmt.Errorf("keybindings.ai-fix: %w", err)
+	}
+
 	return nil
+}
+
+func validateKeybinding(k string) error {
+	k = strings.ToLower(strings.TrimSpace(k))
+	k = strings.TrimPrefix(k, "<")
+	k = strings.TrimSuffix(k, ">")
+	k = strings.ReplaceAll(k, "-", "+")
+	if k == "" || k == "none" || k == "off" {
+		return nil
+	}
+	if k == "enter" || k == "cr" || k == "return" || k == "ctrl+m" {
+		return fmt.Errorf("reserved key %q cannot be used as keybinding", k)
+	}
+	if len(k) == 1 {
+		return nil
+	}
+	if strings.HasPrefix(k, "ctrl+") && len(k) == 6 {
+		ch := k[5]
+		if ch >= 'a' && ch <= 'z' {
+			return nil
+		}
+	}
+	switch k {
+	case "ctrl+space", "tab", "shift+tab", "up", "down", "right", "left":
+		return nil
+	}
+	return fmt.Errorf("unsupported key %q", k)
 }

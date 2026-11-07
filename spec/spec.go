@@ -1,6 +1,9 @@
 package spec
 
-import "slices"
+import (
+	"slices"
+	"sync"
+)
 
 type GeneratorFunc func(tokens []string, prefix string, partial string) []Suggestion
 
@@ -64,6 +67,9 @@ func Register(s *Spec) {
 		duplicateNames = append(duplicateNames, s.Name)
 	}
 	Registry[s.Name] = s
+	if builtinSnapshot != nil {
+		builtinSnapshot[s.Name] = s
+	}
 }
 
 // DuplicateNames returns the spec names that were registered more than once.
@@ -77,4 +83,6 @@ func DuplicateNames() []string {
 func ResetRegistry() {
 	Registry = make(map[string]*Spec)
 	duplicateNames = nil
+	builtinSnapshot = nil
+	builtinOnce = sync.Once{}
 }

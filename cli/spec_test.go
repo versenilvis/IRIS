@@ -53,3 +53,45 @@ func TestSpecPathCmd(t *testing.T) {
 		t.Fatalf("expected path %s, got: %s", expected, out)
 	}
 }
+
+func TestSpecGenerateCmd_InvalidName(t *testing.T) {
+	buf := new(bytes.Buffer)
+	SpecGenerateCmd.SetOut(buf)
+	SpecGenerateCmd.SetErr(buf)
+
+	err := SpecGenerateCmd.RunE(SpecGenerateCmd, []string{"../escape"})
+	if err == nil {
+		t.Fatal("expected error for path traversal name")
+	}
+}
+
+func TestSpecGenerateCmd_Success(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+	t.Setenv("XDG_DATA_HOME", tmpDir)
+
+	buf := new(bytes.Buffer)
+	SpecGenerateCmd.SetOut(buf)
+	SpecGenerateCmd.SetErr(buf)
+
+	// generate spec for cal which exists on standard linux systems
+	err := SpecGenerateCmd.RunE(SpecGenerateCmd, []string{"cal"})
+	if err != nil {
+		t.Fatalf("SpecGenerateCmd failed: %v", err)
+	}
+
+	out := buf.String()
+	if !strings.Contains(out, "generated spec for cal at") {
+		t.Fatalf("unexpected output: %s", out)
+	}
+
+	cacheFile := filepath.Join(tmpDir, "iris", "specs", "cache", "cal.json")
+	data, err := os.ReadFile(cacheFile)
+	if err != nil {
+		t.Fatalf("expected cache file %s: %v", cacheFile, err)
+	}
+
+	if !strings.Contains(string(data), `"name": "cal"`) {
+		t.Errorf("expected spec to contain cal name, got: %s", string(data))
+	}
+}
