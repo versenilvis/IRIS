@@ -82,7 +82,7 @@ func init() {
 			cfg := config.Get()
 			logger.Debugf("IRIS loaded config: shell=%q, shell-login=%v, mode=%q, ghost-text=%v, max-suggestions=%d", cfg.Core.Shell, cfg.Core.ShellLogin, cfg.Core.Mode, cfg.UI.GhostText, cfg.UI.MaxSuggestions)
 		}
-		_ = spec.LoadUserSpecs(spec.GetUserSpecsDir())
+		_ = spec.LoadSpecs(spec.GetCachedSpecsDir(), spec.GetUserSpecsDir())
 	}
 	cli.Register(rootCmd, Version)
 }

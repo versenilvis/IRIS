@@ -84,7 +84,7 @@ func ThemePath() (string, error) {
 	return filepath.Join(dir, "theme.toml"), nil
 }
 
-func StatePath() (string, error) {
+func DataDir() (string, error) {
 	dataHome := os.Getenv("XDG_DATA_HOME")
 	if dataHome == "" {
 		home, err := os.UserHomeDir()
@@ -93,7 +93,23 @@ func StatePath() (string, error) {
 		}
 		dataHome = filepath.Join(home, ".local", "share")
 	}
-	return filepath.Join(dataHome, "iris", "state.toml"), nil
+	return filepath.Join(dataHome, "iris"), nil
+}
+
+func SpecCacheDir() (string, error) {
+	dataDir, err := DataDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dataDir, "specs", "cache"), nil
+}
+
+func StatePath() (string, error) {
+	dataDir, err := DataDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dataDir, "state.toml"), nil
 }
 
 func HistoryDBPath() (string, error) {
