@@ -339,7 +339,7 @@ select = "tab"             # accept the selected suggestion
 navigate-up = "up"         # select up, or open history if empty
 navigate-down = "down"     # select down, or open history if empty
 navigate-right = "right"   # accept ghost text
-ai-fix = ""                # request AI fix for failed command on empty prompt (e.g. "ctrl+x", disabled by default)
+ai-toggle = ""             # trigger on-demand AI suggestion or fix (e.g. "ctrl+x", disabled by default; when set, automatic AI requests on typing are disabled)
 
 [git]
 filter-active-branch = true  # exclude current branch from suggestions
@@ -395,7 +395,7 @@ timeout_ms = 5000  # ms before giving up
 | <kbd>→</kbd>                       | Accept ghost text       | Accept the faded ghost text suggestion when the menu is open.             |
 | <kbd>←</kbd> / <kbd>→</kbd>        | Move cursor             | Move the cursor inside the input buffer. Disabled when the prompt is empty|
 | <kbd>Ctrl</kbd> + <kbd>R</kbd>     | Switch mode             | Toggle between `spec` and `history` mode.                                 |
-| *(configurable)*                   | Fix failed command      | Request AI suggestion to fix the previous failed command on empty prompt (`keybindings.ai-fix`, disabled by default). |
+| *(configurable)*                   | Toggle AI suggestion    | Request or toggle AI suggestion/fix for the current or previous command (`keybindings.ai-toggle`, disabled by default). |
 | <kbd>Ctrl</kbd> + <kbd>A</kbd>     | Beginning of line       | Move the cursor to the start of the command line.                         |
 | <kbd>Ctrl</kbd> + <kbd>E</kbd>     | End of line             | Move the cursor to the end of the command line.                           |
 | <kbd>Ctrl</kbd> + <kbd>L</kbd>     | Clear screen            | Clear the terminal while preserving the input buffer and redrawing the menu. |

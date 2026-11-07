@@ -486,21 +486,44 @@ func TestGhostTextEnvAcceptsBoolAndInt(t *testing.T) {
 
 func TestValidateAIFixKeybinding(t *testing.T) {
 	cfg := DefaultConfig()
-	if cfg.Keybindings.AIFix != "" {
-		t.Errorf("expected default ai-fix keybinding to be empty (disabled), got %q", cfg.Keybindings.AIFix)
+	if cfg.Keybindings.GetAIToggle() != "" {
+		t.Errorf("expected default ai-toggle keybinding to be empty, got %q", cfg.Keybindings.GetAIToggle())
 	}
 
 	for _, valid := range []string{"ctrl+f", "ctrl+x", "shift+tab", "tab", "up", "none", "off", ""} {
-		cfg.Keybindings.AIFix = valid
+		cfg.Keybindings.AIToggle = valid
 		if err := validate(cfg); err != nil {
 			t.Errorf("expected keybinding %q to be valid, got error: %v", valid, err)
 		}
 	}
 
 	for _, invalid := range []string{"ctrl+m", "enter", "cr", "return", "invalid_combo"} {
-		cfg.Keybindings.AIFix = invalid
+		cfg.Keybindings.AIToggle = invalid
 		if err := validate(cfg); err == nil {
 			t.Errorf("expected keybinding %q to be rejected", invalid)
 		}
+	}
+}
+
+func TestAIConfig_IsAuto(t *testing.T) {
+	aiCfg := AIConfig{Enabled: true}
+	// with no keybinding, auto is true
+	if !aiCfg.IsAuto("") {
+		t.Errorf("expected auto to be true when keybinding is empty")
+	}
+	// with keybinding, auto is false
+	if aiCfg.IsAuto("ctrl+x") {
+		t.Errorf("expected auto to be false when keybinding is set")
+	}
+	// explicit override
+	f := false
+	aiCfg.Auto = &f
+	if aiCfg.IsAuto("") {
+		t.Errorf("expected auto to be false when explicitly overridden to false")
+	}
+	tr := true
+	aiCfg.Auto = &tr
+	if !aiCfg.IsAuto("ctrl+x") {
+		t.Errorf("expected auto to be true when explicitly overridden to true")
 	}
 }

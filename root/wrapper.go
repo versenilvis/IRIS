@@ -921,7 +921,8 @@ func runWrapper() {
 			aiCancel()
 			aiCancel = nil
 		}
-		if config.Get().AI.Enabled && bufCopy != "" && !navCopy && offsetCopy == 0 {
+		aiKey := config.Get().Keybindings.GetAIToggle()
+		if config.Get().AI.IsAuto(aiKey) && bufCopy != "" && !navCopy && offsetCopy == 0 {
 			queryTarget := bufCopy
 			debounceMS := config.Get().AI.DebounceMS
 			if debounceMS <= 0 {
@@ -1122,65 +1123,83 @@ func runWrapper() {
 					continue
 				}
 
-				if matched, consumed := config.MatchKey(inputSlice[i:], config.Get().Keybindings.AIFix); matched && config.Get().Keybindings.AIFix != "" {
+				aiToggleKey := config.Get().Keybindings.GetAIToggle()
+				if matched, consumed := config.MatchKey(inputSlice[i:], aiToggleKey); matched && aiToggleKey != "" {
 					cfg := config.Get()
-					bufferMu.Lock()
-					currentBuf := naiveBuffer
-					bufferMu.Unlock()
-					prevCmd, prevCwd, prevExitCode := getPrevRecordedCommandAndExitCode()
+					if cfg.AI.Enabled {
+						intercepted = true
+						i += consumed - 1
 
-					targetCmd := strings.TrimSpace(currentBuf)
-					targetExitCode := 0
-					targetCwd := spec.GetCWD()
-					if targetCmd == "" {
-						targetCmd = strings.TrimSpace(prevCmd)
-						targetExitCode = prevExitCode
-						if prevCwd != "" {
-							targetCwd = prevCwd
-						}
-					}
-
-					if cfg.AI.Enabled && targetCmd != "" {
-						if _, ok := cfg.AI.GetActiveProvider(); ok {
-							intercepted = true
-							i += consumed - 1
-							suggestionsEnabled.Store(true)
-							aiMu.Lock()
-							if aiCancel != nil {
-								aiCancel()
+						if GetCurrentAISuggestion() != nil && overlay.IsVisible() {
+							SetCurrentAISuggestion(nil)
+							writeStdout([]byte(overlay.ClearAndDisable()))
+							if renderer, ok := renderOverlayFn.Load().(func()); ok {
+								renderer()
 							}
-							ctx, cancel := context.WithCancel(context.Background())
-							aiCancel = cancel
-							aiMu.Unlock()
+							continue
+						}
 
-							go func(failedCmd, cwd string, code int, initiatedWithEmptyBuf bool) {
-								defer cancel()
-								var recentCmds []string
-								if hist, err := integration.SearchHistory("", nil); err == nil {
-									for j := 0; j < len(hist) && j < 3; j++ {
-										recentCmds = append(recentCmds, hist[j].Cmd)
+						bufferMu.Lock()
+						currentBuf := naiveBuffer
+						bufferMu.Unlock()
+						prevCmd, prevCwd, prevExitCode := getPrevRecordedCommandAndExitCode()
+
+						targetCmd := strings.TrimSpace(currentBuf)
+						targetExitCode := 0
+						targetCwd := spec.GetCWD()
+						if targetCmd == "" {
+							targetCmd = strings.TrimSpace(prevCmd)
+							targetExitCode = prevExitCode
+							if prevCwd != "" {
+								targetCwd = prevCwd
+							}
+						}
+
+						if targetCmd != "" {
+							if _, ok := cfg.AI.GetActiveProvider(); ok {
+								suggestionsEnabled.Store(true)
+								aiMu.Lock()
+								if aiCancel != nil {
+									aiCancel()
+								}
+								ctx, cancel := context.WithCancel(context.Background())
+								aiCancel = cancel
+								aiMu.Unlock()
+
+								go func(failedCmd, cwd string, code int, initiatedWithEmptyBuf bool) {
+									defer cancel()
+									var recentCmds []string
+									if hist, err := integration.SearchHistory("", nil); err == nil {
+										for j := 0; j < len(hist) && j < 3; j++ {
+											recentCmds = append(recentCmds, hist[j].Cmd)
+										}
 									}
-								}
-								env := ai.NewEnvSnapshot(cwd, failedCmd, code, recentCmds)
-								sugg, err := GetAIEngine().SuggestFix(ctx, failedCmd, code, env)
-								if err != nil || sugg == nil || ctx.Err() != nil {
-									return
-								}
-								if initiatedWithEmptyBuf {
-									bufferMu.Lock()
-									bufEmptyNow := naiveBuffer == ""
-									bufferMu.Unlock()
-									if !bufEmptyNow {
+									env := ai.NewEnvSnapshot(cwd, failedCmd, code, recentCmds)
+									sugg, err := GetAIEngine().SuggestFix(ctx, failedCmd, code, env)
+									if (err != nil || sugg == nil) && !initiatedWithEmptyBuf {
+										sugg, err = GetAIEngine().Suggest(ctx, failedCmd, env, "")
+									}
+									if err != nil || sugg == nil || ctx.Err() != nil {
 										return
 									}
-								}
-								SetCurrentAISuggestion(sugg)
-								overlay.Show()
-								if renderer, ok := renderOverlayFn.Load().(func()); ok {
-									renderer()
-								}
-							}(targetCmd, targetCwd, targetExitCode, currentBuf == "")
-							continue
+									if initiatedWithEmptyBuf {
+										bufferMu.Lock()
+										bufEmptyNow := naiveBuffer == ""
+										bufferMu.Unlock()
+										if !bufEmptyNow {
+											return
+										}
+									}
+									sugg.Source = "ai"
+									sugg.Confidence = 100
+									SetCurrentAISuggestion(sugg)
+									overlay.Show()
+									if renderer, ok := renderOverlayFn.Load().(func()); ok {
+										renderer()
+									}
+								}(targetCmd, targetCwd, targetExitCode, currentBuf == "")
+								continue
+							}
 						}
 					}
 				}

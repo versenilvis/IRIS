@@ -112,7 +112,15 @@ type KeybindingsConfig struct {
 	NavigateUp       string `toml:"navigate-up"`
 	NavigateDown     string `toml:"navigate-down"`
 	NavigateRight    string `toml:"navigate-right"`
+	AIToggle         string `toml:"ai-toggle"`
 	AIFix            string `toml:"ai-fix"`
+}
+
+func (k *KeybindingsConfig) GetAIToggle() string {
+	if k.AIToggle != "" {
+		return k.AIToggle
+	}
+	return k.AIFix
 }
 
 type ZoxideConfig struct {
@@ -148,11 +156,22 @@ type ProviderConfig struct {
 
 type AIConfig struct {
 	Enabled        bool                      `toml:"enabled"`
+	Auto           *bool                     `toml:"auto"`
 	Provider       string                    `toml:"provider"`
 	DebounceMS     int                       `toml:"debounce_ms"`
 	MinIntervalMS  int                       `toml:"min_interval_ms"`
 	Providers      map[string]ProviderConfig `toml:"providers"`
 	SuggestOnEmpty SuggestOnEmptyConfig      `toml:"suggest_on_empty"`
+}
+
+func (c *AIConfig) IsAuto(aiToggleKey string) bool {
+	if !c.Enabled {
+		return false
+	}
+	if c.Auto != nil {
+		return *c.Auto
+	}
+	return aiToggleKey == ""
 }
 
 func (c *AIConfig) GetActiveProvider() (ProviderConfig, bool) {
@@ -362,6 +381,9 @@ func validate(cfg *Config) error {
 		return fmt.Errorf("ui.max-height: must be between 1 and 50")
 	}
 
+	if err := validateKeybinding(cfg.Keybindings.AIToggle); err != nil {
+		return fmt.Errorf("keybindings.ai-toggle: %w", err)
+	}
 	if err := validateKeybinding(cfg.Keybindings.AIFix); err != nil {
 		return fmt.Errorf("keybindings.ai-fix: %w", err)
 	}
