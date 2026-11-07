@@ -14,14 +14,15 @@ import (
 
 var (
 	reFlagLong     = regexp.MustCompile(`--[a-zA-Z0-9][a-zA-Z0-9_.+-]*`)
-	reFlagShort    = regexp.MustCompile(`-[a-zA-Z0-9]`)
+	reFlagShort    = regexp.MustCompile(`^-[a-zA-Z0-9]$`)
 	reValidFlag    = regexp.MustCompile(`^-{1,2}[A-Za-z0-9][A-Za-z0-9_.+-]*$`)
 	reANSI         = regexp.MustCompile(`\x1b(?:\[[0-9;?]*[a-zA-Z]|\].*?(?:\x07|\x1b\\)|[PX^_].*?\x1b\\|[()][AB012])`)
 	reRoffFont     = regexp.MustCompile(`\\f(?:\[[^\]]*\]|\([A-Za-z0-9]{2}|[A-Za-z0-9()])`)
 	reRoffDevice   = regexp.MustCompile(`\\X'[^']*'`)
 	reRoffSize     = regexp.MustCompile(`\\s[+-]?[0-9]+`)
 	reRoffSpecial  = regexp.MustCompile(`\\[^a-zA-Z0-9]`)
-	reSectionHead  = regexp.MustCompile(`^\.(?:SH|Sh|SS|Ss)\s+(?:"([^"]+)"|([^\s]+))`)
+	reTopSection   = regexp.MustCompile(`^\.(?:SH|Sh)\s+(?:"([^"]+)"|([^\s]+.*))`)
+	reSubSection   = regexp.MustCompile(`^\.(?:SS|Ss)\s+(?:"([^"]+)"|([^\s]+.*))`)
 	reMdocItemFlag = regexp.MustCompile(`^\.It\s+(?:Fl\s+)+`)
 )
 
@@ -144,9 +145,39 @@ func parseMacroArgs(s string) []string {
 	return args
 }
 
+func findShortFlags(s string) []string {
+	var out []string
+	for i := 0; i+1 < len(s); i++ {
+		if s[i] != '-' {
+			continue
+		}
+		ch := s[i+1]
+		isAlphaNum := (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9')
+		if !isAlphaNum {
+			continue
+		}
+		if i > 0 {
+			prev := s[i-1]
+			if prev == '-' || (prev >= 'a' && prev <= 'z') || (prev >= 'A' && prev <= 'Z') || (prev >= '0' && prev <= '9') || prev == '_' || prev == '.' {
+				continue
+			}
+		}
+		if i+2 < len(s) {
+			next := s[i+2]
+			if next == '-' || (next >= 'a' && next <= 'z') || (next >= 'A' && next <= 'Z') || (next >= '0' && next <= '9') || next == '_' {
+				continue
+			}
+		}
+		out = append(out, s[i:i+2])
+		i++
+	}
+	return out
+}
+
 func extractFlags(line string) (string, []string) {
 	longMatches := reFlagLong.FindAllString(line, -1)
-	shortMatches := reFlagShort.FindAllString(line, -1)
+	remaining := reFlagLong.ReplaceAllString(line, " ")
+	shortMatches := findShortFlags(remaining)
 
 	var uniqueLong []string
 	seen := make(map[string]bool)
@@ -252,6 +283,7 @@ func parseManReader(r io.Reader, cmdName string, maxSize int64) (string, []spec.
 
 	var cmdDesc string
 	var currentSection string
+	var currentSubSection string
 	var inNameSection bool
 	var options []spec.UserOptionJSON
 	seenNames := make(map[string]bool)
@@ -296,21 +328,32 @@ func parseManReader(r io.Reader, cmdName string, maxSize int64) (string, []spec.
 		line := rawLines[i]
 		trimmed := strings.TrimSpace(line)
 
-		if sm := reSectionHead.FindStringSubmatch(trimmed); sm != nil {
+		if sm := reTopSection.FindStringSubmatch(trimmed); sm != nil {
 			commitCurrent()
 			sec := sm[1]
 			if sec == "" {
 				sec = sm[2]
 			}
 			currentSection = strings.ToUpper(strings.TrimSpace(sec))
+			currentSubSection = ""
 			inNameSection = currentSection == "NAME"
+			continue
+		}
+
+		if sm := reSubSection.FindStringSubmatch(trimmed); sm != nil {
+			commitCurrent()
+			sub := sm[1]
+			if sub == "" {
+				sub = sm[2]
+			}
+			currentSubSection = strings.ToUpper(strings.TrimSpace(sub))
 			continue
 		}
 
 		if inNameSection && cmdDesc == "" && !strings.HasPrefix(trimmed, ".") {
 			cleaned := cleanRoffText(trimmed)
-			if _, after, ok := strings.Cut(cleaned, " - "); ok {
-				cmdDesc = strings.TrimSpace(after)
+			if idx := strings.LastIndex(cleaned, " - "); idx != -1 {
+				cmdDesc = strings.TrimSpace(cleaned[idx+3:])
 			} else if _, after, ok := strings.Cut(cleaned, "- "); ok {
 				cmdDesc = strings.TrimSpace(after)
 			}
@@ -324,7 +367,9 @@ func parseManReader(r io.Reader, cmdName string, maxSize int64) (string, []spec.
 
 		isOptionSection := strings.Contains(currentSection, "OPTION") ||
 			strings.Contains(currentSection, "DESCRIPTION") ||
-			strings.Contains(currentSection, "FLAGS")
+			strings.Contains(currentSection, "FLAGS") ||
+			strings.Contains(currentSubSection, "OPTION") ||
+			strings.Contains(currentSubSection, "FLAGS")
 
 		if !isOptionSection {
 			continue
@@ -334,7 +379,7 @@ func parseManReader(r io.Reader, cmdName string, maxSize int64) (string, []spec.
 			commitCurrent()
 			for i+1 < len(rawLines) {
 				nextLine := strings.TrimSpace(rawLines[i+1])
-				if nextLine == "" || strings.HasPrefix(nextLine, `.\"`) || strings.HasPrefix(nextLine, `'\"`) {
+				if nextLine == "" || nextLine == "." || strings.HasPrefix(nextLine, `.\"`) || strings.HasPrefix(nextLine, `'\"`) {
 					i++
 					continue
 				}

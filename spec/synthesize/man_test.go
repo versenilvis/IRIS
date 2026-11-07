@@ -209,3 +209,35 @@ func TestCleanDescription_RuneTruncation(t *testing.T) {
 		t.Errorf("cleaned rune count %d exceeds 160", len(cleanedRunes))
 	}
 }
+
+func TestParseManReader_OptionSubsectionsAndFlagBoundaries(t *testing.T) {
+	roff := `.TH ZSTD "1" "Nov 2026" "zstd" "User Commands"
+.SH NAME
+zstd \- fast lossless compression algorithm
+.SH "OPTIONS"
+.SS "Integer suffixes and special values"
+.TP
+\fB\-d\fR, \fB\-\-decompress\fR
+.
+decompression
+.TP
+\fB\-\-auto\-threads\fR={physical|logical}
+use physical or logical core count
+.SH "BUGS"
+Report bugs online
+`
+	_, opts, err := parseManReader(strings.NewReader(roff), "zstd", defaultMaxFileSize)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(opts) != 2 {
+		t.Fatalf("expected 2 options under .SS subsection, got %d", len(opts))
+	}
+	if opts[0].Name != "--decompress" || len(opts[0].Aliases) != 1 || opts[0].Aliases[0] != "-d" {
+		t.Errorf("unexpected option 0: %+v", opts[0])
+	}
+	if opts[1].Name != "--auto-threads" || len(opts[1].Aliases) != 0 {
+		t.Errorf("expected --auto-threads with no bogus short aliases, got: %+v", opts[1])
+	}
+}
+
