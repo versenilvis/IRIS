@@ -176,3 +176,42 @@ func TestMergeResults_AIFixPromotionOnEmptyQuery(t *testing.T) {
 		t.Errorf("expected top suggestion 'docker ps' with source 'ai' in spec mode, got %+v", resSpec[0])
 	}
 }
+
+func TestMergeResults_AIFixFilteredOnUnrelatedQuery(t *testing.T) {
+	aiSugg := &spec.Suggestion{
+		Cmd:        "hyprctl monitors",
+		Desc:       "ai fix",
+		Icon:       "ai",
+		Source:     "ai",
+		Confidence: 100,
+	}
+	SetCurrentAISuggestion(aiSugg)
+	defer SetCurrentAISuggestion(nil)
+
+	res := MergeResults("l", "history")
+	for _, r := range res {
+		if r.Cmd == "hyprctl monitors" {
+			t.Errorf("unrelated query 'l' should not receive 'hyprctl monitors' ai suggestion")
+		}
+	}
+}
+
+func TestMergeResults_AIFixIncludedForMatchingRoot(t *testing.T) {
+	aiSugg := &spec.Suggestion{
+		Cmd:        "git push origin main",
+		Desc:       "ai fix",
+		Icon:       "ai",
+		Source:     "ai",
+		Confidence: 100,
+	}
+	SetCurrentAISuggestion(aiSugg)
+	defer SetCurrentAISuggestion(nil)
+
+	res := MergeResults("git psh", "history")
+	if len(res) == 0 {
+		t.Fatalf("expected suggestions, got 0")
+	}
+	if res[0].Cmd != "git push origin main" || res[0].Source != "ai" {
+		t.Errorf("expected 'git push origin main' as top suggestion, got %+v", res[0])
+	}
+}

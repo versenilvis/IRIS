@@ -921,6 +921,16 @@ func runWrapper() {
 			aiCancel()
 			aiCancel = nil
 		}
+		if aiSugg := GetCurrentAISuggestion(); aiSugg != nil && queryForSearch != "" {
+			normalizedCmd := strings.TrimSpace(aiSugg.Cmd)
+			if !strings.HasPrefix(strings.ToLower(normalizedCmd), strings.ToLower(queryForSearch)) {
+				qTokens := strings.Fields(queryForSearch)
+				cTokens := strings.Fields(normalizedCmd)
+				if len(qTokens) == 0 || len(cTokens) == 0 || !strings.EqualFold(qTokens[0], cTokens[0]) {
+					SetCurrentAISuggestion(nil)
+				}
+			}
+		}
 		aiKey := config.Get().Keybindings.GetAIToggle()
 		if config.Get().AI.IsAuto(aiKey) && bufCopy != "" && !navCopy && offsetCopy == 0 {
 			queryTarget := bufCopy
@@ -979,6 +989,7 @@ func runWrapper() {
 			// is not the same as nothing being typed.
 			if queryForSearch == "" && !overlay.IsVisible() {
 				writeStdout([]byte(overlay.ClearAndDisable()))
+				SetCurrentAISuggestion(nil)
 				return
 			}
 			logger.Debugf("Render query: '%s', mode: %s", queryForSearch, modeCopy)
@@ -1538,6 +1549,7 @@ func runWrapper() {
 						_, _ = ptmx.Write(decision.PtySequence)
 						if isEmptyNow {
 							writeStdout([]byte(overlay.ClearAndDisable()))
+							SetCurrentAISuggestion(nil)
 							userNavigated.Store(false)
 						} else {
 							shouldOverlayDraw = true
@@ -1594,6 +1606,7 @@ func runWrapper() {
 
 						if wasEmpty || isEmptyNow {
 							writeStdout([]byte(overlay.ClearAndDisable()))
+							SetCurrentAISuggestion(nil)
 							userNavigated.Store(false)
 							continue
 						}
@@ -1615,6 +1628,7 @@ func runWrapper() {
 
 						if wasEmpty || isEmptyNow {
 							writeStdout([]byte(overlay.ClearAndDisable()))
+							SetCurrentAISuggestion(nil)
 							userNavigated.Store(false)
 							continue
 						}

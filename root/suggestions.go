@@ -143,19 +143,26 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 func injectAISuggestion(deduped *[]spec.Suggestion, seen map[string]bool, normalizedQuery string) {
 	if aiSugg := GetCurrentAISuggestion(); aiSugg != nil {
 		normalizedCmd := strings.TrimSpace(aiSugg.Cmd)
-		if normalizedCmd != "" && normalizedCmd != normalizedQuery {
-			isFix := aiSugg.Desc == "ai fix" || aiSugg.Confidence == 100
-			if isFix || strings.HasPrefix(strings.ToLower(normalizedCmd), strings.ToLower(normalizedQuery)) {
-				if !seen[aiSugg.Cmd] {
-					seen[aiSugg.Cmd] = true
-					*deduped = append(*deduped, *aiSugg)
-				} else {
-					for i, item := range *deduped {
-						if item.Cmd == aiSugg.Cmd {
-							(*deduped)[i] = *aiSugg
-							break
-						}
-					}
+		if normalizedCmd == "" || normalizedCmd == normalizedQuery {
+			return
+		}
+		if normalizedQuery != "" && !strings.HasPrefix(strings.ToLower(normalizedCmd), strings.ToLower(normalizedQuery)) {
+			// allow in-buffer fix when subcommand or flags differ but root command matches
+			qTokens := strings.Fields(normalizedQuery)
+			cTokens := strings.Fields(normalizedCmd)
+			if len(qTokens) == 0 || len(cTokens) == 0 || !strings.EqualFold(qTokens[0], cTokens[0]) {
+				return
+			}
+		}
+
+		if !seen[aiSugg.Cmd] {
+			seen[aiSugg.Cmd] = true
+			*deduped = append(*deduped, *aiSugg)
+		} else {
+			for i, item := range *deduped {
+				if item.Cmd == aiSugg.Cmd {
+					(*deduped)[i] = *aiSugg
+					break
 				}
 			}
 		}
