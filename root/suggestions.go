@@ -51,16 +51,22 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 		aliases := spec.GetAliasesCopy()
 		histResults, _ := integration.SearchHistory(query, aliases)
 
-		// scale confidence based on recency (index in histResults) so the most recent commands stay on top
-		baseConf := 75
 		for i, h := range histResults {
-			conf := max(baseConf-(i*2), 60)
-			
+			var conf int
+			switch {
+			case h.Tier <= 2:
+				conf = max(75-(i*2), 65)
+			case h.Tier == 3:
+				conf = max(70-(i*2), 60)
+			default:
+				conf = max(45-(i*2), 30)
+			}
+
 			icon := "history"
 			if h.Source == "atuin" {
 				icon = "atuin"
 			}
-			
+
 			addSuggestion(spec.Suggestion{
 				Cmd:        h.Cmd,
 				Desc:       h.Source,
@@ -68,6 +74,30 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 				Source:     h.Source,
 				Confidence: conf,
 			})
+		}
+
+		// only boost a spec suggestion above history when the user has typed
+		// enough of it to be specific (coverage >= 70%). this avoids short queries
+		// like "git" pulling up system binaries above real history commands.
+		if normalizedQuery != "" {
+			qLen := len(normalizedQuery)
+			for _, s := range cmdResults {
+				if s.Cmd == "" {
+					continue
+				}
+				cLen := len(s.Cmd)
+				if cLen == 0 {
+					continue
+				}
+				coverage := float64(qLen) / float64(cLen)
+				if coverage >= 0.70 && strings.HasPrefix(strings.ToLower(s.Cmd), strings.ToLower(normalizedQuery)) {
+					s.Confidence = 85
+					if s.Source == "" {
+						s.Source = "spec"
+					}
+					addSuggestion(s)
+				}
+			}
 		}
 	}
 
