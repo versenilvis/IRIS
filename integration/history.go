@@ -57,6 +57,7 @@ type HistResult struct {
 	Cmd        string
 	FuzzyScore int
 	Source     string
+	Tier       int
 }
 
 func init() {
@@ -391,48 +392,43 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 		}
 	}
 
+	addAliasMatches := func(altQ string) {
+		altQLow := strings.ToLower(strings.TrimSpace(altQ))
+		if altQLow == "" {
+			return
+		}
+		for _, cmd := range historyCache {
+			if seenCmds[cmd] {
+				continue
+			}
+			cmdLow := strings.ToLower(cmd)
+			if cmdLow == altQLow || strings.HasPrefix(cmdLow, altQLow+" ") || (strings.Contains(altQLow, " ") && strings.HasPrefix(cmdLow, altQLow)) {
+				seenCmds[cmd] = true
+				results = append(results, HistResult{
+					ID:         idMapCache[cmd],
+					Cmd:        cmd,
+					FuzzyScore: 10000,
+					Source:     sourceMapCache[cmd],
+				})
+			}
+		}
+	}
+
 	addMatches(query)
 	for _, altQ := range alternativeQueries {
-		addMatches(altQ)
+		addAliasMatches(altQ)
 	}
 
-	getTier := func(cmd, q string) int {
-		bestTier := 4
-		check := func(ql string) {
-			cmdLow := strings.ToLower(cmd)
-			qlLow := strings.ToLower(ql)
-			tier := 4
-			if cmdLow == qlLow {
-				tier = 1
-			} else if strings.HasPrefix(cmdLow, qlLow) {
-				tier = 2
-			} else if strings.Contains(cmdLow, qlLow) {
-				tier = 3
-			}
-			if tier < bestTier {
-				bestTier = tier
-			}
-		}
-		check(q)
-		for _, altQ := range alternativeQueries {
-			check(altQ)
-		}
-		return bestTier
-	}
-
-	tiers := make([]int, len(results))
-	for i, r := range results {
-		tiers[i] = getTier(r.Cmd, query)
+	for i := range results {
+		results[i].Tier = getHistoryTier(results[i].Cmd, query, alternativeQueries)
 	}
 
 	sort.SliceStable(results, func(i, j int) bool {
-		tI := tiers[i]
-		tJ := tiers[j]
-		if tI != tJ {
-			return tI < tJ
+		if results[i].Tier != results[j].Tier {
+			return results[i].Tier < results[j].Tier
 		}
 
-		if tI == 4 && results[i].FuzzyScore != results[j].FuzzyScore {
+		if results[i].Tier == 7 && results[i].FuzzyScore != results[j].FuzzyScore {
 			return results[i].FuzzyScore > results[j].FuzzyScore
 		}
 
@@ -440,4 +436,76 @@ func SearchHistory(query string, aliases map[string]string) ([]HistResult, error
 	})
 
 	return results, nil
+}
+
+func getHistoryTier(cmd, query string, alternativeQueries []string) int {
+	cmdLow := strings.ToLower(strings.TrimSpace(cmd))
+	qLow := strings.ToLower(strings.TrimSpace(query))
+	if qLow == "" {
+		return 1
+	}
+
+	// tier 1: exact match
+	if cmdLow == qLow {
+		return 1
+	}
+
+	// tier 2: command prefix match
+	if strings.HasPrefix(cmdLow, qLow+" ") || (strings.Contains(qLow, " ") && strings.HasPrefix(cmdLow, qLow)) {
+		return 2
+	}
+
+	bestTier := 7
+
+	// tier 3: command line starts with query token (e.g. typing "gi" when command is "git")
+	if strings.HasPrefix(cmdLow, qLow) {
+		bestTier = 3
+	}
+
+	// check alias matches: alias command starts with altQ
+	for _, altQ := range alternativeQueries {
+		altLow := strings.ToLower(strings.TrimSpace(altQ))
+		if altLow == "" {
+			continue
+		}
+		if cmdLow == altLow {
+			if 2 < bestTier {
+				bestTier = 2
+			}
+		} else if strings.HasPrefix(cmdLow, altLow+" ") || (strings.Contains(altLow, " ") && strings.HasPrefix(cmdLow, altLow)) {
+			if 3 < bestTier {
+				bestTier = 3
+			}
+		}
+	}
+
+	if bestTier <= 3 {
+		return bestTier
+	}
+
+	// tier 4: exact word boundary match inside command (e.g. "sudo git status", "z git")
+	if strings.Contains(cmdLow, " "+qLow+" ") || strings.HasSuffix(cmdLow, " "+qLow) {
+		return 4
+	}
+
+	// tier 5: token prefix match inside command (e.g. "go get github.com/...", "sudo gitkraken")
+	if strings.Contains(cmdLow, " "+qLow) {
+		return 5
+	}
+
+	// tier 6: arbitrary substring match inside words
+	words := strings.Fields(qLow)
+	allWordsPresent := true
+	for _, w := range words {
+		if !strings.Contains(cmdLow, w) {
+			allWordsPresent = false
+			break
+		}
+	}
+	if allWordsPresent {
+		return 6
+	}
+
+	// tier 7: fuzzy match
+	return 7
 }
