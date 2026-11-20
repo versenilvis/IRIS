@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [v0.8.1](https://github.com/versenilvis/iris/releases/tag/v0.8.1) - 2026-11-20
+
+### Features
+
+- Boost prefix-matched spec suggestions in history mode ([#193](https://github.com/versenilvis/iris/issues/193)) ([9a2f7a](https://github.com/versenilvis/iris/commit/9a2f7a4a7c6005cec406db443e35d66c92bef5ae))
+
 ## [v0.8.0](https://github.com/versenilvis/iris/releases/tag/v0.8.0) - 2026-11-07
 
 ### Bug fixes
