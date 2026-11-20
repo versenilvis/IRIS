@@ -1,8 +1,10 @@
 package root
 
 import (
+	"strings"
 	"testing"
 
+	"github.com/versenilvis/iris/integration"
 	"github.com/versenilvis/iris/spec"
 	"github.com/versenilvis/iris/spec/alias"
 )
@@ -47,6 +49,32 @@ func TestMergeResults(t *testing.T) {
 		}
 		if res[0].Source != "ai" {
 			t.Errorf("Expected promoted source 'ai', got %q", res[0].Source)
+		}
+	})
+
+	t.Run("Prefix Matched Spec Boosted In History Mode", func(t *testing.T) {
+		res := MergeResults("git stat", "history")
+		if len(res) == 0 {
+			t.Fatalf("expected suggestions for 'git stat', got 0")
+		}
+		if res[0].Cmd != "git status" {
+			t.Errorf("expected 'git status' spec prefix match at top, got %q", res[0].Cmd)
+		}
+	})
+
+	t.Run("Low Coverage Spec Not Boosted Above History", func(t *testing.T) {
+		integration.RecordSessionCommand("git commit -m initial")
+		integration.RecordSessionCommand("git push origin main")
+		res := MergeResults("git", "history")
+		if len(res) == 0 {
+			t.Fatalf("expected suggestions for 'git', got 0")
+		}
+		// history commands should be at the top when query has low coverage
+		if strings.HasPrefix(res[0].Cmd, "git-") {
+			t.Errorf("low-coverage system binary %q should not be boosted above history", res[0].Cmd)
+		}
+		if res[0].Source != "session" && res[0].Source != "history" && res[0].Source != "atuin" {
+			t.Errorf("expected history command at top, got %q (source %s)", res[0].Cmd, res[0].Source)
 		}
 	})
 
