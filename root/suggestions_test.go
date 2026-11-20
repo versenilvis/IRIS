@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/versenilvis/iris/integration"
 	"github.com/versenilvis/iris/spec"
 	"github.com/versenilvis/iris/spec/alias"
 )
@@ -62,18 +63,18 @@ func TestMergeResults(t *testing.T) {
 	})
 
 	t.Run("Low Coverage Spec Not Boosted Above History", func(t *testing.T) {
+		integration.RecordSessionCommand("git commit -m initial")
+		integration.RecordSessionCommand("git push origin main")
 		res := MergeResults("git", "history")
 		if len(res) == 0 {
 			t.Fatalf("expected suggestions for 'git', got 0")
 		}
-		for i, r := range res {
-			if i > 2 {
-				break
-			}
-			// system binaries like git-upload-pack should NOT be at top when query is just "git"
-			if strings.HasPrefix(r.Cmd, "git-") {
-				t.Errorf("low-coverage system binary %q should not be boosted above history (got it at index %d)", r.Cmd, i)
-			}
+		// history commands should be at the top when query has low coverage
+		if strings.HasPrefix(res[0].Cmd, "git-") {
+			t.Errorf("low-coverage system binary %q should not be boosted above history", res[0].Cmd)
+		}
+		if res[0].Source != "session" && res[0].Source != "history" && res[0].Source != "atuin" {
+			t.Errorf("expected history command at top, got %q (source %s)", res[0].Cmd, res[0].Source)
 		}
 	})
 

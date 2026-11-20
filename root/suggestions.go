@@ -82,7 +82,7 @@ func MergeResults(query string, mode string) []spec.Suggestion {
 		if normalizedQuery != "" {
 			qLen := len(normalizedQuery)
 			for _, s := range cmdResults {
-				if s.Cmd == "" {
+				if s.Cmd == "" || s.Icon == "system" || s.Desc == "system command" {
 					continue
 				}
 				cLen := len(s.Cmd)
